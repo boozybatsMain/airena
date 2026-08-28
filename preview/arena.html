@@ -1,0 +1,1204 @@
+<title>Airena — экран боя (макет)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Chakra+Petch:wght@700&display=swap">
+
+<style>
+/* ── Экран боя, макет под UI-референс. Только визуал. ─────────────────────
+   Шрифт: Michroma — свободный аналог Eurostile Bold Extended из референса.
+   Панели: SVG с обводкой по контуру (включая срезанный угол) и потёртостями
+   из /assets/grunge.jpg (fal), эмблемы — /assets/emblem-*.jpg (fal). */
+:root{
+  --cy:#4fc8dc; --cy-hi:#9fe8f2; --or:#f39a35; --or-hi:#ffc37a;
+  --ink:#e8f1f7; --dim:#93a5b4;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0f16}
+body{font-family:"Rajdhani",sans-serif;font-weight:500;color:var(--ink);
+  -webkit-font-smoothing:antialiased;user-select:none}
+canvas{display:block}
+
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:5;
+  background:
+    radial-gradient(120% 90% at 50% 42%, transparent 52%, rgba(3,7,13,.42) 100%),
+    linear-gradient(to bottom, rgba(6,12,20,.32) 0%, transparent 13%),
+    linear-gradient(to top, rgba(4,9,16,.45) 0%, transparent 14%);}
+
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#hud .clicky{pointer-events:auto}
+
+/* ── карточки бойцов ──────────────────────────────────────────────────────
+   Размеры по линейке референса: высота эмблемы = высоте всей стопки справа
+   (имя 28 + 12 + бар 26 + 14 + слоты 50 = 130). */
+.card{position:absolute;top:24px;display:flex;gap:20px;align-items:flex-start}
+.card.left{left:26px}
+.card.right{right:26px;flex-direction:row-reverse}
+.card .col{display:flex;flex-direction:column}
+.card.right .col{align-items:flex-end}
+
+.emblem{width:120px;height:120px;flex:0 0 120px}
+
+.fname{height:26px;margin-top:6px;font-size:24px;font-weight:500;letter-spacing:.1em;line-height:25px;margin-left:-2px;
+  color:#74c6d4;text-shadow:0 0 16px rgba(95,180,200,.35),0 0 5px rgba(90,170,190,.2)}
+.card.right .fname{letter-spacing:.06em;margin-left:0;margin-right:-2px;
+  color:#cf854a;text-shadow:0 0 16px rgba(210,140,75,.32),0 0 5px rgba(200,130,70,.2)}
+
+.hprow{display:flex;align-items:center;gap:16px;margin-top:10px;height:20px}
+.card.right .hprow{flex-direction:row-reverse}
+.hpbar{width:380px;height:16px;display:block;overflow:visible}
+.hppct{font-size:21px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums;color:#77c9d7;
+  letter-spacing:.02em;min-width:56px;text-shadow:0 0 12px rgba(95,180,200,.3)}
+.card.right .hppct{text-align:right;color:#cf854a;text-shadow:0 0 12px rgba(210,140,75,.25)}
+.card.left .hppct{text-align:left}
+
+.skills{display:flex;gap:8px;margin-top:8px}
+.sk{position:relative;width:50px;height:50px;display:grid;place-items:center;
+  border-radius:3px;border:1px solid transparent;background:rgba(10,18,28,.18)}
+.sk::after{content:"";position:absolute;inset:-1px;border-radius:inherit;
+  background:url(/assets/grunge-cy.png) center/340% no-repeat;
+  opacity:.24;pointer-events:none}
+.card.right .sk::after{background-image:url(/assets/grunge-or.png)}
+.skills .sk:nth-child(1)::after{background-position:8% 12%}
+.skills .sk:nth-child(2)::after{background-position:52% 71%}
+.skills .sk:nth-child(3)::after{background-position:87% 33%}
+.skills .sk:nth-child(4)::after{background-position:23% 88%}
+.skills .sk:nth-child(5)::after{background-position:66% 9%}
+.card.right .skills .sk:nth-child(1)::after{background-position:91% 64%}
+.card.right .skills .sk:nth-child(2)::after{background-position:14% 42%}
+.card.right .skills .sk:nth-child(3)::after{background-position:71% 86%}
+.card.right .skills .sk:nth-child(4)::after{background-position:38% 18%}
+.sk svg{width:29px;height:29px;fill:#7fd0dd;opacity:.92}
+.card.right .sk svg{fill:#dd9c62}
+.sk.count,.card.right .sk.count{box-shadow:none;color:#e6eef4;font-size:19px;font-weight:500}
+.card.right .sk.count.plus{border-color:rgba(243,154,53,.6);color:#f5a545}
+.sk.count::after{opacity:.15}
+
+/* ── часы и раунд ─────────────────────────────────────────────────────── */
+#clock{position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center}
+#clock .t{font-size:48px;font-weight:600;letter-spacing:.04em;line-height:1;
+  font-variant-numeric:tabular-nums;color:#eef6fa}
+
+
+/* ── заголовки-«гребёнки»: // ТЕКСТ ────── со стрелкой, как в референсе ── */
+.hcut{display:flex;align-items:center;gap:10px;font-size:15px;
+  letter-spacing:.16em;color:#74b4c6;white-space:nowrap}
+.hcut::before{content:"//";letter-spacing:.05em;color:rgba(127,210,226,.85)}
+.hcut svg{flex:0 0 auto;margin-top:2px}
+
+/* ── лента арены: без плашек и линий, просторные строки ───────────────── */
+#feed{position:absolute;left:28px;bottom:35%;width:400px}
+#feed::before{content:"";position:absolute;left:-18px;top:-14px;width:226px;bottom:-16px;
+  z-index:-1;background:rgba(8,15,24,.5);border-radius:18px;filter:blur(20px)}
+#feed::after{content:"";position:absolute;left:206px;top:28px;width:128px;bottom:-12px;
+  z-index:-1;background:rgba(8,15,24,.28);border-radius:18px;filter:blur(22px)}
+#feed .hcut{position:relative}
+#feed .hcut svg{position:absolute;left:0;top:0;width:400px;height:40px;pointer-events:none}
+#feed .rows{margin-top:15px;display:flex;flex-direction:column;gap:9px}
+#feed .row{display:grid;grid-template-columns:44px 24px 112px 1fr;gap:10px;white-space:nowrap;
+  align-items:center;opacity:0;transform:translateY(-4px);
+  animation:feedin .3s ease forwards}
+@keyframes feedin{to{opacity:1;transform:none}}
+#feed .tm{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;color:#adbac4}
+#feed .ic{display:grid;place-items:center}
+#feed .ic svg{width:16px;height:16px}
+#feed .who{font-size:14px;font-weight:500;letter-spacing:.05em}
+#feed .what{font-size:14px;font-weight:500;letter-spacing:.04em;color:#dde6ec}
+
+/* ── статистика матча: срез TL и BR, рамка по контуру, одна линия ─────── */
+#stats{position:absolute;left:28px;bottom:44px;width:300px;height:220px}
+#stats::before{content:"";position:absolute;inset:-14px -18px;z-index:-1;
+  background:rgba(8,15,24,.46);border-radius:20px;filter:blur(22px)}
+#stats .bg{position:absolute;inset:0;background:rgba(10,18,28,.18);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+#stats>svg{position:absolute;inset:0;pointer-events:none}
+#stats .in{position:absolute;inset:0;padding:19px 24px 14px}
+#stats .hcut{font-size:15px;letter-spacing:.12em}
+#stats .hunder{width:236px;height:1px;margin:8px 0 2px;
+  background:linear-gradient(90deg,rgba(127,210,226,.5) 0 62%,rgba(127,210,226,.18))}
+#stats .row{display:flex;justify-content:space-between;align-items:baseline;
+  padding:13px 0 0}
+#stats .row:first-of-type{padding-top:12px}
+#stats .k{font-size:13.5px;font-weight:500;letter-spacing:.08em;color:#b6c3cf}
+#stats .v{font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#6fd0e0}
+
+/* ── неймплейты в мире ────────────────────────────────────────────────── */
+.np{position:absolute;transform:translate(-50%,-100%);pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px;z-index:8}
+.np .n{font-size:12.5px;font-weight:500;letter-spacing:.1em}
+.np.cy .n{color:#cff5fc;text-shadow:0 1px 2px rgba(5,10,16,.6)}
+.np.or .n{color:#ffa63e;text-shadow:0 1px 2px rgba(5,10,16,.6)}
+.np .b{width:118px;height:5px;background:rgba(6,12,20,.75);border:1px solid rgba(0,0,0,.5);
+  display:flex;overflow:hidden}
+.np .b .f{height:100%;background:var(--cy);transition:width .2s}
+.np.or .b .f{background:var(--or)}
+.np.or .b::before{content:"";width:4px;align-self:stretch;background:#f39a35;margin-right:1px}
+.np .b .d{height:100%;background:#e04c3c;transition:width .6s ease}
+.np .n .dia{font-size:10px;vertical-align:0;margin-right:6px}
+
+#boot{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#0b0f16;
+  font-size:11px;letter-spacing:.4em;color:#8ba0b2}
+#err{position:fixed;top:120px;left:50%;transform:translateX(-50%);z-index:31;
+  max-width:70ch;color:#ff8a7a;font:12px/1.5 monospace;
+  white-space:pre-wrap;display:none}
+</style>
+
+<div id="vignette"></div>
+
+<div id="hud">
+  <!-- левый боец: эмблема со срезом ТОЛЬКО правого нижнего угла,
+       остальные скруглены; рамка идёт по контуру среза; потёртости поверх -->
+  <div class="card left">
+    <svg class="emblem" viewBox="0 0 130 130">
+      <defs>
+      <filter id="tint-cy"><feColorMatrix type="matrix"
+        values="0.5 0 0 0 0  0 0.78 0 0 0  0 0 0.86 0 0  0 0 0 1 0"/></filter>
+      <filter id="tint-or"><feColorMatrix type="matrix"
+        values="0.88 0 0 0 0  0 0.62 0 0 0  0 0 0.38 0 0  0 0 0 1 0"/></filter>
+      <clipPath id="ep-l"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
+      <path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z"
+        fill="rgba(10,18,28,.18)"/>
+      <image href="/assets/emblem-laser.png" x="10" y="7" width="110" height="110"
+        clip-path="url(#ep-l)" style="filter:brightness(.85) saturate(.6)"/>
+      <path d="M65 34 L71 46 L65 58 L59 46 Z" fill="#0d1620"/>
+      <path d="M65 38 L69 46 L65 54 L61 46 Z" fill="#7ce4f2"/>
+      <g stroke="rgba(159,232,242,.22)" stroke-width="1.5" clip-path="url(#ep-l)">
+        <path d="M10 112 l7 -7 M15 117 l7 -7 M20 122 l7 -7"/>
+      </g>
+      <g stroke="rgba(159,232,242,.25)" stroke-width="1.2">
+        <path d="M8 90 h7 M8 95 h5"/>
+      </g>
+      <image id="wf-l" x="0" y="0" width="130" height="130"/>
+      <image href="/assets/grunge-cy.png" x="0" y="0" width="130" height="130"
+        clip-path="url(#ep-l)" opacity=".3" preserveAspectRatio="xMidYMid slice"/>
+    </svg>
+    <div class="col">
+      <div class="fname">LASER</div>
+      <div class="hprow">
+        <svg class="hpbar" viewBox="0 0 380 16">
+          <defs>
+            <linearGradient id="hpg-l" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="380" y2="0">
+              <stop offset="0" stop-color="#5896a8"/><stop offset=".2" stop-color="#5896a8"/>
+              <stop offset=".2" stop-color="#68aabc"/><stop offset=".4" stop-color="#68aabc"/>
+              <stop offset=".4" stop-color="#76bed0"/><stop offset=".6" stop-color="#76bed0"/>
+              <stop offset=".6" stop-color="#82cee2"/><stop offset=".8" stop-color="#82cee2"/>
+              <stop offset=".8" stop-color="#8cdbef"/><stop offset="1" stop-color="#8cdbef"/>
+            </linearGradient>
+            <clipPath id="fc-l"><path id="fillc-l" d="M5 0 H331.25 L326.25 16 H0 Z"/></clipPath>
+            <clipPath id="bc-l"><path d="M5 0 H380 L375 16 H0 Z"/></clipPath>
+          </defs>
+          <path d="M5 0 H380 L375 16 H0 Z" fill="rgba(10,18,28,.18)"/>
+          <path id="fill-l" d="M5 0 H331.25 L326.25 16 H0 Z" fill="url(#hpg-l)"
+            style="filter:drop-shadow(0 0 5px rgba(110,205,228,.55))"/>
+          <g clip-path="url(#fc-l)" stroke="rgba(8,18,24,.3)" stroke-width="1">
+            <path d="M78.5 0 L73.5 16 M154.5 0 L149.5 16 M230.5 0 L225.5 16 M306.5 0 L301.5 16"/>
+          </g>
+          <image href="/assets/grunge-cy.png" x="-20" y="-120" width="420" height="420"
+            clip-path="url(#bc-l)" opacity=".2" preserveAspectRatio="xMidYMid slice"/>
+          <image id="wf-bar-l" x="0" y="0" width="380" height="16"/>
+        </svg>
+        <div class="hppct" id="pct-l">87%</div>
+      </div>
+      <div class="skills">
+        <div class="sk" title="blades"><svg viewBox="0 0 24 24"><path d="M4 3 L13 14.5 12 17 8.5 13.5 Z M20 3 L11 14.5 12 17 15.5 13.5 Z M6.2 17.8 l2-2 1.3 1.3 -2 2 Z M17.8 17.8 l-2-2 -1.3 1.3 2 2 Z M11.2 18 h1.6 v3 h-1.6 Z"/></svg></div>
+        <div class="sk" title="claws"><svg viewBox="0 0 24 24"><path d="M4 2.5 C8 7 10 13 10.2 21 L7.6 19.6 C7.2 13 5.8 8 3 4 Z M10.5 2 C14.5 6.5 16.5 12.5 16.7 20.5 L14.1 19.1 C13.7 12.5 12.3 7.5 9.5 3.5 Z M17 2.5 C20.5 6.5 22 12 22 19.5 L19.6 18.2 C19.3 12 18 7.5 15.6 4 Z"/></svg></div>
+        <div class="sk" title="cluster"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 3 C17 3 21 6.5 21 12 C21 17.5 17 21 12 21 C7 21 3 17.5 3 12 C3 6.5 7 3 12 3 Z M9 8.4 a1.7 1.7 0 1 0 0 3.4 a1.7 1.7 0 0 0 0-3.4 Z M15 8.4 a1.7 1.7 0 1 0 0 3.4 a1.7 1.7 0 0 0 0-3.4 Z M9 13.6 a1.7 1.7 0 1 0 0 3.4 a1.7 1.7 0 0 0 0-3.4 Z M15 13.6 a1.7 1.7 0 1 0 0 3.4 a1.7 1.7 0 0 0 0-3.4 Z"/></svg></div>
+        <div class="sk" title="vortex"><svg viewBox="0 0 24 24"><path d="M12 2.6 A9.4 9.4 0 1 1 2.6 12 h2.3 A7.1 7.1 0 1 0 12 4.9 A4.9 4.9 0 0 0 7.1 9.8 A3 3 0 0 0 12 12.4 l1.2 1.9 A5.2 5.2 0 0 1 4.9 9.8 A7.1 7.1 0 0 1 12 2.6 Z"/></svg></div>
+        <div class="sk count">3</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- правый боец: зеркально, срез левого нижнего угла -->
+  <div class="card right">
+    <svg class="emblem" viewBox="0 0 130 130">
+      <defs><clipPath id="ep-g"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
+      <path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z"
+        fill="rgba(24,16,9,.18)"/>
+      <image href="/assets/emblem-gorilla2.png" x="-8" y="-14" width="146" height="146"
+        clip-path="url(#ep-g)" style="filter:grayscale(1) contrast(2.2) brightness(1.08) sepia(1) saturate(4.6) hue-rotate(-16deg)"/>
+      <g stroke="rgba(255,195,122,.2)" stroke-width="1.5" clip-path="url(#ep-g)">
+        <path d="M120 112 l-7 -7 M115 117 l-7 -7 M110 122 l-7 -7"/>
+      </g>
+      <g stroke="rgba(255,195,122,.25)" stroke-width="1.2">
+        <path d="M115 90 h7 M117 95 h5"/>
+      </g>
+      <image id="wf-g" x="0" y="0" width="130" height="130"/>
+      <image href="/assets/grunge-or.png" x="-48" y="-27" width="185" height="185"
+        clip-path="url(#ep-g)" opacity=".3" preserveAspectRatio="xMidYMid slice"/>
+    </svg>
+    <div class="col">
+      <div class="fname">GORILLA MK-IV</div>
+      <div class="hprow">
+        <svg class="hpbar" viewBox="0 0 380 16">
+          <defs>
+            <linearGradient id="hpg-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="380" y2="0">
+              <stop offset="0" stop-color="#e28642"/><stop offset=".2" stop-color="#e28642"/>
+              <stop offset=".2" stop-color="#d47b3d"/><stop offset=".4" stop-color="#d47b3d"/>
+              <stop offset=".4" stop-color="#c26f38"/><stop offset=".6" stop-color="#c26f38"/>
+              <stop offset=".6" stop-color="#ac6231"/><stop offset=".8" stop-color="#ac6231"/>
+              <stop offset=".8" stop-color="#965429"/><stop offset="1" stop-color="#965429"/>
+            </linearGradient>
+            <clipPath id="fc-g"><path id="fillc-g" d="M101.25 0 H375 L380 16 H106.25 Z"/></clipPath>
+            <clipPath id="bc-g"><path d="M0 0 H375 L380 16 H5 Z"/></clipPath>
+          </defs>
+          <path d="M0 0 H375 L380 16 H5 Z" fill="rgba(24,16,9,.18)"/>
+          <path id="fill-g" d="M101.25 0 H375 L380 16 H106.25 Z" fill="url(#hpg-g)"
+            style="filter:drop-shadow(0 0 5px rgba(226,140,70,.5))"/>
+          <g clip-path="url(#fc-g)" stroke="rgba(26,12,4,.3)" stroke-width="1">
+            <path d="M73.5 0 L78.5 16 M149.5 0 L154.5 16 M225.5 0 L230.5 16 M301.5 0 L306.5 16"/>
+          </g>
+          <image href="/assets/grunge-or.png" x="-90" y="-200" width="420" height="420"
+            clip-path="url(#bc-g)" opacity=".2" preserveAspectRatio="xMidYMid slice"/>
+          <image id="wf-bar-g" x="0" y="0" width="380" height="16"/>
+        </svg>
+        <div class="hppct" id="pct-g">73%</div>
+      </div>
+      <div class="skills">
+        <div class="sk" title="burst"><svg viewBox="0 0 24 24"><path d="M12 2 L14 8.2 20 5 16.2 10.4 22 12 16.2 13.6 20 19 14 15.8 12 22 10 15.8 4 19 7.8 13.6 2 12 7.8 10.4 4 5 10 8.2 Z"/></svg></div>
+        <div class="sk" title="shield"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.4 L20.4 5.4 V12 C20.4 17.2 16.6 20.6 12 21.8 C7.4 20.6 3.6 17.2 3.6 12 V5.4 Z M12 5.1 L18 7.3 V12 C18 15.9 15.2 18.6 12 19.6 C8.8 18.6 6 15.9 6 12 V7.3 Z"/></svg></div>
+        <div class="sk" title="scratch"><svg viewBox="0 0 24 24"><path d="M3 4 L17.5 20 14.6 20.4 1.8 6.2 Z M8 3 L21 17.4 18.4 17.9 6.2 4.6 Z M13.5 2.6 L22.6 12.6 20.4 13 12 3.8 Z"/></svg></div>
+        <div class="sk count plus">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- часы -->
+  <div id="clock">
+    <div class="t" id="tval">01:42</div>
+  </div>
+
+  <!-- лента: заголовок с линией и стрелкой, строки без плашек -->
+  <div id="feed">
+    <div class="hcut">ARENA FEED
+      <svg viewBox="0 0 400 40" fill="none">
+        <image id="wf-feedline" x="0" y="0" width="400" height="40"/>
+      </svg>
+    </div>
+    <div class="rows" id="feed-rows"></div>
+  </div>
+
+  <!-- статистика: одна линия — у заголовка, углы срезаны с рамкой и скобами -->
+  <div id="stats">
+    <div class="bg"></div>
+    <svg viewBox="0 0 300 220">
+      <defs><clipPath id="stf"><path d="M0 0 H284 L300 16 V220 H0 Z"/></clipPath></defs>
+      <image href="/assets/grunge-cy.png" x="-60" y="-140" width="420" height="420"
+        clip-path="url(#stf)" opacity=".14" preserveAspectRatio="xMidYMid slice"/>
+      <image id="wf-stats" x="0" y="0" width="300" height="220"/>
+    </svg>
+    <div class="in">
+      <div class="hcut">MATCH STATS</div>
+      <div class="hunder"></div>
+      <div class="row"><span class="k">DAMAGE DEALT</span><span class="v" id="st-dmg">1,248</span></div>
+      <div class="row"><span class="k">HITS LANDED</span><span class="v" id="st-hit">23</span></div>
+      <div class="row"><span class="k">ABILITY USAGE</span><span class="v" id="st-abl">7</span></div>
+      <div class="row"><span class="k">POWER UPS</span><span class="v" id="st-pow">2</span></div>
+    </div>
+  </div>
+
+  <!-- неймплейты -->
+  <div class="np cy" id="np-l"><div class="n">LASER</div>
+    <div class="b"><span class="f" style="width:87%"></span><span class="d" style="width:0"></span></div>
+    <div class="b" style="height:4px;margin-top:1px"><span class="f" style="width:55%;background:#e04c3c"></span></div></div>
+  <div class="np or" id="np-g"><div class="n"><span class="dia">&#9670;</span>GORILLA MK-IV</div>
+    <div class="b"><span class="f" style="width:73%"></span><span class="d" style="width:0"></span></div></div>
+</div>
+
+<div id="err"></div>
+<div id="boot">LOADING ARENA</div>
+
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.webgpu.js", "three/webgpu": "/vendor/three.webgpu.js", "three/tsl": "/vendor/three.tsl.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as TSL from 'three/tsl';
+
+const $ = (s) => document.querySelector(s);
+const errBox = $('#err');
+const fail = (m) => { errBox.style.display = 'block'; errBox.textContent += m + '\n'; console.error(m); };
+const params = new URLSearchParams(location.search);
+// ?hud=1 — режим ревью: только HUD на тёмном фоне, состояние референса
+const HUDMODE = params.get('hud') === '1';
+
+// ── сцена ────────────────────────────────────────────────────────────────
+const R_ARENA = 20;                       // ARENA_HALF из sim-конфига
+const scene = new THREE.Scene();
+
+// фон: вертикальный градиент, темнее кверху — как на референсе
+{
+  const c = document.createElement('canvas'); c.width = 4; c.height = 512;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 512);
+  gr.addColorStop(0, '#10151f'); gr.addColorStop(.55, '#1b2331');
+  gr.addColorStop(1, '#2e3950');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = tex;
+}
+scene.fog = new THREE.Fog(0x141b26, 38, 115);
+
+const camera = new THREE.PerspectiveCamera(44, innerWidth / innerHeight, 0.3, 400);
+camera.position.set(0, 15, 30);
+camera.lookAt(0, 0.55, 0);
+
+const forceWebGL = params.get('webgl') === '1';
+let renderer;
+try {
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL });
+  await renderer.init();
+} catch (e) {
+  fail(`WebGPU unavailable (${e.message}) — falling back to WebGL2`);
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: true });
+  await renderer.init();
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// свет — как во вьювере, но приглушённее: настроение делает тьма вокруг
+scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x2a2f38, 0.95));
+const key = new THREE.DirectionalLight(0xf7f3ea, 2.6);
+key.position.set(18, 32, 14);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -30; key.shadow.camera.right = 30;
+key.shadow.camera.top = 30; key.shadow.camera.bottom = -30;
+key.shadow.camera.near = 1; key.shadow.camera.far = 90;
+key.shadow.bias = -0.0012;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fa8ff, 1.1);
+rim.position.set(-18, 12, -16);
+scene.add(rim);
+
+// ── пол с технической разметкой ──────────────────────────────────────────
+function floorTexture() {
+  const S = 2048, M = S / 64;            // тайл 64×64 м → 32 px/м
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.fillStyle = '#d6dade'; g.fillRect(0, 0, S, S);
+  const cx = S / 2, cy = S / 2;
+  const px = (m) => m * M;
+
+  // швы панелей
+  g.strokeStyle = 'rgba(70,80,92,.14)'; g.lineWidth = 2;
+  for (let m = -32; m <= 32; m += 4) {
+    g.beginPath(); g.moveTo(cx + px(m), 0); g.lineTo(cx + px(m), S); g.stroke();
+    g.beginPath(); g.moveTo(0, cy + px(m)); g.lineTo(S, cy + px(m)); g.stroke();
+  }
+  g.strokeStyle = 'rgba(70,80,92,.2)'; g.lineWidth = 3;
+  for (let m = -32; m <= 32; m += 8) {
+    g.beginPath(); g.moveTo(cx + px(m), 0); g.lineTo(cx + px(m), S); g.stroke();
+    g.beginPath(); g.moveTo(0, cy + px(m)); g.lineTo(S, cy + px(m)); g.stroke();
+  }
+
+  // радиальные спицы до кольца
+  g.strokeStyle = 'rgba(70,80,92,.28)'; g.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * px(2.6), cy + Math.sin(a) * px(2.6));
+    g.lineTo(cx + Math.cos(a) * px(R_ARENA), cy + Math.sin(a) * px(R_ARENA));
+    g.stroke();
+  }
+
+  // центральный узор
+  const circle = (r, w, alpha, dash) => {
+    g.strokeStyle = `rgba(80,90,102,${alpha})`; g.lineWidth = w;
+    g.setLineDash(dash || []);
+    g.beginPath(); g.arc(cx, cy, px(r), 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+  };
+  circle(2.4, 4, .62); circle(1.7, 3, .55); circle(5.2, 2.5, .4, [14, 10]);
+  circle(R_ARENA - 0.55, 2, .3); circle(R_ARENA + 0.55, 2, .22);
+  g.fillStyle = 'rgba(95,105,118,.4)';
+  g.beginPath(); g.arc(cx, cy, px(0.55), 0, Math.PI * 2); g.fill();
+
+  // штриховки у кольца и мелкие метки
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + 0.12;
+    const r0 = px(R_ARENA - 1.7);
+    g.save(); g.translate(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); g.rotate(a + Math.PI / 2);
+    g.fillStyle = 'rgba(80,90,102,.3)';
+    for (let s = 0; s < 4; s++) g.fillRect(-14 + s * 9, -3, 5, 6);
+    g.restore();
+  }
+  g.font = `${Math.round(M * 0.55)}px monospace`;
+  g.fillStyle = 'rgba(85,95,108,.4)';
+  const rng = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+  for (let i = 0; i < 26; i++) {
+    const a = rng() * Math.PI * 2, r = px(4 + rng() * (R_ARENA - 6));
+    g.save(); g.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    g.fillText(`${String.fromCharCode(65 + (i % 6))}-${(10 + i)}`, 0, 0); g.restore();
+  }
+
+  // растворяем разметку к краю тайла, чтобы шов с внешним полом не читался
+  const fade = g.createRadialGradient(cx, cy, px(24), cx, cy, px(31));
+  fade.addColorStop(0, 'rgba(214,218,222,0)');
+  fade.addColorStop(1, 'rgba(214,218,222,1)');
+  g.fillStyle = fade; g.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture(), roughness: 0.82, metalness: 0.05 });
+const floorTile = new THREE.Mesh(new THREE.PlaneGeometry(64, 64), floorMat);
+floorTile.rotation.x = -Math.PI / 2;
+floorTile.receiveShadow = true;
+scene.add(floorTile);
+
+const floorFar = new THREE.Mesh(
+  new THREE.PlaneGeometry(500, 500),
+  new THREE.MeshStandardMaterial({ color: 0xd6dade, roughness: 0.85, metalness: 0.04 }),
+);
+floorFar.rotation.x = -Math.PI / 2;
+floorFar.position.y = -0.01;
+floorFar.receiveShadow = true;
+scene.add(floorFar);
+
+// тьма за кольцом: нарисованное радиальное затемнение поверх пола —
+// свет «принадлежит» арене, окружение тонет, как на референсе
+{
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const SPAN = 130;                                  // метров на всю плоскость
+  const px = (m) => (m / SPAN) * 1024;
+  const grad = g.createRadialGradient(512, 512, px(11), 512, 512, px(58));
+  grad.addColorStop(0, 'rgba(10,15,22,0)');
+  grad.addColorStop(0.19, 'rgba(10,15,22,.26)');   // мягкое притемнение к кромке изнутри
+  grad.addColorStop(0.21, 'rgba(10,15,22,.4)');    // ...чтобы глоу кольца сидел на полу
+  grad.addColorStop(0.3, 'rgba(9,13,19,.66)');
+  grad.addColorStop(0.55, 'rgba(9,13,19,.85)');
+  grad.addColorStop(1, 'rgba(8,11,16,.97)');
+  g.fillStyle = grad; g.fillRect(0, 0, 1024, 1024);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const dark = new THREE.Mesh(
+    new THREE.PlaneGeometry(SPAN, SPAN),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }),
+  );
+  dark.rotation.x = -Math.PI / 2; dark.position.y = 0.02; dark.renderOrder = 1;
+  scene.add(dark);
+}
+
+// ── светящееся кольцо арены ──────────────────────────────────────────────
+{
+  // яркая сердцевина
+  const core = new THREE.Mesh(
+    new THREE.TorusGeometry(R_ARENA, 0.07, 8, 220),
+    new THREE.MeshBasicMaterial({ color: 0xf2faff, toneMapped: false }),
+  );
+  core.rotation.x = Math.PI / 2; core.position.y = 0.06;
+  core.renderOrder = 2;
+  scene.add(core);
+
+  // мягкое гало — нарисованное кольцо на аддитивной плоскости (без пост-процесса)
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const draw = (w, blur, alpha, color) => {
+    g.strokeStyle = color; g.lineWidth = w;
+    g.shadowColor = color; g.shadowBlur = blur; g.globalAlpha = alpha;
+    g.beginPath(); g.arc(512, 512, 420, 0, Math.PI * 2); g.stroke();
+  };
+  draw(20, 40, .5, '#2f7fe0'); draw(11, 22, .8, '#5fb2ff');
+  draw(5, 12, 1, '#a8dcff'); draw(2.5, 5, 1, '#ffffff');
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const span = R_ARENA / (420 / 512) * 2;
+  // ACES съедает аддитив на светлом полу — цвет материала работает усилителем
+  const haloMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 1 });
+  haloMat.color.setRGB(2.1, 3.0, 4.4);
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(span, span), haloMat);
+  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.03; halo.renderOrder = 2;
+  scene.add(halo);
+
+  // узлы-светильники по периметру
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + 0.06;
+    const pod = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.16, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x9aa4b0, roughness: 0.5, metalness: 0.35 }),
+    );
+    pod.position.set(Math.cos(a) * R_ARENA, 0.08, Math.sin(a) * R_ARENA);
+    pod.rotation.y = -a + Math.PI / 2;
+    pod.castShadow = true;
+    scene.add(pod);
+    const lamp = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.05, 0.16),
+      new THREE.MeshBasicMaterial({ color: 0xcfe9ff, toneMapped: false }),
+    );
+    lamp.position.set(Math.cos(a) * R_ARENA, 0.17, Math.sin(a) * R_ARENA);
+    lamp.rotation.y = -a + Math.PI / 2;
+    scene.add(lamp);
+  }
+}
+
+// ── контейнеры-препятствия ───────────────────────────────────────────────
+const stencil = (text, size = 256) => {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  g.font = `700 ${size * 0.42}px "Chakra Petch", sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(72,80,90,.85)';
+  g.fillText(text, size / 2, size / 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+};
+const hazard = () => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c9cdd3'; g.fillRect(0, 0, 256, 64);
+  g.fillStyle = '#3c434d';
+  for (let x = -64; x < 256; x += 42) {
+    g.beginPath(); g.moveTo(x, 64); g.lineTo(x + 24, 0); g.lineTo(x + 42, 0); g.lineTo(x + 18, 64);
+    g.closePath(); g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+};
+
+const boxMat = () => new THREE.MeshStandardMaterial({ color: 0xe9e8e3, roughness: 0.62, metalness: 0.06 });
+const boxTop = () => new THREE.MeshStandardMaterial({ color: 0xd8d7d1, roughness: 0.6, metalness: 0.08 });
+
+function container(w, h, d, label) {
+  const grp = new THREE.Group();
+  const side = boxMat(), top = boxTop();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, top, side, side, side]);
+  body.position.y = h / 2;
+  body.castShadow = true; body.receiveShadow = true;
+  grp.add(body);
+  const edge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(body.geometry),
+    new THREE.LineBasicMaterial({ color: 0x8b939e, transparent: true, opacity: 0.8 }),
+  );
+  edge.position.y = h / 2;
+  grp.add(edge);
+  // угловые накладки
+  const capM = new THREE.MeshStandardMaterial({ color: 0xc6cad0, roughness: 0.5, metalness: 0.3 });
+  for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) {
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.24), capM);
+    cap.position.set(sx * (w / 2 - 0.02), sy * h + (sy ? -0.12 : 0.12), sz * (d / 2 - 0.02));
+    cap.castShadow = true;
+    grp.add(cap);
+  }
+  // трафарет и предупредительная полоса на фронтальной грани (+z)
+  if (label) {
+    const num = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.1, 1.1),
+      new THREE.MeshStandardMaterial({ map: stencil(label), transparent: true, roughness: 0.7 }),
+    );
+    num.position.set(w / 2 - 0.75, h * 0.62, d / 2 + 0.012);
+    grp.add(num);
+  }
+  const strip = new THREE.Mesh(
+    new THREE.PlaneGeometry(Math.min(w * 0.5, 2.4), 0.24),
+    new THREE.MeshStandardMaterial({ map: hazard(), roughness: 0.7 }),
+  );
+  strip.position.set(-w / 4, 0.32, d / 2 + 0.012);
+  grp.add(strip);
+  return grp;
+}
+
+function wedge(runX, h, d, label) {
+  // прямоугольный клин: вертикальная грань слева, скат вниз направо
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0); shape.lineTo(0, h); shape.lineTo(runX, 0); shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+  geo.translate(-runX / 2, 0, -d / 2);
+  const m = new THREE.Mesh(geo, boxMat());
+  m.castShadow = true; m.receiveShadow = true;
+  const grp = new THREE.Group();
+  grp.add(m);
+  const edge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x8b939e, transparent: true, opacity: 0.8 }),
+  );
+  grp.add(edge);
+  if (label) {
+    const num = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.9, 0.9),
+      new THREE.MeshStandardMaterial({ map: stencil(label), transparent: true, roughness: 0.7 }),
+    );
+    num.position.set(-runX / 2 + 0.7, h * 0.35, d / 2 + 0.012);
+    grp.add(num);
+  }
+  return grp;
+}
+
+const obst = [
+  { o: container(9.5, 2.7, 2.5, 'C-12'), x: -8.5, z: -5.5, ry: 0.38 },
+  { o: container(3.6, 3.6, 3.6, ''),     x:  2.2, z: -8.6, ry: -0.22 },
+  { o: container(3.3, 3.3, 3.3, '01'),   x: -0.6, z:  6.2, ry: 0.28 },
+  { o: wedge(6.2, 3.2, 2.7, '02'),       x: 10.8, z: -1.2, ry: -0.16 },
+];
+for (const { o, x, z, ry } of obst) { o.position.set(x, 0, z); o.rotation.y = ry; scene.add(o); }
+
+// ── бойцы: настоящие тела проекта ────────────────────────────────────────
+// В симуляции радиусы 1.0/1.25 м; для макета тела крупнее — читаемость
+// с дальней камеры важнее физического масштаба. Только визуал.
+const FIGHTER_RADIUS = { octopus: 1.0 * 1.7, gorilla: 1.25 * 1.5 };
+
+async function loadBody(name) {
+  const src = await (await fetch(`/bodies/${name}.js`)).text();
+  const make = new Function('THREE', 'TSL', `${src}\n;return build(THREE, TSL);`);
+  const root = make(THREE, TSL);
+  root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const raw = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3(); raw.getSize(size);
+  const footprint = Math.max(size.x, size.z) || 1;
+  root.scale.setScalar((FIGHTER_RADIUS[name] * 2) / footprint);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const s2 = new THREE.Vector3(); box.getSize(s2);
+  const meshes = [];
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    meshes.push(o);
+  });
+  return { root, meshes, height: s2.y, length: Math.max(s2.x, s2.z) || 2.5 };
+}
+
+function lowestY(body) {
+  let lo = Infinity;
+  for (const o of body.meshes) {
+    const bb = o.geometry.boundingBox, e = o.matrixWorld.elements;
+    const ax = e[1], ay = e[5], az = e[9];
+    const c = ax * (bb.min.x + bb.max.x) / 2 + ay * (bb.min.y + bb.max.y) / 2
+      + az * (bb.min.z + bb.max.z) / 2 + e[13];
+    const r = Math.abs(ax) * (bb.max.x - bb.min.x) / 2
+      + Math.abs(ay) * (bb.max.y - bb.min.y) / 2
+      + Math.abs(az) * (bb.max.z - bb.min.z) / 2;
+    if (c - r < lo) lo = c - r;
+  }
+  return lo;
+}
+
+// цветное кольцо под бойцом
+function groundRing(hex, r) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(128, 128, 30, 128, 128, 118);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(.72, hex + '26');
+  grad.addColorStop(.9, hex + 'cc');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = hex; g.lineWidth = 5; g.globalAlpha = .95;
+  g.beginPath(); g.arc(128, 128, 108, 0, Math.PI * 2); g.stroke();
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(r * 2.4, r * 2.4),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, toneMapped: false, opacity: 0.9 }),
+  );
+  mesh.rotation.x = -Math.PI / 2; mesh.position.y = 0.045; mesh.renderOrder = 3;
+  return mesh;
+}
+
+const boot = $('#boot');
+let bodies = null;
+if (!HUDMODE) {
+  try {
+    bodies = {
+      laser: await loadBody('octopus'),
+      gorilla: await loadBody('gorilla'),
+    };
+  } catch (e) { fail(`body load: ${e.stack || e.message}`); }
+}
+boot.remove();
+
+const F = {
+  laser: {
+    body: bodies && bodies.laser, x: -6.6, z: 2.6, h: 0, hp: 0.87, stride: 0,
+    ring: groundRing('#41d8ea', 1.55), light: new THREE.PointLight(0x41d8ea, 14, 7),
+    action: null, phase: 0, plate: $('#np-l'), dmgShown: 0.87,
+  },
+  gorilla: {
+    body: bodies && bodies.gorilla, x: 11.4, z: 2.4, h: 0, hp: 0.73, stride: 0,
+    ring: groundRing('#f08b2d', 1.95), light: new THREE.PointLight(0xf08b2d, 14, 8),
+    action: null, phase: 0, plate: $('#np-g'), dmgShown: 0.73,
+  },
+};
+for (const f of Object.values(F)) {
+  if (!f.body) continue;
+  scene.add(f.body.root, f.ring, f.light);
+  f.tx = f.x; f.tz = f.z; f.lastX = f.x; f.lastZ = f.z;
+}
+
+// ── эффекты скиллов (упрощённые, только для картинки) ────────────────────
+const fx = [];
+function beamFx(from, to, life = 0.5) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  const geo = new THREE.CylinderGeometry(0.16, 0.16, len, 8);
+  geo.rotateX(Math.PI / 2);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x7fdcff, transparent: true, opacity: 0.55,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+  });
+  glowMat.color.multiplyScalar(2.2);
+  const m = new THREE.Mesh(geo, glowMat);
+  m.position.copy(from).addScaledVector(dir, 0.5);
+  m.lookAt(to);
+  const coreGeo = new THREE.CylinderGeometry(0.05, 0.05, len, 8);
+  coreGeo.rotateX(Math.PI / 2);
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true,
+    opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  coreMat.color.setRGB(4, 4, 4);
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  m.add(core);
+  scene.add(m);
+  const flash = new THREE.PointLight(0x9fe8ff, 30, 9);
+  flash.position.copy(to);
+  scene.add(flash);
+  fx.push({ life, t: 0, update(dt) {
+    this.t += dt; const k = 1 - this.t / this.life;
+    m.material.opacity = 0.55 * k; core.material.opacity = k; flash.intensity = 30 * k;
+    if (this.t >= this.life) { scene.remove(m, flash); return false; }
+    return true;
+  } });
+}
+function shockFx(x, z, hex, life = 0.6) {
+  const m = new THREE.Mesh(
+    new THREE.RingGeometry(0.35, 1.05, 48),
+    (() => { const mm = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+      mm.color.multiplyScalar(2.4); return mm; })(),
+  );
+  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.07, z);
+  scene.add(m);
+  fx.push({ life, t: 0, update(dt) {
+    this.t += dt; const k = this.t / this.life;
+    m.scale.setScalar(1 + k * 6); m.material.opacity = 0.85 * (1 - k);
+    if (this.t >= this.life) { scene.remove(m); return false; }
+    return true;
+  } });
+}
+function shieldFx(f, life = 1.3) {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(2.1, 32, 20),
+    new THREE.MeshBasicMaterial({ color: 0xffb45c, transparent: true, opacity: 0.08,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  );
+  scene.add(m);
+  fx.push({ life, t: 0, update(dt) {
+    this.t += dt;
+    m.position.set(f.x, 1.4, f.z);
+    m.material.opacity = 0.08 * (1 - this.t / this.life) + 0.03;
+    if (this.t >= this.life) { scene.remove(m); return false; }
+    return true;
+  } });
+}
+
+// ── прошорканные рамки: сегментный штрих + эрозия, свой seed на элемент ──
+const mulberry = (seed) => () => {
+  seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+/**
+ * Контур задаётся полилинией; каждый кусок в 6-10 px рисуется своим штрихом
+ * со случайной толщиной и плотностью, потом всё проезжают царапины и
+ * вытертые пятна через destination-out — краска сходит, как на референсе.
+ */
+function wornTex(w, h, seed, color, shapes, opts = {}) {
+  const jitter = opts.jitter === undefined ? 1.05 : opts.jitter;
+  const tickN = opts.ticks === undefined ? 3 : opts.ticks;
+  const S = 2;
+  const c = document.createElement('canvas');
+  c.width = w * S; c.height = h * S;
+  const g = c.getContext('2d');
+  g.scale(S, S);
+  const rnd = mulberry(seed);
+  const base = opts.base || 1.15;
+  g.lineCap = 'round';
+  // мел, который плохо пишет: два медленных синуса по длине дуги дают
+  // яркость «изредка хорошо, чаще бледно», без резких обрубков
+  const f1 = 0.045 + rnd() * 0.03, f2 = 0.011 + rnd() * 0.009;
+  const ph1 = rnd() * 7, ph2 = rnd() * 7;
+  let arc = rnd() * 40;
+  for (const pts of shapes) {
+    const closed = opts.open ? 0 : 1;
+    for (let i = 0; i < pts.length - 1 + closed; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const steps = Math.max(1, Math.round(len / 4));
+      for (let k = 0; k < steps; k++) {
+        const t0 = k / steps, t1 = (k + 1) / steps;
+        arc += len / steps;
+        const n = (0.5 + 0.5 * Math.sin(arc * f1 + ph1))
+                * (0.5 + 0.5 * Math.sin(arc * f2 + ph2));
+        const alpha = 0.14 + 0.72 * Math.pow(n, 1.5) + rnd() * 0.08;
+        const wdt = base * (0.55 + 0.45 * n + rnd() * 0.12 * jitter);
+        const x0 = a[0] + (b[0] - a[0]) * t0, y0 = a[1] + (b[1] - a[1]) * t0;
+        const x1 = b[0] === a[0] && b[1] === a[1] ? x0 : a[0] + (b[0] - a[0]) * t1;
+        const y1 = a[1] + (b[1] - a[1]) * t1;
+        g.strokeStyle = `rgba(${color},${alpha.toFixed(2)})`;
+        g.lineWidth = wdt;
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        // меловая пыль: слабый повтор со сдвигом поперёк
+        if (rnd() < 0.4) {
+          const nx = -(y1 - y0), ny = (x1 - x0);
+          const nl = Math.hypot(nx, ny) || 1, off = (rnd() - 0.5) * 1.2;
+          g.strokeStyle = `rgba(${color},${(alpha * 0.3).toFixed(2)})`;
+          g.lineWidth = wdt * 0.55;
+          g.beginPath();
+          g.moveTo(x0 + nx / nl * off, y0 + ny / nl * off);
+          g.lineTo(x1 + nx / nl * off, y1 + ny / nl * off);
+          g.stroke();
+        }
+      }
+      // редкие двойные фрагменты — параллельная короткая линия
+      if (rnd() < 0.18 && len > 14) {
+        const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len;
+        const off = 2 + rnd() * 1.5, t0 = rnd() * 0.5, t1 = t0 + 0.2 + rnd() * 0.3;
+        g.strokeStyle = `rgba(${color},${(0.2 + rnd() * 0.3).toFixed(2)})`;
+        g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(a[0] + (b[0] - a[0]) * t0 + nx * off, a[1] + (b[1] - a[1]) * t0 + ny * off);
+        g.lineTo(a[0] + (b[0] - a[0]) * t1 + nx * off, a[1] + (b[1] - a[1]) * t1 + ny * off);
+        g.stroke();
+      }
+    }
+    // засечки поперёк рамки возле случайных точек
+    for (let i = 0; i < tickN + rnd() * tickN; i++) {
+      const si = Math.floor(rnd() * (pts.length - 1));
+      const a = pts[si], b = pts[si + 1] || pts[0];
+      const t = rnd(), len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len;
+      const px = a[0] + (b[0] - a[0]) * t, py = a[1] + (b[1] - a[1]) * t;
+      g.strokeStyle = `rgba(${color},${(0.3 + rnd() * 0.35).toFixed(2)})`;
+      g.lineWidth = 0.9;
+      g.beginPath();
+      g.moveTo(px - nx * 2.2, py - ny * 2.2);
+      g.lineTo(px + nx * 2.2, py + ny * 2.2);
+      g.stroke();
+    }
+  }
+  // эрозия: тонкие царапины съедают краску
+  g.globalCompositeOperation = 'destination-out';
+  const n = Math.round((w + h) / 4.5);
+  for (let i = 0; i < n; i++) {
+    const x = rnd() * w, y = rnd() * h;
+    const ang = (rnd() < 0.7 ? -0.6 : 0.9) + (rnd() - 0.5) * 0.7;
+    const len = 5 + rnd() * 34;
+    g.strokeStyle = `rgba(0,0,0,${(0.15 + rnd() * 0.4).toFixed(2)})`;
+    g.lineWidth = 0.3 + rnd() * 0.9;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+    g.stroke();
+  }
+  // вытертые пятна — краска сошла целыми участками
+  for (let i = 0; i < 5 + rnd() * 5; i++) {
+    const x = rnd() * w, y = rnd() * h, r = 3 + rnd() * 9;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(0,0,0,${(0.25 + rnd() * 0.35).toFixed(2)})`);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
+  return c.toDataURL();
+}
+
+// формы: скруглённые углы приближены короткими фасками
+const rectPts = (w, h, r, cut, cutAt) => {
+  const p = [];
+  const C = (x, y) => p.push([x, y]);
+  if (cutAt === 'br') {
+    C(r, .8); C(w - r, .8); C(w - .8, r);                 // верх + правый верхний
+    C(w - .8, h - cut); C(w - cut, h - .8);               // срез внизу справа
+    C(r, h - .8); C(.8, h - r); C(.8, r);
+  } else if (cutAt === 'bl') {
+    C(r, .8); C(w - r, .8); C(w - .8, r);
+    C(w - .8, h - r); C(w - r, h - .8);
+    C(cut, h - .8); C(.8, h - cut); C(.8, r);
+  } else {
+    C(r, .8); C(w - r, .8); C(w - .8, r); C(w - .8, h - r);
+    C(w - r, h - .8); C(r, h - .8); C(.8, h - r); C(.8, r);
+  }
+  return p;
+};
+
+{
+  const set = (id, url) => { const el = document.getElementById(id); if (el) el.setAttribute('href', url); };
+  set('wf-l', wornTex(130, 130, 11, '141,205,224', [rectPts(130, 130, 7, 26, 'br')]));
+  set('wf-g', wornTex(130, 130, 47, '224,164,106', [rectPts(130, 130, 7, 26, 'bl')]));
+  set('wf-bar-l', wornTex(380, 16, 23, '150,210,225', [[[5, .6], [379.4, .6], [374.6, 15.4], [.6, 15.4]]], { base: 1.0, jitter: 0.6, ticks: 2 }));
+  set('wf-bar-g', wornTex(380, 16, 71, '230,168,100', [[[.6, .6], [375, .6], [379.4, 15.4], [5.4, 15.4]]], { base: 1.0, jitter: 0.6, ticks: 2 }));
+  // статы: четыре угловые скобки, открытые полилинии
+  set('wf-stats', wornTex(300, 220, 137, '140,195,218', [
+    [[.8, 44], [.8, .8], [68, .8]],
+    [[222, .8], [283.6, .8], [299.2, 16.4], [299.2, 58]],
+    [[.8, 174], [.8, 219.2], [64, 219.2]],
+    [[232, 219.2], [299.2, 219.2], [299.2, 164]],
+  ], { open: true, base: 1.2, jitter: 0.5, ticks: 1 }));
+  // линии заголовка ленты — тем же мелом, с разрывом перед уголком
+  set('wf-feedline', wornTex(400, 40, 313, '86,152,172', [
+    [[0, 24], [119, 24]],
+    [[122, 11], [136, 11], [149, 24], [334, 24]],
+    [[341, 24], [346, 24], [346, 34]],
+    [[337, 33], [343, 27]],
+  ], { open: true, base: 1.25, jitter: 0.45, ticks: 0 }));
+  // слоты скиллов: каждому свой seed и цвет
+  document.querySelectorAll('.sk').forEach((el, i) => {
+    const orange = !!el.closest('.card.right');
+    const neutral = el.classList.contains('count');
+    const color = neutral ? '170,195,210' : orange ? '224,164,106' : '141,205,224';
+    const url = wornTex(50, 50, 200 + i * 17, color, [rectPts(50, 50, 3.5, 0, '')],
+      { base: 0.72, jitter: 0.5, ticks: 1 });
+    el.style.backgroundImage = `url(${url})`;
+    el.style.backgroundSize = '100% 100%';
+  });
+}
+
+// ── HUD ──────────────────────────────────────────────────────────────────
+const feedRows = $('#feed-rows');
+// иконки ленты — как в референсе: четырёхлучевая звезда у LASER,
+// вспышка у ground pound, щит у shield up
+const ICONS = {
+  dashx: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2 h2 v7.2 l5.1-5.1 1.4 1.4 L14.4 10.6 H22 v2 h-7.6 l5.1 5.1 -1.4 1.4 L13 14 V22 h-2 v-8 l-5.1 5.1 -1.4-1.4 5.1-5.1 H2 v-2 h7.6 L4.5 5.5 5.9 4.1 11 9.2 Z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.6 2.2 L12 9.6 19.4 2.2 21.8 4.6 14.4 12 21.8 19.4 19.4 21.8 12 14.4 4.6 21.8 2.2 19.4 9.6 12 2.2 4.6 Z"/></svg>',
+  burst: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3.6"/><path d="M11 2 h2 v3.2 h-2 Z M11 18.8 h2 V22 h-2 Z M2 11 h3.2 v2 H2 Z M18.8 11 H22 v2 h-3.2 Z M4.9 6.3 l1.4-1.4 2.3 2.3 -1.4 1.4 Z M15.4 7.2 l2.3-2.3 1.4 1.4 -2.3 2.3 Z M4.9 17.7 l2.3-2.3 1.4 1.4 -2.3 2.3 Z M15.4 16.8 l1.4-1.4 2.3 2.3 -1.4 1.4 Z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 20 6 v6 c0 5-4 8-8 9 -4-1-8-4-8-9 V6 Z"/></svg>',
+};
+const stats = { dmg: 1248, hit: 23, abl: 7 };
+const fmt = (n) => n.toLocaleString('en-US');
+
+let clock = 102;                          // 01:42, тикает вниз
+const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+// хронологический порядок, как в референсе: старые сверху, новые снизу
+function pushFeed(whoName, whoColor, what, icon, stamp) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<span class="tm">${stamp || mmss(clock)}</span>`
+    + `<span class="ic" style="color:${whoColor}">${ICONS[icon] || ICONS.star}</span>`
+    + `<span class="who" style="color:${whoColor}">${whoName}</span>`
+    + `<span class="what">${what}</span>`;
+  feedRows.append(row);
+  while (feedRows.children.length > 4) feedRows.firstChild.remove();
+}
+
+const CY = '#5db4c6', OR = '#cf854a';
+
+function setHp(f, fillEl, pct, v, mirrored) {
+  // заливка — тоже параллелограмм: кончик скошен параллельно торцам контейнера
+  const d = mirrored
+    ? `M${(375 * (1 - v)).toFixed(1)} 0 H375 L380 16 H${(375 * (1 - v) + 5).toFixed(1)} Z`
+    : `M5 0 H${(5 + 375 * v).toFixed(1)} L${(375 * v).toFixed(1)} 16 H0 Z`;
+  fillEl.setAttribute('d', d);
+  const fc = document.getElementById(mirrored ? 'fillc-g' : 'fillc-l');
+  if (fc) fc.setAttribute('d', d);
+  pct.textContent = `${Math.round(v * 100)}%`;
+  const bar = f.plate.querySelector('.f'), dmg = f.plate.querySelector('.d');
+  bar.style.width = `${Math.round(v * 100)}%`;
+  f.dmgShown = Math.max(v, f.dmgShown - 0.0016);
+  dmg.style.width = `${Math.round((f.dmgShown - v) * 100)}%`;
+}
+
+const _v = new THREE.Vector3();
+function place(el, x, y, z) {
+  _v.set(x, y, z).project(camera);
+  if (_v.z > 1) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.style.left = `${(_v.x * 0.5 + 0.5) * innerWidth}px`;
+  el.style.top = `${(-_v.y * 0.5 + 0.5) * innerHeight}px`;
+}
+
+// ── сценарий боя: зацикленная постановка, функциональности нет ───────────
+const hit = (f, amount) => {
+  f.hp = Math.max(0.08, f.hp - amount);
+  stats.dmg += Math.round(amount * 155 * 4);
+  stats.hit += 1;
+  $('#st-dmg').textContent = fmt(stats.dmg);
+  $('#st-hit').textContent = fmt(stats.hit);
+};
+const ability = () => { stats.abl += 1; $('#st-abl').textContent = fmt(stats.abl); };
+
+const LOOP = 18;
+let scriptT = 0, fired = new Set();
+const delays = [];
+const after = (secs, fn) => delays.push({ at: scriptT + secs, fn });
+
+const script = [
+  { at: 1.2, run() {
+    const L = F.laser, G = F.gorilla;
+    L.action = 'fire'; L.actT = 0; L.actDur = 1.3;
+    pushFeed('LASER', CY, 'LASER SPIKE', 'star'); ability();
+    after(0.65, () => {
+      beamFx(new THREE.Vector3(L.x, 1.6, L.z + 0.6), new THREE.Vector3(G.x, 1.8, G.z), 0.55);
+      hit(G, 0.028);
+      G.action = 'hit'; G.actT = 0; G.actDur = 0.34;
+    });
+  } },
+  { at: 4.2, run() {
+    const G = F.gorilla, L = F.laser;
+    G.action = 'block'; G.actT = 0; G.actDur = 0.55;
+    after(0.56, () => {
+      G.action = 'attack'; G.actT = 0; G.actDur = 0.9;
+      pushFeed('GORILLA MK-IV', OR, 'GROUND POUND', 'burst'); ability();
+    });
+    after(1.04, () => {
+      shockFx(G.x, G.z + 1.2, 0xffa254, 0.85);
+      hit(L, 0.024);
+      L.action = 'hit'; L.actT = 0; L.actDur = 0.34;
+    });
+  } },
+  { at: 7.6, run() {
+    const L = F.laser;
+    // рывок в пределах свободного пятна слева, не в контейнеры
+    L.tx = Math.max(-8.2, Math.min(-4.2, L.x + (L.z > 2.6 ? -1.6 : 1.6)));
+    L.tz = L.z > 2.6 ? 0.6 : 4.9;
+    pushFeed('LASER', CY, 'DASH', 'dashx'); ability();
+  } },
+  { at: 10.6, run() {
+    const G = F.gorilla;
+    G.action = 'block'; G.actT = 0; G.actDur = 1.3;
+    shieldFx(G, 1.3);
+    pushFeed('GORILLA MK-IV', OR, 'SHIELD UP', 'shield'); ability();
+  } },
+  { at: 13.4, run() {
+    const G = F.gorilla;
+    G.tx = G.x > 9.5 ? G.x - 2.4 : 11.4;      // качается вокруг дома, не дрейфует
+    G.tz = G.z > 2.4 ? 1.5 : 4.6;             // перед клином, не за ним
+  } },
+  { at: 16.2, run() {
+    F.laser.hp = Math.min(0.87, F.laser.hp + 0.03);
+    F.gorilla.hp = Math.min(0.73, F.gorilla.hp + 0.03);
+  } },
+];
+
+// ── цикл ─────────────────────────────────────────────────────────────────
+let last = performance.now() / 1000;
+let simNow = 0;                          // своё время: живёт и при ручной прокрутке
+let loopFailed = false;
+let paused = false;
+window.__pause = (v) => { paused = v; last = performance.now() / 1000; };
+
+// прокрутка без rAF — свёрнутая панель браузера не крутит анимацию,
+// а проверять сценарий боя как-то надо
+window.__step = (steps = 60) => {
+  try {
+    for (let i = 0; i < steps; i++) frame(1 / 60, i === steps - 1);
+  } catch (e) { fail(`step: ${e.stack || e.message}`); }
+  return $('#tval').textContent;
+};
+window.__sim = () => scriptT;
+
+if (HUDMODE) {
+  // режим ревью HUD: тёмный фон, состояние как на референсе, ничего не тикает
+  renderer.domElement.style.display = 'none';
+  $('#tval').textContent = '01:42';
+  pushFeed('LASER', CY, 'DASH', 'dashx', '01:41');
+  pushFeed('GORILLA MK-IV', OR, 'GROUND POUND', 'burst', '01:39');
+  pushFeed('LASER', CY, 'LASER SPIKE', 'star', '01:36');
+  pushFeed('GORILLA MK-IV', OR, 'SHIELD UP', 'shield', '01:32');
+  const npl = $('#np-l'), npg = $('#np-g');
+  npl.style.left = '38%'; npl.style.top = '56%';
+  npg.style.left = '66%'; npg.style.top = '46%';
+} else {
+  pushFeed('LASER', CY, 'DASH', 'dashx');
+  renderer.setAnimationLoop(() => {
+    try {
+      const now = performance.now() / 1000;
+      if (!paused) frame(Math.min(0.1, now - last), true);
+      last = now;
+    } catch (e) {
+      if (!loopFailed) { loopFailed = true; fail(`render loop: ${e.stack || e.message}`); }
+    }
+  });
+}
+
+function frame(dt, draw = true) {
+  simNow += dt;
+  const now = simNow;
+
+  clock = Math.max(0, clock - dt);
+  if (clock <= 0.01) clock = 102;
+  $('#tval').textContent = mmss(clock);
+
+  scriptT += dt;
+  if (scriptT >= LOOP) { scriptT -= LOOP; fired.clear(); delays.length = 0; }
+  for (const ev of script) {
+    if (scriptT >= ev.at && !fired.has(ev.at)) { fired.add(ev.at); ev.run(); }
+  }
+  for (const d of [...delays]) {
+    if (scriptT >= d.at) { delays.splice(delays.indexOf(d), 1); d.fn(); }
+  }
+
+  for (const fxi of [...fx]) if (!fxi.update(dt)) fx.splice(fx.indexOf(fxi), 1);
+
+  const other = { laser: F.gorilla, gorilla: F.laser };
+  for (const [id, f] of Object.entries(F)) {
+    if (!f.body) continue;
+    // движение к цели
+    const dx = f.tx - f.x, dz = f.tz - f.z, dist = Math.hypot(dx, dz);
+    let speedMs = 0;
+    if (dist > 0.08) {
+      const v = Math.min(dist * 2.2, id === 'laser' ? 4.2 : 3.4);
+      f.x += (dx / dist) * v * dt; f.z += (dz / dist) * v * dt;
+      speedMs = v;
+    }
+    // курс — на противника
+    const o = other[id];
+    const want = Math.atan2(o.x - f.x, o.z - f.z);
+    let dh = (want - f.h) % (Math.PI * 2);
+    if (dh > Math.PI) dh -= Math.PI * 2; if (dh < -Math.PI) dh += Math.PI * 2;
+    f.h += dh * (1 - Math.exp(-6 * dt));
+
+    // гейт по пройденному пути
+    const moved = Math.hypot(f.x - f.lastX, f.z - f.lastZ);
+    f.lastX = f.x; f.lastZ = f.z;
+    f.stride += moved / (f.body.length * 0.9);
+
+    // фаза действия
+    let action = null, phase = 0;
+    if (f.action) {
+      f.actT += dt;
+      phase = Math.min(1, f.actT / f.actDur);
+      action = f.action;
+      if (f.actT >= f.actDur) { f.action = null; }
+    }
+
+    const r = f.body.root;
+    r.position.set(f.x, 0, f.z);
+    r.rotation.set(0, f.h, 0, 'YXZ');
+    r.userData.pose({
+      t: now, dt,
+      speed: Math.min(speedMs / (f.body.length * 0.9), 6),
+      stride: f.stride, turn: 0, grounded: true,
+      health: f.hp, action, phase,
+    });
+    r.updateMatrixWorld(true);
+    r.position.y = Math.max(0, -lowestY(f.body));
+
+    f.ring.position.set(f.x, 0.045, f.z);
+    f.light.position.set(f.x, 1.6, f.z);
+
+    place(f.plate, f.x, r.position.y + f.body.height + 0.55, f.z);
+  }
+
+  setHp(F.laser, document.getElementById('fill-l'), $('#pct-l'), F.laser.hp, false);
+  setHp(F.gorilla, document.getElementById('fill-g'), $('#pct-g'), F.gorilla.hp, true);
+
+  if (draw) renderer.render(scene, camera);
+}
+</script>

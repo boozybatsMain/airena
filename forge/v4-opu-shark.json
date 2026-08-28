@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "slug": "v4-opu-shark",
+  "prompt": "a shark with sharp teeth",
+  "model": "anthropic/claude-opus-5",
+  "at": "2026-08-28T07:08:10.339Z",
+  "entry": "build",
+  "notes": [],
+  "repairs": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. This body has only 3 tube runs. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n2. The harness is there — 3 runs — but only 1% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\n3. Only 1% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again.",
+    "SyntaxError: missing ) after argument list"
+  ],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. This body has only 3 tube runs. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n2. The harness is there — 3 runs — but only 1% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\n3. Only 1% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again.",
+    "the repair attempt failed: no build function found — expected one of `build`, `createCreature`, `create`, `buildCreature`, `makeCreature`, `main`"
+  ],
+  "usage": {
+    "promptTokens": 6,
+    "completionTokens": 107259,
+    "reasoningTokens": 0,
+    "costUsd": 3.6888104999999998
+  },
+  "effort": "high",
+  "lane": "cli",
+  "style": "raw",
+  "styleImages": 0,
+  "attempts": 3,
+  "elapsedMs": 3072239,
+  "replyBytes": 75714
+}

@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "anthropic/claude-fable-5",
+  "effort": "high",
+  "tag": "or-fab-high",
+  "generatedAt": "2026-08-27T16:11:17.727Z",
+  "costUsd": 0.642114,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 4486,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

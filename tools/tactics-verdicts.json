@@ -1,0 +1,1511 @@
+{
+ "rubric": "a9a7dccdf1316489",
+ "verdicts": {
+  "20a3974ada277401ae87972a": {
+   "c": 3,
+   "text": "You are the mind of the Octopus. Your opponent is the Gorilla.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "37c32c63320fecfa5118531c": {
+   "c": 5,
+   "text": "You are writing the entire mind of one fighter in a duel, as JavaScript.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8e93924d6cd773800bb029e8": {
+   "c": 5,
+   "text": "Reply with code only. No prose, no explanation, no markdown fence. Exactly this shape:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "13e4fe98eb7a3cddcafaa1fb": {
+   "c": 5,
+   "text": "function think(p, api) {",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a2a3b997b3d06dbfc2f636ef": {
+   "c": 5,
+   "text": "// whatever you want",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "810c286b1fbbfb47ccbb41fa": {
+   "c": 5,
+   "text": "}",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "daa17d43ad26600bc6c95cbb": {
+   "c": 2,
+   "text": "Helper functions and constants declared beside it are kept and are in scope for every call. The function must be named think and must take exactly two parameters; a different arity is a compile fault and the fighter is born mindless.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "84bff6942b8bdb38c8db5cbe": {
+   "c": 3,
+   "text": "think(p, api) is called 15 times a second while you are alive. It returns nothing. The only way it changes the world is by calling api verbs. Perception p is rebuilt fresh for every call.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "98f17670e1dbd13d05c55a4b": {
+   "c": 5,
+   "text": "THE WORLD",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "17a2c73bbdba70c16a819399": {
+   "c": 3,
+   "text": "A flat square arena. The ground is the X/Z plane; +Y is up and nothing but a hop ever leaves the ground. The arena runs from -20 to +20 on both X and Z, walled on all four sides. Nothing can leave it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d440488afd0133a8319b641e": {
+   "c": 3,
+   "text": "Headings are radians. Heading 0 faces +Z; the angle increases toward +X, so heading = Math.atan2(dx, dz) and the unit vector of a heading is { x: Math.sin(h), z: Math.cos(h) }.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7edf7d00bf18ae96eb1747cd": {
+   "c": 3,
+   "text": "6 solid blocks stand on the floor, 3.2 m tall, axis-aligned:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7fb1901afd5f4ce8cb7f3242": {
+   "c": 3,
+   "text": "x -7, z -3, half-width 1.2, half-depth 3.5",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9c8f6d1716cf1d3860e9e37a": {
+   "c": 3,
+   "text": "x 7, z 3, half-width 1.2, half-depth 3.5",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1683c3844d5e59e3c68c08d0": {
+   "c": 3,
+   "text": "x 0, z -10, half-width 3.6, half-depth 1.2",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b55560597ee89db168e7e032": {
+   "c": 3,
+   "text": "x 0, z 10, half-width 3.6, half-depth 1.2",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b9b53bcf84771d9e494ce256": {
+   "c": 3,
+   "text": "x -12.5, z 11, half-width 1.6, half-depth 1.6",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4d6966ec8856016d3def1b64": {
+   "c": 3,
+   "text": "x 12.5, z -11, half-width 1.6, half-depth 1.6",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f4c2ba4f42a54820dd75605e": {
+   "c": 3,
+   "text": "A block stops a body and stops a line of sight. Nothing sees or shoots through one, and nothing walks through one. The walls do the same.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9d28e29cffc4645a71a7f911": {
+   "c": 3,
+   "text": "The simulation advances 30 times a second. You think on every second step, so 15 times a second, and the world moves twice between two of your thoughts.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d6ee2a6659d2f0ee249247a4": {
+   "c": 3,
+   "text": "A skill's phases are served on those same steps: a phase ends on the first step at or past its length, and any overshoot comes off the phase after it. Every duration in the tables below is the served one, so what you are told is what the world runs.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e124036d5fa03df07a832c71": {
+   "c": 3,
+   "text": "The two fighters start 31 m apart on opposite ends of a diameter, at an angle that changes from match to match, facing each other.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "73d86ed3273cfcb396c0457b": {
+   "c": 3,
+   "text": "The match ends when one fighter reaches 0 hp.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9e97d61ea08a57bdac44ef4d": {
+   "c": 3,
+   "text": "From 26 seconds the arena itself starts burning both of you. The rate rises with every second that passes: at time t you lose 0.015 * (t - 26) of your MAXIMUM hp per second, and so does your opponent. It is proportional, so whoever holds the smaller fraction of their maximum burns to nothing first. From full health the burn alone kills at 37.547 seconds. p.burn is the current rate and p.burnStartsIn counts down to it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "80b1b2f883a792f9a3fab8fa": {
+   "c": 3,
+   "text": "If 50 seconds somehow pass with both alive, the larger hp fraction wins and exactly equal fractions is a draw.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "89f954446d70859b409a699a": {
+   "c": 5,
+   "text": "YOUR BODY — Octopus",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b9ddc93b24f5f385c151f55c": {
+   "c": 3,
+   "text": "hp                  155",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78ff38b6493e1571ba9e0a19": {
+   "c": 3,
+   "text": "collision radius    1 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8dbdc9f4e11347a1cfc09f67": {
+   "c": 3,
+   "text": "top speed           4.85 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "646477eb8c211b2527b8b2d8": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 4.85 m/s is reached in 0.187 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "193932a2b78b83cf4ad8286f": {
+   "c": 3,
+   "text": "turn rate           6 rad/s  (a half turn takes 0.524 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "06847179f389779e41c55718": {
+   "c": 3,
+   "text": "mass                1        (the heavier body yields less when they collide)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8c7b75bd17133572981d831a": {
+   "c": 1,
+   "text": "skills              laser, blink, jump",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1846806c08b93567e300cd37": {
+   "c": 3,
+   "text": "Movement direction and facing are independent: a body can walk in one direction while pointing in another. Facing turns toward what you asked for at the turn rate above; it never snaps.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5cc8cecf3672114a8a83bd42": {
+   "c": 5,
+   "text": "YOUR SKILLS",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "26741a47e57ac1eff85c76a9": {
+   "c": 5,
+   "text": "laser",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "652bca58a70dbe415c3ba1f7": {
+   "c": 3,
+   "text": "cooldown            2.2 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dfc1ffffe05349fa4b24a713": {
+   "c": 3,
+   "text": "cast                0.667 s, then the beam fires, then 0.1 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f89a2395fc174614b4278841": {
+   "c": 3,
+   "text": "damage              27",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c699582cc2448386826be247": {
+   "c": 3,
+   "text": "muzzle              the beam starts 1.2 m ahead of your centre, along your facing, not at your centre",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e6f9129ceb33aa14aad82936": {
+   "c": 3,
+   "text": "range               24 m of beam, measured from the muzzle",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3b9f1066e56e223aa14e0ee6": {
+   "c": 3,
+   "text": "beam                a straight line carrying 0.4 m of margin around itself. A body is hit when its SURFACE enters that margin, so it is hit while its centre is still off the line. The beam stops at the first block, wall or body it meets",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dd103e7c3dda0df531898f38": {
+   "c": 3,
+   "text": "reach               26.85 m between the two centres, at the very most: 1.2 of muzzle + 24 of beam + the 1.25 radius of the Gorilla + 0.4 of margin",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ea442855c930d0c972a07ea0": {
+   "c": 3,
+   "text": "aim                 the beam leaves along your facing AT THE INSTANT IT FIRES, not at the instant you ordered it. You keep turning through the cast, at the reduced rate below",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b595c0237b6f9d92c9692eb6": {
+   "c": 3,
+   "text": "line of sight       required — a block between you and the target eats the beam",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "19364b7854acbfaec1cf6f94": {
+   "c": 3,
+   "text": "height              not consulted — a body off the ground is hit exactly like one on it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0375700cbba56b62def49fcc": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.45 and your turn rate by 0.35",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "858ce8547ba3dfa4e518540d": {
+   "c": 3,
+   "text": "interrupt           a charge impact cancels it and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5b86757b9e859a34ad305d47": {
+   "c": 5,
+   "text": "blink",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2de6266a3c5f351ffc003c79": {
+   "c": 3,
+   "text": "cooldown            3.933 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0fab643ec8aa1d036374f6ff": {
+   "c": 3,
+   "text": "effect              you are instantly somewhere up to 7.5 m away, along a direction you pass in",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0488bbdc2bc7e94a3426f264": {
+   "c": 3,
+   "text": "walls               the teleport crosses blocks and walls; the landing point never ends inside one — it is pulled back along the line until it is clear",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "135fefe75fbffc78d0d049a4": {
+   "c": 3,
+   "text": "invulnerable        0.3 s from the moment you land: all damage against you in that window does nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dd5d865385e68000cb33e104": {
+   "c": 3,
+   "text": "recovery            0.2 s during which nothing else can be started",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "defca87286e1eb182798c79a": {
+   "c": 1,
+   "text": "argument            api.use(\"blink\", dx, dz) — dx,dz is a direction and does not need to be normalised. With no argument it goes along your facing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "69e628b120c34e40fe821893": {
+   "c": 5,
+   "text": "jump",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0a6ffa95e91eed72745e8ce5": {
+   "c": 3,
+   "text": "cooldown            2.8 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "764649f9754929d17b0cdd2e": {
+   "c": 3,
+   "text": "wind-up             0.1 s crouch, during which your top speed is multiplied by 0.35 and your turn rate by 0.35",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9f82e8a90208ed81f9633de8": {
+   "c": 3,
+   "text": "airborne            0.567 s off the ground, then 0.167 s landing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "86e7db349e8b4fe369e92b29": {
+   "c": 3,
+   "text": "control             your horizontal velocity is frozen at take-off and carries you: whatever you were moving at when you left the ground is where you land. You cannot change it, and you cannot start anything, until you land. You can still turn, at 0.35 of your turn rate",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f4b8ba4d19471163b7bf7fb6": {
+   "c": 3,
+   "text": "effect              a ground sweep passes underneath you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cd48cb8d0a703bc59a45eeab": {
+   "c": 5,
+   "text": "YOUR OPPONENT'S BODY — Gorilla",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "993a04e55d41d4bfdc4c5e1a": {
+   "c": 3,
+   "text": "hp                  205",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a6afd50439188eff7041eb97": {
+   "c": 3,
+   "text": "collision radius    1.25 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c6642d4e2726b06e1af79321": {
+   "c": 3,
+   "text": "top speed           5.35 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "376eb088d3ec9d8e80081f66": {
+   "c": 3,
+   "text": "acceleration        22 m/s^2   (so 5.35 m/s is reached in 0.243 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ad14e504776bd802a9edd934": {
+   "c": 3,
+   "text": "turn rate           4 rad/s  (a half turn takes 0.785 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c58c4d597ab6b9892c8ad101": {
+   "c": 3,
+   "text": "mass                2.2        (the heavier body yields less when they collide)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "477112b8ce46ac926ab1d6a8": {
+   "c": 1,
+   "text": "skills              smash, charge, jump",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d01c617d579f1005de21a0b3": {
+   "c": 5,
+   "text": "YOUR OPPONENT'S SKILLS",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "63e9eba4ac461bd29029934b": {
+   "c": 3,
+   "text": "The same numbers, disclosed to both sides.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0f8ef7d1bbf5b728d8f66005": {
+   "c": 5,
+   "text": "smash",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "63a13eae2746dabc347bcd11": {
+   "c": 3,
+   "text": "cooldown            1.3 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2c0f96030357864bc0de0034": {
+   "c": 3,
+   "text": "wind-up             0.3 s, then it lands, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "265a06a04330f2f9fcff6416": {
+   "c": 3,
+   "text": "damage              35",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9642d23b56830dfaad89981f": {
+   "c": 3,
+   "text": "shape               a cone 55 degrees either side of your facing, reaching 2.9 m past your own radius",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c0155f5689ec92440d94aeb2": {
+   "c": 3,
+   "text": "reach               that range is measured to their SURFACE, not to their centre, so the farthest centre-to-centre hit on the Octopus is 5.15 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7fea178cc00eb06fc8ac356f": {
+   "c": 3,
+   "text": "width               a body counts as inside the cone when ANY PART of it is, so the accepted half-angle grows by asin(their radius / distance): against the Octopus it is 66 degrees at that farthest distance and 81 degrees when the two of you are touching",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5c5c5d891704e9a06591f266": {
+   "c": 3,
+   "text": "aim                 the cone is measured from your facing AT THE INSTANT IT LANDS, not when you ordered it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d8adacbaa7b2e2dfeba6852e": {
+   "c": 3,
+   "text": "knockback           2 m/s pushed away from you, decaying at 9 m/s^2",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2d1bce6789fea00a8c829db4": {
+   "c": 3,
+   "text": "airborne            it sweeps the ground — a body that is off the ground when it lands takes nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e29943dda43825004ec811f0": {
+   "c": 3,
+   "text": "while winding up    your top speed is multiplied by 0.3 and your turn rate by 0.55",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1b3895b56711e3e1a366b9c5": {
+   "c": 5,
+   "text": "charge",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ccb211745514b167250cafea": {
+   "c": 3,
+   "text": "cooldown            4.033 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4f5d1c535130ab74ddbcaf01": {
+   "c": 3,
+   "text": "wind-up             0.3 s. Your facing at the END of the wind-up is the direction you will travel, and it cannot be changed after that",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3c6dab5a9a9515cca64ddc54": {
+   "c": 3,
+   "text": "dash                15 m/s for up to 0.8 s, so up to 12 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "54fd3303c524db6cf49e5567": {
+   "c": 3,
+   "text": "ends                on contact with the enemy, or on contact with a block or wall, or when the time runs out",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d596a56618d0464b5dda5783": {
+   "c": 3,
+   "text": "damage              30 on contact",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b801f02188976304aab82ea4": {
+   "c": 3,
+   "text": "impact              6 m/s of knockback (decaying at 9 m/s^2) and 0.433 s of stun, and it cancels whatever the target was casting",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "714fce373e245fb9bb996224": {
+   "c": 3,
+   "text": "recovery            0.333 s after it ends, during which nothing else can be started",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e1f2a086065252401abfd9e2": {
+   "c": 3,
+   "text": "while winding up    your top speed is multiplied by 0.2 and your turn rate by 0.85",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7fd92e15f46e558c2588299a": {
+   "c": 3,
+   "text": "uninterruptible     nothing stops it once the wind-up has finished",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "14ab58de18001c117f562fca": {
+   "c": 5,
+   "text": "WHAT YOU PERCEIVE — the object p",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "869455f09738eb77f88116c5": {
+   "c": 1,
+   "text": "p.t             seconds since the match began p.dt            seconds between two of your thoughts p.tick          simulation step count. The world steps before anyone is asked",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "91993c35d0ba30564ec1d9d4": {
+   "c": 3,
+   "text": "to think, so the first value you ever see is 2, not zero",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "517d115cc485b85fb462ee78": {
+   "c": 1,
+   "text": "p.timeLeft      seconds before the backstop clock decides on hp fraction p.burn          fraction of your maximum hp the arena is burning off you per",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e694c028aa9db62b34e31503": {
+   "c": 3,
+   "text": "second right now, and off your opponent too. 0 before it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "34734b475e6de1afc0f72875": {
+   "c": 1,
+   "text": "p.burnStartsIn  seconds until it does",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "256953a9df2e7315429c750e": {
+   "c": 5,
+   "text": "p.self",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "82b9580849c48fa2b2084ddb": {
+   "c": 1,
+   "text": ".id           'octopus' or 'gorilla'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0a7b135f8d77fecda648d485": {
+   "c": 1,
+   "text": ".x .z         position on the ground plane",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d167af1d700090eaab997750": {
+   "c": 1,
+   "text": ".y            height above the ground; > 0 only during a hop",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "27298d940eb0db9c635b3bc3": {
+   "c": 1,
+   "text": ".vx .vz       velocity, m/s, knockback included",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "640c783dee87a9d3f5fe155d": {
+   "c": 1,
+   "text": ".speed        magnitude of that velocity",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "42ddab4dc558221722d71c7b": {
+   "c": 1,
+   "text": ".heading      radians, where you are pointing right now",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "18fbebc6139b7ae9d519e7d1": {
+   "c": 1,
+   "text": ".hp .maxHp",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4bd8009bd023015f408988ea": {
+   "c": 1,
+   "text": ".radius .maxSpeed .turnRate",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f69254c7174b9d45fad6e365": {
+   "c": 1,
+   "text": ".alive .airborne .stunned .invulnerable",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3f12f4b676501c129fd5c618": {
+   "c": 1,
+   "text": ".busy         true while any skill of yours is running",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3926fb0b2535596c7b86ff05": {
+   "c": 1,
+   "text": ".casting      null, or { skill, phase, elapsed, remaining, total, telegraph }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f9aad32de1fe0015a9680951": {
+   "c": 1,
+   "text": "phase is 'windup' | 'strike' | 'dash' | 'air' | 'recover'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "04a9ba5ecf659abe890b2ef9": {
+   "c": 1,
+   "text": "telegraph is true while the effect has not landed yet",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4713b3eb1092d62025b07669": {
+   "c": 1,
+   "text": ".cooldowns    { skillName: seconds remaining, 0 means ready }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f4a5a7e917fb785a74ff24a4": {
+   "c": 1,
+   "text": ".skills       the names you may pass to api.use",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "77857cd39ecea65599d41648": {
+   "c": 5,
+   "text": "p.enemy",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "08b8e433088ea8e562f8f320": {
+   "c": 1,
+   "text": ".id .x .z .y .vx .vz .speed .heading",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "be78badbfb4d85317c8fd652": {
+   "c": 1,
+   "text": ".hp .maxHp .radius .maxSpeed",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5062127daa36db4fab8bfb19": {
+   "c": 1,
+   "text": ".alive .airborne .stunned .invulnerable .busy",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "50f5ae688f0410a5e72b24d5": {
+   "c": 1,
+   "text": ".casting      the same shape as p.self.casting, so you can see a wind-up",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cfba009c680086e6d8b2c75f": {
+   "c": 1,
+   "text": "while it is still winding up",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bfc449b21633c0e258d8804f": {
+   "c": 1,
+   "text": ".skills       what they may use",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1c90eb576adb943193c2bc50": {
+   "c": 1,
+   "text": ".dist         straight-line distance between the two centres",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6fd24fbe0d37227dac92f836": {
+   "c": 1,
+   "text": ".visible      true when nothing solid sits on the straight line between your",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "13bf457778cf107768a5f224": {
+   "c": 3,
+   "text": "centre and theirs. This is the same test the beam performs",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "08e370130ee0a8d20d07c148": {
+   "c": 3,
+   "text": "That is the whole list. In particular there is no p.enemy.cooldowns: what",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0b67ad413b9eb187a349f3b2": {
+   "c": 3,
+   "text": "they have ready is not given to you. Every use of a skill by either side is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dd0fb78edca390a8745a99f4": {
+   "c": 3,
+   "text": "announced — you get { type:'enemyStarted', skill } the moment they begin one.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3842d6f2138a13485c4d8d11": {
+   "c": 5,
+   "text": "p.arena",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "992e0eeb2c1451e8b7d1e340": {
+   "c": 1,
+   "text": ".half         20",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c5b1f84b8700ebc4532b150a": {
+   "c": 1,
+   "text": ".obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "49cccbe0d98489c940308291": {
+   "c": 1,
+   "text": "p.events        what happened to you since your last thought, oldest first.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "89f0b733e738fd332635e239": {
+   "c": 5,
+   "text": "Each is { type, ... }:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1be6511db0ff23fb159503e9": {
+   "c": 3,
+   "text": "{ type:'damaged', skill, amount, hp, from:{x,z} }        you were hit",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1cccbe22708151d07c3e1f09": {
+   "c": 3,
+   "text": "{ type:'dealt', skill, amount, enemyHp }                 you hit them",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5569ae56f7499ccb87d0562f": {
+   "c": 3,
+   "text": "{ type:'missed', skill, reason }                         your skill landed on nothing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "400b8abaa6bf82b1f8760719": {
+   "c": 3,
+   "text": "reason: 'aim' | 'cover' | 'range' | 'airborne' | 'invulnerable'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aaa6f731a23c879afdd21877": {
+   "c": 3,
+   "text": "{ type:'evaded', skill, by }                             something hit you during your i-frames",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d077a5394d6e6a5cadd7853d": {
+   "c": 3,
+   "text": "{ type:'blocked', by }                                   you walked into 'wall' or 'obstacle'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3c8f38451b468bbc8718bab7": {
+   "c": 3,
+   "text": "{ type:'contact' }                                       the two bodies are touching",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "56c484f1cec3e116813d7b39": {
+   "c": 3,
+   "text": "{ type:'blinked', from, to, moved }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0fb14fd85879573d472699f2": {
+   "c": 3,
+   "text": "{ type:'landed' }                                        your hop finished",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7a46d1defe3f78c6ebbd9d66": {
+   "c": 3,
+   "text": "{ type:'knockback', by }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8e82bf3ee8191754171c4a70": {
+   "c": 3,
+   "text": "{ type:'interrupted', skill, by }                        your cast was cancelled",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "639e3355f1284ee0e2b32d87": {
+   "c": 3,
+   "text": "{ type:'interruptedEnemy', skill }                       you cancelled theirs",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a1a44534b8e6cb8e1280ddf0": {
+   "c": 3,
+   "text": "{ type:'chargeStopped', reason }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4dfce335df9ba425e3ed016f": {
+   "c": 3,
+   "text": "{ type:'burning', rate, hp }                             the arena is taking hp from you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8789902e256a0f75daaf2a1d": {
+   "c": 3,
+   "text": "{ type:'refused', skill, reason }                        api.use did not start it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8803b0b291b67564d446eb64": {
+   "c": 3,
+   "text": "reason: 'cooldown' | 'busy' | 'stunned' | 'airborne' | 'dead' | 'unknown'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ec44555752971d572b1c77f5": {
+   "c": 3,
+   "text": "{ type:'enemyStarted', skill, windup }                   they began something",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "886e8081bde1a0ef39ff9670": {
+   "c": 3,
+   "text": "{ type:'enemyCommitted', skill }                         their charge direction is now locked",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "03257212cbcc8cccfaf35a64": {
+   "c": 1,
+   "text": "p.mem           a read-only copy of everything you have stored. Writing to it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cc7669a551a754b3a1b6c550": {
+   "c": 1,
+   "text": "does nothing; use api.remember.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3705850dfa7c1ce3f1c90937": {
+   "c": 5,
+   "text": "WHAT YOU CAN DO — the object api",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cabb1a44968cc762d7aa7ba9": {
+   "c": 1,
+   "text": "Movement orders STAND. One call keeps steering the body until you replace it, including on the thoughts where you call nothing. There is no per-frame re-issuing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7bfd152c6ea3d360c60e963b": {
+   "c": 1,
+   "text": "api.move(dx, dz)        Steer along a direction. Raw: it does not avoid",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "40e857c0478c262167c192d8": {
+   "c": 1,
+   "text": "anything, so it will hold you against a block if that is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "22c52bf8253ac380bf272aca": {
+   "c": 1,
+   "text": "where you pointed. dx,dz need not be normalised.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "06ae4595570c7c1bd8cd4e96": {
+   "c": 1,
+   "text": "{0,0} is a full stop.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "354d4e28e4cff904157ef990": {
+   "c": 1,
+   "text": "api.moveTo(x, z)        Walk to a point, routed around the blocks. The order",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3074fb929ad85a70706c2953": {
+   "c": 1,
+   "text": "stands until the point is reached or replaced.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fd190abf3dd9a4dc75258182": {
+   "c": 1,
+   "text": "api.stop()              Drop the movement order. api.face(dx, dz)        Turn toward a direction. Stands until replaced. api.faceAt(x, z)        Turn toward a point, measured when you call it. api.use(name, a, b)     Order a skill. a,b are the direction argument blink",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d8a747ad66f9bbd76deed39b": {
+   "c": 3,
+   "text": "takes. The return value says only that the ORDER was",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "af89c2bf9210960b85e9ea49": {
+   "c": 3,
+   "text": "accepted, not that the skill started: orders are applied",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b9eaa245ddeff92b52665ff3": {
+   "c": 3,
+   "text": "after your thought finishes, and one can still be",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "87eabebc1ffb3fd683ba3b69": {
+   "c": 3,
+   "text": "refused there — on cooldown, already busy, stunned,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c9c329a6b7a70eb4d517cbee": {
+   "c": 3,
+   "text": "off the ground. A refusal arrives as a 'refused' event",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b1e7a83da20298c1e03f6838": {
+   "c": 1,
+   "text": "on your next thought. api.ready(name) tells you in",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6c19087d2121cf7e71c34470": {
+   "c": 1,
+   "text": "advance.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a332865a08897a4706d2f3f4": {
+   "c": 1,
+   "text": "api.ready(name)         true when api.use(name) would start. api.cooldown(name)      seconds left, 0 when ready. api.los(x, z)           true when nothing solid sits between your centre and",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "be11a5104a3e5a0f8d924bf4": {
+   "c": 1,
+   "text": "that point.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8d266f55fcb8ac6c962c20f4": {
+   "c": 1,
+   "text": "api.ray(dx, dz, maxDist) Cast a line from your centre. Returns",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9fc48d7a140e4a683f9260d2": {
+   "c": 1,
+   "text": "{ hit, dist, x, z } — where the first solid thing is, or",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cce950f18ccbbae66304f44f": {
+   "c": 3,
+   "text": "the end of the line. maxDist is capped at 60.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ab1820c1663e90cbcc53322d": {
+   "c": 1,
+   "text": "api.pathTo(x, z)        { dist, direct, points:[{x,z}] } — a walkable route,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5c0b53bb7a62998da3f7e7ea": {
+   "c": 1,
+   "text": "its true walking length, and whether the straight line",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "11ad3552a53a757cd16f0161": {
+   "c": 1,
+   "text": "was already clear. null when there is no route.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "39a1492eaea3c45cd1ee0143": {
+   "c": 1,
+   "text": "api.rand()              a number in [0,1). Seeded per match. api.remember(key, value) Store anything JSON can hold. 48 keys. api.recall(key, fallback) api.forget(key) api.say(text)           Up to 90 characters, shown above your body to whoever is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6749105689d8d9b9a6aac47a": {
+   "c": 3,
+   "text": "watching. It has no effect on the fight.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b6971ab25bf7204eefffc0a2": {
+   "c": 3,
+   "text": "move, face, use and say are QUEUED and applied together once your thought returns, so calling one of them twice in one thought keeps the LAST call and the earlier one never happens: no half of a thought can watch the other half act. move, moveTo and stop share the one movement slot, and face and faceAt share the one facing slot. remember and forget are the exception — they write through the instant you call them, so one thought can store several keys and read them back immediately. 64 orders are honoured per thought; the rest are dropped. The perception verbs — ready, cooldown, los, ray, pathTo, rand, recall — have their own separate allowance of 400, so probing the world can never eat into the orders you meant to give.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f709c5ff2a68077393d4eeff": {
+   "c": 5,
+   "text": "WHAT IS ALREADY IN SCOPE",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e1b47f2f1b91f5332ee1e98c": {
+   "c": 1,
+   "text": "V — plane vectors as plain { x, z } objects.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4fe003d2e6dd6c5eccee64e2": {
+   "c": 1,
+   "text": "V.add(a,b)   V.sub(a,b)   V.scale(a,s)   V.lerp(a,b,t)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2a31513001185ee5213860b5": {
+   "c": 1,
+   "text": "V.len(a)     V.dist(a,b)  V.dot(a,b)     V.norm(a)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cf53d213fa4221806530a865": {
+   "c": 1,
+   "text": "V.toward(a,b)             unit vector from a to b",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c1e9ef1e90a13aa6b3d1daa2": {
+   "c": 1,
+   "text": "V.away(a,b)               unit vector from b to a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "741238c17023afd9c26685da": {
+   "c": 1,
+   "text": "V.perp(a)                 rotated a quarter turn",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9d64e9101b32a7185d420f45": {
+   "c": 1,
+   "text": "V.rot(a,radians)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f74cdba25df4a046b548fb6e": {
+   "c": 1,
+   "text": "V.heading(a)              the heading of a direction",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8da3663b37acf27d435f28e3": {
+   "c": 1,
+   "text": "V.fromHeading(h)          the direction of a heading",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aa422831dc8f14477ef24e61": {
+   "c": 1,
+   "text": "V.angleTo(heading, dir)   signed shortest angle from a heading to a direction,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "08b3bb0693488107dfd04757": {
+   "c": 1,
+   "text": "in (-PI, PI]",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f4f6c534db85f7b75796abc0": {
+   "c": 1,
+   "text": "V.clamp(v, lo, hi)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "741e712bf324b626d38270a3": {
+   "c": 1,
+   "text": "V.lead(shooter, target, targetVel, speed)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e3511fbb7ff22ae31725443f": {
+   "c": 1,
+   "text": "where a target moving at constant velocity will be",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f76d6ca10ef04e518fba3f28": {
+   "c": 1,
+   "text": "when something travelling at \"speed\" reaches it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f0b402c89d413523db6977a3": {
+   "c": 1,
+   "text": "Returns the target's own position when speed is 0.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "288132f460af6d904e4b9dcf": {
+   "c": 1,
+   "text": "V.norm and V.toward return {x:0,z:0} for a zero-length input, and a zero",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "88d16b4312bbf1d31ba40fc5": {
+   "c": 1,
+   "text": "vector passed to api.move is a full stop.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a3105791f5bbb969b2f9866b": {
+   "c": 1,
+   "text": "Math is available in full except Math.random. console.log works and goes to a log nobody's fight depends on.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7f299edfc6594c4c864968a9": {
+   "c": 5,
+   "text": "THE RULES",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9b497501df04186486ed253d": {
+   "c": 2,
+   "text": "1. NO Math.random AND NO Date.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a296002c9a36845337125f7b": {
+   "c": 2,
+   "text": "Both throw. The reason is not safety, it is replay: a match must be",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ccb0368db6e7e054152216cb": {
+   "c": 2,
+   "text": "reproducible from the seed and the two brains, so that a hundred rounds can",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ffdad57309c6dc3d888f6c39": {
+   "c": 2,
+   "text": "be run headless and mean something, and so a fight can be watched again",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "23ce3bd25c26f2488a2eb65a": {
+   "c": 2,
+   "text": "exactly as it happened. Both of those read a clock this world does not have.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "45c7f5a868a6465c8f8c03f0": {
+   "c": 1,
+   "text": "api.rand() is the seeded replacement and is as random as you need.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "340d75012094fc53ebceb78b": {
+   "c": 5,
+   "text": "2. TWO KINDS OF MEMORY, AND THE DIFFERENCE BETWEEN THEM.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "117821689c79c52857e596ba": {
+   "c": 3,
+   "text": "A variable declared beside think keeps its value from one thought to the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78c13f956c77310ef9b0baf5": {
+   "c": 3,
+   "text": "next and is reset when a new match starts. It works; write to it freely.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "872ecd58c5ddcac79c305a3d": {
+   "c": 3,
+   "text": "What it does not do is show up anywhere outside your own head: p.mem does",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f0812967e9f56dd2f7c47a54": {
+   "c": 3,
+   "text": "not contain it and nothing recording the fight can see it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1ab9379fde97b7a007335c87": {
+   "c": 1,
+   "text": "api.remember(key, value) / api.recall(key, fallback) do both — they persist",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7fbc4c2699edd7891576a9e0": {
+   "c": 3,
+   "text": "for the match and they come back to you as p.mem, which is also what anyone",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6cbb869095a676e5b4e8a854": {
+   "c": 3,
+   "text": "watching can read. Neither is better. Use whichever you want for whatever",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a02cff0224edfedbac7c1602": {
+   "c": 3,
+   "text": "reason you want.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "94ad5d19a439149ec1b6720a": {
+   "c": 2,
+   "text": "3. A THOUGHT HAS 60 MILLISECONDS AND 400 PERCEPTION CALLS.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5a36c71adfa3752f4f662614": {
+   "c": 3,
+   "text": "Overrunning either aborts that thought: no orders are issued, your standing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5ab407f603d12c6788257716": {
+   "c": 3,
+   "text": "orders keep running, and the fault is counted. Both sit far above what even",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b0b5b5bd7eb79fcc6e75ad4e": {
+   "c": 2,
+   "text": "a thought that reasons carefully about the whole arena spends — they are",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ef5deff63226441bb9fbc36b": {
+   "c": 2,
+   "text": "guards against an accidental infinite loop, not budgets you have to husband.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5dce46d0237960df4e1273e8": {
+   "c": 2,
+   "text": "The perception cap RAISES rather than quietly returning false, because a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "98cb930e3c7b77e8318630fc": {
+   "c": 2,
+   "text": "sense that lies is worse than a sense that stops.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1f0223daafafecb02be321cc": {
+   "c": 3,
+   "text": "4. A THROWN ERROR COSTS YOU THAT THOUGHT, NOT THE MATCH.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "36a367223c457c502467cd34": {
+   "c": 3,
+   "text": "Your standing orders keep running and the next thought is attempted. After",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d4341751f4e0efe9cfc81c9a": {
+   "c": 3,
+   "text": "25 faults the mind is switched off for the rest of the fight and the body",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fa573003fb1e89ec275e8460": {
+   "c": 3,
+   "text": "coasts on whatever it was last told.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "66673139a1cceb895747a5c6": {
+   "c": 1,
+   "text": "DIALECT: modern JavaScript. const, let, arrow functions, template literals, for-of, destructuring, classes, and the array methods all work. Rule 1 is about two names, not about the language.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e26ade5959913b73e905e50b": {
+   "c": 5,
+   "text": "THE OBJECTIVE",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d02e2018724a0e6ac2edfa13": {
+   "c": 4,
+   "text": "Kill your opponent. Stay alive.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dafc3c80b1bbb0cd364c63e8": {
+   "c": 5,
+   "text": "That is the whole of it. Nothing above tells you how, and nothing above is a recommendation: it is an inventory of what exists, what it costs and what the world does. How you fight is yours.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "054c29d631dbd928d10f13fc": {
+   "c": 3,
+   "text": "You are the mind of the Gorilla. Your opponent is the Octopus.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9b2e4aa2cb866a4eac582477": {
+   "c": 5,
+   "text": "YOUR BODY — Gorilla",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "da589ad5d270ac5e8dd51073": {
+   "c": 5,
+   "text": "YOUR OPPONENT'S BODY — Octopus",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0affed0f0f4a0c2b7f31b5d8": {
+   "c": 3,
+   "text": "From 28 seconds the arena itself starts burning both of you. The rate rises with every second that passes: at time t you lose 0.015 * (t - 28) of your MAXIMUM hp per second, and so does your opponent. It is proportional, so whoever holds the smaller fraction of their maximum burns to nothing first. From full health the burn alone kills at 39.547 seconds. p.burn is the current rate and p.burnStartsIn counts down to it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "384d8fc37c3a030f89004308": {
+   "c": 3,
+   "text": "top speed           5.1 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6b0616ab71742c06aa84dce7": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 5.1 m/s is reached in 0.196 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0a96ecbe7a80d82e374d30a2": {
+   "c": 3,
+   "text": "acceleration        22 m/s^2   (so 5.1 m/s is reached in 0.232 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c28a7cda8fc0e9a033df8d6a": {
+   "c": 3,
+   "text": "From 30 seconds the arena itself starts burning both of you. The rate rises with every second that passes: at time t you lose 0.015 * (t - 30) of your MAXIMUM hp per second, and so does your opponent. It is proportional, so whoever holds the smaller fraction of their maximum burns to nothing first. From full health the burn alone kills at 41.547 seconds. p.burn is the current rate and p.burnStartsIn counts down to it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3fc6c69f948e924977aa42e4": {
+   "c": 3,
+   "text": "interrupt           any impact that knocks you back — a charge or a smash — cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "547151721368f426512e5f18": {
+   "c": 3,
+   "text": "uninterruptible     nothing your opponent can do cancels it once it is ordered",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4fd18278b486766341b082a0": {
+   "c": 3,
+   "text": "Nothing in this world flies: the beam is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f320a012edc1ea633ac2db06": {
+   "c": 3,
+   "text": "instantaneous and the charge is a body, so no skill",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5674f4265543871950cd6a8a": {
+   "c": 3,
+   "text": "has a projectile speed to pass here.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "19966b95df55aa4ef23c1c50": {
+   "c": 3,
+   "text": "top speed           4.55 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e7477a617d39659a59ceea22": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 4.55 m/s is reached in 0.175 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e2286e13d6f6a087025fba62": {
+   "c": 3,
+   "text": "top speed           4.1 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "30899da247e2f79b9ad1b730": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 4.1 m/s is reached in 0.158 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d79bbd23503e50b0aa08530e": {
+   "c": 3,
+   "text": "top speed           4.32 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78ee8674043eb9666490c793": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 4.32 m/s is reached in 0.166 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "60428450dfa19f62d1ba6e52": {
+   "c": 3,
+   "text": "top speed           4.22 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a3dcef0162187e2d8cdeeb59": {
+   "c": 3,
+   "text": "acceleration        26 m/s^2   (so 4.22 m/s is reached in 0.162 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  }
+ }
+}

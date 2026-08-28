@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "moonshotai/kimi-k3",
+  "effort": "think8000",
+  "tag": "or-kim-think",
+  "generatedAt": "2026-08-27T18:45:22.113Z",
+  "costUsd": 0.03559842,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 4003,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

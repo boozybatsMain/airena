@@ -1,0 +1,12 @@
+node_modules/
+logs/
+.playwright-mcp/
+.review/
+
+# Captures. `?shots=1&n=12` writes here, and so does every ad-hoc debug
+# screenshot — 1.5 MB of them (boot.png, hud-0*.png) had accumulated at the
+# repo root instead, where a stranger could not tell an artefact from an asset.
+# The second rule is the one that stops it recurring; the first is where they
+# belong, and where reports/README.md already says captures live.
+reports/screens/*.png
+/*.png

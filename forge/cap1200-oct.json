@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "slug": "cap1200-oct",
+  "prompt": "an armoured octopus",
+  "model": "anthropic/claude-opus-5",
+  "at": "2026-08-28T11:38:21.698Z",
+  "entry": "build",
+  "notes": [],
+  "repairs": [],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 11% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has 24 tube runs, but they add up to only 2.2 body-lengths of cable. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. The harness is there — 24 runs — but only 0% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\n4. Only 1% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "usage": {
+    "promptTokens": 28648,
+    "completionTokens": 69593,
+    "reasoningTokens": 44530,
+    "costUsd": 1.86423435
+  },
+  "effort": "high",
+  "lane": "key",
+  "style": "machine",
+  "styleImages": 5,
+  "attempts": 1,
+  "elapsedMs": 847986,
+  "replyBytes": 43746
+}

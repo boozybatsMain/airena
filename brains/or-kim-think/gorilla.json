@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "moonshotai/kimi-k3",
+  "effort": "think8000",
+  "tag": "or-kim-think",
+  "generatedAt": "2026-08-27T18:46:40.122Z",
+  "costUsd": 0.02700027,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 2310,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "anthropic/claude-haiku-4.5",
+  "effort": "high",
+  "tag": "or-hai-high",
+  "generatedAt": "2026-08-27T15:42:58.967Z",
+  "costUsd": 0.05733189,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 493,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

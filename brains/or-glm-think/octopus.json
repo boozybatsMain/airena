@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "z-ai/glm-5.3",
+  "effort": "think8000",
+  "tag": "or-glm-think",
+  "generatedAt": "2026-08-27T18:43:42.432Z",
+  "costUsd": 0.013007016,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 3400,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

@@ -1,0 +1,23 @@
+
+═══ cross-tournament — 7x7 matchups x 60 rounds = 2940 matches in 230.4s
+
+  octopus win rate, row = octopus brain, column = gorilla brain
+
+                  w1      w2      w3      w4      w5      w6    stub   | mean
+  w1             82%     63%     52%     52%     73%     52%     52%   |  61%
+  w2             43%     37%     13%     30%     63%     17%     18%   |  32%
+  w3             63%     50%     20%     48%     67%     53%     40%   |  49%
+  w4             73%     40%      8%     32%     80%     37%     40%   |  44%
+  w5             40%     18%      2%     10%     28%     32%     25%   |  22%
+  w6             63%     43%     30%     58%     88%     45%     50%   |  54%
+  stub            2%     13%      7%      0%      7%     17%     45%   |  13%
+  gorilla        52%     38%     19%     33%     58%     36%     39%
+  holds     (octopus win rate against that gorilla)
+
+  MECHANICS   octopus wins 45% averaged over the generated grid
+              mean match 25.2s, decided on the clock 0%
+  MIND        octopus brains span 39% of win rate; gorilla brains span 39%
+  RELIABILITY 0 brain faults across 2940 matches
+
+  written to reports/tournament.json
+

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "slug": "ab-son-sighted-2",
+  "prompt": "a heavy gorilla",
+  "model": "anthropic/claude-sonnet-5",
+  "at": "2026-08-28T05:03:23.309Z",
+  "entry": "build",
+  "notes": [],
+  "repairs": [
+    "no build function in the reply (no_entry)",
+    "no build function in the reply (no_entry)"
+  ],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 3% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has only 0 tube runs. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. Only 0% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\n4. This body carries only 0 genuinely small parts — anything under a fortieth of its length counts, which is the size of a bolt head or a clamp. A machine of this scale needs hundreds: a bolt head round every flange, a clamp everywhere a hose passes a frame member, connectors, blanking plates, junction boxes, hinge pins, cable ties, grab handles, vent grilles. They are what give it scale and make it look expensive. Add them as their own pass over the finished body, and do not spend the budget enlarging the parts that are already there.\n\n5. Only 37 parts on this body carry a .name. A body at this scale should be built from many small named pieces — a limb is a dozen, the head is the busiest section of all. Every meaningful part needs its own named Object3D: the game severs organs and grows new ones by name, and an unnamed part cannot be shot off or replaced.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "usage": {
+    "promptTokens": 4,
+    "completionTokens": 122640,
+    "reasoningTokens": 0,
+    "costUsd": 1.2879673999999999
+  },
+  "effort": "high",
+  "lane": "cli",
+  "style": "raw",
+  "styleImages": 0,
+  "attempts": 3,
+  "elapsedMs": 2758673,
+  "replyBytes": 22508
+}

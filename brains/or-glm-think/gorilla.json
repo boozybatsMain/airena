@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "z-ai/glm-5.3",
+  "effort": "think8000",
+  "tag": "or-glm-think",
+  "generatedAt": "2026-08-27T18:44:08.282Z",
+  "costUsd": 0.0094804776,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 1995,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

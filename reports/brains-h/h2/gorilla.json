@@ -1,0 +1,191 @@
+{
+  "fighter": "gorilla",
+  "model": "opus",
+  "effort": "high",
+  "tag": "h2",
+  "promptHash": "58817e8596a2",
+  "promptChars": 17592,
+  "generatedAt": "2026-08-25T23:17:23.973Z",
+  "constants": {
+    "arenaHalf": 20,
+    "matchSeconds": 75,
+    "suddenDeathAt": 45,
+    "suddenDeathRamp": 0.015,
+    "tickHz": 30,
+    "thinkHz": 15,
+    "fighters": {
+      "octopus": {
+        "id": "octopus",
+        "name": "Octopus",
+        "hp": 165,
+        "radius": 1,
+        "maxSpeed": 5.1,
+        "accel": 26,
+        "turnRate": 6,
+        "mass": 1,
+        "jumpHeight": 1.5,
+        "skills": [
+          "laser",
+          "blink"
+        ]
+      },
+      "gorilla": {
+        "id": "gorilla",
+        "name": "Gorilla",
+        "hp": 205,
+        "radius": 1.25,
+        "maxSpeed": 5.1,
+        "accel": 22,
+        "turnRate": 4,
+        "mass": 2.2,
+        "jumpHeight": 1.3,
+        "skills": [
+          "smash",
+          "charge"
+        ]
+      }
+    },
+    "skills": {
+      "laser": {
+        "id": "laser",
+        "owner": "octopus",
+        "kind": "beam",
+        "windup": 0.65,
+        "recover": 0.1,
+        "cooldown": 2.2,
+        "damage": 29,
+        "range": 24,
+        "moveScale": 0.45,
+        "turnScale": 0.35,
+        "needsLos": true,
+        "interruptible": true
+      },
+      "blink": {
+        "id": "blink",
+        "owner": "octopus",
+        "kind": "teleport",
+        "windup": 0,
+        "recover": 0.18,
+        "cooldown": 3,
+        "distance": 7.5,
+        "iframes": 0.28,
+        "moveScale": 1,
+        "turnScale": 1,
+        "needsLos": false,
+        "interruptible": false
+      },
+      "smash": {
+        "id": "smash",
+        "owner": "gorilla",
+        "kind": "cone",
+        "windup": 0.28,
+        "recover": 0.28,
+        "cooldown": 1.3,
+        "damage": 32,
+        "range": 2.9,
+        "halfAngle": 0.96,
+        "knockback": 2,
+        "moveScale": 0.3,
+        "turnScale": 0.55,
+        "needsLos": false,
+        "interruptible": true
+      },
+      "charge": {
+        "id": "charge",
+        "owner": "gorilla",
+        "kind": "dash",
+        "windup": 0.28,
+        "recover": 0.35,
+        "cooldown": 4,
+        "damage": 30,
+        "dashSpeed": 15,
+        "dashSeconds": 0.8,
+        "knockback": 6,
+        "stun": 0.4,
+        "moveScale": 0.2,
+        "turnScale": 0.85,
+        "needsLos": false,
+        "interruptible": false
+      },
+      "jump": {
+        "id": "jump",
+        "owner": "both",
+        "kind": "hop",
+        "windup": 0.1,
+        "airborne": 0.55,
+        "recover": 0.16,
+        "cooldown": 2.8,
+        "moveScale": 0.35,
+        "turnScale": 0.35,
+        "needsLos": false,
+        "interruptible": false
+      }
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 7051,
+      "ok": true,
+      "stage": "passed",
+      "problems": [],
+      "metrics": {
+        "thinks": 652,
+        "faults": 0,
+        "faultRate": 0,
+        "orders": 1266,
+        "uses": 13,
+        "distance": 204.4,
+        "avgMicros": 98,
+        "results": [
+          {
+            "seed": 11,
+            "winner": "octopus",
+            "seconds": 29.77,
+            "reason": "kill"
+          },
+          {
+            "seed": 22,
+            "winner": "gorilla",
+            "seconds": 13.73,
+            "reason": "kill"
+          }
+        ]
+      },
+      "costUsd": 0.31844950000000005,
+      "durationMs": 167223,
+      "resolvedModel": "unknown (not recorded)",
+      "resolvedModelWas": "claude-haiku-4-5-20251001",
+      "resolvedModelBy": "none",
+      "resolvedModelNote": "Was read off the first key of `modelUsage`, which is the CLI's own background traffic and not the model that answered. The envelope was not kept, so the true snapshot id is unrecoverable from this record; the requested alias is in `model`. See tools/fix-provenance.mjs."
+    }
+  ],
+  "costUsd": 0.31844950000000005,
+  "wallMs": 167223,
+  "accepted": {
+    "attempt": 0,
+    "metrics": {
+      "thinks": 652,
+      "faults": 0,
+      "faultRate": 0,
+      "orders": 1266,
+      "uses": 13,
+      "distance": 204.4,
+      "avgMicros": 98,
+      "results": [
+        {
+          "seed": 11,
+          "winner": "octopus",
+          "seconds": 29.77,
+          "reason": "kill"
+        },
+        {
+          "seed": 22,
+          "winner": "gorilla",
+          "seconds": 13.73,
+          "reason": "kill"
+        }
+      ]
+    }
+  }
+}

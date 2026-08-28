@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "anthropic/claude-fable-5",
+  "effort": "off",
+  "tag": "or-fab-plain",
+  "generatedAt": "2026-08-27T16:08:53.536Z",
+  "costUsd": 0.647361,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 3504,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

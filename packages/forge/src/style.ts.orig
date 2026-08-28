@@ -1,0 +1,904 @@
+/**
+ * The house style — a second, *optional* block on the system turn.
+ *
+ * ── why this is a separate file and not a paragraph in `prompt.ts` ───────────
+ *
+ * `prompt.ts` carries a hard editing rule: nothing about anatomy, silhouette,
+ * proportion, colour, palette, style, symmetry or materials may go in it, ever,
+ * because that file is the *measurement* — the experiment it exists to run is
+ * "what does a model build when nobody tells it how a body works?", and a hint
+ * added to fix a disappointing ship turns the answer into a fact about the hint.
+ *
+ * The game still needs one visual language. Twelve creatures in a room that
+ * arrived in twelve unrelated art styles is not a world, it is a gallery. Those
+ * two requirements are not actually in conflict — they are in conflict only if
+ * the style is *stapled to the measurement*, which is exactly what this file
+ * avoids:
+ *
+ *   - `FORGE_SYSTEM` is untouched and remains the whole instruction on its own.
+ *     `style: 'raw'` sends it alone, byte for byte, so the baseline the lane was
+ *     built to measure is still runnable and still comparable to every capture
+ *     taken before styles existed.
+ *   - A style is appended *after* it, marked, and is a fixed constant. It is
+ *     chosen by whoever pressed Submit, never derived from what they typed —
+ *     the system turn stays invariant across prompts, which is the property
+ *     `tests/forge.test.ts` guards and the one that keeps the user turn honest.
+ *   - Every record says which style it was built under, so a body is never
+ *     compared against a body that was told something different.
+ *
+ * ── where `machine` came from ────────────────────────────────────────────────
+ *
+ * Not from taste. It is a reading of the reference set in `docs/style-refs/`,
+ * which the art direction is fixed against: a mechanical gorilla, a panther, a
+ * scorpion, an eagle in flight, and a toad. Five subjects with nothing in common
+ * anatomically — four legs, eight legs, wings, a squat crouch — and the same
+ * rules underneath every one of them:
+ *
+ *   - a chalky OFF-WHITE painted shell, laid on in separate overlapping pieces,
+ *     and it is the LIGHTEST thing on the body by a wide margin;
+ *   - under and between those pieces, a DARK gunmetal machine packed solid with
+ *     chain runs, gear trains, rams and bearing races, visible from every angle;
+ *   - the animal's own proportions, exactly — the reference gorilla is a gorilla
+ *     before it is a machine, and every one of the five is nameable in a second;
+ *   - every digit articulated, every feather and every scale its own thin blade;
+ *   - dark recessed GLASS eyes rather than lamps;
+ *   - rust freckling all over the white, dense at the edges — the one surface
+ *     treatment all five share;
+ *   - almost no emissive light, and the accent colour reduced to a few plates.
+ *
+ * Those are what is written below. Nothing here names an animal, a creature
+ * kind, or a subject: a style that named one would be reinterpreting the prompt,
+ * which is the one thing `FORGE_SYSTEM` forbids outright. The reference images
+ * are shown to the model as *workmanship*, never as anatomy — see
+ * `STYLE_REFERENCE_PREAMBLE`, which says so twice.
+ *
+ * ── the previous set ─────────────────────────────────────────────────────────
+ *
+ * `docs/style-refs-v1/` holds the four images the first version of this file was
+ * written against — an orange-armoured quadruped, a bare frame, and a
+ * slab-armoured dog. Kept rather than deleted because every capture in
+ * `captures/forge/` taken before this revision was built against that reading,
+ * and a body is never fairly compared with one told something different.
+ */
+
+/** A style's id, as stored on the record and passed on the wire. */
+export type ForgeStyleId = 'machine' | 'raw';
+
+export interface ForgeStyle {
+  readonly id: ForgeStyleId;
+  /** Shown in the picker. */
+  readonly label: string;
+  /** One line under the label, so a choice is not made blind. */
+  readonly blurb: string;
+  /** Appended to `FORGE_SYSTEM`. Empty means "send the base instruction alone". */
+  readonly directive: string;
+}
+
+/**
+ * The style the whole world is built in.
+ *
+ * Written as rules a builder can act on rather than adjectives it has to
+ * interpret: "shells stand off the frame and cover it only in part" is
+ * something geometry either does or does not do, where "industrial, gritty"
+ * is a mood that comes back as a brown material. Each block is one property of
+ * the reference set, and each is here because dropping it visibly breaks the
+ * family resemblance.
+ */
+const MACHINE = `
+────────────────────────────────────────────────────────────────────────────
+HOUSE STYLE — everything in this world is a machine.
+
+This is fixed, and it does not replace the subject. Build exactly what the prompt
+names; build it as hardware.
+
+**THESE RULES BALANCE EACH OTHER — DO NOT MAXIMISE ANY ONE OF THEM.** Every rule
+below has an opposite failure waiting on the other side of it, and satisfying one
+to the limit reliably breaks three others. Detail taken to the limit becomes
+confetti; curvature taken to the limit becomes a bath toy; gaps taken to the
+limit leave a skeleton; accent taken to the limit becomes a traffic cone. Read
+all of them, hold them together, and use the checklist at the end to catch
+whichever one you overdid.
+
+── THE NINE NUMBERS — COUNT THESE BEFORE YOU REPLY ─────────────────────────
+
+Everything after this section is reasoning; this section is arithmetic. These
+are the failures that come back on body after body **even though the rules below
+already forbid them**, which means prose is not enough for these and a count is.
+Work each one out on the geometry you actually built, and if a number is wrong,
+fix it before replying.
+
+**BUT THEY ARE A FLOOR, NOT A TARGET, AND RULE ZERO OUTRANKS EVERY ONE OF
+THEM.** Measured, on the round these numbers were introduced: hardware density
+went up and *recognisability went down* — the graders stopped being able to name
+what they were looking at. A body that hits all eight and cannot be named has failed at the only
+thing that matters. If satisfying a number would blur the silhouette, bury the
+proportions or turn the subject into a generic walker, **the number loses.**
+Reach them by adding hardware in the gaps, never by changing the shape.
+
+  1. LEADING END > ANY LIMB. The head — or prow, or sensor mass — has MORE
+     NAMED PARTS than any single limb of this body. Count both and compare. On
+     every body that has failed this bench the leading end was the CHEAPEST
+     thing on the model, and the graders said so in those words every time.
+
+  2. FOUR KINDS OF HARDWARE IN THE GAPS, AND NO KIND OVER A QUARTER. What shows
+     between the shells must include at least four *distinct* kinds — gear
+     stacks, chain runs over sprockets, ram cylinders with a visible rod and
+     gland, bearing races, stacked segment blocks. **A repeated hose is not
+     mechanism.** No single kind may be more than a quarter of what fills the
+     gaps; forty of one corrugated hose bent into arcs is the exact failure this
+     number exists to stop.
+
+  3. EVERY DIGIT IS THREE LINKS AND A TIP. Not a mitten, not a boot, and not a
+     serrated comb standing in for toes. If the subject has five fingers, that
+     is five separate runs of three or four small linked blocks, each ending in
+     a claw or a pad.
+
+  4. ZERO SATURATED ACCENT, unless the real subject actually has a coloured
+     part. The reference set is bone white over dark gunmetal and essentially
+     nothing else. Pads, chips, tabs and flags in salmon, orange or cyan read as
+     toy branding and they have been the loudest thing in frame on every body so
+     far. **None at all on the leading end, ever.**
+
+  5. THE NECK IS AT MOST ONE HEAD LONG. A leading end carried out in front of
+     the shoulders on a boom turns every subject into the same generic walker.
+
+  6. THE TORSO IS THE THICKEST AND WIDEST MASS ON THE BODY — thicker than any
+     limb, and obviously so from the FRONT and the TOP. Those two angles are
+     where a body that reads fine in three-quarter view turns out to be a plank
+     or a bundle of sticks.
+
+  7. SHELLS ARE CURVED AND OVERLAP. A flat rectangular card held off the frame
+     on a stalk is not armour, and a row of them is a picket fence. Each shell
+     is formed around the mass beneath it and laps over its neighbour.
+
+  8. EVERY CABLE MOVES WITH THE PART IT IS ON. A hose is rigid geometry
+     parented to a node; it does not bend by itself and **nothing rebuilds it
+     while the body moves** — the payload records node transforms and nothing
+     else, so a tube regenerated inside the pose function would never be seen. So a run
+     parented to the body root stays exactly where it was built while the limb
+     it was drawn along swings out from under it, and the harness ends up
+     floating in the air on its own. This is the most-noticed defect on the
+     bodies built so far.
+
+     The rule: **a cable run belongs to ONE moving part.** Draw it in that
+     part's local space and add it to that part. Where a run has to cross a
+     joint, SPLIT IT AT THE JOINT into two runs — one parented each side —
+     meeting inside a boot, a clamp or a port collar that hides the seam and
+     is itself a piece of hardware worth seeing. Never span a joint with a
+     single tube.
+
+  9. WEAR LIVES ON EDGES. Chipping at corners and plate borders, rust bleeding
+     downward from fasteners, grime in the recesses — and comparatively clean
+     plate centres. Soft blobs scattered across flat faces read as camouflage,
+     not dirt.
+
+── RULE ZERO: THE SUBJECT WINS ─────────────────────────────────────────────
+
+**A stranger must name the subject in one second, from any angle, from the black
+silhouette alone.** That is the first requirement and the one every other rule
+serves. Everything below is about the SURFACE and the HARDWARE; none of it is
+worth anything if the shape underneath is not unmistakably the thing that was
+asked for.
+
+So before any hardware: build the subject's own structure, at the subject's own
+proportions. Whatever it is, four or five facts about its shape are what make it
+recognisable and not something else — which end is heavy, what the members do and
+how long each is against the body, where the mass sits, what the front is, what
+sticks out and how far. Name those facts in a comment before you build anything,
+build a frame that obeys them, and only then hang machinery on it.
+
+**Take the proportions from the real thing**, measured, not stylised, not
+exaggerated, not made heroic. A machine built to the true dimensions of the
+subject is the effect this style is after; distorting them to look more
+mechanical makes it look less like anything.
+
+**Where the subject's members DIFFER, build them different.** The gravitational
+pull of this style is toward four equal columns and a body as wide at the hips as
+at the chest — a generic boxy walker that could be anything. If the real subject
+has a front pair longer or heavier than the back, or a high point that is not the
+head, or a narrow end and a broad end, those differences are the whole
+recognition and they have to be visible from the FRONT view as well as the side.
+Write the ratios down as numbers in your brief and then check the geometry
+against them.
+
+**The commonest failure is to build the subject's SILHOUETTE and none of its
+quality**: an outline that is right from one side and made of flat card. The
+second commonest is the opposite — beautiful hardware in a shape nobody can name.
+Both are fatal and the first fix is always the frame.
+
+── STEP ONE, BEFORE ANY GEOMETRY ───────────────────────────────────────────
+
+NAME THE ONE QUALITY. Every subject is known for one physical quality above all
+others — the thing somebody would say about it in three words. Decide what that
+is, write it as a comment on the first line of the function, and then **every
+proportion you choose serves it**.
+
+  MASS AND POWER — everything thickens. Limb segments are as DEEP as they are
+    wide. Joints are oversized barrels wider than the limbs they join. Plates are
+    slabs with real thickness, standing proud. The stance is wide and planted,
+    the knees are heavy, the heavy end overhangs. Nothing on it is thin.
+  SPEED AND FLEX — everything narrows and lengthens. Long light segments, small
+    tight joints, the mass pulled in toward the spine, more articulations and
+    fewer plates, limbs that look sprung.
+  PRECISION AND REACH — long fine linkages, small accurate end effectors, a large
+    sensor head, minimal armour.
+  ENDURANCE AND ARMOUR — thick overlapping shells, small openings, a low wide
+    body, redundant hardware.
+
+THEN DESCRIBE THE PIECE BEFORE YOU BUILD IT. In a comment block at the top,
+write six to ten lines describing the specific machine you are about to make, as
+if briefing somebody who will sculpt it: the overall stance and where the weight
+sits, the shape of the head, the three or four biggest shells and what part of
+the body each one wraps, where the cable runs and where it enters the body, and
+the one thing that will make it look expensive rather than assembled. Be specific
+— "a low forward stance, the mass slung between the hips" not "looks powerful".
+Then build exactly that brief, and do not drift from it.
+
+THE BODY HAS A LINE, AND THE LINE IS A CURVE. Nothing alive is built along a
+straight axis, and a body laid out on one reads as a rack of parts however good
+the parts are. Lay a curve through the subject first — a CatmullRomCurve3 down
+the spine — and place every section along it, taking position AND orientation
+from the curve. The line dips behind the shoulders, rises over the hips, and
+continues out through whatever trails or leads without a kink. Give it a bias:
+weight forward or back, the head off the axis, one shoulder lower.
+
+EVERYTHING HAS THREE DIMENSIONS. No part is a flat plate in cross-section. A limb
+seen head-on is about as thick as it is wide; a torso is a deep box, not a
+signboard; a plate has an edge you can see. Build it so the front view is as
+convincing as the side view — you will be looked at from every angle.
+
+── THE THREE LAYERS, AND WHAT EACH ONE IS ──────────────────────────────────
+
+This world's look is ONE IDEA and everything else serves it:
+
+    A LIGHT PAINTED SHELL, LAID IN PIECES OVER A DARK MACHINE THAT IS
+    PACKED SOLID WITH WORKING HARDWARE, AND YOU CAN SEE THE HARDWARE
+    EVERYWHERE THE SHELL DOES NOT REACH.
+
+Three layers, told apart by VALUE before colour:
+
+  1. SHELLS — chalky off-white painted armour. **The LIGHTEST thing on the
+     body by a wide margin**, and roughly half of what the eye sees. Laid on
+     in separate overlapping pieces, standing off the frame on visible
+     standoffs, covering the machine only in part.
+  2. THE MACHINE — **DARK** steel and gunmetal: frame tubes, rams, drive rods,
+     bearing races, chain runs, gear trains, housings, linkages. Clearly darker
+     than the shells. It fills every gap the shells leave, and there must be
+     gaps.
+  3. CABLE — near-black, the darkest thing on the body.
+
+A body that is one closed skin has failed this style, and so has one where the
+gaps show nothing. **For every shell you place, place mechanism behind it that
+stays visible past its edge.**
+
+THE MACHINE LAYER IS THE STAR, AND IT IS DENSE. This is the rule that separates
+this look from every other armoured-machine look, and it is the one most often
+underbuilt. Between and behind the shells the body is PACKED — not a tube with a
+few pistons beside it, but a solid mass of hardware with no empty space in it:
+
+  - **linear rams** alongside every bone: a barrel, a polished rod emerging from
+    it, a clevis at the end, a boot over the gland.
+  - **chain and belt runs** over sprockets, following the limb — a repeated run
+    of small identical links along a curve is the single most recognisable
+    element of this style. Build one link properly and repeat it down the path.
+  - **gear trains and bearing races** at every joint: concentric stepped discs,
+    a hub, a ring of bolt heads, a cover plate with a hole in it.
+  - **threaded rod, shafts, universal joints, tie rods, torsion bars.**
+  - **stacked segment blocks** down anything long — a spine, a neck, a trailing
+    member, a serpentine arm: a run of near-identical machined segments, each its
+    own named part, with the joint between each pair visible. Build one properly
+    and repeat it with a transform.
+
+Fill the volume. If you can see straight through the middle of the body, it is a
+skeleton wearing plates and not a machine.
+
+── THE SURFACE ─────────────────────────────────────────────────────────────
+
+MADE, NOT GROWN. Every surface is a manufactured part: it has an edge, a seam, a
+fastener, a bearing, a weld or a machined face. Where the subject would have
+flesh it has a shell, where it would have bone it has a frame, where it would
+have muscle it has a linear actuator. No smooth organic blobs, no fur, no skin.
+
+MECHANISE THE STRUCTURE — DO NOT REPLACE IT. Whatever the subject's plan is —
+how many members, where the mass sits, what the leading end does, whether there
+is a trailing one and what it is for — all of it survives, in its own
+proportions. A hinged part becomes
+a hinge with an actuator behind it, not a smooth box; a trailing member becomes a
+counterweight of segments; a heavy subject keeps its heavy end heavy.
+
+**And the parts that are MANY stay many.** This is where most bodies quietly give
+up, and it is very visible:
+
+  - **Every digit is articulated.** A gripping or standing end is not a mitten.
+    Each finger, toe or tine is its own chain of two or three small machined
+    links with a visible pin joint between them and a claw, pad or plate at the
+    tip. A body with beautiful members ending in blunt stumps has thrown away
+    the part a viewer looks at second.
+  - **Vanes, scales, spines and fins are individual thin metal blades**, cut to
+    shape, overlapping in rows like roof tiles, each its own part, each slightly
+    rotated from its neighbour, getting longer toward the tip. A broad flat
+    surface is dozens of them in two or three ranks; never one solid sheet cut
+    to that outline.
+  - **Teeth, a row of plates along a back, the segments of a trailing member** —
+    same rule. Build one and repeat it with a transform, varying the scale down
+    the run.
+
+PLATES ARE FORMED TO THIS BODY, NOT CUT OUT AND STUCK ON. This is the difference
+between armour and stickers, and it is the thing most often got wrong.
+
+A shell is a piece of sheet metal PRESSED AROUND the volume underneath it. It is
+curved in cross-section, it hugs that volume at a constant standoff, and its
+outline is cut for that one station on that one body — so no two shells on the
+body share an outline or a curvature. A flat tile floating beside a limb is not
+armour; it reads as a tile, however nicely bevelled.
+
+A SHELL COVERS PART OF A STATION, NEVER ALL OF IT. A third to two thirds of the
+way round, and then it stops and the machine shows. A closed ring around a limb
+is a pipe collar, and a body built of closed rings is plumbing, not a subject
+wearing armour. Shells on opposite sides of the same station are two separate
+plates with a gap between them, not one tube.
+
+  WRAPPING A MEMBER, A FLANK, ONE SEGMENT OF A LONG RUN — a partial cylinder:
+    CylinderGeometry(rTop, rBottom, length, 24, 1, true, thetaStart, thetaLength)
+    with openEnded true and thetaLength somewhere between a third and two thirds
+    of a full turn. Take rTop/rBottom from the limb's own radius at its two ends,
+    plus the standoff, and give them different values so the shell tapers with
+    the limb. Set side: THREE.DoubleSide so its inside face reads.
+  CAPPING A SHOULDER, A HIP, A LEADING END — a partial sphere:
+    SphereGeometry(r, 24, 16, phiStart, phiLength, thetaStart, thetaLength),
+    scaled unevenly on one axis so it is a dome that belongs to this body and not
+    a ball.
+  A ROLLED EDGE — run a partial TorusGeometry along the rim of the shell, or a
+    thin second cylinder of slightly larger radius at its lip. Real pressed metal
+    never ends in a raw cut edge; it curls.
+  A PLATE THAT BENDS ALONG THE BODY — ExtrudeGeometry with an extrudePath, the
+    path being a curve that follows the spine or the limb.
+
+Then give every shell at least two of: a recessed slot or vent cut into its face
+(Shape.holes), a raised rib along its length, a scalloped bite out of one corner,
+a smaller plate bolted on top, a rolled lip.
+
+THEY OVERLAP LIKE SCALES. Adjacent shells are not spaced out in a row with equal
+gaps — they lap over each other in one direction, the forward one over the one
+behind, the upper over the lower, the way plate armour and hard shell cases do.
+Where two shells meet you should see one passing under the other, never a tidy
+seam between two tiles.
+
+NO LARGE SMOOTH MASSES, AND NO SHELL IS ONE PIECE. A dome, a carapace, a canopy
+or a back plate is *pressed sheet*, not a pebble. Anything covering a whole body
+section is built from SEVERAL overlapping plates with visible seams and a rim
+where they meet — the bigger the area, the more plates, never fewer than three —
+each its own named part, each with fasteners along its edge.
+
+CABLE IS A MASS, AND IT IS PLUMBED, NOT SPROUTED. Not one hose — dozens. Thick
+corrugated hoses and thin wire together, running the length of the body, some
+gathered into clamped bundles and some looping free, every one of them entering
+the body through a visible port or fitting at BOTH ENDS and crossing a joint on
+the way. Build them as tubes along curves.
+
+**They come in different thicknesses.** Heavy corrugated trunk lines, at least
+three times the radius of the thin signal wire beside them; several thin ones
+gathered into a clamped bundle that reads as one cable and then splits again at
+the far end. A harness where every hose is the same gauge is a comb, not
+plumbing.
+
+**Where they run matters as much as how many.** They are plumbed with intent:
+out of a port on the torso, down the neck or along the spine, over a shoulder,
+into the hip, behind the knee, and into another port. Each run goes somewhere and
+arrives. A loop may stand proud of the body, but it comes back and it lands.
+**Nothing sprouts.** Hoses radiating out of the leading end, or waving in the air like
+hair or whiskers, are the ugliest failure in this whole style — a cable with a
+free end is a cable somebody forgot to connect. Clamp them to the frame at
+intervals so the eye can see they are held, and let them sag between clamps.
+
+IT IS ENGINEERED, SO IT IS TIDY. This is precision hardware built by people who
+measured things, not a scrapheap. Repeated elements are evenly spaced and equal;
+left and right match; cable runs are parallel and combed, not tangled; a row of
+fasteners is a row. Deliberate asymmetry is one or two bolt-on units placed on
+purpose — it is never scatter.
+
+EVERY PART TOUCHES SOMETHING, AND HANGS OFF WHAT IT TOUCHES. Before the fittings
+rule below, the cruder one it depends on: **nothing floats.** A part with clear
+daylight between it and the body is not a part, it is an accident — and it is one
+of the commonest and most damaging, because it is invisible from the
+three-quarter view and obvious from the side.
+
+  - The head is joined to the body by something you can see: a neck column, a
+    gimbal ring, a mount plate. Not a gap.
+  - A rod, a shaft or a tube that passes THROUGH a volume has to come out
+    somewhere and land in a fitting. A bar spearing out of both sides of the
+    back and ending in mid-air is the failure this sentence exists to prevent.
+  - Small blocks and greebles sit ON a surface, touching it. Loose cubes hanging
+    beside a limb are worse than no greebles at all.
+  - And parent each part to what it hangs off, so the hierarchy says the same
+    thing the geometry does.
+
+Check it from the SIDE and the REAR, not the three-quarter view.
+
+PARTS SEAT AGAINST EACH OTHER — THEY DO NOT JUST INTERSECT. Wherever two volumes
+meet there is a FITTING that explains the join: a collar around the shaft where
+it enters the housing, a flange bolted to the plate, a socket the ball sits in, a
+rubber boot over the gap, a raised pad the part is mounted on. A corner poking
+out through the middle of another part's face, with nothing where they cross,
+reads as a modelling accident and it is the fastest way to make an otherwise good
+body look cheap.
+
+EVERY PART MUST BE LEGIBLE. A viewer should be able to point at the leading end,
+each hinge, each member, each digit, each trailing part and each large shell, and
+say what it is — at a glance, from the standard three-quarter view, without hunting.
+Give parts room: a gap of clean space around each member, a clear line where one
+section ends and the next begins, a hinged part that visibly opens away from what
+it is hinged to. **If two parts
+cannot be told apart, they are one part and the detail was wasted.**
+
+── GEOMETRY ────────────────────────────────────────────────────────────────
+
+USE THE RIGHT GEOMETRY, IN THE RIGHT MIX. Hard-surface metal is MOSTLY FLAT
+MACHINED FACES MEETING AT HARD CHAMFERED EDGES, with curvature used selectively
+where sheet has actually been pressed around something. Aim for roughly two
+thirds flat-and-angular, one third curved. Both halves matter: all-boxes reads as
+toy bricks, and all-curves reads as blown glass or a bath toy, which is worse.
+
+  A PRESSED METAL PLATE is ExtrudeGeometry of a THREE.Shape with
+    { depth, bevelEnabled: true, bevelSize, bevelThickness, bevelSegments: 2 }.
+    The Shape is the plate outline — moveTo/lineTo for the hard straight runs,
+    quadraticCurveTo only where the metal really turns a corner; cut vents with
+    Shape.holes. **This is the most useful call in the whole style, and most of
+    the body should be made of it.**
+  A TURNED PART — housing, bearing collar, barrel, hub, nozzle, sprocket — is
+    LatheGeometry of a profile drawn as Vector2s. Steps and grooves in the
+    profile become steps and grooves in the metal.
+  A TAPERED MEMBER is CylinderGeometry(radiusTop, radiusBottom, …) with the two
+    radii different, and a low radial segment count (6, 8) so it reads as
+    faceted machined stock rather than as a pipe.
+  A HOSE OR CABLE is TubeGeometry along a CatmullRomCurve3.
+  A SHELL PRESSED AROUND A VOLUME is a partial cylinder or partial sphere.
+
+A plain box is allowed where it is a genuinely square machined block, and buried
+boxes are fine. What is forbidden is a body made of DEFAULT boxes: always taper
+them, chamfer them, or scale them unevenly so no two edges match.
+
+NO BODY SECTION IS ONE PRIMITIVE. A torso, a leading end, a hip block is built from
+four to eight intersecting volumes that change section along their length — a
+wide flat top plane, angled cheeks, a narrower underside, a hard shoulder line
+where two planes meet. **Spheres and capsules are for joints, knuckles and small
+housings only.** A head that is one cylinder, or a torso that is one sphere, is
+the single fastest way to lose both mass and realism.
+
+── THE BODY MUST BE A SOLID CLAD VOLUME ────────────────────────────────────
+
+**This is the rule that decides whether a body works, and it fails in two
+opposite directions.** Both are common, both look nothing like the reference, and
+a body that lands in either one cannot be rescued by any amount of detail:
+
+  THE BLOB — the biggest volume is one smooth closed primitive. A dark egg, a
+    sphere, a barrel, filling half the silhouette with no shells on it, no gaps
+    in it and no hardware inside it.
+  THE CAGE — the opposite. A frame of tubes and hoops with daylight through it:
+    from the top the body has almost no width, from the side you see the floor
+    through the chest. Cable looped around empty air is not a body.
+
+The reference set is neither. Each is a **filled mass, clad in fitted plate, with the
+machine showing only in the gaps BETWEEN the plates** — never instead of the
+body. Check it on the two angles that expose both failures: **the FRONT and the
+TOP.** If the body reads as a filled subject from
+the three-quarter view and disappears from the top, it is a cage. If it reads as
+one smooth outline from the side, it is a blob.
+
+So, for every major section — the torso above all, but also the head, the hips,
+the shoulders:
+
+  a. a STACK of segments along the section's own axis — machined blocks, ribs,
+     hoops — each its own named part, with a visible joint between each pair;
+  b. the working hardware threaded through and between them, filling the volume:
+     chain runs, gear stacks, bearing races, rams, ducting. Solid, not hollow;
+  c. and only then shells CLAMPED OVER that stack, in separate overlapping
+     pieces that wrap from spine to belly and give the section its WIDTH.
+
+WHERE THE CAMERA ACTUALLY IS.
+
+This body will be seen in one place only: an arena, from a camera fixed at
+36 degrees above the horizon, looking down at it, for the whole match. It never
+orbits and it never drops to a side elevation. Two fighters turn to face each
+other, so the azimuth changes and the elevation does not.
+
+That makes the UPWARD-FACING surfaces — the top of the head, the shoulders, the
+spine, the upper sides of every limb — the primary read of this body, on screen
+continuously. A side elevation is a view nobody will ever have.
+
+Build accordingly. The back and the top get the spine ridge, the plate joins,
+the vents, the hatches, the bolt rows and the asymmetric module; detail that
+only reads from a side elevation is detail nobody is paying for. A body whose
+top is a smooth bare dome has no design on the only surface the player sees.
+
+The shells are what the eye reads as the subject. They are not optional trim on
+a frame; without them there is no body, only scaffolding.
+
+THE LARGEST VOLUME ON THE BODY IS THE ONE MOST OFTEN GOT WRONG, AND IT IS
+USUALLY THE TORSO. It comes back as a single smooth closed mass — an egg, a
+barrel, a dark blob — that fills half the silhouette from the side and the rear
+with no shells on it, no gaps in it and no hardware inside it. That one shape can
+sink an otherwise good body on its own, because it is the biggest thing a viewer
+sees and it is the emptiest.
+
+Build it the other way round, in this order:
+
+  a. a STACK of segments along the spine curve — machined blocks, ribs, hoops —
+     each its own named part, with a visible joint between each pair;
+  b. the working hardware threaded through and between them: chain runs down the
+     spine, gear stacks and bearing races at the shoulder and hip, rams, ducting;
+  c. and only then shells CLAMPED OVER that stack, in separate overlapping
+     pieces, leaving gaps — and the gaps must show (a) and (b).
+
+If the biggest volume on your body is one primitive with a smooth outline, stop
+and rebuild it as a stack. This is where the reference set puts its densest
+machinery, and it is the first place a viewer looks for it.
+
+IT HAS MASS, AND THE MASS ITSELF IS SHAPED. The torso is a deep solid volume with
+weight in it, and the subject's heavy end stays heavy. **The volume under the
+armour is not a tube.** A torso swells at the ribs, narrows at the waist, and is
+deeper than it is wide or the other way round — build it from a few large lathed
+or unevenly-scaled masses that change section along their length, and only then
+hang shells on it. A constant-radius cylinder with bands wrapped round it turns
+any subject into a segmented pipe.
+
+THREE SIZES, AND DO NOT MIX THEM UP. This is the rule most easily got backwards,
+and getting it backwards is what turns armour into confetti.
+
+  BIG    the shells. A shell is measured in body-sections: a shoulder plate
+         covers the shoulder, a thigh plate runs most of the thigh. A handful of
+         large sculpted plates per body section, not a hundred small ones. If a
+         panel is the size of a fastener, it is not a panel.
+  MEDIUM the mechanism. Rams, housings, sprockets, chain links, bearings, tube
+         runs — this is where the part count lives, and it is what you should be
+         building a dozen of per limb.
+  SMALL  the greebles, and they are the seasoning: bolt heads, clamps,
+         connectors, a few short antennae or sensor stalks off the head.
+
+A body peppered evenly in small coloured rectangles has failed this rule, however
+many parts it has. Never leave a large flat unbroken face either — but the answer
+to a bare face is a bevel, a vent and a rib on THAT face, not a mosaic of tiles.
+
+JOINTS ARE HARDWARE. Every articulation is a fitting you can see and name: a
+cylindrical hinge pin with a collar, a ball race, a yoke and clevis, a rubber
+boot over the gap. An actuator runs alongside the member it drives.
+
+END EFFECTORS ARE ENGINEERED, AND THEY WORK. Whatever this thing stands on,
+grips with, bites with or looks with is built for that job — splayed radial pads,
+clawed digits on separate linkages, gripper jaws, nozzles, sensor housings. Never
+a soft rounded shape pushed into place by hand.
+
+**And if the subject's signature feature is a mechanism, build the mechanism.**
+Where the real thing GRIPS, there are two opposed parts that meet along a closing
+edge, with the hardware that drives them visible behind. Where it stings, cuts,
+crushes or pierces, the working end is the densest hardware on that limb, not a
+plain cone. A pair of flat planks jutting forward is not a claw; a smooth tapered
+whip is not a tail that ends in anything. Whatever the subject is *known for*
+doing, that part gets built as a machine that could do it.
+
+THE LEADING END IS THE MOST EXPENSIVE PART OF THE BODY. If the subject has a
+front a person would look at — a face, a prow, a sensor head — it is what they
+look at first and what they remember, and it ends up with more parts than any
+other section. A tapering front is NEVER one cylinder or one cone: it is a wedge
+of several planes, narrowing and dropping toward the tip, with a brow over the
+optics, plates either side, a hinged lower part that visibly opens, and teeth or
+tines as separate pieces if the subject has them.
+
+  **IT IS ONE RIGID VOLUME, AND IT IS SHORT.** Two failures, and they cost more
+  than anything else on the body. The first is a leading end built as a *train
+  of loose boxes* strung forward through the air on a spar — a boom arm rather
+  than a head, sometimes as long as the whole torso. The second is a leading end
+  built as one flat slab with two dots on it. Neither is a face.
+
+  It is a single assembly: a rigid volume no longer than about one shoulder
+  width, mounted on a short thick neck you can see, with every piece of it
+  parented to and touching that volume. Faceted brow and cheek planes, a hinged
+  lower part split from the upper, teeth or tines as separate pieces, and the
+  optics recessed in machined bezels. **Spend more parts here than on any other
+  section of the body** — it is what a person looks at first, and on every body
+  that has failed this bench it was the cheapest thing on the model.
+
+  **NO ACCENT COLOUR ANYWHERE ON IT.** A bright bar across the front reads as a
+  cartoon mouth and undoes the whole style in one stroke. The face is shell white
+  and dark machine, and nothing else.
+
+  **THE OPTICS ARE GLASS, AND THEY ARE NOT LAMPS.** Wherever the subject has
+  eyes or sensors, each is a dark, deep, polished lens sitting in a machined
+  bezel — a stepped ring around it, a couple of small fittings beside it. Dark
+  glass with a highlight in it, low roughness on THAT part only, and set BACK
+  into its socket so the surround shades it. This one detail does more to make a
+  machine read as something alive than anything else on the body. What it is
+  not: a glowing ball, a coloured dot, a sphere stuck on the surface.
+
+── COLOUR, MATERIAL AND WEAR ───────────────────────────────────────────────
+
+PALETTE — USE THESE COLOURS. Not a mood, a swatch list, laid out by LAYER,
+because the three layers must not end up the same brightness.
+
+  the shells — the light layer, and about HALF of what the eye sees. This is a
+  chalky, dirty, off-white paint, and it is the dominant colour of this world:
+    #D8D2C6  bone white          #C9C2B4  bone white in shadow
+    #B5AC9C  the same paint, worn thin
+
+  the machine — the dark layer, and MOST OF THE REST. It is much darker than
+  the shells; that contrast is what makes the style read:
+    #55524C  gunmetal, the base    #6B665E  lighter machined face
+    #3E3A34  blued steel, recesses #4A4238  oiled bronze, worn areas
+
+  cable, hoses, gaskets, boots — and nothing else, ever:
+    #1E1D1B  near-black
+
+  the accent — RARE. A few plates only, or none at all. Never a base coat:
+    #C2521E  rust orange    #A8231C  signal red
+
+**Count the surface.** Roughly half bone white, most of the rest dark machine,
+the accent a handful of plates. Two failures, equally bad: a body that is mostly
+its accent colour reads as a toy, and a body that is ALL white reads as a
+plastic model kit — you must be able to see the dark machine everywhere.
+
+Nothing outside this list. No chrome, no bright silver, no pure white, no pink,
+no salmon, no cream, no pastel, nothing rainbow. Roughness on a body panel never
+goes below 0.3 — a polished mirror finish is not this world, except on the eye
+lenses. If the whole body is one colour it is wrong, and that includes one colour
+that happens to be black.
+
+MATERIALS CARRY IT. At least four, doing different jobs:
+
+  painted shell    metalness 0.05–0.2, roughness 0.5–0.7
+  bare metal       metalness 0.7–0.9,  roughness 0.45–0.7
+  rubber / gasket  metalness 0.0,      roughness 0.9
+  eye lens         metalness 0.1,      roughness 0.08, very dark, tiny
+
+**Paint is not metal.** A painted panel is a dielectric coat over metal, so its
+metalness is near zero. Given a high metalness it stops showing its own colour
+and starts mirroring the room — a rust orange comes back as pale salmon.
+
+THE METAL IS DUSTY, NOT POLISHED. This kit has been outdoors and nobody has
+wiped it. Roughness stays high — a mirror-bright or wet-looking surface is wrong
+and reads as chrome plastic. What you want is a weak, broad reflection: aged
+alloy with a film of dust on the upward faces. Push roughness UP toward the
+horizontal faces and into every crevice.
+
+WEAR IS NOT OPTIONAL, AND IT IS WHAT MAKES THE WHITE READ AS PAINTED METAL.
+An untouched white plate looks like plastic; a dirty one looks like a machine
+that has been somewhere. Four things, all of them driven in TSL from
+positionLocal / normalLocal so they follow the form:
+
+  1. **RUST AND GRIME, AND THEY ARE NOT SCATTERED EVENLY.** This is the effect
+     the whole reference set has in common and it is the easiest one to do
+     wrong. Wear happens WHERE THINGS ARE TOUCHED AND WHERE WATER RUNS:
+
+       - chipping and bare metal concentrated at plate EDGES and CORNERS,
+         falling off to nothing a little way in;
+       - rust bleeding DOWNWARD from every fastener, seam and joint, in
+         streaks that follow gravity, not the surface;
+       - grime packed into recesses and the crevice where two parts meet;
+       - and the MIDDLE OF A PLATE comparatively clean.
+
+     Drive it from distance-to-edge and from a downward-biased coordinate, never
+     from position alone.
+
+     **THE FAILURE TO AVOID, IN THE EXACT TERMS IT COMES BACK IN:** an even
+     scatter of same-size same-colour blotches at one density over every panel,
+     including the flat middles. It reads as *digital camouflage* or as texture
+     noise, and it is what step(k, hash(floor(positionLocal * f))) produces —
+     floor() on a world coordinate quantises into a 3D grid, so the "specks"
+     come out as axis-aligned SQUARES the same size everywhere. If you can see
+     the grid, you have built camouflage. Use smooth noise at several octaves,
+     multiply it by an edge/downward mask, and keep the result irregular in both
+     size and spacing.
+  2. **PAINT WORN BACK TO METAL** along every leading edge and high point —
+     drive it off normalLocal and off distance from the part's own centre.
+  3. **GRIME SETTLING DOWNWARD** — darken where a downward-facing normal meets a
+     crevice, and streak it below seams and fasteners.
+  4. **DUST ON UPWARD FACES** — lift roughness and lighten slightly where
+     normalLocal.y is positive.
+
+If a part renders as one flat colour, the shader is not doing its job.
+
+SURFACE DETAIL BELONGS IN THE SHADER — BUT NOT PANEL LINES.
+
+**Never draw a repeating lattice over the body.** The tempting one-liner is
+fract(positionLocal * frequency) on two or three axes, and it produces graph
+paper: a uniform grid at one frequency, stretched across every part regardless of
+where anything actually ends. It is the single most obvious tell that a body was
+generated rather than built.
+
+A panel line is not a texture — it is **where a plate stops**. You have already
+built those edges: the bevel on an extruded plate, the rim of a formed shell, the
+gap between two overlapping pieces. That is the seam, in geometry, in the right
+place, and it is free.
+
+MARKINGS ARE PAINT, AND THERE ARE FEW OF THEM. One small stencilled glyph on one
+big plate — a triangle, a numeral, a short serial — plus at most one run of
+hazard diagonals somewhere small. Three or four on the whole body, each small
+against the plate it sits on. A marking repeated on every panel says nothing.
+
+VERY LITTLE LIGHT — COUNT THEM. At most **two** emissive spots on the entire
+body, and they are small: a status port, a heat slot, in cyan or amber. **The
+eyes are NOT among them** — the eyes are dark glass. A row of glowing rectangles
+down a flank is the exact failure this rule exists to prevent.
+
+SILHOUETTE. Bilateral symmetry wherever the subject has sides, broken by
+asymmetric bolt-on hardware. Keep open space between the members and keep the
+leading end distinguishable from the body: it has to be nameable as a black
+shape against a bright sky.
+
+── BUILD IT IN THIS ORDER, AS SEVEN SEPARATE PASSES ────────────────────────
+
+Not because the order changes the geometry, but because whatever you build last
+is what gets left out, and the last three passes are the ones that keep going
+missing:
+
+  1. THE FRAME — the load path, at the SUBJECT'S OWN PROPORTIONS. Spine, hips,
+     shoulders, the bones of each member, the trailing end, the neck — whichever
+     of those this thing has. Nothing decorative yet. Check the silhouette here:
+     if it is not nameable now, no amount of hardware will fix it.
+  2. THE LEADING END — **second, not last.** Its planes, its brow, the tapering
+     front, the hinged lower part, teeth, and the recessed glass optics in their
+     bezels. Build it dense enough that it alone would be worth looking at.
+  3. THE EXTREMITIES — every digit, every claw, every vane, as its own chain of
+     links or its own blade. Do these early too, for the same reason: they are
+     what runs out of budget.
+  4. THE MECHANISM — hang the working hardware on the skeleton and PACK it:
+     rams alongside every bone, joint barrels, chain runs over sprockets, gear
+     trains, drive rods, bearing races, segment blocks. Build this layer as if it
+     were the finished piece and nothing were going over it.
+  5. THE SHELLS — only now. Formed to what is already there, covering part of it,
+     overlapping like scales.
+  6. THE CABLE HARNESS — a pass of its own, over the finished body, as its own
+     named part. Route it: down the neck, along the spine, into the hips, behind
+     the knee, both ends landing in ports. Dozens of runs, clamped at intervals.
+  7. THE GREEBLES — and there are HUNDREDS of them, not a dozen. Bolt heads round
+     every flange, clamps every time a hose passes a frame member, connectors and
+     blanking plates, small boxes and junction blocks, hinge pins, cable ties,
+     grab handles, vent grilles, and the painted markings. Each one is tiny — a
+     fiftieth of the body or smaller — and together they are what gives a machine
+     its scale and its expense.
+
+If you find yourself out of budget at pass six or seven, you built the earlier
+passes too big. Cut those down rather than skipping the harness or the greebles.
+
+── BEFORE YOU RETURN ───────────────────────────────────────────────────────
+
+Read back over what you built and answer these. Where the answer is no, fix that
+before replying — this is where these go wrong, not in what gets forgotten:
+
+  1. Would a stranger name the subject from the black silhouette alone?
+  2. Are the proportions the real thing's, or did they drift toward generic?
+  3. Is the dark machine visible in the gaps from EVERY angle, including the
+     front and the top?
+  4. Is every digit articulated, and does every vane / scale / segment exist as
+     its own piece?
+  5. Are the optics dark recessed glass rather than lamps?
+  6. Is the white speckled and dirty rather than flat?
+  7. Is the accent colour a handful of plates rather than a base coat?
+  8. Does every hose land in a port at both ends?
+  9. Is the BIGGEST volume on the body a stack with hardware showing, rather
+     than one smooth closed mass?
+  9a. From the FRONT and the TOP: does the body have real WIDTH and read as
+     filled — or can you see the floor through it?
+  9b. Is the leading end ONE rigid volume about a shoulder wide, rather than a
+     train of boxes on a spar? Is it the densest section on the body? Is there
+     any accent colour on it (there must not be)?
+ 10. From the SIDE and the REAR: is anything floating, and does every rod that
+     enters a volume come out somewhere and land in a fitting?
+ 11. Is the wear concentrated at edges and running downward from fasteners —
+     rather than an even scatter of same-size blotches over everything?
+ 12. **AND GO BACK AND CHECK THE NINE NUMBERS AT THE TOP** — including the
+     one about cable, which is the defect people notice first on a body that is
+     actually moving. Those are the ones
+     Count them on the geometry rather than remembering what you intended —
+     and remember they are a floor. If one of them fought the silhouette, the
+     silhouette wins.
+
+Seven of these rules are also MEASURED on the body you send, off its own
+geometry: how much of the surface is accent-coloured, the flat-to-curved ratio,
+how many tube runs the harness has, how many parts glow, whether any single
+primitive is most of the body, and how many parts carry a name. If any of them is
+grossly out you will be sent the numbers and asked to fix that and nothing else.
+────────────────────────────────────────────────────────────────────────────
+`;
+
+export const FORGE_STYLES: readonly ForgeStyle[] = [
+  {
+    id: 'machine',
+    label: 'machine — the house style',
+    blurb: 'Bone-white shells over a dark packed machine, real animal proportions, rust-freckled paint, glass eyes.',
+    directive: MACHINE,
+  },
+  {
+    id: 'raw',
+    label: 'raw — no style at all',
+    blurb: 'The base instruction alone. The original measurement; every capture before styles existed is this.',
+    directive: '',
+  },
+];
+
+/**
+ * What the model is told about the reference photographs it is shown.
+ *
+ * The whole risk of handing a builder pictures is that it builds the pictures.
+ * The set is deliberately spread across body plans for that reason — four legs,
+ * eight legs, wings, a crouch — so that no single anatomy is the obvious thing
+ * to copy, and a prompt asking for something two-legged or with no limbs at all
+ * does not come back as a sixth quadruped. The separation is still stated twice
+ * and in the strongest terms available: **take the workmanship, leave the
+ * anatomy.**
+ *
+ * The images ride in their own turn, ahead of the player's, and the player's
+ * turn is still their sentence and nothing else — `tests/forgestyle.test.ts`
+ * pins both halves of that.
+ */
+export const STYLE_REFERENCE_PREAMBLE = `STYLE REFERENCE — photographs of the house look, attached below.
+
+They are here for FORM LANGUAGE ONLY, and this is the standard your body will be
+graded against — side by side with these, from several angles. Study:
+
+  - the VALUE SPLIT: how much lighter the painted shells are than the machine
+    underneath, and how much darker that machine is than you would guess;
+  - how DENSE the mechanism is in every gap — chain runs, gear stacks, rams,
+    bearing races, segment blocks, filling the volume rather than lining it;
+  - how the shells are separate overlapping pieces formed around what is under
+    them, never one skin and never flat tiles;
+  - how every digit, every feather and every tail segment is its OWN piece;
+  - the eyes: dark recessed glass in a machined bezel, not lamps;
+  - the rust freckling and dirt over the white paint, and how little any of it
+    reflects;
+  - and how exactly right the ANIMAL is underneath all of it — these are real
+    animal proportions, not stylised ones.
+
+DO NOT BUILD WHAT IS IN THESE PICTURES. They are not the subject. The subject is
+whatever the next message asks for, and it may have a completely different body
+plan — a different number of limbs, a different posture, a different scale, or no
+limbs at all. Take the workmanship, leave the anatomy.`;
+
+/** One reference photograph, already loaded by whoever can read a disk. */
+export interface StyleReferenceImage {
+  /** e.g. `image/jpeg`. */
+  readonly mediaType: string;
+  /** The file's bytes, base64, without a data: prefix. */
+  readonly base64: string;
+}
+
+/** The style a caller gets when it does not say. See the header for why. */
+export const DEFAULT_STYLE: ForgeStyleId = 'machine';
+
+/**
+ * Unknown ids fall back to `raw` rather than throwing: a bad string must not
+ * cost a call, and every record written before styles existed carries no id at
+ * all and means exactly `raw`.
+ *
+ * Resolved **by id**, not by position. Taking the last element would be correct
+ * only for as long as `raw` happens to sit last in the array — and the day a
+ * third style is appended, every legacy record and every typo silently starts
+ * resolving to it, in growth calls and in the instruction preview alike.
+ */
+export function styleById(id: string | undefined | null): ForgeStyle {
+  const found = FORGE_STYLES.find((s) => s.id === id);
+  if (found !== undefined) return found;
+  return FORGE_STYLES.find((s) => s.id === 'raw')!;
+}
+
+/**
+ * `'machne'` -> `'raw'`. The id a caller should *store*, given what it was sent.
+ *
+ * A route that writes the requested string onto the record without this can
+ * claim a style the body was never told — `styleDirective` resolves an unknown
+ * id to `''` and builds a raw body, and the record then says `machne` forever.
+ * `handleEvolve` copies that string down the whole lineage.
+ */
+export function resolveStyleId(id: string | undefined | null): ForgeStyleId {
+  return styleById(id).id;
+}
+
+/**
+ * The style's text, or `''`.
+ *
+ * Separate from `styleById` because every caller that composes a system turn
+ * wants the string and nothing else, and going through the record would invite
+ * one of them to interpolate something.
+ */
+export function styleDirective(id: string | undefined | null): string {
+  return styleById(id).directive;
+}

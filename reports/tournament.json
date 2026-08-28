@@ -1,0 +1,160 @@
+{
+  "rounds": 10,
+  "tags": [
+    "or-gem-plain",
+    "or-opu-plain"
+  ],
+  "cells": [
+    {
+      "octopus": "or-gem-plain",
+      "gorilla": "or-gem-plain",
+      "octWinRate": 0.4,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 19.831,
+      "octDamage": 156.6,
+      "gorDamage": 116.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      },
+      "meleeUptime": 0.23281223735081527,
+      "hitRate": {
+        "laser": 0.9508196721311475,
+        "blink": 0,
+        "jump": 0,
+        "charge": 0.375,
+        "smash": 0.6052631578947368
+      },
+      "usesPerMatch": {
+        "laser": 6.1,
+        "blink": 3.3,
+        "jump": 2,
+        "charge": 3.2,
+        "smash": 3.8
+      }
+    },
+    {
+      "octopus": "or-gem-plain",
+      "gorilla": "or-opu-plain",
+      "octWinRate": 0.7,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 25.595999999999997,
+      "octDamage": 172.8,
+      "gorDamage": 109.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      },
+      "meleeUptime": 0.2255502018491991,
+      "hitRate": {
+        "laser": 0.7710843373493976,
+        "blink": 0,
+        "jump": 0,
+        "charge": 0.41304347826086957,
+        "smash": 0.3488372093023256
+      },
+      "usesPerMatch": {
+        "laser": 8.3,
+        "blink": 4.4,
+        "jump": 1.9,
+        "charge": 4.6,
+        "smash": 4.3
+      }
+    },
+    {
+      "octopus": "or-opu-plain",
+      "gorilla": "or-gem-plain",
+      "octWinRate": 0.6,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 26.996,
+      "octDamage": 189,
+      "gorDamage": 116.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      },
+      "meleeUptime": 0.23607852821335967,
+      "hitRate": {
+        "laser": 0.8536585365853658,
+        "blink": 0,
+        "jump": 0,
+        "charge": 0.3275862068965517,
+        "smash": 0.32075471698113206
+      },
+      "usesPerMatch": {
+        "laser": 8.2,
+        "blink": 5.4,
+        "jump": 3.2,
+        "charge": 5.8,
+        "smash": 5.3
+      }
+    },
+    {
+      "octopus": "or-opu-plain",
+      "gorilla": "or-opu-plain",
+      "octWinRate": 0.6,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 31.939,
+      "octDamage": 172.8,
+      "gorDamage": 104.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      },
+      "meleeUptime": 0.14182842830306824,
+      "hitRate": {
+        "laser": 0.6881720430107527,
+        "blink": 0,
+        "jump": 0,
+        "charge": 0.2112676056338028,
+        "smash": 0.6071428571428571
+      },
+      "usesPerMatch": {
+        "laser": 9.3,
+        "blink": 5.3,
+        "jump": 2,
+        "charge": 7.1,
+        "smash": 2.8
+      }
+    }
+  ],
+  "mechanicsOctWinRate": 0.5750000000000001,
+  "meanSeconds": 26.0905,
+  "meanTimeoutRate": 0,
+  "meanMeleeUptime": 0.20906734892911055,
+  "meanCellImbalance": 0.12499999999999997,
+  "maxMeleeUptime": 0.23607852821335967,
+  "hitRate": {
+    "laser": 0.8159336472691658,
+    "smash": 0.47049948533026287,
+    "charge": 0.331724322697806
+  },
+  "usesPerMatch": {
+    "laser": 7.9750000000000005,
+    "blink": 4.6000000000000005,
+    "jump": 2.275,
+    "smash": 4.05,
+    "charge": 5.175
+  },
+  "octStrength": {
+    "or-gem-plain": 0.55,
+    "or-opu-plain": 0.6
+  },
+  "gorStrength": {
+    "or-gem-plain": 0.5,
+    "or-opu-plain": 0.35000000000000003
+  },
+  "octSpread": 0.04999999999999993,
+  "gorSpread": 0.14999999999999997,
+  "wallSeconds": 4.306,
+  "recommended": {
+    "octopus": "or-opu-plain",
+    "gorilla": "or-gem-plain",
+    "octWinRate": 0.6,
+    "seconds": 26.996
+  }
+}

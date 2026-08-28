@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "anthropic/claude-sonnet-5",
+  "effort": "high",
+  "tag": "or-son-high",
+  "generatedAt": "2026-08-27T15:50:10.645Z",
+  "costUsd": 0.0800316,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 1375,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

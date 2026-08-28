@@ -1,0 +1,22 @@
+{
+  "name": "airena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Two LLM-written brains fight in an arena.",
+  "scripts": {
+    "serve": "node src/server/index.js",
+    "test": "node tools/test.mjs && node tools/checkprompt.mjs && node tools/checkbehaviour.mjs && node tools/checkframing.mjs && node tools/falsify.mjs --controls",
+    "arena": "node tools/arena.mjs",
+    "tournament": "node tools/tournament.mjs",
+    "falsify": "node tools/falsify.mjs",
+    "balance": "node tools/balance.mjs",
+    "report": "node tools/report.mjs",
+    "forge": "node tools/brainforge.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.180.0",
+    "ws": "^8.18.0"
+  }
+}

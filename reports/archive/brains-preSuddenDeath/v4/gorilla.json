@@ -1,0 +1,75 @@
+{
+  "fighter": "gorilla",
+  "model": "opus",
+  "effort": "high",
+  "tag": "v4",
+  "promptHash": "66d889ff0891",
+  "promptChars": 15022,
+  "generatedAt": "2026-08-25T21:36:34.805Z",
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 5544,
+      "ok": true,
+      "stage": "passed",
+      "problems": [],
+      "metrics": {
+        "thinks": 441,
+        "faults": 0,
+        "faultRate": 0,
+        "orders": 744,
+        "uses": 12,
+        "distance": 129.5,
+        "avgMicros": 77,
+        "results": [
+          {
+            "seed": 11,
+            "winner": "octopus",
+            "seconds": 19.13,
+            "reason": "kill"
+          },
+          {
+            "seed": 22,
+            "winner": "gorilla",
+            "seconds": 10.3,
+            "reason": "kill"
+          }
+        ]
+      },
+      "costUsd": 0.314878,
+      "durationMs": 159195,
+      "resolvedModel": "unknown (not recorded)",
+      "resolvedModelWas": "claude-haiku-4-5-20251001",
+      "resolvedModelBy": "none",
+      "resolvedModelNote": "Was read off the first key of `modelUsage`, which is the CLI's own background traffic and not the model that answered. The envelope was not kept, so the true snapshot id is unrecoverable from this record; the requested alias is in `model`. See tools/fix-provenance.mjs."
+    }
+  ],
+  "costUsd": 0.314878,
+  "wallMs": 159195,
+  "accepted": {
+    "attempt": 0,
+    "metrics": {
+      "thinks": 441,
+      "faults": 0,
+      "faultRate": 0,
+      "orders": 744,
+      "uses": 12,
+      "distance": 129.5,
+      "avgMicros": 77,
+      "results": [
+        {
+          "seed": 11,
+          "winner": "octopus",
+          "seconds": 19.13,
+          "reason": "kill"
+        },
+        {
+          "seed": 22,
+          "winner": "gorilla",
+          "seconds": 10.3,
+          "reason": "kill"
+        }
+      ]
+    }
+  }
+}

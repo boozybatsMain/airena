@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "qwen/qwen3.8-max",
+  "effort": "think8000",
+  "tag": "or-qwn-think",
+  "generatedAt": "2026-08-27T18:52:22.544Z",
+  "costUsd": 0.0717849,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 2959,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

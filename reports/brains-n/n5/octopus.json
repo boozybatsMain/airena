@@ -1,0 +1,248 @@
+{
+  "fighter": "octopus",
+  "model": "opus",
+  "effort": "high",
+  "tag": "n5",
+  "promptHash": "fd76058668b5",
+  "promptChars": 19434,
+  "generatedAt": "2026-08-26T08:54:41.218Z",
+  "constants": {
+    "arenaHalf": 20,
+    "matchSeconds": 50,
+    "suddenDeathAt": 30,
+    "suddenDeathRamp": 0.015,
+    "tickHz": 30,
+    "thinkHz": 15,
+    "fighters": {
+      "octopus": {
+        "id": "octopus",
+        "name": "Octopus",
+        "hp": 155,
+        "radius": 1,
+        "maxSpeed": 4.55,
+        "accel": 26,
+        "turnRate": 6,
+        "mass": 1,
+        "jumpHeight": 1.5,
+        "skills": [
+          "laser",
+          "blink"
+        ]
+      },
+      "gorilla": {
+        "id": "gorilla",
+        "name": "Gorilla",
+        "hp": 205,
+        "radius": 1.25,
+        "maxSpeed": 5.35,
+        "accel": 22,
+        "turnRate": 4,
+        "mass": 2.2,
+        "jumpHeight": 1.3,
+        "skills": [
+          "smash",
+          "charge"
+        ]
+      }
+    },
+    "skills": {
+      "laser": {
+        "id": "laser",
+        "owner": "octopus",
+        "kind": "beam",
+        "windup": 0.65,
+        "recover": 0.1,
+        "cooldown": 2.2,
+        "damage": 27,
+        "range": 24,
+        "moveScale": 0.45,
+        "turnScale": 0.35,
+        "needsLos": true,
+        "interruptible": true
+      },
+      "blink": {
+        "id": "blink",
+        "owner": "octopus",
+        "kind": "teleport",
+        "windup": 0,
+        "recover": 0.18,
+        "cooldown": 3.9,
+        "distance": 7.5,
+        "iframes": 0.28,
+        "moveScale": 1,
+        "turnScale": 1,
+        "needsLos": false,
+        "interruptible": false
+      },
+      "smash": {
+        "id": "smash",
+        "owner": "gorilla",
+        "kind": "cone",
+        "windup": 0.28,
+        "recover": 0.28,
+        "cooldown": 1.3,
+        "damage": 35,
+        "range": 2.9,
+        "halfAngle": 0.96,
+        "knockback": 2,
+        "moveScale": 0.3,
+        "turnScale": 0.55,
+        "needsLos": true,
+        "interruptible": false
+      },
+      "charge": {
+        "id": "charge",
+        "owner": "gorilla",
+        "kind": "dash",
+        "windup": 0.28,
+        "recover": 0.35,
+        "cooldown": 4,
+        "damage": 30,
+        "dashSpeed": 15,
+        "dashSeconds": 0.8,
+        "knockback": 6,
+        "stun": 0.4,
+        "moveScale": 0.2,
+        "turnScale": 0.85,
+        "needsLos": false,
+        "interruptible": false
+      },
+      "jump": {
+        "id": "jump",
+        "owner": "both",
+        "kind": "hop",
+        "windup": 0.1,
+        "airborne": 0.55,
+        "recover": 0.16,
+        "cooldown": 2.8,
+        "moveScale": 0.35,
+        "turnScale": 0.35,
+        "needsLos": false,
+        "interruptible": false
+      }
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 9592,
+      "ok": true,
+      "stage": "passed",
+      "problems": [],
+      "metrics": {
+        "thinks": 702,
+        "faults": 0,
+        "faultRate": 0,
+        "orders": 1407,
+        "uses": 27,
+        "distance": 167.6,
+        "avgMicros": 286,
+        "results": [
+          {
+            "seed": 11,
+            "winner": "gorilla",
+            "seconds": 15.47,
+            "reason": "kill"
+          },
+          {
+            "seed": 22,
+            "winner": "gorilla",
+            "seconds": 31.33,
+            "reason": "kill"
+          }
+        ]
+      },
+      "costUsd": 0.42842450000000004,
+      "durationMs": 217255,
+      "resolvedModel": "claude-opus-5",
+      "resolvedModelBy": "family",
+      "modelUsage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 6152,
+          "outputTokens": 14,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.006222,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-opus-5": {
+          "inputTokens": 2,
+          "outputTokens": 16746,
+          "cacheReadInputTokens": 7085,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.42220250000000004,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-opus-5",
+          "provider": "firstParty"
+        }
+      },
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 7085,
+        "output_tokens": 16746,
+        "output_tokens_details": {
+          "thinking_tokens": 11907
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 16746,
+            "cache_read_input_tokens": 7085,
+            "cache_creation_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard"
+      }
+    }
+  ],
+  "costUsd": 0.42842450000000004,
+  "wallMs": 217255,
+  "accepted": {
+    "attempt": 0,
+    "metrics": {
+      "thinks": 702,
+      "faults": 0,
+      "faultRate": 0,
+      "orders": 1407,
+      "uses": 27,
+      "distance": 167.6,
+      "avgMicros": 286,
+      "results": [
+        {
+          "seed": 11,
+          "winner": "gorilla",
+          "seconds": 15.47,
+          "reason": "kill"
+        },
+        {
+          "seed": 22,
+          "winner": "gorilla",
+          "seconds": 31.33,
+          "reason": "kill"
+        }
+      ]
+    }
+  }
+}

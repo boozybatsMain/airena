@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "qwen/qwen3.8-max",
+  "effort": "think8000",
+  "tag": "or-qwn-think",
+  "generatedAt": "2026-08-27T18:48:38.964Z",
+  "costUsd": 0.04238784,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 5494,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

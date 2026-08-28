@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "anthropic/claude-opus-5",
+  "effort": "off",
+  "tag": "or-opu-plain",
+  "generatedAt": "2026-08-27T15:57:48.107Z",
+  "costUsd": 0.48844125,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 7070,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

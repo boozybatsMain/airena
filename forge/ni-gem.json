@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "slug": "ni-gem",
+  "prompt": "an armoured octopus",
+  "model": "google/gemini-3.7-flash",
+  "at": "2026-08-28T12:01:36.367Z",
+  "entry": "build",
+  "notes": [
+    "stripped a markdown code fence"
+  ],
+  "repairs": [],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. 43% of this body's surface is painted in a saturated accent colour. In this style the accent is a handful of plates or none at all: about half the body is chalky bone-white shell (#D8D2C6, #C9C2B4, #B5AC9C) and most of the rest is the DARK machine underneath it (#55524C, #6B665E, #3E3A34, #4A4238). Repaint the shells bone white, keep the frame and the mechanism dark, and leave the accent (#C2521E, #A8231C) on a few plates.\n\n2. Only 8% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n3. This body has 42 tube runs, but they add up to only 3.5 body-lengths of cable. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n4. The harness is there — 42 runs — but only 0% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\n5. Only 0% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "usage": {
+    "promptTokens": 13093,
+    "completionTokens": 24986,
+    "reasoningTokens": 9337,
+    "costUsd": 0.05124103875
+  },
+  "effort": "high",
+  "lane": "key",
+  "style": "machine",
+  "styleImages": 0,
+  "attempts": 1,
+  "elapsedMs": 185282,
+  "replyBytes": 39164
+}

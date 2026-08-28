@@ -1,0 +1,682 @@
+/**
+ * The brain instruction, generated.
+ *
+ * ── the editing rule ────────────────────────────────────────────────────────
+ *
+ * Every line this file emits is exactly one of:
+ *
+ *   1. A CAPABILITY — a verb, a field, a helper. A model cannot call what it
+ *      has not been told exists.
+ *   2. A CONSTRAINT WITH ITS REASON. The reason is not decoration: measured on
+ *      the prior project, "no Math" without a why produces ES3 — no `const`, no
+ *      arrow functions — because the model infers an ancient runtime from an
+ *      arbitrary-looking ban.
+ *   3. A FACT ABOUT THE WORLD — a radius, a rate, a timing, a damage number.
+ *   4. THE OBJECTIVE — what the creature is for, and nothing about how.
+ *
+ * What never goes in: tactics, priorities, rankings, worked strategies, "it is
+ * usually better to…", "keep your distance", "interrupt the cast". If a
+ * sentence does the model's thinking for it, it is not in one of the four
+ * categories and it does not belong here. The whole experiment is whether a
+ * model handed a dictionary writes a fighter; a prompt that whispers the answer
+ * measures nothing.
+ *
+ * ── the one thing that is not negotiable ────────────────────────────────────
+ *
+ * Every number below is READ from `src/core/config.js`, never typed. A prompt
+ * that lies is worse than no prompt: the model believes it, writes against it,
+ * and the creature dies of the difference.
+ *
+ * Read from config, and for a duration rounded to what the world serves it in —
+ * the sim's clock only turns over on ticks, so twelve of the eighteen declared
+ * timings are not the ones a fighter ever experiences. `served` below does that
+ * rounding and says why it happens here rather than in config.
+ *
+ * That promise is MECHANISED rather than trusted. Every number goes out through
+ * `q(label, value)`, which formats it exactly as before and — while a trace is
+ * running — records the pair and brackets the characters it produced. On that
+ * record `tools/checkprompt.mjs` runs the guarantee in both directions:
+ *
+ *   config -> text   the set of labels emitted must equal its whitelist, and
+ *                    each emitted substring must equal the live config value.
+ *   text -> config   everything OUTSIDE the brackets is swept for numerals, so
+ *                    a number typed into the prose can never reach the model.
+ *
+ * The first direction used to be a substring search over the finished prompt
+ * and it false-passed silently: with the laser's damage hardcoded in the text,
+ * moving the config value to 3, 4, 24 and 155 was not detected once: the 17.6 kB
+ * prompt it searched already contained every one of those numerals somewhere
+ * else. A grep cannot tell you what a document meant to say — only the emitter
+ * knows that, so the emitter reports it.
+ *
+ * `tools/checkbehaviour.mjs` closes the half that no text check can reach: it
+ * fires each skill in a controlled world and MEASURES what these lines claim.
+ * A number can be quoted faithfully from config and still describe the geometry
+ * wrongly, which is exactly how the laser came to advertise "range 24 m" for a
+ * weapon that reaches 26.85 m between centres.
+ */
+
+import {
+  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, FIGHTERS, KNOCKBACK_DRAG, MATCH_SECONDS,
+  MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
+  SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
+  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf,
+} from '../core/config.js';
+
+const n = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000));
+const deg = (rad) => String(Math.round((rad * 180) / Math.PI));
+
+/**
+ * What the world SERVES for a declared duration, which is not what config says.
+ *
+ * `sim.js` `stepAct` adds one tick to a skill's phase clock per step and ends
+ * the phase on the first step at or past its declared length, carrying the
+ * overshoot into the next phase; cooldown, i-frames and stun are counted down
+ * one tick per step until they cross zero. A declared duration that is not a
+ * whole number of ticks is therefore never the one a fighter experiences.
+ * Measured against config as it stood when this was written, twelve of the
+ * eighteen disclosed timings differ:
+ *
+ *     laser  windup  0.65 -> 0.667     smash  windup   0.28 -> 0.3
+ *     blink  recover 0.18 -> 0.2       smash  recover  0.28 -> 0.267
+ *     blink  iframes 0.28 -> 0.3       charge windup   0.28 -> 0.3
+ *     blink  cooldwn 3.9  -> 3.933     charge recover  0.35 -> 0.333
+ *     jump   airborne 0.55 -> 0.567    charge stun     0.4  -> 0.433
+ *     jump   recover 0.16 -> 0.167     charge cooldown 4    -> 4.033
+ *
+ * The two that go DOWN are the carry: smash's wind-up overruns its 0.28 by
+ * 0.02 s and that 0.02 is taken off its recovery. 0.02 s is 7% of the smash
+ * wind-up, and the wind-up is the dodge window the model reasons against — the
+ * same class of error as advertising "range 24 m" for a beam that reaches
+ * 26.85 m, which is what `tools/checkbehaviour.mjs` was built to catch.
+ *
+ * The rounding happens HERE and not in config, and that is deliberate: config's
+ * numbers are the designer's knob and the balance search's coordinates, and
+ * quantising them there would move nine constants and mark all twelve shipping
+ * brains stale under `tools/checkstale.mjs` for a difference the world never
+ * had. The prompt is where the world is described, so the prompt is where it is
+ * described truthfully. Nothing below is trusted: `checkbehaviour` fires each
+ * skill and measures every one of these against the sim.
+ */
+const TICK = 1 / TICK_HZ;
+
+/** One phase of the clock: ticks until it reaches `dur`, starting from `carry`. */
+function phaseClock(dur, carry) {
+  let t = carry, ticks = 0;
+  while (t < dur - 1e-9) { t += TICK; ticks++; }
+  return { served: ticks * TICK, carry: t - dur };
+}
+
+/**
+ * `sim.js` `phasesOf`, as config field names in order. `null` is blink's
+ * zero-length strike phase: it resolves on the tick the order lands and has no
+ * config field of its own, so the recovery clock starts from zero and the whole
+ * act is the recovery.
+ */
+const PHASE_FIELDS = {
+  laser: ['windup', 'recover'],
+  blink: [null, 'recover'],
+  smash: ['windup', 'recover'],
+  charge: ['windup', 'dashSeconds', 'recover'],
+  jump: ['windup', 'airborne', 'recover'],
+};
+
+/** Every phase duration of one skill as served, keyed by its config field. */
+function served(name) {
+  const s = SKILLS[name];
+  const out = {};
+  let carry = 0;
+  for (const field of PHASE_FIELDS[name]) {
+    const r = phaseClock(field === null ? 0 : (s[field] || 0), carry);
+    if (field !== null) out[field] = r.served;
+    carry = r.carry;
+  }
+  return out;
+}
+
+/** A countdown accumulator — cooldown, i-frames, stun — as served. */
+function servedCountdown(seconds) {
+  let t = seconds, ticks = 0;
+  while (t > 0) { t = Math.max(0, t - TICK); ticks++; }
+  return ticks * TICK;
+}
+
+/**
+ * The tagged emitter — the mechanism the docstring above promises.
+ *
+ * `q('skills.laser.damage', SKILLS.laser.damage)` renders exactly what `n`
+ * renders, and while `tracePrompt` is collecting it also records the label with
+ * the text it produced and wraps that text in a pair of control characters.
+ * The wrapping is what makes the text->config sweep exact: the checker deletes
+ * every config-derived character BY POSITION and sweeps what is left, instead
+ * of searching the finished prompt for numbers it hopes are there.
+ *
+ * U+0001/U+0002 because neither can occur in the prose. Nothing strips them —
+ * an untraced render never produces them, so the text handed to a model is the
+ * same text whether or not anyone is checking it.
+ */
+const MARK_IN = '\u0001';
+const MARK_OUT = '\u0002';
+let TRACE = null;
+
+function q(label, value, fmt = n) {
+  const text = fmt(value);
+  if (!TRACE) return text;
+  TRACE.push({ label, text });
+  return MARK_IN + text + MARK_OUT;
+}
+
+// ---------------------------------------------------------------------------
+// 1. the shape of the answer
+// ---------------------------------------------------------------------------
+
+function shape() {
+  return `You are writing the entire mind of one fighter in a duel, as JavaScript.
+
+Reply with code only. No prose, no explanation, no markdown fence. Exactly this shape:
+
+function think(p, api) {
+  // whatever you want
+}
+
+Helper functions and constants declared beside it are kept and are in scope for
+every call. The function must be named think and must take exactly two
+parameters; a different arity is a compile fault and the fighter is born
+mindless.
+
+think(p, api) is called ${q('think.hz', THINK_HZ)} times a second while you are alive. It returns
+nothing. The only way it changes the world is by calling api verbs. Perception p
+is rebuilt fresh for every call.`;
+}
+
+// ---------------------------------------------------------------------------
+// 2. the world
+// ---------------------------------------------------------------------------
+
+function world() {
+  const obs = OBSTACLES
+    .map((o) => `    x ${q(`obstacles.${o.id}.x`, o.x)}, z ${q(`obstacles.${o.id}.z`, o.z)}, `
+      + `half-width ${q(`obstacles.${o.id}.hx`, o.hx)}, half-depth ${q(`obstacles.${o.id}.hz`, o.hz)}`)
+    .join('\n');
+  return `THE WORLD
+
+A flat square arena. The ground is the X/Z plane; +Y is up and nothing but a hop
+ever leaves the ground. The arena runs from -${q('arena.half', ARENA_HALF)} to +${q('arena.half', ARENA_HALF)} on both X and Z, walled on
+all four sides. Nothing can leave it.
+
+Headings are radians. Heading 0 faces +Z; the angle increases toward +X, so
+heading = Math.atan2(dx, dz) and the unit vector of a heading is
+{ x: Math.sin(h), z: Math.cos(h) }.
+
+${q('obstacles.count', OBSTACLES.length)} solid blocks stand on the floor, ${q('obstacles.height', OBSTACLES[0].h)} m tall, axis-aligned:
+
+${obs}
+
+A block stops a body and stops a line of sight. Nothing sees or shoots through
+one, and nothing walks through one. The walls do the same.
+
+The simulation advances ${q('tick.hz', TICK_HZ)} times a second. You think on every second step, so
+${q('think.hz', THINK_HZ)} times a second, and the world moves twice between two of your thoughts.
+
+A skill's phases are served on those same steps: a phase ends on the first step
+at or past its length, and any overshoot comes off the phase after it. Every
+duration in the tables below is the served one, so what you are told is what the
+world runs.
+
+The two fighters start ${q('spawn.separation', SPAWN_RADIUS * 2)} m apart on opposite ends of a diameter, at an angle
+that changes from match to match, facing each other.
+
+The match ends when one fighter reaches 0 hp.
+
+From ${q('suddenDeath.at', SUDDEN_DEATH_AT)} seconds the arena itself starts burning both of you. The rate rises
+with every second that passes: at time t you lose ${q('suddenDeath.ramp', SUDDEN_DEATH_RAMP)} * (t - ${q('suddenDeath.at', SUDDEN_DEATH_AT)}) of your MAXIMUM
+hp per second, and so does your opponent. It is proportional, so whoever holds
+the smaller fraction of their maximum burns to nothing first. From full health
+the burn alone kills at ${q('suddenDeath.killsAt', SUDDEN_DEATH_AT + Math.sqrt(2 / SUDDEN_DEATH_RAMP))} seconds. p.burn is the current rate and
+p.burnStartsIn counts down to it.
+
+If ${q('match.seconds', MATCH_SECONDS)} seconds somehow pass with both alive, the larger hp fraction wins and
+exactly equal fractions is a draw.`;
+}
+
+// ---------------------------------------------------------------------------
+// 3. bodies
+// ---------------------------------------------------------------------------
+
+function bodyBlock(id, mine) {
+  const f = FIGHTERS[id];
+  const who = mine ? 'YOUR BODY' : 'YOUR OPPONENT\'S BODY';
+  const lbl = (field) => `fighters.${id}.${field}`;
+  return `${who} — ${f.name}
+
+  hp                  ${q(lbl('hp'), f.hp)}
+  collision radius    ${q(lbl('radius'), f.radius)} m
+  top speed           ${q(lbl('maxSpeed'), f.maxSpeed)} m/s
+  acceleration        ${q(lbl('accel'), f.accel)} m/s^2   (so ${q(lbl('maxSpeed'), f.maxSpeed)} m/s is reached in ${q(lbl('timeToTopSpeed'), f.maxSpeed / f.accel)} s)
+  turn rate           ${q(lbl('turnRate'), f.turnRate)} rad/s  (a half turn takes ${q(lbl('halfTurnSeconds'), Math.PI / f.turnRate)} s)
+  mass                ${q(lbl('mass'), f.mass)}        (the heavier body yields less when they collide)
+  skills              ${skillsOf(id).join(', ')}
+
+Movement direction and facing are independent: a body can walk in one direction
+while pointing in another. Facing turns toward what you asked for at the turn
+rate above; it never snaps.`;
+}
+
+// ---------------------------------------------------------------------------
+// 4. skills
+// ---------------------------------------------------------------------------
+
+/**
+ * The other fighter. With exactly two bodies in the world, a skill's owner
+ * fixes the only body it can ever be aimed at — which is what lets the blocks
+ * below quote a concrete reach against a named opponent instead of handing the
+ * model a formula and a radius to substitute into it.
+ */
+const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
+
+function skillBlock(name) {
+  const s = SKILLS[name];
+  // Every duration below goes through `p` (a phase) or `servedCountdown` (an
+  // accumulator) rather than reading `s` directly, because config's figure and
+  // the world's figure are not the same number. See `served` above.
+  const p = served(name);
+  const L = [];
+  const push = (k, v) => L.push(`  ${k.padEnd(20)}${v}`);
+  const lbl = (field) => `skills.${name}.${field}`;
+  push('cooldown', `${q(lbl('cooldown'), servedCountdown(s.cooldown))} s, counted from the moment it starts`);
+
+  if (name === 'laser') {
+    /*
+     * The muzzle offset, the beam's margin and the surface rule are disclosed
+     * alongside the range because without them the range is a lie by omission.
+     * The sim fires from `radius + 0.2` ahead of the centre and counts a hit
+     * when the target's SURFACE enters the beam, which puts the last hitting
+     * centre-to-centre distance 2.85 m beyond the 24 m the range field names —
+     * so a brain holding station at 25 m "out of range" is standing inside the
+     * weapon. The 0.2 has no name in config; it exists only at the call site in
+     * `sim.js` (resolveStrike), so it is spelled out rather than imported.
+     */
+    const me = FIGHTERS[s.owner];
+    const you = FIGHTERS[opponentOf(s.owner)];
+    const muzzle = me.radius + 0.2;
+    push('cast', `${q(lbl('windup'), p.windup)} s, then the beam fires, then ${q(lbl('recover'), p.recover)} s of recovery`);
+    push('damage', q(lbl('damage'), s.damage));
+    push('muzzle', `the beam starts ${q(lbl('muzzle'), muzzle)} m ahead of your centre, along your facing, not at your centre`);
+    push('range', `${q(lbl('range'), s.range)} m of beam, measured from the muzzle`);
+    push('beam', `a straight line carrying ${q('beam.radius', BEAM_RADIUS)} m of margin around itself. A body is hit when its SURFACE enters that margin, so it is hit while its centre is still off the line. The beam stops at the first block, wall or body it meets`);
+    push('reach', `${q(lbl('maxHitDistance'), muzzle + s.range + you.radius + BEAM_RADIUS)} m between the two centres, at the very most: ${q(lbl('muzzle'), muzzle)} of muzzle + ${q(lbl('range'), s.range)} of beam + the ${q(`fighters.${you.id}.radius`, you.radius)} radius of the ${you.name} + ${q('beam.radius', BEAM_RADIUS)} of margin`);
+    push('aim', `the beam leaves along your facing AT THE INSTANT IT FIRES, not at the instant you ordered it. You keep turning through the cast, at the reduced rate below`);
+    push('line of sight', 'required — a block between you and the target eats the beam');
+    /*
+     * Height is not a term in the beam's hit test at all, while it IS one in
+     * the smash's, and the prompt used to state the smash's rule and stay
+     * silent here. Two brains read that silence in opposite directions:
+     * brains/l6/octopus.js withholds shots at an airborne target ("jump lasts
+     * ~0.71s") and brains/l1/gorilla.js hops through the beam on purpose. Both
+     * from the same text; one of them is wrong, and no measurement was open to
+     * either of them.
+     */
+    push('height', 'not consulted — a body off the ground is hit exactly like one on it');
+    push('while casting', `your top speed is multiplied by ${q(lbl('moveScale'), s.moveScale)} and your turn rate by ${q(lbl('turnScale'), s.turnScale)}`);
+    push('interrupt', 'any impact that knocks you back — a charge or a smash — cancels it, and the cooldown is already spent');
+  }
+  if (name === 'blink') {
+    push('effect', `you are instantly somewhere up to ${q(lbl('distance'), s.distance)} m away, along a direction you pass in`);
+    push('walls', 'the teleport crosses blocks and walls; the landing point never ends inside one — it is pulled back along the line until it is clear');
+    push('invulnerable', `${q(lbl('iframes'), servedCountdown(s.iframes))} s from the moment you land: all damage against you in that window does nothing`);
+    push('recovery', `${q(lbl('recover'), p.recover)} s during which nothing else can be started`);
+    push('argument', 'api.use("blink", dx, dz) — dx,dz is a direction and does not need to be normalised. With no argument it goes along your facing');
+  }
+  if (name === 'smash') {
+    /*
+     * Both of the cone's real edges are wider than its two config fields.
+     * Range is tested against the target's SURFACE, and a circular body is
+     * accepted whenever any part of it is inside the arc — `inCone` widens by
+     * asin(targetR / d), which against the octopus is another 11 degrees at
+     * full extension and another 26 with the bodies touching. Disclosing 55
+     * alone described a cone the gorilla does not have, and the difference is
+     * largest exactly where the fight is decided, in contact.
+     */
+    const me = FIGHTERS[s.owner];
+    const you = FIGHTERS[opponentOf(s.owner)];
+    const reach = s.range + me.radius + you.radius;
+    const touching = me.radius + you.radius;
+    const widened = (d) => s.halfAngle + Math.asin(you.radius / d);
+    push('wind-up', `${q(lbl('windup'), p.windup)} s, then it lands, then ${q(lbl('recover'), p.recover)} s of recovery`);
+    push('damage', q(lbl('damage'), s.damage));
+    push('shape', `a cone ${q(lbl('halfAngleDeg'), s.halfAngle, deg)} degrees either side of your facing, reaching ${q(lbl('range'), s.range)} m past your own radius`);
+    push('reach', `that range is measured to their SURFACE, not to their centre, so the farthest centre-to-centre hit on the ${you.name} is ${q(lbl('maxHitDistance'), reach)} m`);
+    push('width', `a body counts as inside the cone when ANY PART of it is, so the accepted half-angle grows by asin(their radius / distance): against the ${you.name} it is ${q(lbl('halfAngleAtReachDeg'), widened(reach), deg)} degrees at that farthest distance and ${q(lbl('halfAngleAtContactDeg'), widened(touching), deg)} degrees when the two of you are touching`);
+    push('aim', 'the cone is measured from your facing AT THE INSTANT IT LANDS, not when you ordered it');
+    push('knockback', `${q(lbl('knockback'), s.knockback)} m/s pushed away from you, decaying at ${q('physics.knockbackDrag', KNOCKBACK_DRAG)} m/s^2`);
+    push('airborne', 'it sweeps the ground — a body that is off the ground when it lands takes nothing');
+    push('while winding up', `your top speed is multiplied by ${q(lbl('moveScale'), s.moveScale)} and your turn rate by ${q(lbl('turnScale'), s.turnScale)}`);
+    push('uninterruptible', 'nothing your opponent can do cancels it once it is ordered');
+  }
+  if (name === 'charge') {
+    push('wind-up', `${q(lbl('windup'), p.windup)} s. Your facing at the END of the wind-up is the direction you will travel, and it cannot be changed after that`);
+    push('dash', `${q(lbl('dashSpeed'), s.dashSpeed)} m/s for up to ${q(lbl('dashSeconds'), p.dashSeconds)} s, so up to ${q(lbl('dashDistance'), s.dashSpeed * p.dashSeconds)} m`);
+    push('ends', 'on contact with the enemy, or on contact with a block or wall, or when the time runs out');
+    push('damage', `${q(lbl('damage'), s.damage)} on contact`);
+    push('impact', `${q(lbl('knockback'), s.knockback)} m/s of knockback (decaying at ${q('physics.knockbackDrag', KNOCKBACK_DRAG)} m/s^2) and ${q(lbl('stun'), servedCountdown(s.stun))} s of stun, and it cancels whatever the target was casting`);
+    push('recovery', `${q(lbl('recover'), p.recover)} s after it ends, during which nothing else can be started`);
+    push('while winding up', `your top speed is multiplied by ${q(lbl('moveScale'), s.moveScale)} and your turn rate by ${q(lbl('turnScale'), s.turnScale)}`);
+    push('uninterruptible', 'nothing stops it once the wind-up has finished');
+  }
+  if (name === 'jump') {
+    push('wind-up', `${q(lbl('windup'), p.windup)} s crouch, during which your top speed is multiplied by ${q(lbl('moveScale'), s.moveScale)} and your turn rate by ${q(lbl('turnScale'), s.turnScale)}`);
+    push('airborne', `${q(lbl('airborne'), p.airborne)} s off the ground, then ${q(lbl('recover'), p.recover)} s landing`);
+    push('control', `your horizontal velocity is frozen at take-off and carries you: whatever you were moving at when you left the ground is where you land. You cannot change it, and you cannot start anything, until you land. You can still turn, at ${q(lbl('turnScale'), s.turnScale)} of your turn rate`);
+    push('effect', 'a ground sweep passes underneath you');
+  }
+  return `${name}\n${L.join('\n')}`;
+}
+
+function skillsFor(id) {
+  return `YOUR SKILLS\n\n${skillsOf(id).map(skillBlock).join('\n\n')}`;
+}
+
+function enemySkillsFor(id) {
+  return `YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n${skillsOf(opponentOf(id)).map(skillBlock).join('\n\n')}`;
+}
+
+// ---------------------------------------------------------------------------
+// 5. perception
+// ---------------------------------------------------------------------------
+
+function perception() {
+  return `WHAT YOU PERCEIVE — the object p
+
+p.t             seconds since the match began
+p.dt            seconds between two of your thoughts
+p.tick          simulation step count. The world steps before anyone is asked
+                to think, so the first value you ever see is ${q('think.firstTick', THINK_EVERY)}, not zero
+p.timeLeft      seconds before the backstop clock decides on hp fraction
+p.burn          fraction of your maximum hp the arena is burning off you per
+                second right now, and off your opponent too. 0 before it starts
+p.burnStartsIn  seconds until it does
+
+p.self
+  .id           'octopus' or 'gorilla'
+  .x .z         position on the ground plane
+  .y            height above the ground; > 0 only during a hop
+  .vx .vz       velocity, m/s, knockback included
+  .speed        magnitude of that velocity
+  .heading      radians, where you are pointing right now
+  .hp .maxHp
+  .radius .maxSpeed .turnRate
+  .alive .airborne .stunned .invulnerable
+  .busy         true while any skill of yours is running
+  .casting      null, or { skill, phase, elapsed, remaining, total, telegraph }
+                phase is 'windup' | 'strike' | 'dash' | 'air' | 'recover'
+                telegraph is true while the effect has not landed yet
+  .cooldowns    { skillName: seconds remaining, 0 means ready }
+  .skills       the names you may pass to api.use
+
+p.enemy
+  .id .x .z .y .vx .vz .speed .heading
+  .hp .maxHp .radius .maxSpeed
+  .alive .airborne .stunned .invulnerable .busy
+  .casting      the same shape as p.self.casting, so you can see a wind-up
+                while it is still winding up
+  .skills       what they may use
+  .dist         straight-line distance between the two centres
+  .visible      true when nothing solid sits on the straight line between your
+                centre and theirs. This is the same test the beam performs
+
+  That is the whole list. In particular there is no p.enemy.cooldowns: what
+  they have ready is not given to you. Every use of a skill by either side is
+  announced — you get { type:'enemyStarted', skill } the moment they begin one.
+
+p.arena
+  .half         ${q('arena.half', ARENA_HALF)}
+  .obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents
+
+p.events        what happened to you since your last thought, oldest first.
+                Each is { type, ... }:
+  { type:'damaged', skill, amount, hp, from:{x,z} }        you were hit
+  { type:'dealt', skill, amount, enemyHp }                 you hit them
+  { type:'missed', skill, reason }                         your skill landed on nothing.
+                                                           reason: 'aim' | 'cover' | 'range' | 'airborne' | 'invulnerable'
+  { type:'evaded', skill, by }                             something hit you during your i-frames
+  { type:'blocked', by }                                   you walked into 'wall' or 'obstacle'
+  { type:'contact' }                                       the two bodies are touching
+  { type:'blinked', from, to, moved }
+  { type:'landed' }                                        your hop finished
+  { type:'knockback', by }
+  { type:'interrupted', skill, by }                        your cast was cancelled
+  { type:'interruptedEnemy', skill }                       you cancelled theirs
+  { type:'chargeStopped', reason }
+  { type:'burning', rate, hp }                             the arena is taking hp from you
+  { type:'refused', skill, reason }                        api.use did not start it.
+                                                           reason: 'cooldown' | 'busy' | 'stunned' | 'airborne' | 'dead' | 'unknown'
+  { type:'enemyStarted', skill, windup }                   they began something
+  { type:'enemyCommitted', skill }                         their charge direction is now locked
+
+p.mem           a read-only copy of everything you have stored. Writing to it
+                does nothing; use api.remember.`;
+}
+
+// ---------------------------------------------------------------------------
+// 6. the verbs
+// ---------------------------------------------------------------------------
+
+function verbs() {
+  return `WHAT YOU CAN DO — the object api
+
+Movement orders STAND. One call keeps steering the body until you replace it,
+including on the thoughts where you call nothing. There is no per-frame
+re-issuing.
+
+api.move(dx, dz)        Steer along a direction. Raw: it does not avoid
+                        anything, so it will hold you against a block if that is
+                        where you pointed. dx,dz need not be normalised.
+                        {0,0} is a full stop.
+api.moveTo(x, z)        Walk to a point, routed around the blocks. The order
+                        stands until the point is reached or replaced.
+api.stop()              Drop the movement order.
+api.face(dx, dz)        Turn toward a direction. Stands until replaced.
+api.faceAt(x, z)        Turn toward a point, measured when you call it.
+api.use(name, a, b)     Order a skill. a,b are the direction argument blink
+                        takes. The return value says only that the ORDER was
+                        accepted, not that the skill started: orders are applied
+                        after your thought finishes, and one can still be
+                        refused there — on cooldown, already busy, stunned,
+                        off the ground. A refusal arrives as a 'refused' event
+                        on your next thought. api.ready(name) tells you in
+                        advance.
+api.ready(name)         true when api.use(name) would start.
+api.cooldown(name)      seconds left, 0 when ready.
+api.los(x, z)           true when nothing solid sits between your centre and
+                        that point.
+api.ray(dx, dz, maxDist) Cast a line from your centre. Returns
+                        { hit, dist, x, z } — where the first solid thing is, or
+                        the end of the line. maxDist is capped at 60.
+api.pathTo(x, z)        { dist, direct, points:[{x,z}] } — a walkable route,
+                        its true walking length, and whether the straight line
+                        was already clear. null when there is no route.
+api.rand()              a number in [0,1). Seeded per match.
+api.remember(key, value) Store anything JSON can hold. ${q('mem.maxKeys', MEM_MAX_KEYS)} keys.
+api.recall(key, fallback)
+api.forget(key)
+api.say(text)           Up to ${q('say.maxChars', SAY_MAX_CHARS)} characters, shown above your body to whoever is
+                        watching. It has no effect on the fight.
+
+move, face, use and say are QUEUED and applied together once your thought
+returns, so calling one of them twice in one thought keeps the LAST call and
+the earlier one never happens: no half of a thought can watch the other half
+act. move, moveTo and stop share the one movement slot, and face and faceAt
+share the one facing slot. remember and forget are the exception — they write
+through the instant you call them, so one thought can store several keys and
+read them back immediately.
+${q('orders.perThink', MAX_ORDERS_PER_THINK)} orders are honoured per thought; the rest are dropped.
+The perception verbs — ready, cooldown, los, ray, pathTo, rand, recall — have
+their own separate allowance of ${q('queries.perThink', MAX_QUERIES_PER_THINK)}, so probing the world can never eat into
+the orders you meant to give.`;
+}
+
+// ---------------------------------------------------------------------------
+// 7. what is already in scope
+// ---------------------------------------------------------------------------
+
+const HELPERS = `WHAT IS ALREADY IN SCOPE
+
+V — plane vectors as plain { x, z } objects.
+  V.add(a,b)   V.sub(a,b)   V.scale(a,s)   V.lerp(a,b,t)
+  V.len(a)     V.dist(a,b)  V.dot(a,b)     V.norm(a)
+  V.toward(a,b)             unit vector from a to b
+  V.away(a,b)               unit vector from b to a
+  V.perp(a)                 rotated a quarter turn
+  V.rot(a,radians)
+  V.heading(a)              the heading of a direction
+  V.fromHeading(h)          the direction of a heading
+  V.angleTo(heading, dir)   signed shortest angle from a heading to a direction,
+                            in (-PI, PI]
+  V.clamp(v, lo, hi)
+  V.lead(shooter, target, targetVel, speed)
+                            where a target moving at constant velocity will be
+                            when something travelling at "speed" reaches it.
+                            Returns the target's own position when speed is 0.
+                            Nothing in this world flies: the beam is
+                            instantaneous and the charge is a body, so no skill
+                            has a projectile speed to pass here.
+  V.norm and V.toward return {x:0,z:0} for a zero-length input, and a zero
+  vector passed to api.move is a full stop.
+
+Math is available in full except Math.random. console.log works and goes to a
+log nobody's fight depends on.`;
+
+// ---------------------------------------------------------------------------
+// 8. constraints, each with its reason
+// ---------------------------------------------------------------------------
+
+function rules() {
+  return `THE RULES
+
+1. NO Math.random AND NO Date.
+   Both throw. The reason is not safety, it is replay: a match must be
+   reproducible from the seed and the two brains, so that a hundred rounds can
+   be run headless and mean something, and so a fight can be watched again
+   exactly as it happened. Both of those read a clock this world does not have.
+   api.rand() is the seeded replacement and is as random as you need.
+
+2. TWO KINDS OF MEMORY, AND THE DIFFERENCE BETWEEN THEM.
+   A variable declared beside think keeps its value from one thought to the
+   next and is reset when a new match starts. It works; write to it freely.
+   What it does not do is show up anywhere outside your own head: p.mem does
+   not contain it and nothing recording the fight can see it.
+   api.remember(key, value) / api.recall(key, fallback) do both — they persist
+   for the match and they come back to you as p.mem, which is also what anyone
+   watching can read. Neither is better. Use whichever you want for whatever
+   reason you want.
+
+3. A THOUGHT HAS ${q('think.timeoutMs', THINK_TIMEOUT_MS)} MILLISECONDS AND ${q('queries.perThink', MAX_QUERIES_PER_THINK)} PERCEPTION CALLS.
+   Overrunning either aborts that thought: no orders are issued, your standing
+   orders keep running, and the fault is counted. Both sit far above what even
+   a thought that reasons carefully about the whole arena spends — they are
+   guards against an accidental infinite loop, not budgets you have to husband.
+   The perception cap RAISES rather than quietly returning false, because a
+   sense that lies is worse than a sense that stops.
+
+4. A THROWN ERROR COSTS YOU THAT THOUGHT, NOT THE MATCH.
+   Your standing orders keep running and the next thought is attempted. After
+   ${q('faultLimit', FAULT_LIMIT)} faults the mind is switched off for the rest of the fight and the body
+   coasts on whatever it was last told.
+
+DIALECT: modern JavaScript. const, let, arrow functions, template literals,
+for-of, destructuring, classes, and the array methods all work. Rule 1 is about
+two names, not about the language.`;
+}
+
+// ---------------------------------------------------------------------------
+// 9. the objective
+// ---------------------------------------------------------------------------
+
+const OBJECTIVE = `THE OBJECTIVE
+
+Kill your opponent. Stay alive.
+
+That is the whole of it. Nothing above tells you how, and nothing above is a
+recommendation: it is an inventory of what exists, what it costs and what the
+world does. How you fight is yours.`;
+
+// ---------------------------------------------------------------------------
+
+/**
+ * The system prompt: who is reading, and what an answer looks like.
+ *
+ * Kept separate from the body so that a repair turn can resend the same system
+ * text and only change the user half.
+ */
+export const SYSTEM_PROMPT = `You write the minds of fighting creatures, as plain JavaScript.
+You answer with source code and nothing else — no explanation before it, no
+summary after it, no markdown fence around it. The first character of your reply
+is the first character of the program.`;
+
+/** The whole instruction for one fighter. */
+export function brainPrompt(id) {
+  const f = FIGHTERS[id];
+  const otherId = opponentOf(id);
+  return [
+    `You are the mind of the ${f.name}. Your opponent is the ${FIGHTERS[otherId].name}.`,
+    shape(),
+    world(),
+    bodyBlock(id, true),
+    skillsFor(id),
+    bodyBlock(otherId, false),
+    enemySkillsFor(id),
+    perception(),
+    verbs(),
+    HELPERS,
+    rules(),
+    OBJECTIVE,
+  ].join('\n\n---\n\n');
+}
+
+/**
+ * The same prompt, rendered with every config-derived substring bracketed, plus
+ * the (label, text) pairs that produced them.
+ *
+ * `marked` is what the checkers sweep; `plain` is byte-identical to
+ * `brainPrompt(id)` and is asserted to be, so that nothing can be true of the
+ * traced render and false of the one a model is handed.
+ */
+export function tracePrompt(id) {
+  TRACE = [];
+  try {
+    const marked = brainPrompt(id);
+    return {
+      marked,
+      plain: marked.split(MARK_IN).join('').split(MARK_OUT).join(''),
+      records: TRACE,
+    };
+  } finally {
+    TRACE = null;
+  }
+}
+
+/** The characters `tracePrompt` brackets emitted values with. */
+export const TRACE_MARKS = { in: MARK_IN, out: MARK_OUT };
+
+/**
+ * The repair turn.
+ *
+ * It quotes back the failure and nothing else. Adding "and while you are there,
+ * consider…" would be tactics arriving through the back door, and it would make
+ * a repaired brain incomparable with a first-try one.
+ */
+export function repairPrompt(id, source, failure) {
+  return `${brainPrompt(id)}
+
+---
+
+YOUR PREVIOUS ANSWER FAILED THIS CHECK:
+
+${failure}
+
+Here is what you sent:
+
+${source}
+
+Send the corrected program. Code only, same rules.`;
+}

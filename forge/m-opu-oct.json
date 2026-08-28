@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "slug": "m-opu-oct",
+  "prompt": "an armoured octopus",
+  "model": "anthropic/claude-opus-5",
+  "at": "2026-08-28T08:38:26.201Z",
+  "entry": "build",
+  "notes": [],
+  "repairs": [
+    "TypeError: Cannot read properties of undefined (reading 'valueOf')",
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 18% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has 48 tube runs, but they add up to only 3.0 body-lengths of cable. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. The harness is there — 48 runs — but only 1% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 18% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has 48 tube runs, but they add up to only 3.0 body-lengths of cable. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. The harness is there — 48 runs — but only 1% of what a viewer sees is cable. It is threaded under the armour, where it does nothing. Route it OUTSIDE: over the shoulder rather than through it, along the outside of a limb, standing clear of the body between clamps, crossing the gap at every joint where it is most visible. And open the shells up so there is somewhere for it to show.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again.",
+    "the repair attempt failed: no build function found — expected one of `build`, `createCreature`, `create`, `buildCreature`, `makeCreature`, `main`"
+  ],
+  "usage": {
+    "promptTokens": 12,
+    "completionTokens": 142321,
+    "reasoningTokens": 0,
+    "costUsd": 5.8233925
+  },
+  "effort": "high",
+  "lane": "cli",
+  "style": "machine",
+  "styleImages": 5,
+  "attempts": 3,
+  "elapsedMs": 2450558,
+  "replyBytes": 65228
+}

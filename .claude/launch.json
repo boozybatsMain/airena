@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "airena",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "serve"
+      ],
+      "port": 8787,
+      "autoPort": true
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "preview/server.mjs"
+      ],
+      "port": 8899
+    },
+    {
+      "name": "forge",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/boozybats/Public/Repos/work/Autoage/apps/client && npx vite --port 5174 --strictPort"
+      ],
+      "port": 5174
+    }
+  ]
+}

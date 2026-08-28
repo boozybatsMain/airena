@@ -1,0 +1,19 @@
+{
+  "fighter": "gorilla",
+  "model": "google/gemini-3.7-flash",
+  "effort": "off",
+  "tag": "or-gem-plain",
+  "generatedAt": "2026-08-27T15:37:04.237Z",
+  "costUsd": 0.0071577,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 3395,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

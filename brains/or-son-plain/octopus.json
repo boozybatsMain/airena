@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "anthropic/claude-sonnet-5",
+  "effort": "off",
+  "tag": "or-son-plain",
+  "generatedAt": "2026-08-27T16:17:56.570Z",
+  "costUsd": 0.1451637,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 2930,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

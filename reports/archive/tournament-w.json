@@ -1,0 +1,724 @@
+{
+  "rounds": 60,
+  "tags": [
+    "w1",
+    "w2",
+    "w3",
+    "w4",
+    "w5",
+    "w6",
+    "stub"
+  ],
+  "cells": [
+    {
+      "octopus": "w1",
+      "gorilla": "w1",
+      "octWinRate": 0.8166666666666667,
+      "drawRate": 0.05,
+      "timeoutRate": 0,
+      "seconds": 50.91766666666668,
+      "octDamage": 85.95,
+      "gorDamage": 20.266666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "w2",
+      "octWinRate": 0.6333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 24.861,
+      "octDamage": 215.55,
+      "gorDamage": 124.3,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "w3",
+      "octWinRate": 0.5166666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 23.369000000000007,
+      "octDamage": 208.8,
+      "gorDamage": 122.26666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "w4",
+      "octWinRate": 0.5166666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 22.03433333333333,
+      "octDamage": 216,
+      "gorDamage": 122.66666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "w5",
+      "octWinRate": 0.7333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 29.187,
+      "octDamage": 223.65,
+      "gorDamage": 91.2,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "w6",
+      "octWinRate": 0.5166666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 25.539500000000007,
+      "octDamage": 202.5,
+      "gorDamage": 121.43333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w1",
+      "gorilla": "stub",
+      "octWinRate": 0.5166666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 28.30216666666666,
+      "octDamage": 216.9,
+      "gorDamage": 114.96666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w1",
+      "octWinRate": 0.43333333333333335,
+      "drawRate": 0.03333333333333333,
+      "timeoutRate": 0,
+      "seconds": 39.264,
+      "octDamage": 177.3,
+      "gorDamage": 118.73333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w2",
+      "octWinRate": 0.36666666666666664,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.188166666666667,
+      "octDamage": 194.85,
+      "gorDamage": 140.96666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w3",
+      "octWinRate": 0.13333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 19.36516666666667,
+      "octDamage": 174.15,
+      "gorDamage": 151.83333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w4",
+      "octWinRate": 0.3,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 19.67383333333333,
+      "octDamage": 188.1,
+      "gorDamage": 142.16666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w5",
+      "octWinRate": 0.6333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 21.379999999999992,
+      "octDamage": 219.6,
+      "gorDamage": 117.2,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "w6",
+      "octWinRate": 0.16666666666666666,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 18.089999999999996,
+      "octDamage": 180,
+      "gorDamage": 149.8,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w2",
+      "gorilla": "stub",
+      "octWinRate": 0.18333333333333332,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 19.59416666666667,
+      "octDamage": 186.75,
+      "gorDamage": 153.16666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w1",
+      "octWinRate": 0.6333333333333333,
+      "drawRate": 0.05,
+      "timeoutRate": 0,
+      "seconds": 46.537166666666685,
+      "octDamage": 103.5,
+      "gorDamage": 56.9,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w2",
+      "octWinRate": 0.5,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 24.607333333333326,
+      "octDamage": 202.5,
+      "gorDamage": 128.73333333333332,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w3",
+      "octWinRate": 0.2,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 24.686666666666667,
+      "octDamage": 160.65,
+      "gorDamage": 140.06666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w4",
+      "octWinRate": 0.48333333333333334,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 24.3705,
+      "octDamage": 206.55,
+      "gorDamage": 127.16666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w5",
+      "octWinRate": 0.6666666666666666,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 23.791833333333333,
+      "octDamage": 209.7,
+      "gorDamage": 72.53333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "w6",
+      "octWinRate": 0.5333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 25.050500000000003,
+      "octDamage": 212.4,
+      "gorDamage": 127.13333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w3",
+      "gorilla": "stub",
+      "octWinRate": 0.4,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 29.738833333333332,
+      "octDamage": 200.25,
+      "gorDamage": 130.93333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w1",
+      "octWinRate": 0.7333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 43.043499999999995,
+      "octDamage": 184.5,
+      "gorDamage": 68.03333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w2",
+      "octWinRate": 0.4,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.7365,
+      "octDamage": 207.9,
+      "gorDamage": 139.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w3",
+      "octWinRate": 0.08333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 21.577,
+      "octDamage": 174.15,
+      "gorDamage": 150.66666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w4",
+      "octWinRate": 0.31666666666666665,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.84283333333333,
+      "octDamage": 200.7,
+      "gorDamage": 138.63333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w5",
+      "octWinRate": 0.8,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 22.64216666666667,
+      "octDamage": 229.5,
+      "gorDamage": 98.4,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "w6",
+      "octWinRate": 0.36666666666666664,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 21.547666666666665,
+      "octDamage": 195.3,
+      "gorDamage": 133.76666666666668,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w4",
+      "gorilla": "stub",
+      "octWinRate": 0.4,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 21.46033333333333,
+      "octDamage": 205.65,
+      "gorDamage": 133.03333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w1",
+      "octWinRate": 0.4,
+      "drawRate": 0.016666666666666666,
+      "timeoutRate": 0,
+      "seconds": 42.03233333333334,
+      "octDamage": 127.35,
+      "gorDamage": 103.53333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w2",
+      "octWinRate": 0.18333333333333332,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.95916666666666,
+      "octDamage": 176.85,
+      "gorDamage": 148.63333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w3",
+      "octWinRate": 0.016666666666666666,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 19.449166666666674,
+      "octDamage": 164.7,
+      "gorDamage": 157.23333333333332,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w4",
+      "octWinRate": 0.1,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 17.780666666666665,
+      "octDamage": 148.05,
+      "gorDamage": 154.53333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w5",
+      "octWinRate": 0.2833333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 22.063166666666667,
+      "octDamage": 184.05,
+      "gorDamage": 143.96666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "w6",
+      "octWinRate": 0.31666666666666665,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.64716666666666,
+      "octDamage": 193.05,
+      "gorDamage": 145.23333333333332,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w5",
+      "gorilla": "stub",
+      "octWinRate": 0.25,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 22.37916666666666,
+      "octDamage": 198.45,
+      "gorDamage": 144.16666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w1",
+      "octWinRate": 0.6333333333333333,
+      "drawRate": 0.016666666666666666,
+      "timeoutRate": 0,
+      "seconds": 28.628499999999995,
+      "octDamage": 204.75,
+      "gorDamage": 102.76666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w2",
+      "octWinRate": 0.43333333333333335,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.437166666666666,
+      "octDamage": 198,
+      "gorDamage": 126.36666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w3",
+      "octWinRate": 0.3,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 18.987333333333336,
+      "octDamage": 183.6,
+      "gorDamage": 141.5,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w4",
+      "octWinRate": 0.5833333333333334,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.75283333333334,
+      "octDamage": 213.3,
+      "gorDamage": 113.13333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w5",
+      "octWinRate": 0.8833333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 22.121666666666663,
+      "octDamage": 234,
+      "gorDamage": 67.83333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "w6",
+      "octWinRate": 0.45,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 20.81216666666666,
+      "octDamage": 206.1,
+      "gorDamage": 121.4,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "w6",
+      "gorilla": "stub",
+      "octWinRate": 0.5,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 21.5285,
+      "octDamage": 211.95,
+      "gorDamage": 122.26666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w1",
+      "octWinRate": 0.016666666666666666,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 15.077000000000002,
+      "octDamage": 150.75,
+      "gorDamage": 153.23333333333332,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w2",
+      "octWinRate": 0.13333333333333333,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 14.708500000000003,
+      "octDamage": 149.4,
+      "gorDamage": 148.06666666666666,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w3",
+      "octWinRate": 0.06666666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 15.220833333333333,
+      "octDamage": 148.5,
+      "gorDamage": 152.46666666666667,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w4",
+      "octWinRate": 0,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 12.758,
+      "octDamage": 122.4,
+      "gorDamage": 154.2,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w5",
+      "octWinRate": 0.06666666666666667,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 16.514166666666664,
+      "octDamage": 170.55,
+      "gorDamage": 152.63333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "w6",
+      "octWinRate": 0.16666666666666666,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 15.451166666666667,
+      "octDamage": 160.65,
+      "gorDamage": 143.03333333333333,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    },
+    {
+      "octopus": "stub",
+      "gorilla": "stub",
+      "octWinRate": 0.45,
+      "drawRate": 0,
+      "timeoutRate": 0,
+      "seconds": 16.547000000000008,
+      "octDamage": 189.45,
+      "gorDamage": 114.93333333333334,
+      "faults": {
+        "octopus": 0,
+        "gorilla": 0
+      }
+    }
+  ],
+  "mechanicsOctWinRate": 0.4462962962962964,
+  "meanSeconds": 25.221518518518522,
+  "meanTimeoutRate": 0,
+  "octStrength": {
+    "w1": 0.6071428571428571,
+    "w2": 0.3166666666666666,
+    "w3": 0.4880952380952381,
+    "w4": 0.4428571428571428,
+    "w5": 0.22142857142857145,
+    "w6": 0.5404761904761906,
+    "stub": 0.12857142857142856
+  },
+  "gorStrength": {
+    "w1": 0.4761904761904762,
+    "w2": 0.6214285714285713,
+    "w3": 0.8119047619047619,
+    "w4": 0.6714285714285714,
+    "w5": 0.41904761904761906,
+    "w6": 0.6404761904761903,
+    "stub": 0.6142857142857142
+  },
+  "octSpread": 0.3857142857142857,
+  "gorSpread": 0.39285714285714285,
+  "wallSeconds": 230.431
+}

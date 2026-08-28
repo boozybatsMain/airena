@@ -1,0 +1,13 @@
+{
+  "prompt": "an armoured octopus",
+  "model": "anthropic/claude-opus-5",
+  "style": "machine",
+  "promptTokens": 19710,
+  "completionTokens": 34067,
+  "reasoningTokens": 0,
+  "planTokens": 34067,
+  "planChars": 77879,
+  "costUsd": 0.94072275,
+  "elapsedMs": 509164,
+  "at": "2026-08-28T09:57:42.047Z"
+}

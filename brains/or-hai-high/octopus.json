@@ -1,0 +1,19 @@
+{
+  "fighter": "octopus",
+  "model": "anthropic/claude-haiku-4.5",
+  "effort": "high",
+  "tag": "or-hai-high",
+  "generatedAt": "2026-08-27T15:41:52.213Z",
+  "costUsd": 0.06326199,
+  "attempts": [
+    {
+      "attempt": 0,
+      "chars": 1877,
+      "ok": true
+    }
+  ],
+  "accepted": {
+    "attempt": 0
+  },
+  "via": "openrouter"
+}

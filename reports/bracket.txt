@@ -1,0 +1,16 @@
+
+═══ the balance bracket — octopus win rate under the current constants
+
+  reports/brains-h   (strong kiters)   61%   26.4s  melee 26%  hit L78%/S46%/C23%
+                      told a different world — 6 constants moved since
+  reports/brains-i   (ordinary     )   28%   24.0s  melee 34%  hit L78%/S48%/C32%
+                      told a different world — 6 constants moved since
+  brains             (shipping     )   70%   25.8s  melee 23%  hit L86%/S33%/C18%
+                      told this world
+
+  bracket 28% … 70%, median 61%
+  [1] pass — the extremes sit either side of even
+  [2] FAIL — the median population is 11.3 points from even, outside the 10-point tolerance
+
+  BROKEN — criterion [1] alone is one-sided and is not the claim; both must pass
+

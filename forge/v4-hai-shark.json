@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "slug": "v4-hai-shark",
+  "prompt": "a shark with sharp teeth",
+  "model": "anthropic/claude-haiku-4.5",
+  "at": "2026-08-28T06:24:17.845Z",
+  "entry": "build",
+  "notes": [
+    "stripped a markdown code fence"
+  ],
+  "repairs": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 1% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has only 0 tube runs. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. A single CapsuleGeometry is 52% of this body's whole surface. No body section may be one primitive — a torso or a leading end is four to eight intersecting volumes that change section along their length, with a readable shoulder line where planes meet.\n\n4. Only 0% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\n5. This body carries only 0 genuinely small parts — anything under a fortieth of its length counts, which is the size of a bolt head or a clamp. A machine of this scale needs hundreds: a bolt head round every flange, a clamp everywhere a hose passes a frame member, connectors, blanking plates, junction boxes, hinge pins, cable ties, grab handles, vent grilles. They are what give it scale and make it look expensive. Add them as their own pass over the finished body, and do not spend the budget enlarging the parts that are already there.\n\n6. Only 24 parts on this body carry a .name. A body at this scale should be built from many small named pieces — a limb is a dozen, the head is the busiest section of all. Every meaningful part needs its own named Object3D: the game severs organs and grows new ones by name, and an unnamed part cannot be shot off or replaced.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again.",
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. Only 21% of this body is flat machined faces; the rest is spheres, cylinders and capsules. Hard-surface metal is roughly two thirds flat faces meeting at chamfered edges. Rebuild the large masses as ExtrudeGeometry plates with bevelEnabled, and keep the round primitives for joints, housings and hoses.\n\n2. This body has only 10 tube runs. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\n3. Only 0% of what a viewer sees is small hardware. Bolt heads, clamps and connectors have to sit ON the outer faces of the shells and along their edges where they are looked at — not tucked into the frame underneath, where they cost geometry and show nothing.\n\n4. This body carries only 16 genuinely small parts — anything under a fortieth of its length counts, which is the size of a bolt head or a clamp. A machine of this scale needs hundreds: a bolt head round every flange, a clamp everywhere a hose passes a frame member, connectors, blanking plates, junction boxes, hinge pins, cable ties, grab handles, vent grilles. They are what give it scale and make it look expensive. Add them as their own pass over the finished body, and do not spend the budget enlarging the parts that are already there.\n\n5. This body has small hardware — 0.1% of what the eight survey angles see is greeble — but NONE of it is visible from where the player actually watches the fight. The arena camera sits at 36 degrees above the horizon and never moves; the top surfaces and the upward-facing shoulders of this body are the only thing on screen for the whole match, and they are bare. Move the bolt heads, clamps, vents, hatches and panel joins onto the surfaces that face UP and UP-FORWARD. Detail that only reads from a side elevation is detail nobody is paying for.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "unresolved": [
+    "The body builds and runs, but it breaks the house style in ways that are measurable on the geometry:\n\n1. This body has 16 tube runs, but they add up to only 4.3 body-lengths of cable. A harness is at least fifteen runs totalling five times the body's own length — thick corrugated hoses and thin wire together, each one long enough to travel: out of a port, down the neck or along the spine, over a shoulder, into a hip, behind a knee, and into another port. Short stubs do not count. Build it as its own pass over the finished body, as TubeGeometry along CatmullRomCurve3.\n\nKeep everything that is already right — the subject, the anatomy, the parts and their names — and fix only these. Send the whole build function again."
+  ],
+  "usage": {
+    "promptTokens": 30,
+    "completionTokens": 52839,
+    "reasoningTokens": 0,
+    "costUsd": 0.3409856
+  },
+  "effort": "high",
+  "lane": "cli",
+  "style": "raw",
+  "styleImages": 0,
+  "attempts": 3,
+  "elapsedMs": 439746,
+  "replyBytes": 28895
+}

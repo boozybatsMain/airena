@@ -1,0 +1,517 @@
+<title>Airena UI Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+
+<style>
+/* ── Airena UI Kit ─────────────────────────────────────────────────────────
+   Все элементы боевого HUD с вариациями — от атомов до контейнеров.
+   Эталон живого применения: src/viewer/index.html (+ hud-skin.js) и его
+   макет-источник preview/arena.html. См. SPEC.md §10.6 о том, как к эталону
+   относиться. Генератор рамок канонично живёт в src/viewer/hud-skin.js;
+   здесь — его копия, чтобы кит был самодостаточным. */
+:root{
+  --oct:#4fc8dc; --gor:#e2904e; --ink:#e8f1f7; --dim:#93a5b4;
+  --name-cy:#74c6d4; --name-or:#cf854a; --red:#e04c3c;
+  --panel:rgba(10,18,28,.18); --shadow:rgba(8,15,24,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#10151f;color:var(--ink);
+  font-family:"Rajdhani",sans-serif;font-weight:500;font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased}
+.page{max-width:1180px;margin:0 auto;padding:36px 28px 80px}
+h1{font-size:30px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:#9fd2de;margin:0 0 6px}
+.note{max-width:860px;color:#aebccb;font-size:14.5px;margin:0 0 34px}
+.note b{color:#cfe0ea}
+.note code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#9fd2de}
+
+h2{font-size:16px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+  color:#74b4c6;margin:44px 0 4px;display:flex;align-items:baseline;gap:10px}
+h2::before{content:"//";color:rgba(116,180,198,.85)}
+.sub{color:var(--dim);font-size:13px;margin:0 0 14px}
+.sub code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8fc6d4}
+
+.grid{display:flex;flex-wrap:wrap;gap:14px}
+.cell{background:#151b28;border:1px solid #232c3c;border-radius:6px;
+  padding:16px 16px 10px;display:flex;flex-direction:column;gap:10px;
+  align-items:flex-start;min-width:150px}
+.cell.light{background:linear-gradient(160deg,#c9ced6,#e6e9ee)}
+.cell .cap{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:#7d8 da0;
+  color:#7d8da0;text-transform:uppercase;margin-top:auto}
+.cell.light .cap{color:#5a6674}
+.cell .cap code{font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  text-transform:none;letter-spacing:0}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+
+/* палитра */
+.sw{width:118px;height:64px;border-radius:5px;display:flex;align-items:flex-end;
+  padding:6px 8px;font-size:11px;font-weight:600;letter-spacing:.04em;
+  font-family:ui-monospace,Menlo,monospace}
+
+/* типографика */
+.tp{display:flex;flex-direction:column;gap:12px}
+.tp>div{display:flex;align-items:baseline;gap:18px}
+.tp .lab{width:270px;color:var(--dim);font-size:12px;
+  font-family:ui-monospace,Menlo,monospace}
+
+/* элементы HUD (копии боевых стилей) */
+.k-name{font-size:24px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--name-cy);text-shadow:0 0 16px rgba(95,180,200,.35),0 0 5px rgba(95,180,200,.2)}
+.k-name.or{color:var(--name-or);text-shadow:0 0 16px rgba(210,140,75,.32),0 0 5px rgba(210,140,75,.2)}
+.k-sub{font-size:11px;color:var(--dim);letter-spacing:.06em}
+.k-clock{font-size:44px;font-weight:600;letter-spacing:.04em;line-height:1;
+  font-variant-numeric:tabular-nums;color:#eef6fa}
+.k-clocksub{margin-top:6px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.k-clocksub.burning{font-size:15px;font-weight:700;color:#ff6a52;
+  text-shadow:0 0 14px rgba(255,106,82,.75)}
+.k-pct{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:#77c9d7;
+  text-shadow:0 0 12px rgba(95,180,200,.3)}
+.k-pct.or{color:var(--name-or);text-shadow:0 0 12px rgba(210,140,75,.25)}
+
+.hp{position:relative;width:330px;height:16px}
+.hp::before{content:"";position:absolute;inset:0;
+  clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);
+  background:var(--panel)}
+.hp.mir::before{clip-path:polygon(0 0,calc(100% - 5px) 0,100% 100%,5px 100%)}
+.hp>i{position:absolute;inset:0 auto 0 0;display:block;
+  clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);
+  background-image:linear-gradient(90deg,
+    #5896a8 0,#5896a8 66px,#68aabc 66px,#68aabc 132px,
+    #76bed0 132px,#76bed0 198px,#82cee2 198px,#82cee2 264px,
+    #8cdbef 264px,#8cdbef 330px);
+  background-size:330px 100%;background-position:left center;background-repeat:no-repeat;
+  filter:drop-shadow(0 0 5px rgba(110,205,228,.5))}
+.hp.flat>i{background-image:linear-gradient(180deg,#8ad4e4,#5fb7c9)}
+.hp.mir>i{left:auto;right:0;
+  clip-path:polygon(0 0,calc(100% - 5px) 0,100% 100%,5px 100%);
+  background-image:linear-gradient(90deg,
+    #e28642 0,#e28642 66px,#d47b3d 66px,#d47b3d 132px,
+    #c26f38 132px,#c26f38 198px,#ac6231 198px,#ac6231 264px,
+    #965429 264px,#965429 330px);
+  background-position:right center;
+  filter:drop-shadow(0 0 5px rgba(226,140,70,.45))}
+.hp::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:var(--wf,none);background-size:100% 100%}
+
+.np{display:flex;flex-direction:column;align-items:center;gap:4px;width:130px}
+.np .n{font-size:12.5px;font-weight:500;letter-spacing:.1em;color:#cff5fc;
+  text-shadow:0 1px 2px rgba(5,10,16,.6);text-transform:uppercase}
+.np .b{width:118px;height:5px;background:rgba(6,12,20,.75);
+  border:1px solid rgba(0,0,0,.5);display:flex;overflow:hidden}
+.np .b .f{height:100%;background:var(--oct)}
+.np .b.r2{height:4px;border-color:transparent;background:transparent}
+.np .b.r2 .f{background:var(--red)}
+.np .b.cast{height:4px}
+.np .b.cast .f{background:#ff4d3d}
+.np .lab{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:#ff8f7f;text-shadow:0 1px 3px #000}
+
+.cd{position:relative;min-width:52px;height:34px;padding:2px 9px 0;
+  display:grid;place-items:center;border-radius:3px;
+  font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--panel);background-image:var(--wf,none);background-size:100% 100%}
+.cd.cy{color:var(--oct)} .cd.or{color:var(--gor)}
+.cd.cool{color:#7d8b98;opacity:.75}
+.slot{position:relative;width:50px;height:50px;display:grid;place-items:center;
+  border-radius:3px;background:var(--panel);
+  background-image:var(--wf,none);background-size:100% 100%}
+.slot svg{width:29px;height:29px;fill:#7fd0dd;opacity:.92}
+.slot.or svg{fill:#dd9c62}
+.slot.count{color:#e6eef4;font-size:19px;font-weight:500}
+.deadrow{filter:grayscale(1);opacity:.45;display:flex;gap:7px}
+
+.hcut{position:relative;display:flex;align-items:center;gap:10px;font-size:15px;
+  font-weight:600;letter-spacing:.16em;color:#74b4c6;white-space:nowrap;
+  text-transform:uppercase}
+.hcut::before{content:"//";letter-spacing:.05em;color:rgba(116,180,198,.85)}
+.hcut svg{position:absolute;left:0;top:0;width:400px;height:40px;pointer-events:none}
+.hunder{width:236px;height:1px;margin-top:8px;
+  background:linear-gradient(90deg,rgba(127,210,226,.5) 0 62%,rgba(127,210,226,.18))}
+
+.feedrow{display:grid;grid-template-columns:44px 24px 112px 1fr;gap:10px;
+  align-items:center;white-space:nowrap;width:380px}
+.feedrow .tm{font-size:14px;font-variant-numeric:tabular-nums;color:#adbac4}
+.feedrow .ic svg{width:16px;height:16px}
+.feedrow .who{font-size:14px;font-weight:500;letter-spacing:.05em;color:#5db4c6}
+.feedrow .who.or{color:#cf854a}
+.feedrow .what{font-size:14px;color:#dde6ec;letter-spacing:.04em}
+
+.panel{position:relative;width:300px;height:200px}
+.panel .bg{position:absolute;inset:0;background:var(--panel);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.panel .fr{position:absolute;inset:0;pointer-events:none;
+  background-image:var(--wf,none);background-size:100% 100%}
+.panel .in{position:absolute;inset:0;padding:17px 22px}
+.panel .prow{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0 0}
+.panel .k{font-size:13.5px;font-weight:500;letter-spacing:.08em;color:#b6c3cf;text-transform:uppercase}
+.panel .v{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:#6fd0e0}
+
+.blob{position:relative;width:260px;height:120px}
+.blob::before{content:"";position:absolute;inset:8px;
+  background:var(--shadow);border-radius:18px;filter:blur(20px)}
+.blob span{position:relative;display:block;padding:34px 0 0 24px;color:#e8eef4}
+
+.say{display:inline-block;background:rgba(10,17,26,.88);border:1px solid var(--oct);
+  color:var(--oct);padding:3px 10px;font-size:12.5px;font-weight:600;letter-spacing:.04em}
+.dmg{font-size:15px;font-weight:700;color:var(--gor);text-shadow:0 1px 4px #000c}
+
+.ctl{display:flex;gap:9px;align-items:center;padding:8px 16px;
+  background:linear-gradient(90deg,rgba(14,22,34,0),rgba(14,22,34,.6) 12%,
+    rgba(14,22,34,.6) 88%,rgba(14,22,34,0))}
+.ctl label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);white-space:nowrap}
+.ctl input,.ctl button,.ctl select{font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--ink);background:rgba(16,26,38,.8);border:1px solid rgba(120,180,205,.28);
+  padding:5px 9px;white-space:nowrap}
+.ctl input{width:8ch}
+.ctl .accent{color:#9fe3f0;border-color:rgba(79,200,220,.5)}
+
+.banner{text-align:center;background:rgba(8,14,22,.85);
+  border:1px solid rgba(120,180,205,.25);padding:20px 44px;display:inline-block}
+.banner .who{font-size:38px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--oct)}
+.banner .why{font-size:12px;color:#c9d4dd;letter-spacing:.26em;
+  text-transform:uppercase;margin-top:8px}
+.emblem{width:110px;height:110px}
+</style>
+
+<div class="page">
+<h1>Airena UI Kit</h1>
+<p class="note">
+  Полный набор элементов боевого HUD — атомы, состояния и контейнеры.
+  Живой эталон применения: <b>боевой экран вьювера</b>
+  (<code>src/viewer/index.html</code> + <code>src/viewer/hud-skin.js</code>) и его
+  макет-источник <code>preview/arena.html</code> — они прошли ручное поэлементное
+  ревью и утверждены визуально. Ориентируйся на них по типографике, палитре,
+  износу и компоновке, но помни: эталон покрывает HUD боя, а не всё на свете —
+  подробнее в <code>SPEC.md §10.6</code>. Генератор прошорканных рамок канонично
+  живёт в <code>src/viewer/hud-skin.js</code> (<code>wornTex</code>); здесь — его копия.
+</p>
+
+<h2>Палитра</h2>
+<p class="sub">Команды: циан/оранж. Текст всегда приглушён относительно чистого акцента; подложки почти прозрачные.</p>
+<div class="row" id="swatches"></div>
+
+<h2>Типографика — Rajdhani</h2>
+<p class="sub">Один гарнитур на всё; цифры с <code>font-variant-numeric: tabular-nums</code>. Никакого text-shadow для контраста — читаемость дают тени-подложки; свечение только у имён/процентов.</p>
+<div class="cell" style="align-self:stretch;width:100%"><div class="tp">
+  <div><span class="lab">имя · 24/500 · ls .1em + glow</span><span class="k-name">Octopus</span><span class="k-name or">Gorilla</span></div>
+  <div><span class="lab">таймер · 44/600 · tabular</span><span class="k-clock">01:42</span></div>
+  <div><span class="lab">сабтитр · 12/500 · ls .16em</span><span class="k-clocksub">seed 483634 · sudden death in 8s</span></div>
+  <div><span class="lab">sudden death · 15/700 · пульс</span><span class="k-clocksub burning">SUDDEN DEATH −1.2% / s</span></div>
+  <div><span class="lab">заголовок панели · 15/600 · ls .16em</span><span class="hcut">Arena Feed</span></div>
+  <div><span class="lab">процент/значение · 600 · tabular</span><span class="k-pct">87%</span><span class="k-pct or">73%</span></div>
+  <div><span class="lab">мета · 11/500</span><span class="k-sub">or-opu-plain · anthropic/claude-opus-5/off · 7897 chars</span></div>
+</div></div>
+
+<h2>Мел-рамки — генератор wornTex</h2>
+<p class="sub">
+  Контур «мелом, который плохо пишет»: яркость и толщина дышат по длине дуги
+  (два медленных синуса), затем эрозия царапинами и вытертыми пятнами.
+  Параметры: <code>seed</code> (у каждого элемента свой — износ не повторяется),
+  <code>base</code> толщина, <code>jitter</code> разброс, <code>ticks</code> засечки,
+  <code>open</code> для скобок/линий. Формы задаются полилиниями.
+</p>
+<div class="grid" id="frames"></div>
+
+<h2>Эмблемы</h2>
+<p class="sub">Плита 130×130: фон <code>rgba(10,18,28,.18)</code>, срез одного угла (у правой карточки зеркально), глиф в цвет имени (<code>brightness(.85) saturate(.6)</code>), тонированные царапины <code>/assets/grunge-cy|or.png</code>, штриховка в углу, мел-рамка сверху. Ассеты: <code>preview/assets/</code>, генерация — fal.</p>
+<div class="grid" id="emblems"></div>
+
+<h2>HP-бары</h2>
+<p class="sub">Параллелограмм с обоих концов (скос 5px), заливка стадиями по 20% — у начала шкалы темнее, к текущему HP ярче; наклонные делители в мел-рамке; свечение <code>drop-shadow</code> от заливки. Зеркальный вариант: заливка прижата к эмблеме.</p>
+<div class="grid" id="bars"></div>
+
+<h2>Слоты и кулдауны</h2>
+<p class="sub">Плитка 50×50 (иконка/счётчик) и кулдаун-чип 52×34 (текст скилла + секунды). Состояния: ready (цвет команды), cool (серый, .75), мёртвый ряд (<code>grayscale + opacity .45</code>).</p>
+<div class="grid" id="slots"></div>
+
+<h2>Заголовки-гребёнки</h2>
+<p class="sub">«// ТЕКСТ»; у ленты — единая линия: подчерк по ширине текста, полка на середине букв вплотную к тексту, горка вниз на высоту подчерка, длинный прогон, разрыв, уголок с 45°-стрелкой. У панелей — короткая линия под заголовком.</p>
+<div class="grid" id="headers"></div>
+
+<h2>Лента событий</h2>
+<p class="sub">Колонки 44/24/112/1fr, без плашек и разделителей; тень-подложка сильнее над первыми колонками, слабее и ниже над действиями. Иконки по типу события.</p>
+<div class="grid" id="feeds"></div>
+
+<h2>Панели</h2>
+<p class="sub">Фон как у всех элементов + <code>backdrop-blur</code>, срез верхнего правого угла, мел-скобки по углам с разрывами на серединах кромок, единственная линия — под заголовком. Позади — мягкая тень-подложка.</p>
+<div class="grid" id="panels"></div>
+
+<h2>Оверлеи мира</h2>
+<p class="sub">Неймплейт (hp + красная подполоска у урона + cast-бар с подписью), реплика say(), цифра урона. Всё поверх сцены, без плашек.</p>
+<div class="grid" id="overlays"></div>
+
+<h2>Контролы и банер</h2>
+<p class="sub">Управление в полупрозрачной ленте с растворёнными краями; кнопка действия — акцентная рамка. Банер исхода: имя цветом победителя.</p>
+<div class="grid">
+  <div class="cell" style="width:100%">
+    <div class="ctl">
+      <label>octopus</label><select><option>or-opu-plain</option></select>
+      <label>speed</label><select><option>1x</option></select>
+      <label>seed</label><input placeholder="random">
+      <button class="accent">Fight</button>
+      <label><input type="checkbox" style="width:auto"> loop</label>
+      <button>Camera: auto</button>
+    </div>
+    <div class="cap">#controls — селекты/инпуты/кнопки, Rajdhani 13/600</div>
+  </div>
+  <div class="cell"><div class="banner"><div class="who">octopus wins</div><div class="why">gorilla ran out of health</div></div>
+    <div class="cap">#banner .who/.why</div></div>
+</div>
+
+<h2>Тени-подложки и виньетка</h2>
+<p class="sub">Читаемость на светлом полу дают не плашки, а мягкие размытые пятна позади блоков (<code>blur 20–26px</code>, форма следует контенту). Поверх всего экрана — виньетка: радиальное затемнение краёв + градиенты сверху/снизу.</p>
+<div class="grid">
+  <div class="cell light"><div class="blob"><span>текст поверх пятна</span></div>
+    <div class="cap">rgba(8,15,24,.36–.5) + blur — на светлом полу</div></div>
+</div>
+</div>
+
+<script>
+/* ── копия генератора из src/viewer/hud-skin.js ── */
+const mulberry=(seed)=>()=>{seed|=0;seed=(seed+0x6D2B79F5)|0;
+  let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;
+  return((t^(t>>>14))>>>0)/4294967296};
+function wornTex(w,h,seed,color,shapes,opts={}){
+  const jitter=opts.jitter===undefined?1.05:opts.jitter;
+  const tickN=opts.ticks===undefined?3:opts.ticks;
+  const S=2,c=document.createElement('canvas');c.width=w*S;c.height=h*S;
+  const g=c.getContext('2d');g.scale(S,S);
+  const rnd=mulberry(seed);const base=opts.base||1.15;g.lineCap='round';
+  const f1=.045+rnd()*.03,f2=.011+rnd()*.009,ph1=rnd()*7,ph2=rnd()*7;
+  let arc=rnd()*40;
+  for(const pts of shapes){
+    const closed=opts.open?0:1;
+    for(let i=0;i<pts.length-1+closed;i++){
+      const a=pts[i],b=pts[(i+1)%pts.length];
+      const len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      const steps=Math.max(1,Math.round(len/4));
+      for(let k=0;k<steps;k++){
+        const t0=k/steps,t1=(k+1)/steps;arc+=len/steps;
+        const n=(0.5+0.5*Math.sin(arc*f1+ph1))*(0.5+0.5*Math.sin(arc*f2+ph2));
+        const alpha=.14+.72*Math.pow(n,1.5)+rnd()*.08;
+        const wdt=base*(.55+.45*n+rnd()*.12*jitter);
+        const x0=a[0]+(b[0]-a[0])*t0,y0=a[1]+(b[1]-a[1])*t0;
+        const x1=a[0]+(b[0]-a[0])*t1,y1=a[1]+(b[1]-a[1])*t1;
+        g.strokeStyle=`rgba(${color},${alpha.toFixed(2)})`;g.lineWidth=wdt;
+        g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+        if(rnd()<.4){
+          const nx=-(y1-y0),ny=(x1-x0),nl=Math.hypot(nx,ny)||1,off=(rnd()-.5)*1.2;
+          g.strokeStyle=`rgba(${color},${(alpha*.3).toFixed(2)})`;g.lineWidth=wdt*.55;
+          g.beginPath();g.moveTo(x0+nx/nl*off,y0+ny/nl*off);g.lineTo(x1+nx/nl*off,y1+ny/nl*off);g.stroke();
+        }
+      }
+    }
+    for(let i=0;i<tickN+rnd()*tickN;i++){
+      const si=Math.floor(rnd()*(pts.length-1));
+      const a=pts[si],b=pts[si+1]||pts[0];
+      const t=rnd(),len=Math.hypot(b[0]-a[0],b[1]-a[1])||1;
+      const nx=-(b[1]-a[1])/len,ny=(b[0]-a[0])/len;
+      const px=a[0]+(b[0]-a[0])*t,py=a[1]+(b[1]-a[1])*t;
+      g.strokeStyle=`rgba(${color},${(.3+rnd()*.35).toFixed(2)})`;g.lineWidth=.9;
+      g.beginPath();g.moveTo(px-nx*2.2,py-ny*2.2);g.lineTo(px+nx*2.2,py+ny*2.2);g.stroke();
+    }
+  }
+  g.globalCompositeOperation='destination-out';
+  const n=Math.round((w+h)/4.5);
+  for(let i=0;i<n;i++){
+    const x=rnd()*w,y=rnd()*h;
+    const ang=(rnd()<.7?-.6:.9)+(rnd()-.5)*.7,len=5+rnd()*34;
+    g.strokeStyle=`rgba(0,0,0,${(.15+rnd()*.4).toFixed(2)})`;g.lineWidth=.3+rnd()*.9;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(ang)*len,y+Math.sin(ang)*len);g.stroke();
+  }
+  for(let i=0;i<5+rnd()*5;i++){
+    const x=rnd()*w,y=rnd()*h,r=3+rnd()*9;
+    const gr=g.createRadialGradient(x,y,0,x,y,r);
+    gr.addColorStop(0,`rgba(0,0,0,${(.25+rnd()*.35).toFixed(2)})`);
+    gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();
+  }
+  g.globalCompositeOperation='source-over';
+  return c.toDataURL();
+}
+const rectPts=(w,h,r,cut,cutAt)=>{
+  const p=[];const C=(x,y)=>p.push([x,y]);
+  if(cutAt==='br'){C(r,.8);C(w-r,.8);C(w-.8,r);C(w-.8,h-cut);C(w-cut,h-.8);C(r,h-.8);C(.8,h-r);C(.8,r)}
+  else if(cutAt==='bl'){C(r,.8);C(w-r,.8);C(w-.8,r);C(w-.8,h-r);C(w-r,h-.8);C(cut,h-.8);C(.8,h-cut);C(.8,r)}
+  else if(cutAt==='tr'){C(r,.8);C(w-cut,.8);C(w-.8,cut);C(w-.8,h-r);C(w-r,h-.8);C(r,h-.8);C(.8,h-r);C(.8,r)}
+  else{C(r,.8);C(w-r,.8);C(w-.8,r);C(w-.8,h-r);C(w-r,h-.8);C(r,h-.8);C(.8,h-r);C(.8,r)}
+  return p;
+};
+const CY='141,205,224',OR='224,164,106',NE='170,195,210';
+const cell=(parent,inner,cap,light)=>{
+  const d=document.createElement('div');
+  d.className='cell'+(light?' light':'');
+  d.innerHTML=inner+`<div class="cap">${cap}</div>`;
+  document.getElementById(parent).appendChild(d);
+  return d;
+};
+const frameImg=(w,h,url)=>`<img width="${w}" height="${h}" src="${url}" style="display:block">`;
+
+/* палитра */
+{
+  const sw=[['#4fc8dc','--oct акцент'],['#74c6d4','имя cyan'],['#e2904e','--gor акцент'],
+    ['#cf854a','имя orange'],['#e8f1f7','--ink'],['#93a5b4','--dim'],
+    ['#e04c3c','--red урон/каст'],['rgba(10,18,28,.18)','подложка .18'],
+    ['rgba(8,15,24,.5)','тень-блоб .5']];
+  for(const [c,l] of sw){
+    const d=document.createElement('div');d.className='sw';
+    d.style.background=c;
+    d.style.color=(c==='#e8f1f7')?'#333':'#dfe9f0';
+    d.textContent=l;
+    document.getElementById('swatches').appendChild(d);
+  }
+}
+
+/* мел-рамки: вариации форм и параметров */
+{
+  const F=(shapes,opts,seed,color)=>wornTex(150,90,seed,color,shapes,opts);
+  cell('frames',frameImg(150,90,F([rectPts(150,90,4,0,'')],{},7,CY)),'закрытый прямоугольник · seed 7');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,4,0,'')],{},77,CY)),'тот же, seed 77 — износ другой');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,7,26,'br')],{},11,CY)),'срез нижнего правого · <code>cutAt:br</code>');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,7,26,'bl')],{},47,OR)),'зеркальный срез · оранж');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,4,18,'tr')],{},99,CY)),'срез верхнего правого · <code>tr</code>');
+  cell('frames',frameImg(150,90,F([
+    [[0.8,26],[0.8,0.8],[38,0.8]],[[112,0.8],[135,0.8],[149,15],[149,34]],
+    [[0.8,64],[0.8,89],[36,89]],[[116,89],[149,89],[149,58]],
+  ],{open:true,base:1.2,jitter:.5,ticks:1},137,CY)),'только скобки углов · <code>open:true</code>');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,3.5,0,'')],{base:.72,jitter:.5,ticks:1},203,CY)),'тонкая аккуратная · base .72');
+  cell('frames',frameImg(150,90,F([rectPts(150,90,4,0,'')],{base:1.6,jitter:1.2},301,OR)),'грубее · base 1.6 jitter 1.2');
+  cell('frames',frameImg(150,90,F([[[10,45],[140,45]]],{open:true,base:1.25,jitter:.45,ticks:0},313,CY)),'открытая линия · ticks 0');
+}
+
+/* эмблемы */
+{
+  const emb=(glyph,color,cut,seed,grunge,filter)=>`
+    <svg class="emblem" viewBox="0 0 130 130">
+      <defs><clipPath id="k${seed}"><path d="${cut==='br'
+        ?'M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z'
+        :'M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z'}"/></clipPath></defs>
+      <path d="${cut==='br'
+        ?'M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z'
+        :'M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z'}"
+        fill="rgba(10,18,28,.18)"/>
+      ${glyph?`<image href="${glyph}" x="${cut==='br'?10:-8}" y="${cut==='br'?7:-14}"
+        width="${cut==='br'?110:146}" height="${cut==='br'?110:146}"
+        clip-path="url(#k${seed})" style="filter:${filter}"/>`:''}
+      <image href="${grunge}" x="0" y="0" width="130" height="130"
+        clip-path="url(#k${seed})" opacity=".3" preserveAspectRatio="xMidYMid slice"/>
+      <image class="kwf" data-seed="${seed}" data-color="${color}" data-cut="${cut}"
+        x="0" y="0" width="130" height="130"/>
+    </svg>`;
+  cell('emblems',emb('/assets/emblem-laser.png',CY,'br',11,'/assets/grunge-cy.png','brightness(.85) saturate(.6)'),'полная плита · осьминог');
+  cell('emblems',emb('/assets/emblem-gorilla2.png',OR,'bl',47,'/assets/grunge-or.png','grayscale(1) contrast(2.2) brightness(1.08) sepia(1) saturate(4.6) hue-rotate(-16deg)'),'полная плита · горилла, зеркальный срез');
+  cell('emblems',emb(null,CY,'br',63,'/assets/grunge-cy.png',''),'пустая плита — под новый глиф');
+  for(const el of document.querySelectorAll('.kwf')){
+    el.setAttribute('href',wornTex(130,130,Number(el.dataset.seed),el.dataset.color,
+      [rectPts(130,130,7,26,el.dataset.cut)]));
+  }
+}
+
+/* бары */
+{
+  const wf=(mir,seed)=>{
+    const divs=[];for(const x of [66,132,198,264])
+      divs.push(mir?[[x-2.5,0],[x+2.5,16]]:[[x+2.5,0],[x-2.5,16]]);
+    return wornTex(330,16,seed,mir?'230,168,100':'150,210,225',
+      [mir?[[.6,.6],[325,.6],[329.4,15.4],[5.4,15.4]]:[[5,.6],[329.4,.6],[324.6,15.4],[.6,15.4]],...divs],
+      {base:1,jitter:.6,ticks:2});
+  };
+  const bar=(mir,w,extra)=>`<div style="display:flex;gap:14px;align-items:center${mir?';flex-direction:row-reverse':''}">
+    <div class="hp${mir?' mir':''}${extra||''}" data-mir="${mir?1:0}"><i style="width:${w}"></i></div>
+    <span class="k-pct${mir?' or':''}">${w==='100%'?'100%':w==='30%'?'30%':mir?'73%':'87%'}</span></div>`;
+  cell('bars',bar(false,'87%'),'левый · 87% · стадии+делители+свечение');
+  cell('bars',bar(true,'73%'),'зеркальный · заливка к эмблеме');
+  cell('bars',bar(false,'100%'),'полный');
+  cell('bars',bar(false,'30%'),'на исходе — видна тёмная стадия');
+  cell('bars',`<div class="hp" data-mir="0"></div>`,'пустой контейнер');
+  cell('bars',bar(false,'87%',' flat'),'вариант без стадий — для второстепенных шкал');
+  let i=0;
+  for(const el of document.querySelectorAll('#bars .hp')){
+    el.style.setProperty('--wf',`url(${wf(el.dataset.mir==='1',23+i*31)})`);i++;
+  }
+}
+
+/* слоты */
+{
+  const icons={
+    blades:'<path d="M4 3 L13 14.5 12 17 8.5 13.5 Z M20 3 L11 14.5 12 17 15.5 13.5 Z M6.2 17.8 l2-2 1.3 1.3 -2 2 Z M17.8 17.8 l-2-2 -1.3 1.3 2 2 Z M11.2 18 h1.6 v3 h-1.6 Z"/>',
+    claws:'<path d="M4 2.5 C8 7 10 13 10.2 21 L7.6 19.6 C7.2 13 5.8 8 3 4 Z M10.5 2 C14.5 6.5 16.5 12.5 16.7 20.5 L14.1 19.1 C13.7 12.5 12.3 7.5 9.5 3.5 Z M17 2.5 C20.5 6.5 22 12 22 19.5 L19.6 18.2 C19.3 12 18 7.5 15.6 4 Z"/>',
+    burst:'<path d="M12 2 L14 8.2 20 5 16.2 10.4 22 12 16.2 13.6 20 19 14 15.8 12 22 10 15.8 4 19 7.8 13.6 2 12 7.8 10.4 4 5 10 8.2 Z"/>',
+    shield:'<path fill-rule="evenodd" d="M12 2.4 L20.4 5.4 V12 C20.4 17.2 16.6 20.6 12 21.8 C7.4 20.6 3.6 17.2 3.6 12 V5.4 Z M12 5.1 L18 7.3 V12 C18 15.9 15.2 18.6 12 19.6 C8.8 18.6 6 15.9 6 12 V7.3 Z"/>',
+  };
+  const slot=(ic,cls)=>`<div class="slot ${cls||''}" data-or="${cls==='or'?1:0}">${ic?`<svg viewBox="0 0 24 24">${ic}</svg>`:''}</div>`;
+  cell('slots',`<div class="row">${slot(icons.blades)}${slot(icons.claws)}${slot(icons.burst,'or')}${slot(icons.shield,'or')}</div>`,'слоты с иконками · циан/оранж');
+  cell('slots',`<div class="row"><div class="slot count" data-or="0">3</div><div class="slot count" data-or="1" style="color:#dd9c62">+</div></div>`,'счётчики · без заливки');
+  cell('slots',`<div class="row"><div class="cd cy" data-or="0">SMASH</div><div class="cd cool" data-or="0">CHARGE 2.5</div></div>`,'кулдаун-чипы · ready / cool');
+  cell('slots',`<div class="deadrow"><div class="cd cool" data-or="1">SMASH</div><div class="cd cool" data-or="1">CHARGE</div><div class="cd cool" data-or="1">JUMP</div></div>`,'мёртвый боец — ряд-запись');
+  let i=0;
+  for(const el of document.querySelectorAll('#slots .slot,#slots .cd')){
+    const w=el.classList.contains('cd')?64:50,h=el.classList.contains('cd')?34:50;
+    el.style.setProperty('--wf',`url(${wornTex(w,h,400+i*17,
+      el.dataset.or==='1'?OR:el.classList.contains('count')?NE:CY,
+      [rectPts(w,h,3.5,0,'')],{base:.72,jitter:.5,ticks:1})})`);i++;
+  }
+}
+
+/* заголовки */
+{
+  cell('headers',`<div class="hcut" style="width:400px;height:44px">Arena Feed
+      <svg viewBox="0 0 400 40"><image id="kfl" x="0" y="0" width="400" height="40"/></svg>
+    </div>`,'лента: единая линия с уголком');
+  cell('headers',`<div><div class="hcut">Match Stats</div><div class="hunder"></div></div>`,'панель: линия под заголовком');
+  cell('headers',`<div class="hcut">Bare Header</div>`,'голый заголовок');
+  document.getElementById('kfl').setAttribute('href',wornTex(400,40,313,'86,152,172',[
+    [[0,24],[119,24]],[[122,11],[136,11],[149,24],[334,24]],
+    [[341,24],[346,24],[346,34]],[[337,33],[343,27]],
+  ],{open:true,base:1.25,jitter:.45,ticks:0}));
+}
+
+/* лента */
+{
+  const ic={
+    star:'<svg viewBox="0 0 24 24" fill="#5db4c6"><path d="M4.6 2.2 L12 9.6 19.4 2.2 21.8 4.6 14.4 12 21.8 19.4 19.4 21.8 12 14.4 4.6 21.8 2.2 19.4 9.6 12 2.2 4.6 Z"/></svg>',
+    dashx:'<svg viewBox="0 0 24 24" fill="#5db4c6"><path d="M11 2 h2 v7.2 l5.1-5.1 1.4 1.4 L14.4 10.6 H22 v2 h-7.6 l5.1 5.1 -1.4 1.4 L13 14 V22 h-2 v-8 l-5.1 5.1 -1.4-1.4 5.1-5.1 H2 v-2 h7.6 L4.5 5.5 5.9 4.1 11 9.2 Z"/></svg>',
+    burst:'<svg viewBox="0 0 24 24" fill="#cf854a"><circle cx="12" cy="12" r="3.6"/><path d="M11 2 h2 v3.2 h-2 Z M11 18.8 h2 V22 h-2 Z M2 11 h3.2 v2 H2 Z M18.8 11 H22 v2 h-3.2 Z M4.9 6.3 l1.4-1.4 2.3 2.3 -1.4 1.4 Z M15.4 7.2 l2.3-2.3 1.4 1.4 -2.3 2.3 Z M4.9 17.7 l2.3-2.3 1.4 1.4 -2.3 2.3 Z M15.4 16.8 l1.4-1.4 2.3 2.3 -1.4 1.4 Z"/></svg>',
+    shield:'<svg viewBox="0 0 24 24" fill="none" stroke="#cf854a" stroke-width="2"><path d="M12 3 20 6 v6 c0 5-4 8-8 9 -4-1-8-4-8-9 V6 Z"/></svg>',
+  };
+  const row=(t,icn,who,or,what)=>`<div class="feedrow">
+    <span class="tm">${t}</span><span class="ic">${icn}</span>
+    <span class="who${or?' or':''}">${who}</span><span class="what">${what}</span></div>`;
+  cell('feeds',row('01:41',ic.dashx,'LASER',0,'DASH')+row('01:39',ic.burst,'GORILLA MK-IV',1,'GROUND POUND')
+    +row('01:36',ic.star,'LASER',0,'LASER SPIKE')+row('01:32',ic.shield,'GORILLA MK-IV',1,'SHIELD UP'),
+    'строки · хронология сверху вниз');
+  cell('feeds',`<div class="row">${ic.star}${ic.dashx}${ic.burst}${ic.shield}</div>`,'иконки событий · 16px');
+}
+
+/* панели */
+{
+  cell('panels',`<div class="panel" id="kpanel">
+    <div class="bg"></div><div class="fr"></div>
+    <div class="in">
+      <div class="hcut" style="font-size:14px">Match Stats</div><div class="hunder" style="width:100%"></div>
+      <div class="prow"><span class="k">Damage dealt</span><span class="v">1,248</span></div>
+      <div class="prow"><span class="k">Hits landed</span><span class="v">23</span></div>
+      <div class="prow"><span class="k">Ability usage</span><span class="v">7</span></div>
+    </div></div>`,'панель · срез TR + скобки + одна линия');
+  document.querySelector('#kpanel .fr').style.setProperty('--wf',`url(${wornTex(300,200,137,CY,[
+    [[.8,40],[.8,.8],[64,.8]],[[210,.8],[269.6,.8],[299.2,16.4],[299.2,54]],
+    [[.8,160],[.8,199.2],[60,199.2]],[[218,199.2],[299.2,199.2],[299.2,150]],
+  ],{open:true,base:1.2,jitter:.5,ticks:1})})`);
+}
+
+/* оверлеи */
+{
+  cell('overlays',`<div class="np"><div class="n">Laser</div>
+    <div class="b"><span class="f" style="width:87%"></span></div>
+    <div class="b r2"><span class="f" style="width:55%"></span></div></div>`,'неймплейт · hp + красная подполоска');
+  cell('overlays',`<div class="np"><div class="lab">laser</div>
+    <div class="b"><span class="f" style="width:62%"></span></div>
+    <div class="b cast"><span class="f" style="width:40%"></span></div></div>`,'каст · подпись + красный прогресс');
+  cell('overlays',`<span class="say">flanking left</span>`,'реплика say()');
+  cell('overlays',`<span class="dmg">27</span>`,'цифра урона · цвет бьющего');
+}
+</script>
