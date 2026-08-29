@@ -124,7 +124,7 @@ export class Jobs {
     if (!c) { this.update(id, { state: 'failed', error_code: 'no_creature', error_msg: 'существо исчезло' }); return; }
     this.update(id, { stage: STAGE_RU.duel, progress: 0.95 });
 
-    const score = this.ctx.duel(out.brainSource, c.brain_source, c.archetype);
+    const score = await this.ctx.duel(out.brainSource, c.brain_source, c.archetype);
     const better = score.candidate > score.incumbent;
 
     this.db.prepare(`INSERT INTO adaptation (id, creature_id, at, kind, summary, score_before, score_after, accepted)

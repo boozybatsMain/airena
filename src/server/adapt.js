@@ -21,9 +21,8 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { compileBrain } from '../brain/host.js';
-import { runMatch } from '../core/match.js';
 import { constantsVersion } from '../core/version.js';
+import { runIsolated } from './sandbox/index.js';
 
 /** Сколько боёв на сторону в проверке. 100 × 70 мс ≈ 7 с — по цене ноль. */
 export const DUEL_ROUNDS = 100;
@@ -109,24 +108,29 @@ export function panel(db, creature, size = 6) {
  * Счёт мозга на панели. Один и тот же набор (соперник, сид) для всех
  * кандидатов — иначе меряется удача расписания, а не мозг.
  */
-export function score(source, archetype, opponents, rounds = DUEL_ROUNDS) {
+export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
-  let brain;
-  try { brain = compileBrain(source, archetype); } catch { return { wins: -1, rounds, rate: null, broken: true }; }
-
   const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+
+  /* Панель разбивается на группы по сопернику: изолят грузит мозги один раз
+     и прогоняет пачку сидов, поэтому сто боёв стоят столько же переходов
+     через границу потока, сколько соперников, а не сколько боёв. */
+  const perOpponent = Math.max(1, Math.floor(rounds / opponents.length));
   let wins = 0; let played = 0;
-  for (let i = 0; i < rounds; i++) {
-    const o = opponents[i % opponents.length];
-    let oppBrain;
-    try { oppBrain = compileBrain(o.brain_source, oppSlot); } catch { continue; }
-    const seed = 1000 + i * 7919;
-    let r;
-    try { r = runMatch({ [mySlot]: brain, [oppSlot]: oppBrain }, { seed }); }
-    catch { continue; }
-    played++;
-    if (r.result.winner === mySlot) wins++;
+  for (const [oi, o] of opponents.entries()) {
+    const seeds = Array.from({ length: perOpponent }, (_, i) => 1000 + (oi * perOpponent + i) * 7919);
+    let out;
+    try {
+      out = await runIsolated({ [mySlot]: source, [oppSlot]: o.brain_source }, { seeds });
+    } catch (e) {
+      /* Кандидат, который не запускается, — не «ноль побед», а брак: вернуть
+         ноль значило бы сравнить его с действующим по силе, а сравнивать
+         надо было по годности. */
+      if (oi === 0) return { wins: -1, rounds, rate: null, broken: true, why: e.code };
+      continue;
+    }
+    for (const r of out.results) { played++; if (r.winner === mySlot) wins++; }
   }
   return { wins, rounds: played, rate: played ? wins / played : null };
 }
@@ -138,7 +142,7 @@ export function score(source, archetype, opponents, rounds = DUEL_ROUNDS) {
  * §7.2а: «Адаптация не может ухудшить существо… при ухудшении старый
  * остаётся автоматически». Здесь это не проверка после, а условие записи.
  */
-export function adaptOnce(db, creatureId, { rng = Math.random, now = Date.now, rounds = DUEL_ROUNDS } = {}) {
+export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.now, rounds = DUEL_ROUNDS } = {}) {
   const c = db.prepare('SELECT * FROM creature WHERE id = ?').get(creatureId);
   if (!c || !c.brain_source || c.is_library) return null;
 
@@ -154,7 +158,7 @@ export function adaptOnce(db, creatureId, { rng = Math.random, now = Date.now, r
   const opponents = panel(db, c);
   if (!opponents.length) return null;
 
-  const base = score(c.brain_source, c.archetype, opponents, rounds);
+  const base = await score(c.brain_source, c.archetype, opponents, rounds);
   if (base.broken) return null;
 
   /* Три кандидата за заход: один порог, три множителя. Больше — дороже по CPU
@@ -166,7 +170,7 @@ export function adaptOnce(db, creatureId, { rng = Math.random, now = Date.now, r
   for (const f of factors) {
     const cand = twist(c.brain_source, knob, f);
     if (!cand) continue;
-    const s = score(cand, c.archetype, opponents, rounds);
+    const s = await score(cand, c.archetype, opponents, rounds);
     if (s.broken) continue;
     if (!best || s.wins > best.s.wins) best = { source: cand, s, f };
   }
@@ -196,11 +200,13 @@ export function adaptOnce(db, creatureId, { rng = Math.random, now = Date.now, r
 const readBack = (src, knob) => src.slice(knob.at).match(/^\d+(?:\.\d+)?/)?.[0] ?? '?';
 
 /** A/B двух мозгов на одной панели — используется рефактором (D4). */
-export function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS } = {}) {
+export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS } = {}) {
   const any = db.prepare(`SELECT id, brain_source, rating FROM creature
     WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
   const opponents = any.filter((r) => r.brain_source);
-  const a = score(candidateSource, archetype, opponents, rounds);
-  const b = score(incumbentSource, archetype, opponents, rounds);
+  const [a, b] = await Promise.all([
+    score(candidateSource, archetype, opponents, rounds),
+    score(incumbentSource, archetype, opponents, rounds),
+  ]);
   return { candidate: a.wins, incumbent: b.wins, rounds: Math.min(a.rounds, b.rounds) || rounds };
 }

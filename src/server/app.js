@@ -68,7 +68,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
   const loop = new ArenaLoop(db, {
     compile: compileFor,
     constantsVersion: constantsVersion(),
-    adapt: (d, id) => adaptOnce(d, id),
+    adapt: (d, id) => adaptOnce(d, id),   // async: цикл ждёт её через .catch
     /* Замеренная тренировочная пара по сторонам — её считает tools/seed.mjs.
        Без неё первый бой новичка становится монетой (§16: 3.7% против 58.3%). */
     trainingIds: kv.get('training', {}).ids || null,
@@ -91,7 +91,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     if (ev.type !== 'match') return;
     const a = db.prepare('SELECT * FROM creature WHERE id = ?').get(ev.a);
     const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(ev.b);
-    if (a && b) live.open(ev.match, { a, b, featured: !!ev.showcase });
+    if (a && b) live.open(ev.match, { a, b, featured: !!ev.showcase }).catch(() => {});
   });
 
   /*
@@ -103,6 +103,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
    * между собой. Проверка идёт раз в секунду и стоит один запрос к карте
    * трансляций.
    */
+  let showcasing = false;
   const keepShowcase = setInterval(() => {
     /* Гонится ВСЕГДА, а не только когда кто-то смотрит. Иначе первый
        посетитель ждёт: сокет подключается после того, как загрузился весь
@@ -112,7 +113,9 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
        Один прогон — 70 мс CPU, и держать витрину тёплой дешевле, чем
        объяснять пустой пол. */
     if (live.describe()) return;
-    loop.showcase();
+    if (showcasing) return;
+    showcasing = true;
+    loop.showcase().catch(() => {}).finally(() => { showcasing = false; });
   }, 1200);
   keepShowcase.unref?.();
 
@@ -201,12 +204,13 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
         const a = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.a_id);
         const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.b_id);
         if (!a || !b) { ws.send(JSON.stringify({ type: 'error', message: 'участника боя больше нет' })); return; }
-        const bc = live.open({
+        live.open({
           id: m.id, seed: m.seed, aSlot: m.a_slot, bSlot: m.b_slot,
           winner: m.winner, reason: m.reason,
           result: m.result_json ? JSON.parse(m.result_json) : null,
-        }, { a, b, featured: false });
-        if (bc) { sub.matchId = null; bc.at = 0; bc.over = null; live.deliver(sub); }
+        }, { a, b, featured: false }).then((bc) => {
+          if (bc) { sub.matchId = null; bc.at = 0; bc.over = null; live.deliver(sub); }
+        }).catch(() => {});
         return;
       }
       if (msg.cmd === 'watch' && typeof msg.creatureId === 'string') {

@@ -18,8 +18,8 @@
  * сообщения значит рисковать утверждённым ради необязательного.
  */
 
-import { runMatch } from '../core/match.js';
 import { CURTAIN } from './arena-loop.js';
+import { runIsolated } from './sandbox/index.js';
 import { TICK_HZ } from '../core/config.js';
 
 /** Сколько трансляций держим в памяти одновременно. */
@@ -33,6 +33,7 @@ export class Live {
     this.compile = compile;
     this.now = now;
     this.broadcasts = new Map();   // matchId -> Broadcast
+    this.opening = new Set();      // matchId, пока считаются кадры
     this.sockets = new Set();
     this.featured = null;          // matchId, который смотрят гости
     this.timer = null;
@@ -54,18 +55,24 @@ export class Live {
    * «показ равен зачёту» держалось бы на том, что кто-то не забыл передать
    * массив, а не на детерминизме.
    */
-  open(matchRow, { a, b, featured = false }) {
+  async open(matchRow, { a, b, featured = false }) {
     if (this.broadcasts.has(matchRow.id)) return this.broadcasts.get(matchRow.id);
+    /* Заглушка на время расчёта: без неё два кадра подряд открывают один и
+       тот же матч дважды и зритель получает две трансляции одного боя. */
+    if (this.opening.has(matchRow.id)) return null;
+    this.opening.add(matchRow.id);
     let frames;
     try {
-      const brains = {
-        [matchRow.aSlot]: this.compile(a, matchRow.aSlot),
-        [matchRow.bSlot]: this.compile(b, matchRow.bSlot),
-      };
-      ({ frames } = runMatch(brains, { seed: matchRow.seed, record: true, curtainSeconds: CURTAIN }));
+      const out = await runIsolated(
+        { [matchRow.aSlot]: a.brain_source, [matchRow.bSlot]: b.brain_source },
+        { seed: matchRow.seed, record: true, curtainSeconds: CURTAIN },
+      );
+      frames = out.frames;
     } catch (e) {
+      this.opening.delete(matchRow.id);
       return null;
     }
+    this.opening.delete(matchRow.id);
     const bc = {
       id: matchRow.id,
       seed: matchRow.seed,

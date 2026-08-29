@@ -23,7 +23,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { MATCH_SECONDS, TICK_HZ } from '../core/config.js';
-import { runMatch } from '../core/match.js';
+import { runIsolated } from './sandbox/index.js';
 import { clampRating, pickOpponent, rate } from './ladder.js';
 
 /** Как часто существо выходит в бой. §6.2: «примерно раз в минуту». */
@@ -39,8 +39,18 @@ export const ADAPT_EVERY = Number(process.env.AIRENA_ADAPT_EVERY || 10);
  * @param deps.compile  (creature) => brain  — компилятор мозга в изоляте
  * @param deps.now      часы, подменяемые в тестах
  */
-export function playMatch(db, a, b, deps) {
-  const { compile, now = Date.now, rng = Math.random, constantsVersion } = deps;
+/**
+ * A1 буквально: мозг, написанный не текущим локальным игроком, исполняется
+ * ТОЛЬКО в укреплённом изоляте. Каждый мозг на лестнице — чужой для каждого,
+ * кто его смотрит, поэтому исключений здесь нет: и зачётный прогон, и
+ * зрелищный идут за стеной.
+ *
+ * Функция асинхронна из-за этого, и это единственная причина. Изолят при
+ * этом БЫСТРЕЕ пути через `node:vm`, который он заменил, — контекст vm
+ * создаётся дороже, чем стоит переход через границу потока раз в матч.
+ */
+export async function playMatch(db, a, b, deps) {
+  const { now = Date.now, rng = Math.random, constantsVersion } = deps;
   const seed = Math.floor(rng() * 1e9);
   const id = `m_${randomUUID().slice(0, 12)}`;
   const startedAt = now();
@@ -53,14 +63,21 @@ export function playMatch(db, a, b, deps) {
   const aSlot = a.archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const bSlot = aSlot === 'octopus' ? 'gorilla' : 'octopus';
 
-  let brains;
+  let result;
   try {
-    brains = { [aSlot]: compile(a, aSlot), [bSlot]: compile(b, bSlot) };
+    const out = await runIsolated(
+      { [aSlot]: a.brain_source, [bSlot]: b.brain_source },
+      { seed, curtainSeconds: CURTAIN },
+    );
+    result = out.result;
+    /* Мозг, съевший бюджет шагов, — это тот же брак, что и падающий: он не
+       думал, он крутился. Записываем как отказ, а не как поражение. */
+    for (const [slot, f] of Object.entries(out.fuel || {})) {
+      if (f.exhausted) result.log.push({ t: result.seconds, type: 'brainDisabled', who: slot, reason: 'fuel' });
+    }
   } catch (e) {
-    return { error: 'compile', message: e.message };
+    return { error: e.code || 'isolate', message: e.message };
   }
-
-  const { result } = runMatch(brains, { seed, curtainSeconds: CURTAIN });
 
   /*
    * D8 — мозг, выключившийся по FAULT_LIMIT, не двигает рейтинг.
@@ -183,18 +200,24 @@ export class ArenaLoop {
       }
       if (at > now) continue;
       this.due.set(c.id, now + FIGHT_EVERY_MS);
-      this.fightOnce(c, now);
+      /* Бои идут параллельно и не ждут друг друга: один медленный матч не
+         должен задерживать всю популяцию. Ошибку глотать нельзя — она
+         уезжает в счётчик и в событие. */
+      this.fightOnce(c, now).catch((e) => {
+        this.stats.errors++;
+        this.emit({ type: 'match_error', creatureId: c.id, error: 'throw', message: e.message });
+      });
     }
   }
 
-  fightOnce(c, now) {
+  async fightOnce(c, now) {
     const opp = pickOpponent(this.db, c, { now, rng: this.deps.rng || Math.random })
       || this.library(c);
     if (!opp) return null;
     const b = this.db.prepare('SELECT * FROM creature WHERE id = ?').get(opp.id);
     if (!b || !b.brain_source) return null;
 
-    const r = playMatch(this.db, c, b, this.deps);
+    const r = await playMatch(this.db, c, b, this.deps);
     if (r.error) {
       this.stats.errors++;
       this.emit({ type: 'match_error', creatureId: c.id, error: r.error, message: r.message });
@@ -208,7 +231,7 @@ export class ArenaLoop {
     const fights = c.fights + 1;
     if (this.deps.adapt && fights % ADAPT_EVERY === 0) {
       try {
-        const ad = this.deps.adapt(this.db, c.id);
+        const ad = await this.deps.adapt(this.db, c.id);
         if (ad) { this.stats.adaptations++; this.emit({ type: 'adapt', creatureId: c.id, adaptation: ad }); }
       } catch (e) {
         this.emit({ type: 'adapt_error', creatureId: c.id, message: e.message });
@@ -258,7 +281,7 @@ export class ArenaLoop {
    * Он просто никому не двигает рейтинг — библиотечные существа его и так
    * не двигают (иначе эталон дрейфует и перестаёт быть эталоном).
    */
-  showcase(now = (this.deps.now || Date.now)()) {
+  async showcase(now = (this.deps.now || Date.now)()) {
     const rnd = this.deps.rng || Math.random;
     const pick = (arch) => {
       const rows = this.db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state='active'
@@ -267,7 +290,7 @@ export class ArenaLoop {
     };
     const a = pick('octopus'); const b = pick('gorilla');
     if (!a || !b) return null;
-    const r = playMatch(this.db, a, b, this.deps);
+    const r = await playMatch(this.db, a, b, this.deps);
     if (r.error) { this.stats.errors++; return null; }
     this.stats.matches++;
     this.emit({ type: 'match', match: r, a: a.id, b: b.id, showcase: true, training: false });

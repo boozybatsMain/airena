@@ -23,9 +23,11 @@
  *      по спросу живых игроков, а не по догадке дизайнера.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { brainPrompt, SYSTEM_PROMPT } from '../../brain/prompt.js';
 import { extractSource } from '../../brain/host.js';
-import { validate } from '../../brain/validate.js';
+import { admit } from '../sandbox/index.js';
 import { constantsVersion } from '../../core/version.js';
 import { EFFECTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
 
@@ -33,6 +35,13 @@ const EFFECT_RU = (id) => EFFECTS[id]?.ru || id;
 import { fallbackName, sanitizeName } from '../creatures.js';
 import { callWithRepair, extractJson, LlmError } from './llm.js';
 import { fallbackBundle } from './models.js';
+
+/** Спарринг-партнёр допуска — рукописный эталон противоположной стороны. */
+const SPARRING = {
+  octopus: readFileSync(new URL('../../../brains/stub/gorilla.js', import.meta.url), 'utf8'),
+  gorilla: readFileSync(new URL('../../../brains/stub/octopus.js', import.meta.url), 'utf8'),
+};
+const sparringFor = (archetype) => SPARRING[archetype === 'gorilla' ? 'gorilla' : 'octopus'];
 
 /** Три стартовых кита — пресеты §10.5, они же и запасной вариант разбора. */
 export const KIT_PRESETS = {
@@ -263,6 +272,26 @@ export function whyUnfit(phrase) {
   return 'такого понятия в грамматике скиллов пока нет';
 }
 
+/**
+ * Язык реплик — отдельной строкой, а не правкой промпта.
+ *
+ * `src/brain/prompt.js` — научный артефакт: шесть эталонных мозгов §1
+ * написаны по нему дословно, и `checktactics` держит его в четырёх
+ * разрешённых видах строк. Трогать его ради языка значит трогать основание
+ * измерения ради оформления.
+ *
+ * Поэтому требование живёт здесь, на продуктовом пути. И это ограничение
+ * С ПРИЧИНОЙ, а не пожелание: реплики `api.say()` — одно из двух
+ * доказательств, которыми F11 заменил закрытый исходник, и доказательство
+ * на чужом языке доказывает вдвое меньше.
+ */
+const SAY_RU = `Одно дополнение к промпту выше, и оно про язык, а не про тактику.
+
+Строки, которые ты передаёшь в api.say(), читает игрок — по-русски. Пиши их
+по-русски: коротко, в характере бойца, до 90 знаков. Это единственное место,
+где язык имеет значение; имена переменных, комментарии и всё остальное в коде
+оставляй как привык.`;
+
 /** Шаг 3 — мозг. */
 export async function forgeBrain({ archetype, bundle, call = callWithRepair, onAttempt = null }) {
   const r = await call({
@@ -271,7 +300,7 @@ export async function forgeBrain({ archetype, bundle, call = callWithRepair, onA
     thinkBudget: bundle.thinkBudget,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: brainPrompt(archetype) },
+      { role: 'user', content: `${brainPrompt(archetype)}\n\n${SAY_RU}` },
     ],
     accept: (t) => {
       try { return extractSource(t).length > 200; } catch { return false; }
@@ -350,12 +379,27 @@ export async function forgeCreature({
   spent.usd += brain.costUsd || 0;
 
   onStage('validate', 0.7);
-  const v = validate(brain.source, archetype);
+  /*
+   * ДОПУСК, а не просто валидация.
+   *
+   * Мозг, только что написанный моделью по свободному тексту игрока, —
+   * это ровно тот код, ради которого написан A1. `admit()` прогоняет его
+   * через все четыре стены: статический анализ, вставку учёта топлива,
+   * два пробных боя в изоляте и проверку, что он не падает и не крутится.
+   *
+   * Порядок важен: допуск ДО записи в БД. Тогда «в базе нет ни одного
+   * мозга, не прошедшего стены» — свойство схемы, а не привычка.
+   */
+  const v = await admit(brain.source, archetype, { sparring: sparringFor(archetype) });
   if (!v.ok) {
     /* E5: отклонённая валидатором генерация бесплатна для игрока. Деньги,
        которые провайдер уже списал, в дневной бюджет попадают — это два
        разных счётчика, см. limits.recordSpend. */
-    return { ok: false, code: 'rejected', message: v.problems?.[0] || 'мозг не прошёл проверку', stage: v.stage, costUsd: spent.usd, note };
+    return {
+      ok: false, code: 'rejected', stage: v.stage,
+      message: v.problems?.[0]?.message || 'мозг не прошёл проверку',
+      problems: v.problems, costUsd: spent.usd, note,
+    };
   }
 
   onStage('card', 0.9);
