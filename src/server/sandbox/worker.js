@@ -102,8 +102,28 @@ function makeFuel() {
   return f;
 }
 
+/**
+ * `Math.random` в изоляте не существует.
+ *
+ * Хост закрывал её в своём vm-контексте, изолят — нет, и мозг доставал её
+ * деструктуризацией: `const {random} = Math`. Статический анализ этого не
+ * видит и видеть не должен — `Math` разрешён, `random` его поле. А бой,
+ * зависящий от неё, перестаёт воспроизводиться из сида, то есть падает A2
+ * и вместе с ним вся серверная верификация A3.
+ *
+ * Сим сюда не заглядывает: он берёт числа из собственного потока, засеянного
+ * сидом матча (`api.rand`), и `Math.random` ему не нужна ни разу.
+ */
+function sealRandom() {
+  const boom = function random() {
+    throw new Error('Math.random недоступна — бой обязан воспроизводиться из сида; используй api.rand()');
+  };
+  Object.defineProperty(Math, 'random', { value: boom, writable: false, configurable: false });
+}
+
 async function main() {
   const { seed, seeds, brains, curtainSeconds, record } = workerData;
+  sealRandom();
   const V = await buildPrelude();
   const fuels = {};
   const ready = {};

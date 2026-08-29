@@ -6,7 +6,7 @@
   "description": "Two LLM-written brains fight in an arena.",
   "scripts": {
     "serve": "node src/server/app.js",
-    "test": "node tools/test.mjs && node tools/checkprompt.mjs && node tools/checkbehaviour.mjs && node tools/checkframing.mjs && node tools/falsify.mjs --controls",
+    "test": "node tools/test.mjs && node tools/checkprompt.mjs && node tools/checkbehaviour.mjs && node tools/checkframing.mjs && node tools/checkisolate.mjs && node tools/checkscope.mjs && node tools/loadtest.mjs && node tools/falsify.mjs --controls",
     "arena": "node tools/arena.mjs",
     "tournament": "node tools/tournament.mjs",
     "falsify": "node tools/falsify.mjs",
@@ -18,7 +18,7 @@
     "seed": "node tools/seed.mjs"
   },
   "dependencies": {
-    "acorn": "^8.18.0",
+    "acorn": "^8.15.0",
     "esbuild": "^0.28.2",
     "three": "^0.180.0",
     "ws": "^8.18.0"

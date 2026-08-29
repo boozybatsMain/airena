@@ -238,6 +238,19 @@ const EXEMPT = [
   [/[?&](?:oct|gor)=[A-Za-z0-9-]+/g, 'a brain tag; checked as a tag against brains/ below, not as a number'],
   [/WebGL2/g, 'the name of a graphics API, the way Math.atan2 is the name of a function'],
   [/0 hp/g, 'zero'],
+
+  /*
+   * Clause names out of SPEC.md — A1, N11, E3, F5a, §8.1.
+   *
+   * These are identifiers, not measurements: `N11` names a row in the table of
+   * bans the way `nav.js` names a file. The sweep's rule is "a number in prose
+   * is a claim about the world"; a clause name claims nothing about the world,
+   * it points at a paragraph. The pattern is deliberately narrow — a letter
+   * from the five section prefixes, digits, an optional lowercase suffix, and
+   * a word boundary — so that `A1` is exempt and `A 1` or `at 15` is not.
+   */
+  [/(?<![A-Za-z\d])(?:§\s?)?[FEAN]\d{1,2}[a-z]?\b/g, 'a clause name in SPEC.md, not a measurement'],
+  [/§\s?\d+(?:\.\d+)*[а-яa-z]?\b/gu, 'a section number in SPEC.md'],
 ];
 
 // ---------------------------------------------------------------------------
@@ -349,8 +362,17 @@ const MUTATIONS = [
     (t) => t.replace(/oct=[A-Za-z0-9-]+&/, `oct=${halfTag}&`)],
   ['a query parameter the viewer never reads', (t) => t.replace(/\?webgl=1/, '?slowmo=1')],
   ['the probe count is wrong', bump(/\d+ hand-written \*\*degeneracy probes\*\*/)],
+  /*
+   * Якорь пишется по ПЕРЕНЕСЁННОМУ тексту, а не по тому, как фраза читается.
+   *
+   * Строка «so nothing ends on a clock.» в README разорвана переносом, и
+   * мутация, искавшая её целиком, молча не применялась: отчёт печатал
+   * NOT APPLIED, счёт показывал 11 из 12, а страница обещала двенадцать.
+   * Проверка, которая не проверяет и об этом говорит, — лучше молчащей, но
+   * хуже работающей.
+   */
   ['a hand-typed number with no source',
-    (t) => t.replace('so nothing ends on a clock.', 'so nothing ends on a clock. A match lasts 21 seconds on average.')],
+    (t) => t.replace('so nothing ends on a\nclock.', 'so nothing ends on a\nclock. A match lasts 21 seconds on average.')],
   ['the invariant count drifts', bump(/# \d+ invariants/)],
   ['the think rate drifts', bump(/context at \d+ Hz/)],
   ['the generation cost drifts', bump(/\(\d+ min, \$[\d.]+ a pair\)/)],

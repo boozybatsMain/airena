@@ -5,19 +5,23 @@ Two creatures fight in an arena. Neither of their minds was written by a person.
 A language model — Claude Opus, through the local `claude` CLI on an OAuth
 subscription — is handed a dictionary of what its body can do, what the world
 does, and one sentence about what it is for. Whatever JavaScript it sends back
-is the fighter's entire brain, run unmodified in a `node:vm` context at 15 Hz.
-Nothing in this repo tells it how to fight.
+is the fighter's entire brain, run unmodified in a `node:vm` context at 15 Hz
+when a tool runs it, and behind a hardened isolate that does not trust it when
+a player can reach it. Nothing in this repo tells it how to fight.
 
 ```bash
 npm install
-npm run serve                                # watch the shipped brains fight
-npm test                                     # 30 invariants, then four agreements
+node tools/seed.mjs                          # stock the ladder, measure the sparring pairs
+npm run dev                                  # the game, with the dev account path open
+npm test                                     # 30 invariants, then five agreements
 
+npm run viewer                               # the bare battle viewer, no product around it
 node tools/brainforge.mjs --all --tag=mine   # ask Claude for two new minds (7 min, $0.84 a pair)
 node tools/arena.mjs --rounds=200 --tag=mine # and measure them
 ```
 
-The server prints its own URL and walks up from 8787 if that port is busy.
+The server prints its own URL and walks up from 8787 if that port is busy; the
+bare viewer does the same.
 
 ---
 
@@ -45,16 +49,23 @@ historical measurement that made a range the honest form of the claim.
 ## The layout
 
 ```
-src/core/      the world: config, geometry, navigation, the 30 Hz step
-src/brain/     the sandbox, the generated prompt, the claude lane, validation
-src/server/    static files and one live match over a websocket
+src/core/      the world: config, geometry, navigation, the 30 Hz step, constants version
+src/brain/     the prompt, the prelude, the claude lane, validation, the legacy vm host
+src/skills/    the skill grammar: five closed axes, prices, the one legality rule
+src/server/    the backend: sqlite, sessions, the six limits, the ladder, the arena
+               loop, the live socket, the generation queue, simulation adaptation
+src/server/sandbox/  A1's walls: static analysis, isolate, fuel, timeout
+src/client/    the game: shell, screens, the shared kit, the self-hosted faces
 src/viewer/    three.js WebGPU: the arena, the two bodies, the telegraphs
 bodies/        gorilla.js, octopus.js — finished art, build(THREE, TSL)
 brains/        one directory per generation; each .js has a .json beside it
-tools/         arena · bake · balance · bracket · brainforge · checkbehaviour ·
-               checkdocs · checkframing · checkprompt · checkstale · checktactics ·
-               falsify · fix-provenance · report · test · tournament
-docs/          EXPERIMENT.md (the results) · SPEC.md (a mid-project review artefact)
+tools/         arena · bake · balance · bench · bracket · brainforge · cablecheck ·
+               checkbehaviour · checkdocs · checkframing · checkisolate · checkprompt ·
+               checkscope · checkstale · checktactics · falsify · fix-provenance ·
+               forge · lane-cli · loadtest · nanscan · orbrain · plan · report ·
+               seed · test · tournament · visibility
+docs/          EXPERIMENT.md (the results) · DECISIONS.md (what the spec left open,
+               and why each was decided that way) · SCREENS.md (the screen build order)
 ```
 
 ## The pieces that carry the weight
@@ -83,7 +94,24 @@ round a box is a motor skill, not a tactical one, so it lives in the body:
 `api.move` is raw steering with no help at all, `api.moveTo` navigates.
 
 **`src/brain/host.js`** is `node:vm` plus a per-thought timeout. It is a guard
-against a crash, not against an attacker, and the file says so.
+against a crash, not against an attacker, and the file says so. Nothing a
+player can reach runs through it any more.
+
+**`src/server/sandbox/`** is what does. A1 asks for four walls and this is
+them: static analysis on an acorn AST that refuses every write outside `mem`
+and every name the brain was not given; a worker thread that loads the brain
+as a module from a `data:` URL — not `eval`, not `new Function`, not
+`node:vm`, each of which N11 names; fuel counted *in instructions*, so the
+cut-off falls in the same place on a loaded machine as on an idle one; and a
+timeout that kills the thread from outside rather than asking it to stop.
+
+The whole match crosses the wall at once rather than one thought at a time. A
+match is a pure function of its seed, so it can. Two things follow, and
+`node tools/checkisolate.mjs` prints both rather than this page quoting them:
+the isolate is *faster* than the `node:vm` path it replaced, and every match
+log it produces is bit-identical to the one that path produced. The second is
+what matters — A2 is an invariant, and a sandbox that changed outcomes would
+have broken it while looking like a security improvement.
 
 ## Commands
 
@@ -101,6 +129,10 @@ against a crash, not against an attacker, and the file says so.
 | `node tools/falsify.mjs` | program diversity + reactivity ablation + permutation test |
 | `node tools/checkstale.mjs` | which populations were written against constants that have since moved |
 | `node tools/checkframing.mjs` | replays seeded matches through the viewer's own camera solve, headless, and fails if a live fighter ever leaves the frame |
+| `node tools/checkisolate.mjs` | every escape attempt in the file, run against the sandbox, plus the controls: an honest brain and every reference brain in `brains/` must still pass — and the same match, run both ways, must produce the same log |
+| `node tools/checkscope.mjs` | walks the player's real bundle from `index.html` and fails on a price, a purchase word, the word "токен", a bet, sound, or any path to a brain source |
+| `node tools/loadtest.mjs` | an hour of arrivals, each on a fresh account so the per-account limits never help, must not breach the daily budget — and it prints what the same hour costs with the fuses removed |
+| `node tools/seed.mjs` | stock the ladder from every population whose constants are current, and measure which (brain, side) pairs are weak enough to spar a newcomer |
 | `node tools/balance.mjs --samples=40 --rounds=10` | search the constants against the whole population |
 | `node tools/bake.mjs --dry reports/balance-search.json` | show what a search winner would change in config.js |
 | `node tools/bake.mjs reports/balance-search.json` | and write it. **This invalidates every shipped brain** — they were generated against the old numbers, and `checkstale` will say so afterwards |

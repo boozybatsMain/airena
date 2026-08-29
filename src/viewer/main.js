@@ -1359,33 +1359,21 @@ addEventListener('keydown', (e) => {
 });
 
 /**
- * The brain, on screen.
+ * The brain, on screen — MOVED OUT.
  *
- * Every claim this project makes rests on the sentence "a language model wrote
- * this behaviour", and that sentence is unfalsifiable from the outside of a
- * fight. So the source is one click from the thing it is driving, next to the
- * model and effort that produced it and the number of attempts it took.
+ * The panel that fetches `/api/source/<tag>/<id>` now lives in
+ * `src/viewer/devpanel.js`, which only the dev viewer loads. It stayed here
+ * for a while behind "the handler never binds in the product, there is no
+ * data-fighter attribute" — and that is exactly the reasoning F11 exists to
+ * refuse. The string `/api/source/` shipping in the player's bundle is a
+ * path, and a path that only a missing attribute closes is not closed.
+ *
+ * Worse than the leak is the shape of it: a visitor reads a brain's source on
+ * the landing page, makes their own four minutes later, and cannot read that
+ * one. Bait and switch, at the exact moment we ask for an account.
+ *
+ * `tools/checkscope.mjs` fails the build if it comes back.
  */
-for (const el of document.querySelectorAll('.name[data-fighter]')) {
-  el.onclick = async () => {
-    const id = el.dataset.fighter;
-    const tag = $(id === 'octopus' ? '#sel-oct' : '#sel-gor').value;
-    const box = $('#code');
-    box.querySelector('h2').textContent = `${id} · ${tag}`;
-    const meta = matchInfo?.meta?.[id];
-    box.querySelector('.meta').textContent = meta
-      ? `${meta.model} at ${meta.effort} effort · accepted on attempt ${meta.attempts} · ${meta.chars} characters · generated ${meta.generatedAt?.slice(0, 16).replace('T', ' ')}`
-      : 'hand-written reference stub — not generated';
-    box.querySelector('pre').textContent = 'loading…';
-    box.classList.add('on');
-    try {
-      box.querySelector('pre').textContent = await (await fetch(`/api/source/${tag}/${id}`)).text();
-    } catch (err) {
-      box.querySelector('pre').textContent = String(err);
-    }
-  };
-}
-$('#code-close').onclick = () => $('#code').classList.remove('on');
 
 /**
  * Three kinds of thing in one list, said out loud.

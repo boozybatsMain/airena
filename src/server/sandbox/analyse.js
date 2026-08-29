@@ -87,8 +87,43 @@ export function analyse(source, { maxChars = 60000 } = {}) {
   const declare = (name) => { if (name) scopes[scopes.length - 1].add(name); };
   const known = (name) => scopes.some((s) => s.has(name));
 
+  /*
+   * Параметры — ЧУЖИЕ объекты, а не свои переменные.
+   *
+   * Локальная переменная создана мозгом, и писать в неё можно. Параметр
+   * приходит снаружи: `p` — это перцепция, `api` — это дверь в мир. Мозг,
+   * который пишет `p.enemy.hp = 0`, не настраивает переменную — он врёт
+   * следующему тику про мир, и делает это внутри собственного процесса, где
+   * никакая проверка исходов его не поймает. A1 говорит «любая запись за
+   * пределы mem»; параметр за пределами mem по определению.
+   *
+   * Исключение ровно одно, и оно и есть `mem`: путь, начинающийся с
+   * свойства `mem`, писать можно — это и есть память мозга.
+   *
+   * ВАЖНО, ЧЬИ параметры. Снаружи приходят только параметры `think` — то,
+   * что даёт сим. Параметры собственных вспомогательных функций мозга это
+   * его же значения, и `function clamp(x){ if (x>19.2) x=19.2; }` —
+   * нормальный код, а не побег. Правило, не различавшее эти два случая,
+   * отвергло тринадцать эталонных мозгов из пятидесяти девяти, и это был
+   * признак не строгости, а неточности.
+   */
+  const params = new Set();
+
+  /* Глубина вложенности функций: `think` снаружи — это только тот `think`,
+     который объявлен на верхнем уровне. */
+  let depth = 0;
   const at = (node) => (node.loc ? `${node.loc.start.line}:${node.loc.start.column}` : '?');
   const bad = (code, message, node) => problems.push({ code, message, at: at(node) });
+
+  /* Параметры помечаются отдельно от локальных: писать в них нельзя. */
+  function markParams(p) {
+    if (!p) return;
+    if (p.type === 'Identifier') { params.add(p.name); return; }
+    if (p.type === 'ObjectPattern') for (const q of p.properties) markParams(q.value || q.argument);
+    if (p.type === 'ArrayPattern') for (const q of p.elements) markParams(q);
+    if (p.type === 'AssignmentPattern') markParams(p.left);
+    if (p.type === 'RestElement') markParams(p.argument);
+  }
 
   /* Имена, объявленные паттерном: const {a, b:[c]} = ... */
   function declarePattern(p) {
@@ -101,6 +136,19 @@ export function analyse(source, { maxChars = 60000 } = {}) {
       case 'RestElement': declarePattern(p.argument); break;
       default: break;
     }
+  }
+
+  /** Первое СТАТИЧЕСКОЕ свойство цепочки: у `p.mem.a.b` это `mem`. */
+  function firstProp(node) {
+    const chain = [];
+    let n = node;
+    while (n && (n.type === 'MemberExpression' || n.type === 'ChainExpression')) {
+      if (n.type === 'ChainExpression') { n = n.expression; continue; }
+      if (!n.computed && n.property?.type === 'Identifier') chain.unshift(n.property.name);
+      else chain.unshift(null);
+      n = n.object;
+    }
+    return chain[0];
   }
 
   /** Куда пишет присваивание: имя корневого объекта цепочки. */
@@ -125,13 +173,19 @@ export function analyse(source, { maxChars = 60000 } = {}) {
     if (target.type === 'Identifier') {
       /* Локальная переменная — да; неизвестное имя — это неявная глобаль. */
       if (!known(target.name)) { return 'unknown'; }
-      return ALLOWED_GLOBALS.has(target.name) ? 'global' : true;
+      if (ALLOWED_GLOBALS.has(target.name)) return 'global';
+      if (params.has(target.name)) return 'param';
+      return true;
     }
     if (target.type === 'MemberExpression' || target.type === 'ChainExpression') {
       const root = rootOf(target);
       if (root === 'mem') return true;
       if (root && !known(root)) return 'unknown';
       if (root && ALLOWED_GLOBALS.has(root)) return 'global';
+      if (root && params.has(root)) {
+        /* `p.mem.foo = 1` — можно: это память. `p.enemy.hp = 0` — нельзя. */
+        return firstProp(target) === 'mem' ? true : 'param';
+      }
       /* Локальный объект — писать в его поля можно: он свой. */
       return true;
     }
@@ -148,8 +202,11 @@ export function analyse(source, { maxChars = 60000 } = {}) {
       case 'ArrowFunctionExpression': {
         declare(node.id?.name);
         scopes.push(new Set());
-        for (const p of node.params) declarePattern(p);
+        const fromOutside = node.type === 'FunctionDeclaration' && node.id?.name === 'think' && depth === 0;
+        depth++;
+        for (const p of node.params) { declarePattern(p); if (fromOutside) markParams(p); }
         walkChildren(node);
+        depth--;
         scopes.pop();
         return;
       }
@@ -179,12 +236,14 @@ export function analyse(source, { maxChars = 60000 } = {}) {
         const verdict = assignable(node.left);
         if (verdict === 'global') bad('write_global', 'запись в глобальный объект запрещена (A1)', node);
         if (verdict === 'unknown') bad('write_unknown', 'запись в необъявленное имя — неявная глобаль запрещена (A1)', node);
+        if (verdict === 'param') bad('write_param', 'запись в то, что пришло снаружи (перцепция или api), запрещена — писать можно только в mem и в свои переменные (A1)', node);
         break;
       }
       case 'UpdateExpression': {
         const verdict = assignable(node.argument);
         if (verdict === 'global') bad('write_global', 'изменение глобального объекта запрещено (A1)', node);
         if (verdict === 'unknown') bad('write_unknown', 'изменение необъявленного имени запрещено (A1)', node);
+        if (verdict === 'param') bad('write_param', 'изменение того, что пришло снаружи (перцепция или api), запрещено — писать можно только в mem и в свои переменные (A1)', node);
         break;
       }
       case 'WithStatement':
