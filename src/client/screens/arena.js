@@ -165,6 +165,12 @@ export function onOver(o) {
   ctx?.refreshSession().then(() => { if (!ctx.state.match) showIdle(); }).catch(() => {});
 }
 
+/** Сессия сменила существо — перерисовать то, что от него зависит. */
+export function onSessionChanged() {
+  paintDigest();
+  if (!ctx?.state.match && ctx?.state.route?.screen === 'arena') showIdle();
+}
+
 export function onIdle() {
   watchedMatch = null;
   document.body.classList.remove('fighting');

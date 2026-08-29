@@ -87,6 +87,12 @@ export class Jobs {
 
     if (!out.ok) {
       this.update(id, { state: 'failed', error_code: out.code, error_msg: out.message, progress: 1, stage: 'не получилось' });
+      /* Право на бесплатное существо возвращается: E5 говорит, что за
+         неудавшуюся генерацию игрок не платит, а единственная валюта, которой
+         он тут платит, — это его единственная попытка. */
+      if (row.kind === 'create' && row.account_id) {
+        this.db.prepare('UPDATE account SET free_creature_used = 0 WHERE id = ?').run(row.account_id);
+      }
       trackEvent(this.db, { name: 'create_failed', accountId: row.account_id, props: { jobId: id, code: out.code } });
       return;
     }
@@ -102,7 +108,7 @@ export class Jobs {
         unfit: out.unfit, tacticsCard: out.tacticsCard,
         season: this.ctx.kv.get('season', { n: 1 }).n,
       });
-      this.db.prepare('UPDATE account SET free_creature_used = 1 WHERE id = ?').run(row.account_id);
+      /* Флаг уже поставлен атомарно на приёме запроса — см. api.js. */
       this.update(id, { state: 'done', creature_id: c.id, progress: 1, stage: 'готово' });
       trackEvent(this.db, {
         name: 'create_done', accountId: row.account_id,

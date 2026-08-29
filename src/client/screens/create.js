@@ -38,16 +38,35 @@ export async function enter(root, args, ctx) {
   document.body.classList.add('overlay');
 
   const s = ctx.state.session;
-  /* D1: гость не запускает генерацию. Стена аккаунта, а не общая ошибка. */
-  if (s?.createBlocked === 'guest') { ctx.go('/save'); return; }
+  /*
+   * Гость видит экран ЦЕЛИКОМ и упирается в стену на «СОЗДАТЬ», а не на входе.
+   *
+   * Раньше он выбрасывался отсюда до первой отрисовки — и §10.5 терял свой
+   * сороковой секунды: «одно поле и выбор набора» гость не видел ни разу,
+   * то есть шаг воронки, на котором держится метрика «посетитель → создал
+   * существо ≥25%», не существовал.
+   *
+   * D1 при этом не двигается ни на шаг: генерация гостю по-прежнему
+   * недоступна, потому что она стоит живые деньги, а гостевой аккаунт
+   * заводится бесконечно. Меняется только МОМЕНТ отказа — с «до того, как
+   * ты что-то выбрал» на «когда ты выбрал и нажал».
+   */
+  const guest = s?.createBlocked === 'guest';
 
   const [catalog] = await Promise.all([get('/api/catalog'), loadGrammar()]);
   chosenBundle = chosenBundle
     || catalog.bundles.find((b) => b.available)?.id
     || null;
 
+  /* Черновик, переживший стену аккаунта. */
+  let draft = {};
+  try { draft = JSON.parse(localStorage.getItem('airena.draft') || '{}'); } catch { draft = {}; }
+  if (draft.preset && PRESETS[draft.preset]) chosenPreset = draft.preset;
+  if (draft.bundle) chosenBundle = draft.bundle;
+
   const field = h('textarea.field', {
     rows: 3, maxlength: MAX,
+    value: draft.prompt || '',
     placeholder: 'акула с острыми зубами, которая чует кровь',
     oninput: () => paintCount(),
     onfocus: () => { document.body.dataset.typing = '1'; },
@@ -56,7 +75,7 @@ export async function enter(root, args, ctx) {
 
   const counter = h('div.t-sub');
   const errBox = h('div');
-  const goBtn = h('button.btn.primary', { onclick: submit }, 'СОЗДАТЬ');
+  const goBtn = h('button.btn.primary', { onclick: submit }, guest ? 'СОЗДАТЬ СВОЁ' : 'СОЗДАТЬ');
 
   const presets = h('div.cards',
     Object.entries(PRESETS).map(([id, p]) => h(`div.card${id === chosenPreset ? '.on' : ''}`, {
@@ -97,6 +116,9 @@ export async function enter(root, args, ctx) {
   paintCount();
   track('create_opened', {});
 
+  if (guest) {
+    counter.textContent = 'Существо создаётся на аккаунте — спросим один раз, на кнопке.';
+  }
   if (s?.createBlocked === 'free_used') showDeny('free_used');
   if (s?.limits && !s.limits.open) showDeny('budget_day');
 
@@ -130,16 +152,26 @@ export async function enter(root, args, ctx) {
   }
 
   async function submit() {
+    const prompt = field.value.trim();
+    if (guest) {
+      /* То, что игрок уже написал и выбрал, переживает стену: возвращаться
+         и печатать заново — худший способ отпраздновать регистрацию. */
+      try {
+        localStorage.setItem('airena.draft', JSON.stringify({ prompt, preset: chosenPreset, bundle: chosenBundle }));
+      } catch { /* приватный режим — черновик просто не сохранится */ }
+      ctx.go('/save');
+      return;
+    }
     goBtn.disabled = true;
     clear(errBox);
-    const prompt = field.value.trim();
     track('create_submitted', { bundle: chosenBundle, promptChars: prompt.length });
     try {
       const job = await post('/api/creature', { prompt, bundle: chosenBundle, kitPreset: chosenPreset });
       /* Ключ в localStorage: вкладку можно закрыть, и генерацию надо будет
          найти снова — это самое длинное окно первой сессии и окно
          наибольшего отвала. */
-      try { localStorage.setItem('airena.job', job.id); } catch { /* приватный режим */ }
+      try { localStorage.setItem('airena.job', job.id); localStorage.removeItem('airena.draft'); }
+      catch { /* приватный режим */ }
       ctx.go(`/new/${job.id}`);
     } catch (e) {
       showDeny(e.code, e.message);

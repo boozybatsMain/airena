@@ -187,7 +187,7 @@ export function buildRouter(ctx) {
     /* Бюджет пересчитывается ЗАНОВО на сервере: цифры, присланные клиентом
        или моделью, не авторитетны (§8). */
     const bad = validateKit(body.kit);
-    if (bad.length) return fail(res, 422, 'bad_kit', 'кит не проходит правила', { violations: bad });
+    if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
 
     db.prepare('UPDATE creature SET kit_json = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(body.kit), Date.now(), row.id);
@@ -215,6 +215,26 @@ export function buildRouter(ctx) {
 
     const prompt = String(body.prompt || '').slice(0, 400).trim();
     if (prompt.length < 3) return fail(res, 422, 'short_prompt', 'опиши существо хотя бы несколькими словами');
+
+    /*
+     * F7 — «одно бесплатное существо на аккаунт, пожизненно» — закрывается
+     * ЗДЕСЬ, атомарным UPDATE, а не проверкой в `limits.check`.
+     *
+     * Проверка и постановка в очередь — два разных оператора, и между ними
+     * помещается второй запрос: два POST в одну миллисекунду проходили обе
+     * проверки и заводили два существа на один аккаунт. Условие
+     * `free_creature_used = 0` в самом UPDATE делает выигравшего ровно одним:
+     * второй получает `changes === 0` и честный отказ.
+     *
+     * Флаг снимается, если генерация не удалась, — E5: за неудачу не платят
+     * ни деньгами, ни правом на бесплатное существо.
+     */
+    const claimed = db.prepare(
+      'UPDATE account SET free_creature_used = 1 WHERE id = ? AND free_creature_used = 0',
+    ).run(acct.id);
+    if (claimed.changes === 0) {
+      return fail(res, 429, 'free_used', limits.DENY.free_used);
+    }
 
     const job = jobs.enqueue({
       accountId: acct.id, kind: 'create', bundle,
@@ -375,14 +395,32 @@ export function observationsOf(row) {
  * Берём то, что в бою действительно произошло, а не пересказ.
  */
 export function beatsFrom(log, m) {
+  /*
+   * Поле называется `type`, а не `kind`.
+   *
+   * `sim.js` пишет `world.log.push({ t, type, who, ... })`. Читатель,
+   * искавший `e.kind`, находил ноль совпадений при полном логе и отдавал
+   * пустой разбор — то есть экран «что оно думало», на котором держится
+   * доказательство F11, был пуст всегда и молча. Ошибка не падала: пустой
+   * массив это законный ответ.
+   */
   const out = [];
   const name = (slot) => (slot === m.a_slot ? m.a_name : m.b_name);
+  const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned']);
   for (const e of log) {
-    if (!e || typeof e !== 'object') continue;
-    if (e.kind === 'say') out.push({ t: e.t, who: name(e.who), type: 'say', text: e.text });
-    else if (e.kind === 'hit') out.push({ t: e.t, who: name(e.who), type: 'hit', skill: e.skill, amount: e.amount });
-    else if (e.kind === 'blocked') out.push({ t: e.t, who: name(e.who), type: 'blocked', skill: e.skill });
-    else if (e.kind === 'miss') out.push({ t: e.t, who: name(e.who), type: 'miss', skill: e.skill });
+    if (!e || typeof e !== 'object' || !KEEP.has(e.type)) continue;
+    const base = { t: e.t, who: name(e.who), type: e.type };
+    if (e.type === 'say') out.push({ ...base, text: e.text });
+    else if (e.type === 'damage') out.push({ ...base, type: 'hit', skill: e.skill, amount: e.amount });
+    else if (e.type === 'miss') out.push({ ...base, type: e.reason === 'cover' ? 'blocked' : 'miss', skill: e.skill });
+    else out.push({ ...base, skill: e.skill ?? null, reason: e.reason ?? null });
   }
-  return out.slice(-60);
+  /* Реплики держатся всегда: их мало, и они — то, ради чего экран есть.
+     Подряд идущие одинаковые схлопываются: мозг, повторивший строку на двух
+     соседних мыслях, сказал её один раз — а две одинаковые строки в разборе
+     читаются как сбой показа. */
+  const says = out.filter((b) => b.type === 'say')
+    .filter((b, i, all) => !(i && all[i - 1].who === b.who && all[i - 1].text === b.text && b.t - all[i - 1].t < 3.2));
+  const others = out.filter((b) => b.type !== 'say');
+  return [...says, ...others.slice(0, 40)].sort((a, b) => a.t - b.t);
 }

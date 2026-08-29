@@ -58,9 +58,25 @@ const shellEl = $('#shell');
 
 export async function refreshSession() {
   try {
+    const before = state.session?.creature?.id ?? null;
     state.session = await get('/api/session');
     paintShell();
     state.bus.dispatchEvent(new CustomEvent('session'));
+    /*
+     * Существо, появившееся посреди сессии, обязано появиться и на арене.
+     *
+     * Без этого игрок доживал генерацию до конца, возвращался на вкладку
+     * «Бой» и видел гостевую плашку «ты смотришь чужой бой» — про своё
+     * существо, которое в этот момент уже дралось. Перезагрузка чинила, и
+     * это худший вид бага: он выглядит как «игра не заметила», потому что
+     * игра действительно не заметила.
+     */
+    const after = state.session?.creature?.id ?? null;
+    if (before !== after) {
+      arena.onSessionChanged();
+      /* Сокет подписан на существо, которого тогда ещё не было. */
+      try { window.__airenaSend?.({ cmd: 'watch', creatureId: after }); } catch { /* сокета нет */ }
+    }
     return state.session;
   } catch (e) {
     if (e.code === 'offline') fatal.show('offline');

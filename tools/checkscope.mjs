@@ -150,14 +150,32 @@ const EXEMPT = [
   /запрещ|нельзя|не строится|не показыва|не бывает|отсутств|N\d\b|E6\b|F4\b|F11\b|N19\b/iu,
 ];
 
+/*
+ * Вторая поверхность: РУССКИЕ строки сервера.
+ *
+ * Гейт, смотрящий только на клиент, пропускает половину копирайта: сообщения
+ * об отказах, названия атомов грамматики и подписи стадий приезжают с сервера
+ * и читаются игроком точно так же. Замерено: «кит не проходит правила» и
+ * «два скилла в ките делают одно и то же» уезжали в браузер из
+ * `src/skills/registry.js`, мимо проверки, которая формально была зелёной.
+ *
+ * Проверяются только правила КОПИРАЙТА (D21 и F4): в коде сервера `kit` и
+ * `skills` как идентификаторы законны и нужны.
+ */
+const SERVER_COPY = ['src/skills/registry.js', 'src/server/api.js', 'src/server/limits.js',
+  'src/server/jobs.js', 'src/server/forge/pipeline.js', 'src/server/adapt.js', 'src/server/creatures.js'];
+const COPY_RULES = new Set(['D21 жаргон в UI', 'F4 слово «токен»']);
+
 const FILES = bundle();
 
 const hits = [];
-{
-  for (const f of FILES) {
-    const text = readFileSync(f, 'utf8');
+for (const [surface, list] of [['bundle', FILES], ['server', SERVER_COPY.map((f) => join(ROOT, f))]]) {
+  for (const f of list) {
+    let text;
+    try { text = readFileSync(f, 'utf8'); } catch { continue; }
     const lines = text.split('\n');
     for (const rule of RULES) {
+      if (surface === 'server' && !COPY_RULES.has(rule.id)) continue;
       rule.re.lastIndex = 0;
       for (const m of text.matchAll(rule.re)) {
         const before = text.slice(0, m.index);
@@ -185,6 +203,6 @@ for (const rule of RULES) {
 const n = FILES.length;
 console.log('  ' + '─'.repeat(60));
 if (VERBOSE) { console.log('\n  бандл игрока:'); for (const f of FILES) console.log(`    ${relative(ROOT, f)}`); }
-console.log(`\n  ${hits.length ? `ОБЪЁМ ПРОБИТ — ${hits.length} нарушений в ${n} файлах бандла`
-  : `объём держится — ${n} файлов в бандле игрока, ни одного нарушения`}\n`);
+console.log(`\n  ${hits.length ? `ОБЪЁМ ПРОБИТ — ${hits.length} нарушений`
+  : `объём держится — ${n} файлов бандла и ${SERVER_COPY.length} файлов серверного копирайта, ни одного нарушения`}\n`);
 process.exit(hits.length ? 1 : 0);

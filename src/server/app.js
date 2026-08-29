@@ -209,7 +209,19 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
           winner: m.winner, reason: m.reason,
           result: m.result_json ? JSON.parse(m.result_json) : null,
         }, { a, b, featured: false }).then((bc) => {
-          if (bc) { sub.matchId = null; bc.at = 0; bc.over = null; live.deliver(sub); }
+          /*
+           * Перематывать можно только СВОЮ трансляцию.
+           *
+           * `bc.at = 0` на общей трансляции отматывает бой всем, кто её
+           * смотрит: один анонимный сокет мог держать арену на нулевой
+           * секунде для всех остальных, повторяя запрос. Если матч уже идёт
+           * и у него есть зрители — просто подключаемся к нему с текущего
+           * места, как любой опоздавший (D14).
+           */
+          if (!bc) return;
+          if (bc.watchers.size === 0) { bc.at = 0; bc.over = null; }
+          sub.matchId = null;
+          live.deliver(sub);
         }).catch(() => {});
         return;
       }

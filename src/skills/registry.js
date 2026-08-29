@@ -28,12 +28,12 @@ export const WORLD = 'world';
 export const TRIGGERS = {
   active: {
     id: 'active', ru: 'по решению мозга',
-    doc: 'мозг вызывает скилл сам через api.startSkill',
+    doc: 'мозг вызывает умение сам через api.startSkill',
     cost: 0,
   },
   on_hit_taken: {
     id: 'on_hit_taken', ru: 'когда меня ударили',
-    doc: 'срабатывает на входящем уроне, если скилл не на кулдауне',
+    doc: 'срабатывает на входящем уроне, если умение не на откате',
     cost: 1,
   },
   on_hit_dealt: {
@@ -232,7 +232,7 @@ export function costOf(skill) {
  */
 export function validateSkill(skill) {
   const bad = [];
-  if (!skill || typeof skill !== 'object') return [{ code: 'shape', ru: 'скилл не объект' }];
+  if (!skill || typeof skill !== 'object') return [{ code: 'shape', ru: 'умение не объект' }];
   if (!TRIGGERS[skill.trigger]) bad.push({ code: 'trigger', ru: `нет такого триггера: ${skill.trigger}` });
   if (!DELIVERIES[skill.delivery]) bad.push({ code: 'delivery', ru: `нет такой доставки: ${skill.delivery}` });
   const eff = Array.isArray(skill.effects) ? skill.effects : [];
@@ -243,7 +243,7 @@ export function validateSkill(skill) {
 
   const needsChannel = eff.some((e) => EFFECTS[e]?.needsChannel);
   if (needsChannel && !CHANNELS[skill.channel]) {
-    bad.push({ code: 'channel', ru: 'boost и weaken обязаны назвать канал' });
+    bad.push({ code: 'channel', ru: '«усиление» и «ослабление» обязаны назвать канал' });
   }
   if (!needsChannel && skill.channel) bad.push({ code: 'channel_extra', ru: 'канал задан, но его некому крутить' });
 
@@ -257,23 +257,23 @@ export function validateSkill(skill) {
   }
 
   const cost = costOf(skill);
-  if (cost > SKILL_BUDGET) bad.push({ code: 'budget', ru: `бюджет скилла ${cost} из ${SKILL_BUDGET}` });
+  if (cost > SKILL_BUDGET) bad.push({ code: 'budget', ru: `умение стоит ${cost} очков из ${SKILL_BUDGET}` });
   return bad;
 }
 
 export function validateKit(kit) {
   const bad = [];
-  if (!Array.isArray(kit)) return [{ code: 'shape', ru: 'кит не массив' }];
-  if (kit.length !== KIT_SIZE) bad.push({ code: 'size', ru: `в ките ровно ${KIT_SIZE} скилла, получено ${kit.length}` });
+  if (!Array.isArray(kit)) return [{ code: 'shape', ru: 'набор не массив' }];
+  if (kit.length !== KIT_SIZE) bad.push({ code: 'size', ru: `в наборе ровно ${KIT_SIZE} умения, получено ${kit.length}` });
   kit.forEach((s, i) => {
     for (const b of validateSkill(s)) bad.push({ ...b, slot: i });
   });
   const total = kit.reduce((s, k) => s + costOf(k), 0);
-  if (total > KIT_BUDGET) bad.push({ code: 'kit_budget', ru: `бюджет кита ${total} из ${KIT_BUDGET}` });
+  if (total > KIT_BUDGET) bad.push({ code: 'kit_budget', ru: `набор стоит ${total} очков из ${KIT_BUDGET}` });
   /* Три одинаковых скилла — это один скилл с тремя кулдаунами. Читаемости
      ноль, а именно она — предмет §8. */
   const sig = kit.map((s) => `${s.delivery}:${(s.effects || []).join('+')}`);
-  if (new Set(sig).size < sig.length) bad.push({ code: 'kit_dup', ru: 'два скилла в ките делают одно и то же' });
+  if (new Set(sig).size < sig.length) bad.push({ code: 'kit_dup', ru: 'два умения в наборе делают одно и то же' });
   return bad;
 }
 

@@ -65,7 +65,11 @@ export async function enter(root, args, ctx) {
       await post('/api/session/claim', { embedToken: token });
       await ctx.refreshSession();
       track('account_claimed', {});
-      ctx.go('/creature/me');
+      /* Игрок пришёл сюда из создания и что-то уже написал — возвращаем его
+         туда, а не на страницу существа, которого ещё нет. */
+      let hasDraft = false;
+      try { hasDraft = !!JSON.parse(localStorage.getItem('airena.draft') || 'null')?.prompt; } catch { hasDraft = false; }
+      ctx.go(hasDraft ? '/new' : '/creature/me');
     } catch (e) {
       clear(status);
       status.appendChild(h('div.t-body', { style: { marginTop: '14px', color: '#f0a99e' } },

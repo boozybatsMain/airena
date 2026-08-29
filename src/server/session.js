@@ -17,7 +17,30 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 /** Гостевая куки живёт столько же, сколько имеет смысл её история. */
 export const GUEST_TTL_DAYS = 30;
 
-const SECRET = process.env.AIRENA_SECRET || 'dev-secret-not-for-production';
+/**
+ * Секрет подписи сессии.
+ *
+ * Запасное значение в коде — это не «удобно для разработки», это форгируемый
+ * токен в продакшене у любого, кто читал репозиторий: подписать себе
+ * `{u:"<чужой id>"}` становится однострочником, и вместе с сессией уезжает
+ * чужое существо, чужая лестница и чужой лимит генераций.
+ *
+ * Поэтому дефолт есть ТОЛЬКО в дев-режиме, и он кричит о себе. В продакшене
+ * без переменной процесс не поднимается вовсе — падение на старте видно, а
+ * тихая уязвимость нет.
+ */
+const DEV = process.env.AIRENA_DEV === '1';
+const SECRET = (() => {
+  const v = process.env.AIRENA_SECRET;
+  if (v && v.length >= 24) return v;
+  if (!DEV) {
+    throw new Error('AIRENA_SECRET не задан (нужно ≥24 символов). '
+      + 'Подписывать сессии значением из исходников нельзя: токен станет форгируемым.');
+  }
+  if (v) console.warn('  AIRENA_SECRET короче 24 символов — в продакшене это откажет');
+  console.warn('  дев-режим: сессии подписаны значением из исходников, в продакшене так нельзя');
+  return 'dev-secret-not-for-production';
+})();
 
 export function sign(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');

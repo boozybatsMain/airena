@@ -269,7 +269,7 @@ const UNFIT_HINTS = [
 
 export function whyUnfit(phrase) {
   for (const [re, why] of UNFIT_HINTS) if (re.test(phrase)) return why;
-  return 'такого понятия в грамматике скиллов пока нет';
+  return 'такого понятия в грамматике умений пока нет';
 }
 
 /**

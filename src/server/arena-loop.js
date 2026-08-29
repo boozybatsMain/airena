@@ -24,7 +24,7 @@ import { randomUUID } from 'node:crypto';
 
 import { MATCH_SECONDS, TICK_HZ } from '../core/config.js';
 import { runIsolated } from './sandbox/index.js';
-import { clampRating, pickOpponent, rate } from './ladder.js';
+import { FLOOR_RATING as FLOOR, clampRating, pickOpponent, rate } from './ladder.js';
 
 /** Как часто существо выходит в бой. §6.2: «примерно раз в минуту». */
 export const FIGHT_EVERY_MS = Number(process.env.AIRENA_FIGHT_EVERY_MS || 60_000);
@@ -106,7 +106,7 @@ export async function playMatch(db, a, b, deps) {
     winnerSlot === null ? null : (winnerSlot === aSlot ? a.id : b.id),
     result.reason, result.seconds, constantsVersion,
     d.a, d.b, aAfter, bAfter,
-    JSON.stringify({ octopus: result.octopus, gorilla: result.gorilla, log: result.log?.slice(-40) ?? [] }),
+    JSON.stringify({ octopus: result.octopus, gorilla: result.gorilla, log: keepLog(result.log) }),
     startedAt, now(), faulted.length ? 'brain_fault' : (b.is_library ? 'training' : 'ladder'),
   );
 
@@ -126,6 +126,30 @@ export async function playMatch(db, a, b, deps) {
   };
 }
 
+/**
+ * Что из лога матча остаётся жить.
+ *
+ * `log.slice(-40)` терял начало боя — а реплики `api.say()` почти всегда
+ * звучат в первые секунды: замерено, лог в БД начинался с t=11.7, и разбор
+ * боя выходил пустым ровно у тех матчей, где мозгу было что сказать.
+ * F11 назвал эти строки одним из двух доказательств взамен закрытого
+ * исходника; терять их — терять доказательство.
+ *
+ * Правило: ВСЕ реплики (их не больше двадцати по 90 знаков, ~2 КБ), плюс
+ * начало и конец событий. Середина плотного боя — это повторы, и их не жаль.
+ */
+function keepLog(log) {
+  if (!Array.isArray(log)) return [];
+  const says = log.filter((e) => e && e.type === 'say');
+  const rest = log.filter((e) => e && e.type !== 'say');
+  const head = rest.slice(0, 20);
+  const tail = rest.slice(-30);
+  const seen = new Set();
+  return [...says, ...head, ...tail]
+    .filter((e) => { const k = JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+}
+
 function bump(db, c, score, ratingAfter, at, faulted = false) {
   /* Незачётный бой считается как бой (счётчик наблюдений его видит), но не
      как победа или поражение: иначе журнал существа врёт о его силе. */
@@ -139,13 +163,25 @@ function bump(db, c, score, ratingAfter, at, faulted = false) {
      обязан всё время стоить одного и того же. Победы и поражения при этом
      считаются: без них в лестнице у всей библиотеки стоит «0% побед», и
      таблица врёт ровно про тех, по кому калибруется всё остальное. */
-  const rating = c.is_library ? c.rating : ratingAfter;
-  const peak = c.is_library ? c.peak_rating : ratingAfter;
+  /*
+   * Рейтинг пишется ДЕЛЬТОЙ, а не значением.
+   *
+   * `rating = ?` — это read-modify-write: значение посчитано из снимка
+   * существа, взятого до боя. Два боя одного существа, завершившиеся между
+   * чтением и записью, дают последнюю запись победителем, и вторая дельта
+   * исчезает. Бои идут параллельно (изолят) и заканчиваются в произвольном
+   * порядке, так что это не гонка «в теории»: это гонка каждый раз, когда
+   * существо дерётся чаще, чем идёт один матч.
+   *
+   * `rating + ?` считает СУБД, атомарно, в одном операторе.
+   */
+  const delta = c.is_library ? 0 : ratingAfter - c.rating;
   db.prepare(`UPDATE creature SET
-      rating = ?, peak_rating = max(peak_rating, ?),
+      rating = max(?, rating + ?),
+      peak_rating = max(peak_rating, max(?, rating + ?)),
       wins = wins + ?, losses = losses + ?, draws = draws + ?, fights = fights + 1,
       updated_at = ? WHERE id = ?`)
-    .run(rating, peak, w, l, dr, at, c.id);
+    .run(FLOOR, delta, FLOOR, delta, w, l, dr, at, c.id);
 }
 
 /**
