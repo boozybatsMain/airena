@@ -493,7 +493,21 @@ export function applyOrders(world, id, q) {
     }
   }
   if (q.face !== null && q.face !== undefined) me.wantHeading = q.face;
-  if (q.say) { me.say = { text: q.say, until: world.t + SAY_SECONDS }; me.stats.saidLines++; }
+  /*
+   * The line goes into the log as well as onto the body.
+   *
+   * F11 closes the brain source and names two things as its replacement proof
+   * that a model wrote the behaviour: these lines, and the tactics card. A
+   * line that only ever exists for three seconds above a head is proof nobody
+   * can be shown afterwards — the fight ends, the bubble pops, and the only
+   * evidence left is a number. So it is logged, and the log is what the
+   * after-fight card is assembled from.
+   */
+  if (q.say) {
+    me.say = { text: q.say, until: world.t + SAY_SECONDS };
+    me.stats.saidLines++;
+    world.log.push({ t: round3(world.t), type: 'say', who: id, text: q.say });
+  }
   if (q.use) startSkill(world, id, q.use.name, q.use.a, q.use.b);
 }
 

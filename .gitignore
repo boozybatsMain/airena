@@ -10,3 +10,4 @@ logs/
 # belong, and where reports/README.md already says captures live.
 reports/screens/*.png
 /*.png
+data/

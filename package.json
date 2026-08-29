@@ -5,14 +5,17 @@
   "type": "module",
   "description": "Two LLM-written brains fight in an arena.",
   "scripts": {
-    "serve": "node src/server/index.js",
+    "serve": "node src/server/app.js",
     "test": "node tools/test.mjs && node tools/checkprompt.mjs && node tools/checkbehaviour.mjs && node tools/checkframing.mjs && node tools/falsify.mjs --controls",
     "arena": "node tools/arena.mjs",
     "tournament": "node tools/tournament.mjs",
     "falsify": "node tools/falsify.mjs",
     "balance": "node tools/balance.mjs",
     "report": "node tools/report.mjs",
-    "forge": "node tools/brainforge.mjs"
+    "forge": "node tools/brainforge.mjs",
+    "dev": "AIRENA_DEV=1 node src/server/app.js",
+    "viewer": "node src/server/index.js",
+    "seed": "node tools/seed.mjs"
   },
   "dependencies": {
     "esbuild": "^0.28.2",

@@ -1,0 +1,386 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Airena UI Kit — общий слой для всех экранов.
+
+   Источник истины по внешнему виду: боевой HUD вьювера
+   (src/viewer/index.html + hud-skin.js) и его макет preview/arena.html —
+   они прошли ручное поэлементное ревью (SPEC §10.6). Всё, что здесь есть,
+   либо скопировано оттуда дословно, либо выведено из тех же токенов.
+
+   Правило расхождения: расходиться с эталоном можно осознанно, но не по
+   незнанию. Каждый блок ниже помечен: [эталон] — перенос, [новое] — то,
+   чего в боевом HUD нет, потому что там не было такого случая.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── шрифты [новое, вынужденно] ──────────────────────────────────────────────
+   Эталонный HUD набран Rajdhani (§10.6), и это работало ровно до того момента,
+   когда язык продукта стал русским: у Rajdhani в Google Fonts подмножества
+   latin, latin-ext, devanagari, vietnamese — КИРИЛЛИЦЫ НЕТ. Проверено запросом
+   к fonts.googleapis.com 29.08: ни одного блока с U+0400-045F. Русский текст
+   молча уезжал бы в системный sans, рядом с цифрами, набранными Rajdhani.
+
+   Замена выбрана визуально, а не по описанию: семь гарнитур с кириллицей
+   поставлены рядом на настоящем HUD (имена, клок, чипы кулдаунов, лента) и
+   сравнены с эталоном. Tektur — единственная, которая держит характер
+   Rajdhani: квадратные плечи, техническая цифра, узкий капс. Exo 2 взята
+   на бегущий текст, где Tektur становится тесной.
+
+   Обе — вариативные, обе лежат у нас (F6: сторонний домен в критическом пути
+   первого кадра — это лишний DNS + TLS + два round-trip). 84 КБ на четыре
+   файла, все веса 400-700. */
+@font-face {
+  font-family: 'Tektur'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('/fonts/tektur-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Tektur'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('/fonts/tektur-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Exo2'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('/fonts/exo2-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Exo2'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('/fonts/exo2-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── токены [эталон] ─────────────────────────────────────────────────────── */
+:root {
+  --oct: #4fc8dc;
+  --gor: #e2904e;
+  --ink: #e8f1f7;
+  --dim: #93a5b4;
+  --name-cy: #74c6d4;
+  --name-or: #cf854a;
+  --red: #e04c3c;
+  --panel: rgba(10, 18, 28, .18);
+  --shadow: rgba(8, 15, 24, .5);
+
+  /* [новое] — фоны страниц вне арены. Взяты из body вьювера (#0d0f14)
+     и uikit (#10151f): экран-документ чуть светлее экрана-сцены. */
+  --bg-scene: #0d0f14;
+  --bg-page: #10151f;
+  --bg-cell: #151b28;
+  --line: #232c3c;
+
+  /* [новое] — семантика состояний. Красный уже есть в эталоне (телеграф),
+     зелёного в эталоне нет намеренно: победа красится циан/оранжем бойца. */
+  --ok: #6fd0a0;
+  --warn: #e0b34c;
+  --bad: var(--red);
+
+  /* Дисплейная — на всё, что кричит: имена, клок, капс, цифры, кнопки.
+     Текстовая — на всё, что читают: карточка тактики, «не вошло», журнал. */
+  --font-display: 'Tektur', 'Rajdhani', ui-monospace, sans-serif;
+  --font-body: 'Exo2', 'Rajdhani', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg-page);
+}
+
+body {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── типографика [эталон] ────────────────────────────────────────────────── */
+.t-name {
+  font-size: 21px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; line-height: 1.1; color: var(--name-cy);
+  text-shadow: 0 0 16px rgba(95, 180, 200, .35), 0 0 5px rgba(95, 180, 200, .2);
+}
+.t-name.or { color: var(--name-or); text-shadow: 0 0 16px rgba(210, 140, 75, .32), 0 0 5px rgba(210, 140, 75, .2); }
+.t-name.big { font-size: 30px; }
+
+.t-num {
+  font-size: 44px; font-weight: 600; letter-spacing: .04em; line-height: 1;
+  font-variant-numeric: tabular-nums; color: #eef6fa;
+}
+.t-sub { font-size: 11px; font-weight: 500; letter-spacing: .06em; color: var(--dim); }
+.t-cap {
+  font-size: 12px; font-weight: 600; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--dim);
+}
+.t-body { font-family: var(--font-body); font-size: 14.5px; line-height: 1.5; color: #c4d1dc; }
+.t-mono { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+.t-stat { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #6fd0e0; }
+
+/* Заголовок-гребёнка [эталон: .hcut вьювера] */
+.hcut {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  font-size: 15px; font-weight: 600; letter-spacing: .16em; color: #74b4c6;
+  white-space: nowrap; text-transform: uppercase;
+}
+.hcut::before { content: "//"; letter-spacing: .05em; color: rgba(116, 180, 198, .85); }
+.hcut svg { position: absolute; left: 0; top: 0; width: 400px; height: 40px; pointer-events: none; }
+.hunder {
+  width: 236px; height: 1px; margin-top: 8px;
+  background: linear-gradient(90deg, rgba(127, 210, 226, .5) 0 62%, rgba(127, 210, 226, .18));
+}
+
+/* ── панель [эталон: #legend вьювера] ────────────────────────────────────── */
+.panel { position: relative; }
+.panel > .bg {
+  position: absolute; inset: 0; background: var(--panel);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+.panel > .fr {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--wf, none); background-size: 100% 100%;
+}
+.panel > .in { position: relative; padding: 17px 22px; }
+/* Тень-подложка: не рамка, а вес. [эталон: #legend::before] */
+.panel.lift::before {
+  content: ""; position: absolute; inset: -12px -14px; z-index: -1;
+  background: rgba(8, 15, 24, .42); border-radius: 18px; filter: blur(20px);
+}
+.panel .prow {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 11px 0 0; gap: 18px;
+}
+.panel .k {
+  font-size: 13.5px; font-weight: 500; letter-spacing: .08em;
+  color: #b6c3cf; text-transform: uppercase;
+}
+.panel .v { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #6fd0e0; }
+
+/* ── HP-бар [эталон, 1:1 из вьювера] ─────────────────────────────────────── */
+.hp { position: relative; width: 330px; height: 16px; }
+.hp::before {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  background: var(--panel);
+}
+.hp.mir::before { clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 100%, 5px 100%); }
+.hp > i {
+  position: absolute; inset: 0 auto 0 0; display: block; transition: width .12s linear;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  background-image: linear-gradient(90deg,
+    #5896a8 0, #5896a8 66px, #68aabc 66px, #68aabc 132px,
+    #76bed0 132px, #76bed0 198px, #82cee2 198px, #82cee2 264px,
+    #8cdbef 264px, #8cdbef 330px);
+  background-size: 330px 100%; background-position: left center; background-repeat: no-repeat;
+  filter: drop-shadow(0 0 5px rgba(110, 205, 228, .5));
+}
+.hp.mir > i {
+  left: auto; right: 0;
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 100%, 5px 100%);
+  background-image: linear-gradient(90deg,
+    #e28642 0, #e28642 66px, #d47b3d 66px, #d47b3d 132px,
+    #c26f38 132px, #c26f38 198px, #ac6231 198px, #ac6231 264px,
+    #965429 264px, #965429 330px);
+  background-position: right center;
+  filter: drop-shadow(0 0 5px rgba(226, 140, 70, .45));
+}
+.hp::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--wf, none); background-size: 100% 100%;
+}
+
+/* ── плитка / слот [эталон: .cd, .slot] ──────────────────────────────────── */
+.cd {
+  position: relative; min-width: 52px; height: 34px; padding: 2px 9px 0;
+  display: grid; place-items: center; border-radius: 3px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  background: var(--panel); background-image: var(--wf, none); background-size: 100% 100%;
+}
+.cd.cy { color: var(--oct); }
+.cd.or { color: var(--gor); }
+.cd.cool { color: #7d8b98; opacity: .75; }
+.slot {
+  position: relative; width: 50px; height: 50px; display: grid; place-items: center;
+  border-radius: 3px; background: var(--panel);
+  background-image: var(--wf, none); background-size: 100% 100%;
+}
+.slot svg { width: 29px; height: 29px; fill: #7fd0dd; opacity: .92; }
+
+/* ── контролы [эталон: #controls вьювера] ────────────────────────────────── */
+.btn {
+  font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: .05em;
+  color: var(--ink); background: rgba(16, 26, 38, .8);
+  border: 1px solid rgba(120, 180, 205, .28); padding: 5px 9px;
+  cursor: pointer; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { border-color: rgba(120, 200, 225, .55); }
+.btn:disabled { opacity: .42; cursor: not-allowed; }
+.btn.accent { color: #9fe3f0; border-color: rgba(79, 200, 220, .5); }
+/* [новое] — главное действие экрана. В боевом HUD такого нет: там всё
+   второстепенное. Здесь экран обязан иметь одно главное действие (§10.3). */
+.btn.primary {
+  font-size: 15px; letter-spacing: .14em; text-transform: uppercase;
+  padding: 12px 26px; color: #0d1219;
+  background: linear-gradient(180deg, #a8e6f2, #63c3d6);
+  border: 1px solid rgba(160, 230, 245, .8);
+  box-shadow: 0 0 22px rgba(79, 200, 220, .22);
+}
+.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #bdeef8, #74d0e2); }
+.btn.ghost { background: transparent; border-color: rgba(120, 180, 205, .22); color: var(--dim); }
+.btn.big { font-size: 14px; padding: 9px 18px; letter-spacing: .1em; text-transform: uppercase; }
+
+.field {
+  font-family: var(--font-body); font-size: 15px; font-weight: 500; color: var(--ink);
+  background: rgba(8, 14, 22, .6); border: 1px solid rgba(120, 180, 205, .28);
+  padding: 10px 14px; width: 100%; resize: vertical; line-height: 1.5;
+}
+.field:focus { outline: none; border-color: rgba(79, 200, 220, .55); }
+.field::placeholder { color: #5d6b7a; }
+
+label {
+  font-size: 11px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap;
+}
+
+/* ── лента событий [эталон: #feed] ───────────────────────────────────────── */
+.feedrow {
+  display: grid; grid-template-columns: 46px 1fr auto; gap: 10px;
+  align-items: baseline; font-size: 14px; letter-spacing: .04em; color: #dde6ec;
+}
+.feedrow .tm { font-variant-numeric: tabular-nums; color: #adbac4; }
+.feedrow .who { font-weight: 500; letter-spacing: .05em; color: #5db4c6; }
+.feedrow .who.or { color: #cf854a; }
+
+/* ── банер [эталон: #banner .box] ────────────────────────────────────────── */
+.banner {
+  text-align: center; background: rgba(8, 14, 22, .85);
+  border: 1px solid rgba(120, 180, 205, .25); padding: 20px 44px; display: inline-block;
+}
+.banner .who {
+  font-size: 38px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--oct);
+}
+.banner .why {
+  font-size: 12px; color: #c9d4dd; letter-spacing: .26em;
+  text-transform: uppercase; margin-top: 8px;
+}
+
+/* ── реплика мозга [эталон: .say] ────────────────────────────────────────── */
+.say {
+  display: inline-block; background: rgba(10, 17, 26, .88);
+  border: 1px solid var(--oct); color: var(--oct);
+  padding: 3px 10px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
+}
+.say.or { border-color: var(--gor); color: var(--gor); }
+
+/* ── виньетка [эталон] ───────────────────────────────────────────────────── */
+.vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 5;
+  background:
+    radial-gradient(120% 90% at 50% 42%, transparent 52%, rgba(3, 7, 13, .42) 100%),
+    linear-gradient(to bottom, rgba(6, 12, 20, .32) 0%, transparent 13%),
+    linear-gradient(to top, rgba(4, 9, 16, .45) 0%, transparent 14%);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   [новое] — то, чего в боевом HUD нет, потому что там не было этих случаев.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Оболочка страницы-документа: существо, лестница, создание. */
+.sheet { max-width: 1100px; margin: 0 auto; padding: 28px 30px 90px; }
+.sheet.narrow { max-width: 720px; }
+
+/* Ряд метрик — «панель статов» вьювера, разложенная в строку. */
+.stats { display: flex; flex-wrap: wrap; gap: 26px; }
+.stat { display: flex; flex-direction: column; gap: 3px; }
+.stat .v { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; color: #cfe6ee; line-height: 1; }
+.stat .k { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.stat.up .v { color: var(--ok); }
+.stat.down .v { color: var(--bad); }
+
+/* Строка таблицы. Таблица строится от игрока (§10.4), поэтому это не «список
+   мест», а ряд карточек-строк с явной подсветкой своей. */
+.trow {
+  display: grid; align-items: center; gap: 14px;
+  grid-template-columns: 54px 1fr 92px 78px 96px;
+  padding: 9px 14px; border-left: 2px solid transparent;
+  font-size: 14px;
+}
+.trow + .trow { border-top: 1px solid rgba(35, 44, 60, .7); }
+.trow .rank { font-variant-numeric: tabular-nums; color: var(--dim); font-weight: 600; }
+.trow.me { background: rgba(79, 200, 220, .07); border-left-color: var(--oct); }
+.trow.me .nm { color: #9fe3f0; }
+.trow .nm { letter-spacing: .06em; text-transform: uppercase; font-weight: 500; color: #c8d6e0; }
+.trow .num { font-variant-numeric: tabular-nums; text-align: right; color: #b6c3cf; }
+.trow.head { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); border-left-color: transparent; }
+.trow.head .num { text-align: right; }
+
+/* Бейдж: топ-100, тренировочный соперник, «не вошло». */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  border: 1px solid rgba(120, 180, 205, .3); color: #9fd2de; background: rgba(10, 18, 28, .5);
+}
+.badge.warn { border-color: rgba(224, 179, 76, .45); color: var(--warn); }
+.badge.bad { border-color: rgba(224, 76, 60, .45); color: #f08b7e; }
+.badge.ok { border-color: rgba(111, 208, 160, .4); color: var(--ok); }
+
+/* Чип атома скилла. */
+.atom {
+  display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  border: 1px solid rgba(120, 180, 205, .26); color: #a9c4d2; background: rgba(10, 18, 28, .45);
+}
+.atom.trig { border-color: rgba(224, 179, 76, .4); color: #e7c877; }
+.atom.deliv { border-color: rgba(79, 200, 220, .42); color: #7fd6e6; }
+.atom.eff { border-color: rgba(226, 144, 78, .42); color: #e5a877; }
+.atom.chan { border-color: rgba(160, 140, 220, .42); color: #b3a6e0; }
+.atom.elem { border-color: rgba(150, 175, 195, .35); color: #a8bcc9; }
+
+/* Полоса прогресса генерации. Не спиннер — §10.3 запрещает спиннер. */
+.prog { position: relative; height: 3px; background: rgba(10, 18, 28, .7); overflow: hidden; }
+.prog > i {
+  display: block; height: 100%; background: linear-gradient(90deg, #4fc8dc, #8cdbef);
+  box-shadow: 0 0 10px rgba(110, 205, 228, .6); transition: width .4s ease;
+}
+.prog.pulse > i { animation: prog-pulse 2.4s ease-in-out infinite; }
+@keyframes prog-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* Кольцо «существо ищет бой» вокруг главной кнопки (§6.2). */
+.seeking { position: relative; display: inline-block; }
+.seeking::after {
+  content: ""; position: absolute; inset: -7px; pointer-events: none;
+  border: 1px solid rgba(79, 200, 220, .34);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  animation: seek 2.6s linear infinite;
+}
+@keyframes seek { 0%, 100% { opacity: .28; } 50% { opacity: .9; } }
+
+/* Пустое состояние. Всегда объясняет причину и даёт следующий шаг. */
+.empty { padding: 44px 20px; text-align: center; color: var(--dim); }
+.empty .hd { font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: #8fb3c2; margin-bottom: 8px; }
+
+/* Скелет загрузки — вместо спиннера. */
+.skel { background: linear-gradient(90deg, #182031 25%, #1f2938 37%, #182031 63%); background-size: 400% 100%; animation: skel 1.4s ease infinite; }
+@keyframes skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .prog.pulse > i, .seeking::after, .skel { animation: none; }
+}
+
+/* Ссылка-действие внутри текста. */
+.lnk { color: #7fd6e6; cursor: pointer; border-bottom: 1px dotted rgba(127, 214, 230, .5); }
+.lnk:hover { color: #a8e8f5; }
+
+.row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; }
+.gap6 { gap: 6px; } .gap10 { gap: 10px; } .gap18 { gap: 18px; } .gap28 { gap: 28px; }
+.grow { flex: 1; }
+.mut { color: var(--dim); }
+.hidden { display: none !important; }

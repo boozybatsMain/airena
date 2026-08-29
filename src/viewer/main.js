@@ -526,7 +526,7 @@ function playFx(e) {
     camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
     floatDamage(e.x, e.z, e.amount, e.who);
     const src = e.who === 'octopus' ? 'gorilla' : 'octopus';
-    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${src}</span> ${e.skill} <b>${e.amount}</b>`, `${src}|${e.skill}|${e.amount}`);
+    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${sideName[src]}</span> · ${skillRu(e.skill)} · <b>${e.amount}</b>`, `${src}|${e.skill}|${e.amount}`);
   }
 }
 
@@ -577,7 +577,7 @@ function beamFx(e) {
      * whole tactical story of this arena.
      */
     const cover = len < cfg.skills.laser.range - 0.05;
-    pushFeed(`<span style="color:#${c.toString(16)}">${e.who}</span> laser <span style="opacity:.65">${cover ? 'blocked by cover' : 'missed'}</span>`,
+    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('laser')} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
       `${e.who}|laser|${cover ? 'cover' : 'aim'}`);
   }
 }
@@ -619,7 +619,7 @@ function coneFx(e) {
   m.position.set(e.x, 0.06, e.z);
   spawnFx(m, 0.3, (o, u) => { o.material.opacity = 0.55 * (1 - u); o.scale.setScalar(1 + u * 0.12); });
   if (!e.hit) {
-    pushFeed(`<span style="color:#${c.toString(16)}">${e.who}</span> smash <span style="opacity:.65">missed</span>`, `${e.who}|smash|miss`);
+    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('smash')} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
   }
 }
 
@@ -1016,19 +1016,57 @@ const bars = {
   octopus: { wrap: $('#bar-oct'), fill: $('#bar-oct .hp > i'), label: $('#bar-oct .hp > b'), cds: $('#bar-oct .cds'), meta: $('#meta-oct') },
   gorilla: { wrap: $('#bar-gor'), fill: $('#bar-gor .hp > i'), label: $('#bar-gor .hp > b'), cds: $('#bar-gor .cds'), meta: $('#meta-gor') },
 };
+/**
+ * Русские подписи умений и имена существ на плитах.
+ *
+ * Экран боя утверждён поэлементно (§10.6) — но утверждён он был как
+ * инструмент ревьюера, на английском и с видами вместо существ. В продукте
+ * на плите стоит имя существа игрока, а не название стороны, и подпись чипа
+ * читается по-русски. Таблица тут, а не в клиенте, потому что чипы строит
+ * этот файл.
+ */
+const SKILL_RU = {
+  laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок',
+  beam: 'луч', cone: 'конус', bolt: 'снаряд', lob: 'навес', zone: 'зона', dash: 'рывок',
+};
+const skillRu = (id) => SKILL_RU[id] || id;
+const REASON_RU = {
+  kill: 'у соперника кончилось здоровье',
+  timeout: 'время вышло — здоровья осталось больше',
+  'timeout-draw': 'время вышло — здоровье поровну',
+  'double-ko': 'оба выбыли в один тик',
+};
+
+/** Имя существа на стороне — приходит в сообщении `match`. */
+const sideName = { octopus: 'осьминог', gorilla: 'горилла' };
+
 const cdEls = { octopus: {}, gorilla: {} };
 for (const id of ['octopus', 'gorilla']) {
   for (const s of cfg.fighters[id].skills.concat('jump')) {
     const el = document.createElement('div');
     el.className = 'cd';
-    el.textContent = s;
+    el.textContent = skillRu(s);
+    el.dataset.skill = s;
     bars[id].cds.appendChild(el);
     cdEls[id][s] = el;
   }
 }
 
 const sayEls = { octopus: null, gorilla: null };
+const lastSaid = { octopus: null, gorilla: null };
 function setSay(id, textValue) {
+  /*
+   * Реплика дублируется в ленту.
+   *
+   * F11 закрыл исходник и назначил эти строки одним из двух доказательств,
+   * что поведение написала модель. Пузырь висит три секунды над телом, и
+   * зритель, смотревший в другую половину арены, теряет единственное
+   * доказательство, которое там было. Лента его сохраняет.
+   */
+  if (textValue && lastSaid[id] !== textValue) {
+    lastSaid[id] = textValue;
+    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${sideName[id]}</span> · <i style="font-style:normal;opacity:.9">«${textValue}»</i>`);
+  }
   if (!textValue) {
     if (sayEls[id]) { sayEls[id].remove(); sayEls[id] = null; }
     return;
@@ -1176,10 +1214,22 @@ const DELAY = SNAP_DT * 2;
 
 let ws;
 function connect() {
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   window.__ws = () => (ws ? ws.readyState : -1);
+  /* Одна дверь наружу для оболочки: попросить сервер повторить конкретный
+     бой. Второй сокет дал бы второе мнение о том, что сейчас идёт. */
+  window.__airenaSend = (v) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(v)); };
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
+    /*
+     * Everything the socket says is re-broadcast as a DOM event.
+     *
+     * The product shell (tabs, result panel, idle countdown) has to react to
+     * the same messages, and giving it a second socket would give it a second
+     * opinion about what fight is running. One socket, one truth, and the
+     * shell listens rather than asks.
+     */
+    dispatchEvent(new CustomEvent(`airena:${m.type}`, { detail: m }));
     if (m.type === 'error') { fail(m.message); return; }
     if (m.type === 'match') {
       frames = []; pendingFx = []; renderClock = 0; over = null; decided = false; matchInfo = m; framingLost = false;
@@ -1192,12 +1242,25 @@ function connect() {
       feed.innerHTML = '';
       for (const id of ['octopus', 'gorilla']) {
         const meta = m.meta[id];
-        bars[id].meta.textContent = meta
-          ? `${m.tags[id]} · ${meta.model}/${meta.effort} · ${meta.chars ?? '?'} chars`
-          : `${m.tags[id]} · hand-written`;
+        /* Под именем — автор мозга, и всё. Теги, effort и длина исходника —
+           дев-телеметрия; на продуктовой плите они занимают место, где должно
+           стоять единственное, что игроку важно: кто это написал. */
+        bars[id].meta.textContent = meta?.model || '';
         anim[id].lastHp = null; anim[id].lastX = null;
+        /*
+         * The plate carries the CREATURE's name when the server sends one.
+         * `octopus` and `gorilla` are the names of the two SIDES — cyan and
+         * orange — not of the things fighting; once creatures belong to
+         * players, printing the side name on the plate is printing the wrong
+         * word in the most visible place on the screen.
+         */
+        if (m.names && m.names[id]) {
+          const el = $(id === 'octopus' ? '#bar-oct .name' : '#bar-gor .name');
+          if (el) el.textContent = m.names[id];
+          sideName[id] = m.names[id];
+        }
       }
-      $('#clock .s').textContent = `seed ${m.seed}`;
+      $('#clock .s').textContent = `бой №${m.seed}`;
       const box = $('#seed');
       if (box && box.value.trim() === '') box.placeholder = String(m.seed);
       return;
@@ -1216,20 +1279,39 @@ function connect() {
       playFxUpTo(Infinity);
       over = m;
       const b = $('#banner');
-      b.querySelector('.who').textContent = m.winner ? `${m.winner} wins` : 'draw';
+      b.querySelector('.who').textContent = m.winner ? `${sideName[m.winner]} · ПОБЕДА` : 'НИЧЬЯ';
       b.querySelector('.who').style.color = m.winner ? `#${COLOR[m.winner].toString(16)}` : '#fff';
-      b.querySelector('.why').textContent = m.reason;
+      b.querySelector('.why').textContent = REASON_RU[m.reason] || m.reason;
       b.classList.add('on');
       if ($('#chk-loop').checked) setTimeout(startMatch, 2600);
-      for (const id of ['octopus', 'gorilla']) {
-        const s = m.stats[id];
-        pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${id}</span> faults ${s.faults}/${s.thinks} · uses ${JSON.stringify(s.uses)}`);
+      /*
+       * `faults 0/716 · uses {...}` больше не печатается в ленту.
+       *
+       * Это телеметрия, и стояла она ровно в том слоте, который §10.3 отводит
+       * под свидетельство: последнее, что видит зритель после боя. Ревьюеру
+       * она по-прежнему доступна — в дев-режиме, в консоли.
+       */
+      if (new URLSearchParams(location.search).get('dev')) {
+        for (const id of ['octopus', 'gorilla']) {
+          const s = m.stats[id];
+          console.log(`${id}: faults ${s.faults}/${s.thinks} · uses`, s.uses);
+        }
       }
     }
   };
   ws.onclose = () => setTimeout(connect, 900);
 }
-connect();
+/*
+ * Сокет открывается В КОНЦЕ файла, а не здесь.
+ *
+ * Модуль приостанавливается на двух верхнеуровневых await (`/api/config` и
+ * `/api/recommended`), и всё, что объявлено ниже через `let`, во время этой
+ * паузы ещё не инициализировано. Дев-вьювер этого не замечал: там матч
+ * начинается по пробелу, то есть заведомо после конца evaluation. Продуктовый
+ * сервер шлёт `match` сразу на подключение — и `onmessage` падал на
+ * `framingLost` с «Cannot access before initialization», а вместе с ним
+ * умирал весь рендер.
+ */
 
 /**
  * A specific fight, again.
@@ -1265,7 +1347,12 @@ function startMatch() {
 }
 $('#btn-run').onclick = startMatch;
 addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  const t = e.target;
+  /* TEXTAREA joined this list the moment the product grew a prompt field:
+     Space is "fight" here and a space character there, and preventDefault on
+     the wrong one silently eats every second word the player types. */
+  if (t.tagName === 'SELECT' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+      || t.isContentEditable || document.body.dataset.typing === '1') return;
   if (e.code === 'Space') { e.preventDefault(); startMatch(); }
   if (e.key === 'c' || e.key === 'C') $('#btn-cam').click();
   if (e.key === 'Escape') $('#code').classList.remove('on');
@@ -1312,7 +1399,14 @@ $('#code-close').onclick = () => $('#code').classList.remove('on');
  * discriminator rather than the tag spelling — a generated brain has a JSON
  * naming the model that wrote it, a hand-written one has none.
  */
-const tagList = await (await fetch('/api/brains')).json();
+/* Список тегов — дев-удобство, а не часть боя. На продуктовом сервере
+   этого маршрута нет вовсе (F11: исходники и теги чужих мозгов наружу не
+   ходят), и падать из-за отсутствующего выпадающего списка — значит терять
+   картинку ради инструмента ревьюера. */
+const tagList = await fetch('/api/brains')
+  .then((r) => (r.ok ? r.json() : []))
+  .then((v) => (Array.isArray(v) ? v : []))
+  .catch(() => []);
 const BRAIN_GROUPS = [
   ['written by a model', (t, id) => !!t[id]],
   ['hand-written probes', (t, id) => !t[id] && t.tag !== 'stub'],
@@ -1390,7 +1484,7 @@ let camCutAt = -1;
 $('#btn-cam').onclick = () => {
   camMode = (camMode + 1) % camModes.length;
   camCutAt = performance.now() / 1000;
-  $('#btn-cam').textContent = `Camera: ${camModes[camMode]}`;
+  $('#btn-cam').textContent = camModes[camMode];
 };
 
 const camState = { az: Math.PI * 0.25, look: new THREE.Vector3(), dist: 30, height: 16, shake: 0, cover: 0, orbit: 0 };
@@ -2113,10 +2207,10 @@ function frame() {
        */
       bars[id].wrap.classList.toggle('dead', !v.alive);
       for (const [sk, el] of Object.entries(cdEls[id])) {
-        if (!v.alive) { el.className = 'cd cool'; el.textContent = sk; continue; }
+        if (!v.alive) { el.className = 'cd cool'; el.textContent = skillRu(sk); continue; }
         const cd = v.cd ? v.cd[sk] : 0;
         el.className = `cd ${cd > 0.001 ? 'cool' : 'ready'}`;
-        el.textContent = cd > 0.001 ? `${sk} ${cd.toFixed(1)}` : sk;
+        el.textContent = cd > 0.001 ? `${skillRu(sk)} ${cd.toFixed(1)}` : skillRu(sk);
       }
       updateTelegraph(id, v);
       updatePlate(id, v, body.height || 2);
@@ -2147,11 +2241,16 @@ function frame() {
     scene.background.setRGB(0.051 + heat * 0.20, 0.059, 0.078);
     const clockEl = $('#clock .s');
     if (burn > 0) {
-      clockEl.textContent = `SUDDEN DEATH  −${(burn * 100).toFixed(1)}% / s`;
+      clockEl.textContent = `ВНЕЗАПНАЯ СМЕРТЬ · арена жжёт обоих, −${(burn * 100).toFixed(1)}% в секунду`;
       clockEl.style.color = '#ff6a52';
       clockEl.classList.add('burning');
     } else if (matchInfo) {
-      clockEl.textContent = `seed ${matchInfo.seed}   sudden death in ${Math.max(0, cfg.suddenDeathAt - fr.a.t).toFixed(0)}s`;
+      /* Слово seed игроку не показывается — сид это НОМЕР боя, и «бой №483634»
+         читается любым посетителем, а `seed` только тем, кто уже свой. */
+      const left = Math.max(0, cfg.suddenDeathAt - fr.a.t);
+      clockEl.textContent = left < 10
+        ? `бой №${matchInfo.seed} · арена загорится через ${left.toFixed(0)} с`
+        : `бой №${matchInfo.seed}`;
       clockEl.style.color = '';
       clockEl.classList.remove('burning');
     }
@@ -2175,3 +2274,6 @@ function frame() {
     }).then((r) => r.json()).then((j) => resolve(j.file)).catch((e) => resolve(String(e)));
   }
 }
+
+/* Всё объявлено — можно подключаться. См. комментарий выше. */
+connect();

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Airena</title>
+<!--
+  Карта импортов стоит ПЕРВОЙ и в <head>.
+
+  Браузер разрешает спецификаторы модулей в момент preload, а не в момент
+  исполнения: `modulepreload` на main.js, поставленный до карты, роняет
+  «Failed to resolve module specifier "three"» и грузит модуль второй раз.
+
+  Сборка минифицированная, а не читаемая: F6 меряет время до первого кадра,
+  а `three.webgpu.js` + `three.core.js` — это 3.2 МБ против 960 КБ.
+-->
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.webgpu.min.js",
+  "three/webgpu": "/vendor/three.webgpu.min.js",
+  "three/tsl": "/vendor/three.tsl.min.js"
+} }
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%A6%91%3C/text%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/tektur-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Сеть стартует во время разбора HTML, а не после первого кадра скрипта:
+     download и парсинг three.js — самая длинная неделимая часть пути к F6. -->
+<link rel="modulepreload" href="/vendor/three.webgpu.min.js">
+<link rel="modulepreload" href="/vendor/three.core.min.js">
+<link rel="modulepreload" href="/vendor/three.tsl.min.js">
+<link rel="stylesheet" href="/ui/kit.css">
+<link rel="stylesheet" href="/ui/app.css">
+</head>
+<body>
+
+<!--
+  Один документ, три слоя, и порядок между ними важнее их содержимого.
+
+    #arena   — сцена и боевой HUD. Живёт ВСЕГДА и не размонтируется: рендерер,
+               который сносят на каждой навигации, — это F6, провалённый на
+               каждом переходе. Экраны создания и стены — слои ПОВЕРХ идущего
+               боя, а не вместо него (§10.3: ожидание занимает чужим боем).
+    #screen  — продуктовые экраны: существо, лестница, создание, итог.
+    #shell   — три вкладки. Меню как экрана нет (§10.3).
+
+  Разметка HUD — контракт src/viewer/main.js, перенесённый из утверждённого
+  вьювера (§10.6) с двумя правками: весь английский переведён, а дев-обвязка
+  (выбор мозгов, сид, панель кода) оставлена инертными сокетами, которых
+  игрок не видит и не может дофокусить. Панель кода никогда не открывается:
+  у имён бойцов нет data-fighter, и обработчик просто не находит, к чему
+  прицепиться — F11 закрывает исходник, и закрывает его отсутствием пути,
+  а не запретом на видном месте.
+-->
+
+<div id="arena">
+  <div id="vignette"></div>
+  <div id="hud">
+    <div class="bar-wrap" id="bar-oct">
+      <svg class="emblem" viewBox="0 0 130 130">
+        <defs><clipPath id="ep-o"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
+        <path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z" fill="rgba(10,18,28,.18)"/>
+        <g class="glyph" data-side="oct" clip-path="url(#ep-o)"></g>
+        <g stroke="rgba(159,232,242,.22)" stroke-width="1.5" clip-path="url(#ep-o)">
+          <path d="M10 112 l7 -7 M15 117 l7 -7 M20 122 l7 -7"/>
+        </g>
+        <image class="wf-emblem" x="0" y="0" width="130" height="130"/>
+      </svg>
+      <div class="col">
+        <div class="namerow">
+          <div class="name">—</div>
+          <div class="sub" id="meta-oct">—</div>
+        </div>
+        <div class="hprow"><div class="hp"><i style="width:100%"></i><b>— / —</b></div></div>
+        <div class="cds"></div>
+        <div class="sidetag" data-side="oct"></div>
+      </div>
+    </div>
+
+    <div class="bar-wrap" id="bar-gor">
+      <svg class="emblem" viewBox="0 0 130 130">
+        <defs><clipPath id="ep-g"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
+        <path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z" fill="rgba(28,18,10,.18)"/>
+        <g class="glyph" data-side="gor" clip-path="url(#ep-g)"></g>
+        <g stroke="rgba(255,195,122,.2)" stroke-width="1.5" clip-path="url(#ep-g)">
+          <path d="M120 112 l-7 -7 M115 117 l-7 -7 M110 122 l-7 -7"/>
+        </g>
+        <image class="wf-emblem" x="0" y="0" width="130" height="130"/>
+      </svg>
+      <div class="col">
+        <div class="namerow">
+          <div class="name">—</div>
+          <div class="sub" id="meta-gor">—</div>
+        </div>
+        <div class="hprow"><div class="hp"><i style="width:100%"></i><b>— / —</b></div></div>
+        <div class="cds"></div>
+        <div class="sidetag" data-side="gor"></div>
+      </div>
+    </div>
+
+    <div id="clock">
+      <div class="t">0.0</div>
+      <div class="s">—</div>
+      <div class="byline">Оба мозга написаны нейросетью. Мы в них не вмешивались.</div>
+    </div>
+
+    <div id="feedwrap">
+      <div class="hcut">ЛЕНТА БОЯ
+        <svg viewBox="0 0 400 40" fill="none"><image class="wf-feedline" x="0" y="0" width="400" height="40"/></svg>
+      </div>
+      <div id="digest"></div>
+      <div id="feed"></div>
+    </div>
+
+    <div id="banner"><div class="box"><div class="who"></div><div class="why"></div></div></div>
+    <div id="netstate"></div>
+  </div>
+  <div id="boot">загрузка</div>
+
+  <!-- Сокеты, которых требует main.js. Игроку не показываются и не фокусируются. -->
+  <div id="devsockets" hidden aria-hidden="true">
+    <div id="legend"><div class="lbg"></div><div class="lfr"></div><div class="lin"></div></div>
+    <div id="code"><button id="code-close" tabindex="-1"></button><h2></h2><div class="meta"></div><pre></pre></div>
+    <div id="err"></div>
+    <div id="controls">
+      <select id="sel-oct" tabindex="-1"><option value="-"></option></select>
+      <select id="sel-gor" tabindex="-1"><option value="-"></option></select>
+      <select id="sel-speed" tabindex="-1"><option value="1" selected>1</option></select>
+      <input id="seed" tabindex="-1">
+      <button id="btn-run" tabindex="-1"></button>
+      <input type="checkbox" id="chk-loop" tabindex="-1">
+      <button id="btn-cam" tabindex="-1"></button>
+    </div>
+  </div>
+</div>
+
+<div id="screen"></div>
+
+<nav id="shell">
+  <div class="brand">Airena</div>
+  <div class="tabs">
+    <a class="tab" data-tab="arena" href="#/arena">Бой</a>
+    <a class="tab" data-tab="creature" href="#/creature/me">Существо<span class="pip"></span></a>
+    <a class="tab" data-tab="ladder" href="#/ladder">Лестница</a>
+  </div>
+  <div class="status"></div>
+</nav>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
