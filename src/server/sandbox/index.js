@@ -45,7 +45,7 @@ export class IsolateError extends Error {
  * @param {object} brains  { octopus: source, gorilla: source } — уже допущенные
  * @param {object} opts    seed, record, curtainSeconds, timeoutMs
  */
-export function runIsolated(brains, { seed = 1, seeds = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
+export function runIsolated(brains, { seed = 1, seeds = null, kits = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
   const prepared = {};
   for (const [slot, src] of Object.entries(brains)) {
     prepared[slot] = instrument(src).code;
@@ -53,7 +53,7 @@ export function runIsolated(brains, { seed = 1, seeds = null, record = false, cu
 
   return new Promise((resolve, reject) => {
     const w = new Worker(WORKER, {
-      workerData: { seed, seeds, brains: prepared, record, curtainSeconds },
+      workerData: { seed, seeds, brains: prepared, kits, record, curtainSeconds },
       resourceLimits: LIMITS,
       /* Ни аргументов, ни переменных окружения, ни stdin: изолят не должен
          уметь прочитать ни ключ (E4: ключ Anthropic живёт в env хоста), ни
@@ -102,7 +102,7 @@ export function runIsolated(brains, { seed = 1, seeds = null, record = false, cu
  * Возвращает { ok, problems, probe } — `probe` это два пробных боя против
  * спарринг-партнёра, тот же смысл, что у `src/brain/validate.js`, но за стеной.
  */
-export async function admit(source, slot, { sparring, seeds = [11, 22] } = {}) {
+export async function admit(source, slot, { sparring, kit = null, seeds = [11, 22] } = {}) {
   const stat = analyse(source);
   if (!stat.ok) return { ok: false, stage: 'analyse', problems: stat.problems };
 
@@ -119,7 +119,8 @@ export async function admit(source, slot, { sparring, seeds = [11, 22] } = {}) {
   const probe = [];
   for (const seed of seeds) {
     try {
-      const m = await runIsolated({ [slot]: source, [other]: sparring }, { seed });
+      const m = await runIsolated({ [slot]: source, [other]: sparring },
+        { seed, kits: kit ? { [slot]: kit } : null });
       const fuel = m.fuel?.[slot];
       probe.push({
         seed, winner: m.result.winner, seconds: m.result.seconds,

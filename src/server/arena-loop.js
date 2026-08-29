@@ -23,7 +23,30 @@
 import { randomUUID } from 'node:crypto';
 
 import { MATCH_SECONDS, TICK_HZ } from '../core/config.js';
+import { compileKit } from '../skills/compile.js';
 import { runIsolated } from './sandbox/index.js';
+
+/**
+ * Кит существа, скомпилированный для симуляции.
+ *
+ * §8: сервер ПЕРЕСЧИТЫВАЕТ бюджет каждого умения заново перед допуском в
+ * матч — цифры, присланные клиентом или моделью, не авторитетны. Компиляция
+ * и есть этот пересчёт: она читает только оси грамматики и берёт силу из
+ * реестра, поэтому подделать её, подсунув `damage: 9999` в JSON кита,
+ * невозможно — такого поля она не читает.
+ *
+ * Кит, не прошедший проверку, отбрасывается целиком: существо дерётся на
+ * четырёх захардкоженных умениях, а не на половине сломанного набора.
+ */
+export function kitOf(c) {
+  /* Мозг, не знающий грамматики, дерётся эталонным набором: выдать ему
+     `k1..k3` значит отобрать у него все умения разом. */
+  if (!c.kit_active) return null;
+  let kit;
+  try { kit = JSON.parse(c.kit_json || '[]'); } catch { return null; }
+  const out = compileKit(kit);
+  return out.problems.length ? null : out.defs;
+}
 import { FLOOR_RATING as FLOOR, clampRating, pickOpponent, rate } from './ladder.js';
 
 /** Как часто существо выходит в бой. §6.2: «примерно раз в минуту». */
@@ -67,7 +90,7 @@ export async function playMatch(db, a, b, deps) {
   try {
     const out = await runIsolated(
       { [aSlot]: a.brain_source, [bSlot]: b.brain_source },
-      { seed, curtainSeconds: CURTAIN },
+      { seed, curtainSeconds: CURTAIN, kits: { [aSlot]: kitOf(a), [bSlot]: kitOf(b) } },
     );
     result = out.result;
     /* Мозг, съевший бюджет шагов, — это тот же брак, что и падающий: он не

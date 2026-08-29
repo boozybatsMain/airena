@@ -30,6 +30,7 @@ import { extractSource } from '../../brain/host.js';
 import { admit } from '../sandbox/index.js';
 import { constantsVersion } from '../../core/version.js';
 import { EFFECTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
+import { compileKit } from '../../skills/compile.js';
 
 const EFFECT_RU = (id) => EFFECTS[id]?.ru || id;
 import { fallbackName, sanitizeName } from '../creatures.js';
@@ -292,15 +293,21 @@ const SAY_RU = `Одно дополнение к промпту выше, и о�
 где язык имеет значение; имена переменных, комментарии и всё остальное в коде
 оставляй как привык.`;
 
-/** Шаг 3 — мозг. */
-export async function forgeBrain({ archetype, bundle, call = callWithRepair, onAttempt = null }) {
+/** Шаг 3 — мозг. Промпт описывает ЕГО кит, а не четыре умения из конфига. */
+export async function forgeBrain({ archetype, bundle, kit = null, call = callWithRepair, onAttempt = null }) {
   const r = await call({
     modelId: bundle.modelId,
     maxTokens: bundle.maxTokens,
     thinkBudget: bundle.thinkBudget,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: `${brainPrompt(archetype)}\n\n${SAY_RU}` },
+      /*
+       * Промпт, который лжёт, хуже отсутствия промпта: модель ему верит,
+       * пишет против него, и существо умирает от разницы. Мозг, которому
+       * рассказали про `laser` и `smash`, а выдали `k1..k3` из грамматики,
+       * получил бы ровно такой промпт.
+       */
+      { role: 'user', content: `${brainPrompt(archetype, kit ? { own: kit, enemy: kit } : null)}\n\n${SAY_RU}` },
     ],
     accept: (t) => {
       try { return extractSource(t).length > 200; } catch { return false; }
@@ -357,9 +364,14 @@ export async function forgeCreature({
   const archetype = archetypeHint || parsed.archetype;
 
   onStage('brain', 0.35);
+  /* Кит компилируется ДО мозга: промпт обязан описывать те умения, которые
+     у существа действительно будут. */
+  const compiled = compileKit(parsed.kit);
+  const kitDefs = compiled.problems.length ? null : compiled.defs;
+
   let brain;
   try {
-    brain = await forgeBrain({ archetype, bundle: use, call });
+    brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call });
   } catch (e) {
     /* Молчаливая подмена запрещена (§5.1): «Fable не справилась, существо
        сделала Gemini» — обязательная строка, а не любезность. */
@@ -370,7 +382,7 @@ export async function forgeCreature({
     use = alt;
     onStage('brain_retry', 0.45);
     try {
-      brain = await forgeBrain({ archetype, bundle: use, call });
+      brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call });
     } catch (e2) {
       spent.usd += e2.costUsd || 0;
       return { ok: false, code: 'brain_failed', message: 'мозг не собрался даже на запасной модели', costUsd: spent.usd };
@@ -390,7 +402,7 @@ export async function forgeCreature({
    * Порядок важен: допуск ДО записи в БД. Тогда «в базе нет ни одного
    * мозга, не прошедшего стены» — свойство схемы, а не привычка.
    */
-  const v = await admit(brain.source, archetype, { sparring: sparringFor(archetype) });
+  const v = await admit(brain.source, archetype, { sparring: sparringFor(archetype), kit: kitDefs });
   if (!v.ok) {
     /* E5: отклонённая валидатором генерация бесплатна для игрока. Деньги,
        которые провайдер уже списал, в дневной бюджет попадают — это два

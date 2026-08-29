@@ -372,12 +372,95 @@ function skillBlock(name) {
   return `${name}\n${L.join('\n')}`;
 }
 
-function skillsFor(id) {
+function skillsFor(id, kit) {
+  if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit)}`;
   return `YOUR SKILLS\n\n${skillsOf(id).map(skillBlock).join('\n\n')}`;
 }
 
-function enemySkillsFor(id) {
-  return `YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n${skillsOf(opponentOf(id)).map(skillBlock).join('\n\n')}`;
+function enemySkillsFor(id, enemyKit) {
+  const head = "YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n";
+  if (enemyKit) return head + kitBlocks(enemyKit);
+  return head + skillsOf(opponentOf(id)).map(skillBlock).join('\n\n');
+}
+
+/**
+ * A skill built out of the §8 grammar, described the way the four hardcoded
+ * ones are: what it costs in time, what it does, and how far it reaches.
+ *
+ * The same four kinds of line the rest of this file is allowed (a capability,
+ * a constraint with its reason, a fact about the world, the objective) —
+ * `checktactics` sweeps this text too, and a tactical hint here would fail it
+ * exactly as it would anywhere else.
+ *
+ * Durations are served through `servedCountdown` for the same reason as
+ * everywhere else in this file: config's figure and the world's figure are
+ * not the same number, and the model is told the world's.
+ */
+const DELIVERY_LINE = {
+  beam: 'a straight line from your muzzle. It stops at the first block, wall or body it meets',
+  cone: 'a wedge ahead of you, close in. It needs a clear line to the body it hits',
+  bolt: 'a projectile that travels. It can be walked out of, and a block stops it',
+  lob: 'a projectile on an arc. It flies OVER blocks and lands where it was aimed',
+  zone: 'a disc on the ground that keeps working for a few seconds after it lands',
+  dash: 'you travel forward and everything on the path is hit. A block stops the travel',
+  blink: 'you are somewhere else immediately, untouchable while you move',
+  self: 'it happens to you, where you stand',
+};
+
+const EFFECT_LINE = {
+  damage: 'takes hp off what it hits',
+  burn: 'sets what it hits on fire: hp comes off over time, and a second hit renews rather than stacks',
+  knock: 'pushes what it hits away from you',
+  pull: 'drags what it hits toward you',
+  stun: 'the target cannot act at all while it lasts',
+  root: 'the target cannot move at all while it lasts; it can still act',
+  shield: 'absorbs damage before hp does, until it is spent or its time runs out',
+  heal: 'puts hp back, never above maximum',
+  cleanse: 'removes fire, root, blindness, silence, stun and every weaken from you',
+  blind: "the target's perception of you arrives late — it sees where you were, and it is told that it is blinded",
+  silence: 'the target cannot start a skill while it lasts; its attempts are refused with reason "silenced"',
+  wall: 'a temporary block grows in front of you and stops bodies and lines of sight like any other',
+  boost: 'multiplies one of your own numbers up while it lasts',
+  weaken: "multiplies one of the target's numbers down while it lasts",
+};
+
+const CHANNEL_LINE = {
+  speed: 'top movement speed', turn: 'turn rate', damage: 'damage dealt',
+  armor: 'damage taken', cooldown: 'how fast cooldowns run down',
+  range: 'the reach of deliveries', vision: 'how far perception reaches',
+};
+
+const TRIGGER_LINE = {
+  active: 'you start it yourself with api.use',
+  on_hit_taken: 'it starts itself the moment you take damage, if it is off cooldown',
+  on_hit_dealt: 'it starts itself the moment you deal damage, if it is off cooldown',
+  on_low_hp: 'it starts itself once per match, the first time you drop below a third of your hp',
+  on_enemy_cast: 'it starts itself the moment your opponent begins a cast',
+};
+
+function kitBlocks(kit) {
+  return Object.entries(kit).map(([name, d]) => {
+    const L = [];
+    const push = (k, v) => L.push(`  ${k.padEnd(20)}${v}`);
+    push('trigger', TRIGGER_LINE[d.trigger] || d.trigger);
+    push('cooldown', `${n(servedCountdown(d.cooldown))} s, counted from the moment it starts`);
+    if (d.windup > 0) push('cast', `${n(servedCountdown(d.windup))} s of wind-up, then it lands, then ${n(servedCountdown(d.recover))} s of recovery`);
+    else push('cast', `it lands immediately, then ${n(servedCountdown(d.recover))} s of recovery`);
+    push('delivery', `${d.kind} — ${DELIVERY_LINE[d.kind] || ''}`);
+    if (d.range !== undefined) push('range', `${n(d.range)} m`);
+    if (d.radius !== undefined) push('radius', `${n(d.radius)} m`);
+    if (d.distance !== undefined) push('distance', `${n(d.distance)} m`);
+    if (d.speed !== undefined) push('speed', `${n(d.speed)} m/s`);
+    if (d.duration !== undefined && d.kind === 'zone') push('lasts', `${n(d.duration)} s on the ground`);
+    for (const e of d.effects) {
+      const ch = e.channel ? ` (${CHANNEL_LINE[e.channel] || e.channel})` : '';
+      const mag = e.id === 'damage' ? ` — ${n(e.mag)}` : '';
+      const dur = e.duration ? `, ${n(e.duration)} s` : '';
+      push(`effect ${e.id}`, `${EFFECT_LINE[e.id] || ''}${ch}${mag}${dur}`);
+    }
+    /* The name is what api.use takes. Nothing else is a legal argument. */
+    return `${name}\n${L.join('\n')}`;
+  }).join('\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -614,7 +697,16 @@ summary after it, no markdown fence around it. The first character of your reply
 is the first character of the program.`;
 
 /** The whole instruction for one fighter. */
-export function brainPrompt(id) {
+/**
+ * @param {string} id  which body: 'octopus' or 'gorilla'
+ * @param {object} [kits]  { own, enemy } — compiled §8 kits. Passing them
+ *   replaces the two skill sections and NOTHING else, so a prompt rendered
+ *   without them is byte-identical to the one every measured brain was
+ *   written from. That identity is the reason this is a parameter rather
+ *   than a rewrite: §1 rests on six brains sharing one prompt, and a prompt
+ *   that quietly changed shape would rewrite that measurement backwards.
+ */
+export function brainPrompt(id, kits = null) {
   const f = FIGHTERS[id];
   const otherId = opponentOf(id);
   return [
@@ -622,9 +714,9 @@ export function brainPrompt(id) {
     shape(),
     world(),
     bodyBlock(id, true),
-    skillsFor(id),
+    skillsFor(id, kits?.own),
     bodyBlock(otherId, false),
-    enemySkillsFor(id),
+    enemySkillsFor(id, kits?.enemy),
     perception(),
     verbs(),
     HELPERS,

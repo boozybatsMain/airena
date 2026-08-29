@@ -122,7 +122,7 @@ function sealRandom() {
 }
 
 async function main() {
-  const { seed, seeds, brains, curtainSeconds, record } = workerData;
+  const { seed, seeds, brains, kits, curtainSeconds, record } = workerData;
   sealRandom();
   const V = await buildPrelude();
   const fuels = {};
@@ -177,7 +177,7 @@ async function main() {
   try {
     for (const s of list) {
       for (const w of Object.values(wrapped)) w.reset();
-      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0 });
+      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0, kits });
       results.push(out.result);
     }
   } catch (e) {

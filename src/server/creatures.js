@@ -48,6 +48,10 @@ export function card(row, { viewerId = null } = {}) {
     isLibrary: !!row.is_library,
     isMine: viewerId != null && row.owner_id === viewerId,
     hasBrain: !!row.brain_source,
+    /* Дерётся ли существо своим набором или эталонным. Экран обязан это
+       сказать: набор, которым существо не пользуется, — это ложь в самом
+       заметном месте страницы. */
+    kitActive: !!row.kit_active,
     createdAt: row.created_at,
     season: row.season,
   };
@@ -85,18 +89,18 @@ export function sanitizeName(raw, seedStr) {
 export function create(db, {
   ownerId, name, archetype, bodyRef, kit, brainSource, brainModel,
   constantsVersion, prompt, unfit = [], isLibrary = false, season = 1,
-  rating = 1200, tacticsCard = null, now = Date.now(),
+  rating = 1200, tacticsCard = null, kitActive = false, now = Date.now(),
 }) {
   const id = `c_${randomUUID().slice(0, 12)}`;
   db.prepare(`INSERT INTO creature
     (id, owner_id, name, body_ref, archetype, kit_json, brain_source, brain_model,
      constants_version, prompt, unfit_json, rating, peak_rating, tactics_card,
-     is_library, created_at, updated_at, season)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+     is_library, created_at, updated_at, season, kit_active)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id, ownerId ?? null, name, bodyRef, archetype, JSON.stringify(kit),
     brainSource ?? null, brainModel ?? null, constantsVersion, prompt ?? null,
     JSON.stringify(unfit), rating, rating, tacticsCard,
-    isLibrary ? 1 : 0, now, now, season,
+    isLibrary ? 1 : 0, now, now, season, kitActive ? 1 : 0,
   );
   return db.prepare('SELECT * FROM creature WHERE id = ?').get(id);
 }

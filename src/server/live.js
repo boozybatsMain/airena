@@ -20,6 +20,7 @@
 
 import { CURTAIN } from './arena-loop.js';
 import { runIsolated } from './sandbox/index.js';
+import { kitOf } from './arena-loop.js';
 import { TICK_HZ } from '../core/config.js';
 
 /** Сколько трансляций держим в памяти одновременно. */
@@ -65,7 +66,8 @@ export class Live {
     try {
       const out = await runIsolated(
         { [matchRow.aSlot]: a.brain_source, [matchRow.bSlot]: b.brain_source },
-        { seed: matchRow.seed, record: true, curtainSeconds: CURTAIN },
+        { seed: matchRow.seed, record: true, curtainSeconds: CURTAIN,
+          kits: { [matchRow.aSlot]: kitOf(a), [matchRow.bSlot]: kitOf(b) } },
       );
       frames = out.frames;
     } catch (e) {

@@ -31,6 +31,10 @@ import {
   pushOutOfBox, segBoxes, segCircle, turnToward,
 } from './geom.js';
 import { createNav } from './nav.js';
+import {
+  BLIND_LAG_TICKS, absorb, applyEffect, channelMul, ensureStatus, tickStatus, tickWalls,
+} from './effects.js';
+import { resolveDelivery, tickProjectiles, tickZones } from './deliver.js';
 import { streamFrom } from './rng.js';
 
 /** The arena walls, as boxes, so one routine handles every solid thing. */
@@ -54,6 +58,30 @@ export const SOLIDS = [...OBSTACLES, ...WALLS];
  * a generic "windup/strike/recover" would have needed a special case for each
  * anyway, just further from the reader.
  */
+/**
+ * Определение умения — сначала СВОЁ, потом общее.
+ *
+ * У бойца может быть скомпилированный кит (грамматика §8); тогда его умения
+ * называются `k1..k3` и живут в `f.kit`. Четыре захардкоженных умения и
+ * прыжок остаются в `SKILLS` и не меняются ни на бит: на них написаны все
+ * шесть эталонных мозгов и сыграны все 2450 матчей турнира §1.
+ *
+ * Порядок «своё, потом общее», а не наоборот: кит игрока не должен уметь
+ * переопределить `jump`.
+ */
+export function defOf(f, name) {
+  if (f && f.kit && f.kit[name]) return f.kit[name];
+  return SKILLS[name];
+}
+
+function phasesOfDef(def) {
+  /* Умение из грамматики: замах, удар в конце замаха, восстановление.
+     Мгновенная доставка (blink) бьёт сразу — иначе телеграф был бы длиннее
+     самого умения. */
+  if (def.windup > 0) return [['windup', def.windup, true], ['recover', def.recover, false]];
+  return [['strike', 0, true], ['recover', def.recover, false]];
+}
+
 function phasesOf(id) {
   const s = SKILLS[id];
   switch (id) {
@@ -159,7 +187,12 @@ function makeFighter(id, sp, seed) {
  *   `world.over` the `die` pose froze at its first frame and every fight ended
  *   with a fighter standing bolt upright at 0 hp. The animation IS the ending.
  */
-export function createWorld(seed = 1, { curtainSeconds = 0 } = {}) {
+/**
+ * @param {object} kits  { octopus: {k1,k2,k3}, gorilla: {...} } — скомпилированные
+ *   киты грамматики §8. Без них мир собирается на четырёх захардкоженных
+ *   умениях, и это по-прежнему тот мир, в котором измерены §1 и §16.
+ */
+export function createWorld(seed = 1, { curtainSeconds = 0, kits = null } = {}) {
   const spawns = spawnPair(seed);
   const world = {
     seed,
@@ -176,6 +209,9 @@ export function createWorld(seed = 1, { curtainSeconds = 0 } = {}) {
     },
     /** Transient things the viewer draws for one tick: beams, cones, flashes. */
     fx: [],
+    /** Снаряды и зоны живут дольше каста, который их породил. */
+    projectiles: [],
+    zones: [],
     /** Everything that happened, for the replay and the metrics. */
     log: [],
     over: false,
@@ -185,6 +221,22 @@ export function createWorld(seed = 1, { curtainSeconds = 0 } = {}) {
     winner: null,
     reason: null,
   };
+  /* Препятствия копируются: `wall` вставляет временные солиды в мир, и
+     дописывать их в общий модульный массив OBSTACLES значило бы переносить
+     стену из одного матча в следующий. */
+  world.obstacles = [...OBSTACLES];
+  world.solids = [...SOLIDS];
+
+  if (kits) {
+    for (const side of ['octopus', 'gorilla']) {
+      if (!kits[side]) continue;
+      world.fighters[side].kit = kits[side];
+      /* Кулдауны заводятся под имена кита: `ready()` спрашивает по имени, и
+         отсутствующий ключ читается мозгом как «никогда не готово». */
+      for (const name of Object.keys(kits[side])) world.fighters[side].cooldowns[name] = 0;
+    }
+  }
+
   world.order = ['octopus', 'gorilla'];
   /**
    * One navigation graph per body radius, built once. See `nav.js` for why a
@@ -216,7 +268,7 @@ function faultText(v) {
 
 function castView(f) {
   if (!f.act) return null;
-  const s = SKILLS[f.act.id];
+  const s = defOf(f, f.act.id);
   const total = f.act.total;
   return {
     skill: f.act.id,
@@ -230,6 +282,69 @@ function castView(f) {
 }
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
+
+/** Имена умений, которые боец может назвать. Прыжок есть всегда. */
+function namesOf(f) {
+  return f.kit ? [...Object.keys(f.kit), 'jump'] : skillsOf(f.id);
+}
+
+/**
+ * Живые параметры кита — то, что F10 обязывает отдать мозгу.
+ *
+ * Отдаётся КОПИЯ, а не ссылка: перцепция уезжает в изолят через структурное
+ * клонирование, и общий объект оттуда вернулся бы чужим. Плюс правило A1 —
+ * мозг не пишет ни во что, что пришло снаружи, и копия делает нарушение
+ * безвредным даже если бы он попробовал.
+ */
+function kitView(f) {
+  if (!f.kit) return null;
+  const out = {};
+  for (const [name, d] of Object.entries(f.kit)) {
+    out[name] = {
+      kind: d.kind,
+      trigger: d.trigger,
+      element: d.element,
+      effects: d.effects.map((e) => e.id),
+      channel: d.channel,
+      windup: round3(d.windup),
+      recover: round3(d.recover),
+      cooldown: round3(d.cooldown),
+      ...(d.range !== undefined ? { range: round3(d.range) } : {}),
+      ...(d.radius !== undefined ? { radius: round3(d.radius) } : {}),
+      ...(d.distance !== undefined ? { distance: round3(d.distance) } : {}),
+      ...(d.halfAngle !== undefined ? { halfAngle: round3(d.halfAngle) } : {}),
+      ...(d.speed !== undefined ? { speed: round3(d.speed) } : {}),
+      ...(d.damage !== undefined ? { damage: d.damage } : {}),
+    };
+  }
+  return out;
+}
+
+/**
+ * Ослепление: блок противника отдаётся из КОЛЬЦЕВОГО БУФЕРА с задержкой
+ * 30 тиков (§8 называет это число).
+ *
+ * Смысл атома именно в этом: он бьёт не по прицелу, а по объекту перцепции —
+ * по тому, из чего мозг строит решение. Ослеплённый видит противника, но
+ * видит его секунду назад, и `self.blinded: true` стоит рядом. Молчать
+ * нельзя: перцепция, которая врёт без предупреждения, — это не механика,
+ * а баг с точки зрения всех, кто его увидит, включая нас через месяц.
+ *
+ * Буфер живёт на СМОТРЯЩЕМ, а не на цели: два ослеплённых бойца видят
+ * разные прошлые, и каждое своё.
+ */
+function rememberEnemy(world, id, view) {
+  const me = world.fighters[id];
+  if (!me.enemyLog) me.enemyLog = [];
+  me.enemyLog.push(view);
+  if (me.enemyLog.length > BLIND_LAG_TICKS + 2) me.enemyLog.shift();
+  const blinded = me.status && me.status.blind > world.t;
+  if (!blinded) return view;
+  const past = me.enemyLog[0];
+  /* Пока буфер не наполнился, отдаём самое старое, что есть: врать «не
+     вижу» нельзя, а показывать настоящее — значит не применять эффект. */
+  return past || view;
+}
 
 export function perceive(world, id) {
   const me = world.fighters[id];
@@ -264,9 +379,26 @@ export function perceive(world, id) {
       busy: me.act !== null,
       casting: castView(me),
       cooldowns: cd,
-      skills: skillsOf(id),
+      skills: namesOf(me),
+      /*
+       * F10, дословно: «Перцепция в рантайме отдаёт ЖИВЫЕ ПАРАМЕТРЫ КИТА
+       * обоих существ. Смена кита НИКОГДА не требует регенерации мозга.»
+       *
+       * Это не удобство, а условие существования рычага §7.2·2: игрок меняет
+       * набор мгновенно и бесплатно, а мозг узнаёт о новом умении из
+       * перцепции в первом же бою — потому что здесь лежат его дальность,
+       * замах, кулдаун и эффекты, а не только имя.
+       */
+      kit: kitView(me),
+      /* Ослеплённый обязан ЗНАТЬ, что его чувства устарели (§8): молча
+         подсунуть мозгу прошлое — это не механика, это ложь движка. */
+      blinded: !!(me.status && me.status.blind > world.t),
+      silenced: !!(me.status && me.status.silence > world.t),
+      rooted: !!(me.status && me.status.root > world.t),
+      shield: round3(me.status ? me.status.shield : 0),
+      burning: !!(me.status && me.status.burn && me.status.burn.until > world.t),
     },
-    enemy: {
+    enemy: rememberEnemy(world, id, {
       id: you.id,
       x: round3(you.x), z: round3(you.z), y: round3(you.y),
       vx: round3(you.rvx), vz: round3(you.rvz),
@@ -282,10 +414,14 @@ export function perceive(world, id) {
       invulnerable: you.iframes > 0,
       busy: you.act !== null,
       casting: castView(you),
-      skills: skillsOf(you.id),
+      skills: namesOf(you),
+      kit: kitView(you),
+      shield: round3(you.status ? you.status.shield : 0),
+      rooted: !!(you.status && you.status.root > world.t),
+      burning: !!(you.status && you.status.burn && you.status.burn.until > world.t),
       /** Line of sight, centre to centre. What the beam actually tests. */
       visible: segBoxes(me.x, me.z, you.x, you.z, world.solids) === null,
-    },
+    }),
     arena: {
       half: ARENA_HALF,
       obstacles: world.obstacles.map((o) => ({ x: o.x, z: o.z, hx: o.hx, hz: o.hz })),
@@ -360,14 +496,14 @@ export function makeApi(world, id) {
     },
     use(name, a, b) {
       if (!budget() || typeof name !== 'string') return false;
-      if (!skillsOf(id).includes(name)) return false;
+      if (!namesOf(me).includes(name)) return false;
       q.use = { name, a: fin(a) ? a : null, b: fin(b) ? b : null };
       return true;
     },
     ready(name) {
       ask();
       if (typeof name !== 'string') return false;
-      if (!skillsOf(id).includes(name)) return false;
+      if (!namesOf(me).includes(name)) return false;
       return me.cooldowns[name] <= 0 && me.act === null && me.stun <= 0 && me.alive;
     },
     cooldown(name) {
@@ -517,7 +653,7 @@ export function applyOrders(world, id, q) {
 
 function startSkill(world, id, name, a, b) {
   const me = world.fighters[id];
-  const s = SKILLS[name];
+  const s = defOf(me, name);
   /*
    * A refusal is reported. It used to be a silent no-op, and a silent no-op
    * reads to a model exactly like a broken engine: it ordered something,
@@ -532,6 +668,10 @@ function startSkill(world, id, name, a, b) {
   };
   if (!s) return refuse('unknown');
   if (!me.alive) return refuse('dead');
+  /* `silence` — один из трёх атомов, бьющих по слою принятия решений (§8).
+     Отказ с причиной, а не молчание: мозг обязан узнать, что его заткнули,
+     иначе он будет жать на кнопку до конца боя. */
+  if (me.status && me.status.silence > world.t) return refuse('silenced');
   if (me.y > 0.01) return refuse('airborne');
   if (me.stun > 0) return refuse('stunned');
   if (me.act !== null) return refuse('busy');
@@ -539,13 +679,15 @@ function startSkill(world, id, name, a, b) {
 
   const [hx, hz] = dirOf(me.heading);
   let dx = hx, dz = hz;
-  if (name === 'blink' && a !== null && b !== null) {
+  /* Направление мигания задаётся аргументами — и у захардкоженного `blink`,
+     и у любого умения грамматики с доставкой `blink`. */
+  if ((name === 'blink' || s.kind === 'blink') && a !== null && b !== null) {
     const [ux, uz] = norm2(a, b);
     if (ux !== 0 || uz !== 0) { dx = ux; dz = uz; }
   }
 
   me.cooldowns[name] = s.cooldown;
-  const script = phasesOf(name);
+  const script = s.generic ? phasesOfDef(s) : phasesOf(name);
   me.act = {
     id: name,
     script,
@@ -572,6 +714,55 @@ function startSkill(world, id, name, a, b) {
   // A zero-length first phase (blink) must resolve on the tick it was ordered.
   if (script[0][1] <= 0) resolveStrike(world, id);
   return true;
+}
+
+/**
+ * Пассивные триггеры грамматики.
+ *
+ * Четыре из пяти триггеров §8 срабатывают сами: `on_hit_taken`,
+ * `on_hit_dealt`, `on_low_hp`, `on_enemy_cast`. Мозг их не вызывает — и это
+ * их смысл: они дают существу поведение, которого мозг не выбирал, то есть
+ * ту часть характера, которую задал игрок набором, а не модель кодом.
+ *
+ * Условие читается из СОБЫТИЙ этого тика, а не из состояния: «меня ударили»
+ * это факт с меткой времени, а не «у меня мало здоровья». Событие в кадре
+ * ровно одно, поэтому и срабатывание одно — цепочки не бывает.
+ *
+ * `on_low_hp` — исключение: он про состояние, и потому одноразовый за бой.
+ * Иначе он срабатывал бы каждый тик ниже трети здоровья, то есть был бы не
+ * триггером, а пассивной аурой с кулдауном.
+ */
+function firePassives(world, id) {
+  const me = world.fighters[id];
+  if (!me.kit || !me.alive || me.act || me.stun > 0) return;
+  const ev = me.events;
+  const hasEvent = (type) => ev.some((e) => e.type === type);
+
+  for (const [name, def] of Object.entries(me.kit)) {
+    if (def.trigger === 'active') continue;
+    if (me.cooldowns[name] > 0) continue;
+    let fire = false;
+    switch (def.trigger) {
+      case 'on_hit_taken': fire = hasEvent('damaged'); break;
+      case 'on_hit_dealt': fire = hasEvent('dealt'); break;
+      case 'on_enemy_cast': fire = hasEvent('enemyStarted'); break;
+      case 'on_low_hp':
+        fire = !me.firedLowHp && me.hp / me.def.hp < 0.34;
+        if (fire) me.firedLowHp = true;
+        break;
+      default: fire = false;
+    }
+    if (!fire) continue;
+    /* Пассивное умение целится в противника само: выбора направления у него
+       нет, потому что нет и решения — оно сработало, а не было применено. */
+    const you = world.fighters[other(id)];
+    const [ux, uz] = norm2(you.x - me.x, you.z - me.z);
+    startSkill(world, id, name, ux, uz);
+    world.log.push({ t: round3(world.t), type: 'passive', who: id, skill: name, trigger: def.trigger });
+    /* Одно срабатывание на тик: два пассивных умения, выстрелившие вместе,
+       читаются как сбой, а слот действия всё равно один. */
+    return;
+  }
 }
 
 /** Push an event onto a fighter's feed. */
@@ -643,7 +834,11 @@ function resolveStrike(world, id) {
   const act = me.act;
   if (!act || act.spent) return;
   act.spent = true;
-  const s = SKILLS[act.id];
+  const s = defOf(me, act.id);
+
+  /* Умение из грамматики — общий резолвер. Четыре захардкоженных ниже
+     остаются как были: их поведение — основание измерений §1 и §16. */
+  if (s && s.generic) { resolveDelivery(world, id, s, act, RESOLVE_DEPS); return; }
 
   if (act.id === 'laser') {
     const [ux, uz] = dirOf(me.heading);
@@ -791,6 +986,15 @@ function blinkDestination(world, me, dx, dz, distance) {
   return { x: me.x, z: me.z };
 }
 
+/**
+ * Урон, гнущийся о щит и о каналы.
+ *
+ * Порядок обязателен и не переставляется: сначала канал `damage` у бьющего
+ * (усиление/ослабление меняют, СКОЛЬКО прилетело), затем канал `armor` у
+ * цели (меняет, сколько ПРОШЛО), затем щит (съедает то, что прошло). Любая
+ * другая последовательность делает `armor` бесполезной под щитом или щит
+ * бесполезным под `weaken` — то есть ломает один из двух атомов молча.
+ */
 function damage(world, fromId, toId, amount, skill) {
   const src = world.fighters[fromId];
   const dst = world.fighters[toId];
@@ -802,6 +1006,28 @@ function damage(world, fromId, toId, amount, skill) {
     emit(world, toId, { type: 'evaded', skill, by: fromId });
     world.log.push({ t: round3(world.t), type: 'evade', who: toId, skill });
     return;
+  }
+  /* Каналы и щит — только для урона от умений. Горение арены идёт мимо:
+     это правило мира, а не удар, и щит от правил мира не спасает.
+     Порядок обязателен и не переставляется: канал `damage` у бьющего,
+     канал `armor` у цели, потом щит. */
+  if (skill !== 'arena') {
+    /* Горение уже уменьшено при наложении, и каналы к нему не применяются
+       второй раз — иначе усиление урона усиливало бы и то, что оно уже
+       усилило. Щит его останавливает: щит от огня спасать обязан. */
+    if (skill !== 'burn') {
+      amount *= channelMul(src, 'damage', world.t);
+      amount /= Math.max(0.25, channelMul(dst, 'armor', world.t));
+    }
+    const had = dst.status ? dst.status.shield : 0;
+    amount = absorb(dst, amount);
+    /* Строка пишется, когда щит КОНЧИЛСЯ, а не на каждый погашенный удар:
+       щит из 40 единиц против горения ловил бы по строке тридцать раз в
+       секунду, и лента боя переставала бы читаться. */
+    if (had > 0 && dst.status.shield <= 0) {
+      world.log.push({ t: round3(world.t), type: 'shieldBroke', who: toId });
+    }
+    if (amount <= 1e-6) return;
   }
   dst.hp = Math.max(0, dst.hp - amount);
   src.stats.damageDealt += amount;
@@ -1079,9 +1305,20 @@ function endDash(me) {
 // movement
 // ---------------------------------------------------------------------------
 
+/**
+ * Скорость бойца с учётом состояний.
+ *
+ * `root` — не «медленно», а «никуда»: §8 называет его обездвиживанием, и
+ * половина смысла атома в том, что от него нельзя убежать медленно.
+ */
+function speedMul(world, f) {
+  if (f.status && f.status.root > world.t) return 0;
+  return channelMul(f, 'speed', world.t);
+}
+
 function moveStep(world, id) {
   const me = world.fighters[id];
-  const s = me.act ? SKILLS[me.act.id] : null;
+  const s = me.act ? defOf(me, me.act.id) : null;
 
   // turning — always allowed, at a scaled rate, because a body that cannot turn
   // during its own wind-up cannot track, and a body that cannot track makes
@@ -1154,7 +1391,7 @@ function moveStep(world, id) {
           dirX = ux; dirZ = uz;
         }
       }
-      const scale = s ? (s.moveScale === undefined ? 1 : s.moveScale) : 1;
+      const scale = (s ? (s.moveScale === undefined ? 1 : s.moveScale) : 1) * speedMul(world, me);
       desX = dirX * me.def.maxSpeed * scale;
       desZ = dirZ * me.def.maxSpeed * scale;
     }
@@ -1342,7 +1579,11 @@ export function step(world, think) {
 
   for (const id of world.order) {
     const f = world.fighters[id];
-    for (const k of Object.keys(f.cooldowns)) if (f.cooldowns[k] > 0) f.cooldowns[k] = Math.max(0, f.cooldowns[k] - DT);
+    /* Канал `cooldown` ускоряет откат, а не сокращает его при применении:
+       так усиление действует на то, что ещё впереди, и не даёт мгновенного
+       второго каста в момент наложения. */
+    const cdRate = DT * channelMul(f, 'cooldown', world.t);
+    for (const k of Object.keys(f.cooldowns)) if (f.cooldowns[k] > 0) f.cooldowns[k] = Math.max(0, f.cooldowns[k] - cdRate);
     if (f.stun > 0) f.stun = Math.max(0, f.stun - DT);
     if (f.iframes > 0) f.iframes = Math.max(0, f.iframes - DT);
     if (f.say && world.t > f.say.until) f.say = null;
@@ -1420,9 +1661,28 @@ export function step(world, think) {
     f.px = f.x; f.pz = f.z;
   }
   if (!world.over) burn(world);
+  /*
+   * Порядок этого блока — правило, а не привычка.
+   *
+   *   стены   снимаются ПЕРВЫМИ: истёкшая стена не должна ловить снаряд,
+   *           который летит уже в следующем тике;
+   *   статусы тикают ДО действий: горение, доевшее бойца, должно убить его
+   *           до того, как он успеет каст, — иначе труп кастует;
+   *   снаряды и зоны — ПОСЛЕ движения тел, потому что попадание считается
+   *           по тому, где тело оказалось, а не где было.
+   */
+  if (!world.over) {
+    tickWalls(world);
+    for (const id of world.order) tickStatus(world, id, DT, RESOLVE_DEPS);
+    for (const id of world.order) firePassives(world, id);
+  }
   for (const id of world.order) stepAct(world, id);
   for (const id of world.order) moveStep(world, id);
   collide(world);
+  if (!world.over) {
+    tickProjectiles(world, DT, RESOLVE_DEPS);
+    tickZones(world, RESOLVE_DEPS);
+  }
   for (const id of world.order) {
     const f = world.fighters[id];
     // After collision, so a body pinned against a wall reports a speed of zero
@@ -1532,3 +1792,22 @@ export function snapshot(world) {
     fx: world.fx.map((e) => ({ ...e, t: round3(e.t) })),
   };
 }
+
+/**
+ * Примитивы симуляции, отданные резолверам доставок и эффектов.
+ *
+ * Явно, а не импортом: `deliver.js` и `effects.js` не импортируют этот файл,
+ * потому что этот файл импортирует их. Список — контракт: всё, что резолвер
+ * может потрогать в мире, перечислено здесь и больше нигде.
+ *
+ * Объявлено В КОНЦЕ модуля намеренно. Половина примитивов — стрелки в
+ * `const` (`clamp`, `other`, `dirOf`), а они не поднимаются: объект,
+ * собранный выше по файлу, получил бы половину полей в TDZ и упал бы на
+ * первом же ударе. Внизу все имена уже инициализированы, а до первого
+ * вызова `step()` модуль давно загружен.
+ */
+const RESOLVE_DEPS = {
+  other, dirOf, segBoxes, segCircle, dist2, clamp, hasLos, round3,
+  emit, damage, applyEffect, channelMul, blinkDestination,
+  kill: killFighter,
+};

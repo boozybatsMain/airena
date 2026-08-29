@@ -106,6 +106,8 @@ export class Jobs {
         kit: out.kit, brainSource: out.brainSource, brainModel: out.brainModel,
         constantsVersion: out.constantsVersion, prompt: payload.prompt,
         unfit: out.unfit, tacticsCard: out.tacticsCard,
+        /* Промпт этого мозга описывал именно этот набор — см. pipeline. */
+        kitActive: true,
         season: this.ctx.kv.get('season', { n: 1 }).n,
       });
       /* Флаг уже поставлен атомарно на приёме запроса — см. api.js. */
