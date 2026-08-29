@@ -41,7 +41,10 @@ export async function enter(root, args, ctx) {
       h('div.row',
         h(`div.t-name.big${c.archetype === 'gorilla' ? '.or' : ''}`, c.name),
         c.isLibrary ? badge('БИБЛИОТЕЧНОЕ · общее для всех', 'warn') : null,
-        d.top100 && !c.isLibrary ? badge('ТОП-100', 'ok') : null,
+        /* Бейдж честен только на масштабе: «топ-100» в лестнице из
+           девятнадцати существ — это «топ-100 из 19», то есть похвала ни за
+           что. §10.4 вводит его как отличие, а не как участие. */
+        d.top100 && !c.isLibrary && d.total >= 100 ? badge('ТОП-100', 'ok') : null,
         badge(`ПОКОЛЕНИЕ ${c.adaptations + 1}`)),
       h('div.t-sub', c.model || 'эталон репозитория')));
 

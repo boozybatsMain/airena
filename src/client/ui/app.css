@@ -29,7 +29,7 @@ body.overlay #hud { opacity: .12; transition: opacity .25s ease; }
 body.overlay #hud > * { pointer-events: none; }
 
 /* карточки бойцов [эталон] */
-.bar-wrap { position: absolute; top: 54px; display: flex; gap: 16px; align-items: flex-start; }
+.bar-wrap { position: absolute; top: 62px; display: flex; gap: 16px; align-items: flex-start; }
 #bar-oct { left: 22px; color: var(--oct); }
 #bar-gor { right: 22px; color: var(--gor); flex-direction: row-reverse; }
 .bar-wrap .col { display: flex; flex-direction: column; }
@@ -81,7 +81,7 @@ body.overlay #hud > * { pointer-events: none; }
 .sidetag .note { font-size: 10.5px; letter-spacing: .04em; color: #7d8b98; max-width: 210px; }
 
 /* часы [эталон] */
-#clock { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); text-align: center; }
+#clock { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); text-align: center; }
 #clock .t { font-size: 44px; font-weight: 600; letter-spacing: .04em; line-height: 1; font-variant-numeric: tabular-nums; color: #eef6fa; }
 #clock .s { margin-top: 6px; font-size: 12px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
 #clock .s.burning {
@@ -93,9 +93,13 @@ body.overlay #hud > * { pointer-events: none; }
 /* Единственная строка объяснения, которую §10.3 разрешает на арене — и та,
    что закрывает крупнейшую утечку воронки клипа. */
 #clock .byline {
-  margin-top: 7px; font-family: var(--font-body); font-size: 11.5px;
-  letter-spacing: .02em; color: #6d7f8e; max-width: 44ch;
+  margin-top: 9px; font-family: var(--font-body); font-size: 11.5px;
+  line-height: 1.35; letter-spacing: .02em; color: #6d7f8e;
+  width: 34ch; margin-left: auto; margin-right: auto;
 }
+/* Пока идёт бой, подпись авторства уходит: она нужна тому, кто ещё не понял,
+   что смотрит, а не тому, кто уже смотрит. */
+body.fighting #clock .byline { opacity: 0; transition: opacity .6s ease; }
 
 /* лента [эталон] */
 #feedwrap { position: absolute; left: 26px; bottom: 20%; width: 400px; }
@@ -133,8 +137,12 @@ body.overlay #hud > * { pointer-events: none; }
 }
 #netstate.on { display: block; }
 
-/* реплики, цифры урона, неймплейты [эталон] */
-.say {
+/* реплики, цифры урона, неймплейты [эталон]
+   Класс НЕ `.say`: пузырь над телом и абзац в карточке — разные вещи, и
+   общее имя между ними стоило часа отладки. Пузырь позиционирован в мире и
+   несёт translate(-50%,-100%); абзац, унаследовавший этот transform, уезжает
+   за левый край панели, оставаясь при этом position:static. */
+.saybubble {
   position: absolute; transform: translate(-50%, -100%);
   background: rgba(10, 17, 26, .88); border: 1px solid currentColor;
   padding: 3px 10px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
@@ -223,7 +231,7 @@ body.overlay #hud > * { pointer-events: none; }
    кита несёт `white-space: nowrap` (пузырь над телом не переносится), и
    унаследовать его здесь значит вытолкнуть текст за экран. */
 .card .say, .cards .say {
-  position: static; display: block; white-space: normal; background: none;
+  position: static; transform: none; display: block; white-space: normal; background: none;
   border: none; padding: 0; margin-top: 8px; font-family: var(--font-body);
   font-size: 12.5px; font-weight: 400; letter-spacing: 0; color: #8fa4b2;
 }
@@ -233,7 +241,11 @@ body.overlay #hud > * { pointer-events: none; }
 .skillrow .n { font-size: 13px; font-weight: 600; letter-spacing: .1em; color: #7d8da0; min-width: 22px; }
 .skillrow .body { flex: 1; }
 .skillrow .atoms { display: flex; flex-wrap: wrap; gap: 5px; }
-.skillrow .say { position: static; display: block; background: none; border: none; padding: 0; margin-top: 6px; color: #b7c6d2; font-family: var(--font-body); font-size: 13px; font-weight: 400; letter-spacing: 0; white-space: normal; }
+.skillrow .say {
+  display: block; white-space: normal; background: none; border: none;
+  padding: 0; margin-top: 6px; color: #b7c6d2;
+  font-family: var(--font-body); font-size: 13px; font-weight: 400; letter-spacing: 0;
+}
 .skillrow .cost { font-size: 11px; letter-spacing: .1em; color: #6d7f8e; text-transform: uppercase; }
 
 .unfit { border-left: 2px solid rgba(224, 179, 76, .5); padding: 12px 16px; background: rgba(30, 26, 14, .35); }

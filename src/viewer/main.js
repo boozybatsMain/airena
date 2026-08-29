@@ -1073,7 +1073,7 @@ function setSay(id, textValue) {
   }
   if (!sayEls[id]) {
     const d = document.createElement('div');
-    d.className = 'say';
+    d.className = 'saybubble';
     d.style.color = `#${COLOR[id].toString(16).padStart(6, '0')}`;
     hud.appendChild(d);
     sayEls[id] = d;

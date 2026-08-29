@@ -123,6 +123,7 @@ function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
 
 export function onMatch(m) {
   watchedMatch = m;
+  document.body.classList.add('fighting');
   hideIdle();
   result.hideInline();
   paintSides(m);
@@ -150,6 +151,7 @@ export function onFrame(f) {
 }
 
 export function onOver(o) {
+  document.body.classList.remove('fighting');
   const win = o.winner;
   if (win) {
     $(win === 'octopus' ? '#bar-oct' : '#bar-gor')?.classList.add('won');
@@ -165,6 +167,7 @@ export function onOver(o) {
 
 export function onIdle() {
   watchedMatch = null;
+  document.body.classList.remove('fighting');
   paintSides(null);
   if (ctx?.state.route?.screen === 'arena') showIdle();
 }

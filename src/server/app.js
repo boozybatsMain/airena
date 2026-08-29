@@ -156,7 +156,11 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     const body = stampHtml(html, v);
     res.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-cache',
+      /* `no-cache` означает «перепроверь», и браузер перепроверяет — но не
+         всегда: без ETag память вкладки отдаёт старый HTML, а вместе с ним
+         старый штамп, и вся схема с версиями молча выключается. В дев-режиме
+         это стоило часа поиска несуществующих багов. */
+      'cache-control': DEV ? 'no-store' : 'no-cache',
       'content-length': Buffer.byteLength(body),
     });
     res.end(body);
