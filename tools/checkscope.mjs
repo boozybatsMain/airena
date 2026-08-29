@@ -38,6 +38,7 @@ const EXT = new Set(['.js', '.mjs', '.html', '.css']);
 /** Куда ведут пути вида `/viewer/main.js`, `/ui/kit.css`. */
 const MOUNTS = [
   ['/viewer/', 'src/viewer'],
+  ['/skills/', 'src/skills'],
   ['/vendor/', 'node_modules/three/build'],
   ['/bodies/', 'bodies'],
   ['/assets/', 'preview/assets'],

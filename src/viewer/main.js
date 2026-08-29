@@ -33,6 +33,11 @@
 import * as THREE from 'three';
 import * as TSL from 'three/tsl';
 
+/* Относительный путь, не абсолютный: дев-вьювер монтирует эту папку в
+   корень (`/main.js`), продукт — в `/viewer/`. Абсолютный работал бы ровно
+   в одном из двух, и в дев-режиме сцена просто не собиралась. */
+import { Vfx } from './vfx.js';
+
 const $ = (s) => document.querySelector(s);
 const boot = $('#boot');
 const errBox = $('#err');
@@ -515,7 +520,47 @@ function spawnFx(obj, life, update) {
   fxPool.push({ obj, born: performance.now() / 1000, life, update });
 }
 
+/**
+ * Слой эффектов грамматики §8.
+ *
+ * Четыре захардкоженных умения рисуются как рисовались — `beamFx`,
+ * `blinkFx`, `coneFx` ниже утверждены вместе с остальным боевым экраном
+ * (§10.6) и не трогаются. Всё, у чего есть `element`, — из грамматики, и
+ * его рисует `vfx`: силуэт по доставке, палитра по элементу, импакт по
+ * эффекту (READ KIT, §9.2).
+ *
+ * Разделение по полю, а не по списку имён: новая доставка появляется в
+ * грамматике и рисуется сама, без правки этого файла.
+ */
+const vfx = new Vfx(scene, {
+  spawnMesh: (obj, life, update) => spawnFx(obj, life, update),
+});
+
+/* Стенд VFX стреляет теми же событиями, что и симуляция, через ту же
+   функцию. Стенд, рисующий сам, проверял бы себя. */
+/* Ручки для стенда: сцена и слой эффектов. Только при ?vfx=1 — в
+   продуктовом бандле этих полей нет ни на одном кадре. */
+if (new URLSearchParams(location.search).get('vfx')) {
+  window.__airenaScene = scene;
+  window.__airenaVfx = vfx;
+}
+
+addEventListener('airena:demofx', (ev) => {
+  try { playFx(ev.detail); } catch (err) { console.error('demofx', err); }
+});
+
 function playFx(e) {
+  if (e.element) {
+    vfx.play(e, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
+    if (e.kind === 'impact' || (e.hit && (e.kind === 'beam' || e.kind === 'cone' || e.kind === 'dash'))) {
+      /* `camState` объявлена ниже по файлу через `let`, а `playFx` может быть
+         вызвана до конца evaluation — стендом VFX или сокетом, пришедшим во
+         время верхнеуровневого await. Тот же класс, что уронил `framingLost`:
+         толчок камеры не стоит того, чтобы из-за него не нарисовался эффект. */
+      try { camState.shake = Math.min(0.55, camState.shake + 0.14); } catch { /* ещё не готова */ }
+    }
+    return;
+  }
   if (e.kind === 'beam') beamFx(e);
   else if (e.kind === 'blink') blinkFx(e);
   else if (e.kind === 'cone') coneFx(e);
@@ -526,7 +571,7 @@ function playFx(e) {
     camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
     floatDamage(e.x, e.z, e.amount, e.who);
     const src = e.who === 'octopus' ? 'gorilla' : 'octopus';
-    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${sideName[src]}</span> · ${skillRu(e.skill)} · <b>${e.amount}</b>`, `${src}|${e.skill}|${e.amount}`);
+    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${sideName[src]}</span> · ${skillRu(e.skill, src)} · <b>${e.amount}</b>`, `${src}|${e.skill}|${e.amount}`);
   }
 }
 
@@ -577,7 +622,7 @@ function beamFx(e) {
      * whole tactical story of this arena.
      */
     const cover = len < cfg.skills.laser.range - 0.05;
-    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('laser')} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
+    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('laser', e.who)} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
       `${e.who}|laser|${cover ? 'cover' : 'aim'}`);
   }
 }
@@ -619,7 +664,7 @@ function coneFx(e) {
   m.position.set(e.x, 0.06, e.z);
   spawnFx(m, 0.3, (o, u) => { o.material.opacity = 0.55 * (1 - u); o.scale.setScalar(1 + u * 0.12); });
   if (!e.hit) {
-    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('smash')} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
+    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('smash', e.who)} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
   }
 }
 
@@ -1029,7 +1074,20 @@ const SKILL_RU = {
   laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок',
   beam: 'луч', cone: 'конус', bolt: 'снаряд', lob: 'навес', zone: 'зона', dash: 'рывок',
 };
-const skillRu = (id) => SKILL_RU[id] || id;
+/**
+ * Как умение называется в ленте боя.
+ *
+ * Сначала — набор ТЕКУЩЕГО боя: у существа с грамматикой умения зовутся
+ * `k1..k3`, и это внутренние имена, которыми мозг их вызывает. Игроку они
+ * не говорят ничего: «ПРИЗМА · k1 · 26» — это строка для отладки, а стоит
+ * она в ленте, то есть на месте свидетельства.
+ */
+const kitLabels = { octopus: null, gorilla: null };
+const skillRu = (id, who) => {
+  const k = who && kitLabels[who] && kitLabels[who][id];
+  if (k) return k.ru.toLowerCase();
+  return SKILL_RU[id] || id;
+};
 const REASON_RU = {
   kill: 'у соперника кончилось здоровье',
   timeout: 'время вышло — здоровья осталось больше',
@@ -1041,15 +1099,28 @@ const REASON_RU = {
 const sideName = { octopus: 'осьминог', gorilla: 'горилла' };
 
 const cdEls = { octopus: {}, gorilla: {} };
-for (const id of ['octopus', 'gorilla']) {
-  for (const s of cfg.fighters[id].skills.concat('jump')) {
+
+/**
+ * Перестроить чипы кулдаунов под набор бойца.
+ *
+ * `kit` — `{ k1: {ru, element}, ... }` от сервера, либо null для существа на
+ * эталонном наборе. Имена, которыми зовёт мозг (`k1`), игроку не показываются
+ * никогда: он читает «конус·урон», а не «k1».
+ */
+function rebuildCds(id, kit) {
+  const box = bars[id].cds;
+  box.innerHTML = '';
+  cdEls[id] = {};
+  const names = kit ? [...Object.keys(kit), 'jump'] : cfg.fighters[id].skills.concat('jump');
+  for (const name of names) {
     const el = document.createElement('div');
     el.className = 'cd';
-    el.textContent = skillRu(s);
-    el.dataset.skill = s;
-    bars[id].cds.appendChild(el);
-    cdEls[id][s] = el;
+    el.dataset.skill = name;
+    el.textContent = kit && kit[name] ? kit[name].ru : skillRu(name, id);
+    box.appendChild(el);
+    cdEls[id][name] = el;
   }
+  if (window.__airenaSkin) window.__airenaSkin();
 }
 
 const sayEls = { octopus: null, gorilla: null };
@@ -1259,6 +1330,17 @@ function connect() {
           if (el) el.textContent = m.names[id];
           sideName[id] = m.names[id];
         }
+        /*
+         * Чипы кулдаунов перестраиваются под НАБОР ЭТОГО БОЙЦА.
+         *
+         * Они строились один раз при загрузке, из `cfg.fighters[id].skills` —
+         * то есть из четырёх захардкоженных умений. Существу с набором из
+         * грамматики HUD показывал «ЛУЧ · РЫВОК · ПРЫЖОК», которых у него
+         * нет ни одного, и подписывал их чужими кулдаунами. Хуже, чем
+         * ничего: игрок видел уверенное враньё.
+         */
+        kitLabels[id] = (m.kits && m.kits[id]) || null;
+        rebuildCds(id, kitLabels[id]);
       }
       $('#clock .s').textContent = `бой №${m.seed}`;
       const box = $('#seed');
@@ -2082,6 +2164,20 @@ function frame() {
   const dt = Math.min(0.1, now - last);
   last = now;
 
+  /*
+   * Часы частиц идут ВСЕГДА, а не только когда есть кадры боя.
+   *
+   * Слой эффектов интегрирует движение аналитически: частица знает, где она,
+   * из разницы «сейчас минус рождение». Часы, стоящие между боями, держат
+   * каждую искру в момент рождения — то есть невидимой, потому что она ещё
+   * не начала лететь. Стенд VFX ловил это первым: эффекты не рисовались
+   * вовсе, пока не идёт матч.
+   *
+   * Собственные часы, а не `renderClock`: тот привязан к времени матча и
+   * прыгает назад на каждом новом бое, а у частицы время только вперёд.
+   */
+  vfx.update(now);
+
   if (frames.length) {
     const newest = frames[frames.length - 1].t;
     renderClock += dt;
@@ -2195,10 +2291,12 @@ function frame() {
        */
       bars[id].wrap.classList.toggle('dead', !v.alive);
       for (const [sk, el] of Object.entries(cdEls[id])) {
-        if (!v.alive) { el.className = 'cd cool'; el.textContent = skillRu(sk); continue; }
+        const label = el.dataset.label || el.textContent.replace(/\s[\d.]+$/, '');
+        el.dataset.label = label;
+        if (!v.alive) { el.className = 'cd cool'; el.textContent = label; continue; }
         const cd = v.cd ? v.cd[sk] : 0;
         el.className = `cd ${cd > 0.001 ? 'cool' : 'ready'}`;
-        el.textContent = cd > 0.001 ? `${skillRu(sk)} ${cd.toFixed(1)}` : skillRu(sk);
+        el.textContent = cd > 0.001 ? `${label} ${cd.toFixed(1)}` : label;
       }
       updateTelegraph(id, v);
       updatePlate(id, v, body.height || 2);

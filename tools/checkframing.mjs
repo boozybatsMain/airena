@@ -278,6 +278,20 @@ const playFx = (e) => {
   // main.js, playFx: "A knock on the lens, scaled to the hit."
   if (e.kind === 'hit') camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
 };
+/*
+ * The effects layer, stubbed to its clock.
+ *
+ * The render loop advances the particle pool's time on every frame, and that
+ * loop is sliced out of main.js whole — so the name has to exist here.
+ * Stubbing it is honest rather than convenient: the pool has no effect on the
+ * camera at all. It integrates motion analytically in the vertex shader and
+ * never reads or writes view, camState or bodies; what moves the eye is the
+ * one line copied from playFx above, and that line is here in full.
+ *
+ * (No backticks in this comment on purpose: it lives inside a template
+ * literal, and one would end the PRELUDE early.)
+ */
+const vfx = { update() {}, play() {} };
 `;
 
 /**

@@ -21,6 +21,22 @@
 import { CURTAIN } from './arena-loop.js';
 import { runIsolated } from './sandbox/index.js';
 import { kitOf } from './arena-loop.js';
+import { DELIVERIES, EFFECTS } from '../skills/registry.js';
+
+/**
+ * Подписи умений для боевого HUD: короткое имя, которым мозг зовёт умение,
+ * и русское название, которое читает игрок.
+ */
+function kitLabels(c) {
+  const defs = kitOf(c);
+  if (!defs) return null;
+  const out = {};
+  for (const [name, d] of Object.entries(defs)) {
+    const eff = d.effects.map((e) => EFFECTS[e.id]?.ru || e.id).join('+');
+    out[name] = { ru: `${DELIVERIES[d.kind]?.ru || d.kind}·${eff}`, element: d.element };
+  }
+  return out;
+}
 import { TICK_HZ } from '../core/config.js';
 
 /** Сколько трансляций держим в памяти одновременно. */
@@ -87,6 +103,10 @@ export class Live {
         [matchRow.bSlot]: { id: b.id, name: b.name, model: b.brain_model, library: !!b.is_library },
       },
       training: !!b.is_library || !!a.is_library,
+      kits: {
+        [matchRow.aSlot]: kitLabels(a),
+        [matchRow.bSlot]: kitLabels(b),
+      },
       result: matchRow,
       watchers: new Set(),
     };
@@ -158,6 +178,7 @@ export class Live {
       atSecond: b.frames[Math.min(b.at, b.frames.length - 1)]?.t ?? 0,
       training: b.training,
       tags: { octopus: b.meta.octopus?.name ?? '—', gorilla: b.meta.gorilla?.name ?? '—' },
+      kits: b.kits || null,
       names: { octopus: b.meta.octopus?.name ?? '—', gorilla: b.meta.gorilla?.name ?? '—' },
       ids: { octopus: b.meta.octopus?.id ?? null, gorilla: b.meta.gorilla?.id ?? null },
       meta: {

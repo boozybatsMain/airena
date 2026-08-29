@@ -38,6 +38,10 @@ const DEV = process.env.AIRENA_DEV === '1';
 const MOUNTS = [
   ['/vendor/', join(ROOT, 'node_modules/three/build')],
   ['/bodies/', join(ROOT, 'bodies')],
+  /* Реестр грамматики — чистые данные, ни одного node-импорта. Экран берёт
+     палитры элементов и русские имена атомов ОТТУДА ЖЕ, откуда сервер берёт
+     цены: две копии палитры разошлись бы в первый же день. */
+  ['/skills/', join(ROOT, 'src/skills')],
   ['/assets/', join(ROOT, 'preview/assets')],
   ['/fonts/', join(ROOT, 'src/client/fonts')],
   ['/viewer/', join(ROOT, 'src/viewer')],

@@ -38,6 +38,10 @@ const MIME = {
 const MOUNTS = [
   ['/vendor/', join(ROOT, 'node_modules/three/build')],
   ['/bodies/', join(ROOT, 'bodies')],
+  /* Реестр грамматики — чистые данные, ни одного node-импорта. Экран берёт
+     палитры элементов и русские имена атомов ОТТУДА ЖЕ, откуда сервер берёт
+     цены: две копии палитры разошлись бы в первый же день. */
+  ['/skills/', join(ROOT, 'src/skills')],
   ['/assets/', join(ROOT, 'preview/assets')],
   ['/', join(ROOT, 'src/viewer')],
 ];
@@ -148,7 +152,13 @@ const server = createServer((req, res) => {
     const rel = normalize(path.slice(prefix.length)).replace(/^(\.\.[/\\])+/, '');
     const file = join(dir, rel);
     if (!file.startsWith(dir) || !existsSync(file) || statSync(file).isDirectory()) continue;
-    res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' });
+    /* Дев-сервер не кеширует ничего. Без этого браузер держит модуль по
+       эвристике, правка не видна, и чинится то, что уже починено — час
+       на это уже был потрачен один раз. */
+    res.writeHead(200, {
+      'content-type': MIME[extname(file)] || 'application/octet-stream',
+      'cache-control': 'no-store',
+    });
     return createReadStream(file).pipe(res);
   }
   res.writeHead(404, { 'content-type': 'text/plain' });

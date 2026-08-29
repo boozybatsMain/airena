@@ -203,6 +203,22 @@ function main() {
     console.log(`    ${slot.padEnd(9)} ${t ? `${t.tag} — ${(t.rate * 100).toFixed(1)}%` : 'НЕТ ПАРЫ В КОРИДОРЕ'}`);
   }
 
+  /*
+   * Пара, дерущаяся ГРАММАТИКОЙ.
+   *
+   * Без неё арена показывает только эталонный набор из четырёх умений, и
+   * всё, что построено в §8, видно исключительно у существ игроков — то
+   * есть у гостя не видно вообще. Мозг рукописный и читает свой набор из
+   * перцепции (F10), поэтому смена набора его не ломает; винрейт у него
+   * скромный, и он честно помечен библиотечным.
+   */
+  const KIT_LIB = [
+    { name: 'ПРИЗМА', slot: 'octopus', preset: 'keeper' },
+    { name: 'ОБЖИГ', slot: 'octopus', preset: 'saboteur' },
+    { name: 'ДРОБИЛКА', slot: 'gorilla', preset: 'breaker' },
+    { name: 'ОБВАЛ', slot: 'gorilla', preset: 'saboteur' },
+  ];
+
   const have = db.prepare('SELECT count(*) AS n FROM creature WHERE is_library = 1').get().n;
   if (have) {
     kv.set('training', { band: TRAINING_BAND, at: Date.now(), rounds: ROUNDS, picked: training });
@@ -250,6 +266,24 @@ function main() {
       if (t && r.tag === t.tag) trainingIds[slot] = c.id;
       made++;
     });
+  }
+
+  for (const [i, row] of KIT_LIB.entries()) {
+    const src = join(ROOT, 'brains/kit-stub', `${row.slot}.js`);
+    if (!existsSync(src)) continue;
+    createCreature(db, {
+      ownerId: null, name: row.name, archetype: row.slot, bodyRef: row.slot,
+      kit: KIT_PRESETS[row.preset].kit,
+      brainSource: readFileSync(src, 'utf8'),
+      brainModel: 'рукописный эталон',
+      constantsVersion: constantsVersion(),
+      prompt: null, unfit: [], isLibrary: true, season,
+      rating: 1050 + i * 40,
+      tacticsCard: 'Читает свой набор умений из перцепции и применяет первое, которое готово и достаёт. '
+        + 'Ничего не планирует: это пол, на котором видно, что грамматика работает.',
+      kitActive: true,
+    });
+    made++;
   }
 
   kv.set('training', { band: TRAINING_BAND, at: Date.now(), rounds: ROUNDS, picked: training, ids: trainingIds });

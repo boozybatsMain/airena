@@ -146,12 +146,18 @@ const OR = '224,164,106';
     { base: 1.0, jitter: 0.6, ticks: 2, open: false })})`);
 }
 
-// плитки кулдаунов: каждому свой seed
+/* Плитки кулдаунов перестраиваются при каждом новом бое (набор умений у
+   каждого существа свой), поэтому покраска — функция, а не разовый проход. */
+window.__airenaSkin = skinCds;
+skinCds();
+
+function skinCds() {
 for (const [i, el] of [...document.querySelectorAll('.cd')].entries()) {
   const orange = !!el.closest('#bar-gor');
   el.style.setProperty('--wf', `url(${wornTex(64, 34, 300 + i * 17,
-    orange ? OR : CY, [rectPts(64, 34, 3.5, 0, '')],
+    orange ? OR : CY, [rectPts(90, 34, 3.5, 0, '')],
     { base: 0.72, jitter: 0.5, ticks: 1 })})`);
+}
 }
 
 // легенда: скобки по углам со срезом верхнего правого

@@ -342,9 +342,20 @@ export class ArenaLoop {
    */
   async showcase(now = (this.deps.now || Date.now)()) {
     const rnd = this.deps.rng || Math.random;
+    /*
+     * Витрина предпочитает существ, дерущихся ГРАММАТИКОЙ.
+     *
+     * Посетитель с клипа видит ровно один бой, и этот бой — всё, что он
+     * узнает об игре. Показать ему четыре захардкоженных умения значит не
+     * показать §8 вообще: ни одной доставки из восьми, ни одного из
+     * четырнадцати эффектов, ни одной палитры. Существа на эталонном наборе
+     * остаются на лестнице и дерутся с игроками — они просто не первые в
+     * очереди на витрину.
+     */
     const pick = (arch) => {
-      const rows = this.db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state='active'
+      const all = this.db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state='active'
         AND archetype = ? AND brain_source IS NOT NULL`).all(arch);
+      const rows = all.filter((r) => r.kit_active).length ? all.filter((r) => r.kit_active) : all;
       return rows.length ? rows[Math.floor(rnd() * rows.length)] : null;
     };
     const a = pick('octopus'); const b = pick('gorilla');
