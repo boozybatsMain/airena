@@ -34,7 +34,6 @@ const MIGRATIONS = [
        owner_id      TEXT REFERENCES account(id),
        name          TEXT NOT NULL,
        body_ref      TEXT NOT NULL,
-       archetype     TEXT NOT NULL,
        kit_json      TEXT NOT NULL,
        brain_source  TEXT,
        brain_model   TEXT,
@@ -380,6 +379,20 @@ export function openDb(file = 'data/airena.db') {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
     return `${table}.${column}`;
   };
+  /**
+   * Снести колонку, если она ещё есть.
+   *
+   * Симметрична `ensure` и так же идемпотентна: нет колонки — нечего делать.
+   * Отдельная функция, а не строка в списке миграций, потому что список
+   * миграций исполняется один раз на новой базе, а это надо делать и на
+   * старой, где колонка уже стоит.
+   */
+  const dropColumn = (table, column) => {
+    const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+    if (!has) return null;
+    db.exec(`ALTER TABLE ${table} DROP COLUMN ${column}`);
+    return `${table}.${column} снесена`;
+  };
   const repaired = [
     ensure('creature', 'size', 'REAL'),
     ensure('creature', 'body_draws', 'INTEGER'),
@@ -388,6 +401,19 @@ export function openDb(file = 'data/airena.db') {
     ensure('match', 'sizes_json', 'TEXT'),
     ensure('creature', 'build_json', 'TEXT'),
     ensure('match', 'builds_json', 'TEXT'),
+    /*
+     * ── КОЛОНКА ВИДА СНОСИТСЯ, А НЕ ЗАБЫВАЕТСЯ ──────────────────────────────
+     *
+     * Требование основателя: «никаких архетипов». Оставить колонку и
+     * перестать её читать — это не «нет архетипов», это «архетипы есть, но мы
+     * договорились не смотреть»; следующий читатель схемы решит иначе, и
+     * особенно уверенно решит модель, которой эту схему покажут.
+     *
+     * `DROP COLUMN` в SQLite есть с 3.35, а NOT NULL со старой колонки иначе
+     * не снять вовсе. Данные в ней ничего не значат: существа из прошлого
+     * мира дерутся телом по умолчанию, а новые пишут своё телосложение.
+     */
+    dropColumn('creature', 'archetype'),
     ensure('match', 'kits_json', 'TEXT'),
     ensure('job', 'stage_code', 'TEXT'),
   ].filter(Boolean);

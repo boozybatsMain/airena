@@ -153,7 +153,8 @@ function row(r, me, ctx, h2h = false) {
   },
   h('span.rank', String(r.rank ?? '—')),
   h('span.nm', { style: { display: 'flex', alignItems: 'center', gap: '9px' } },
-    h('span', { html: glyphSvg(r.id, { size: 20, color: r.archetype === 'gorilla' ? 'var(--gor)' : 'var(--oct)' }) }),
+    /* Знак существа красится ЕГО цветом. Цвет вида не бывает: видов нет. */
+    h('span', { html: glyphSvg(r.id, { size: 20, color: r.colour || 'var(--fg)' }) }),
     r.name,
     /* «Библиотечное» — не про происхождение, а про то, что его рейтинг
        поставлен для калибровки и не двигается. Иначе строка «1450 · 201 бой ·

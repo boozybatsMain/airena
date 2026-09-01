@@ -46,7 +46,14 @@ const SPARRING = {
   octopus: readFileSync(new URL('../../../brains/stub/gorilla.js', import.meta.url), 'utf8'),
   gorilla: readFileSync(new URL('../../../brains/stub/octopus.js', import.meta.url), 'utf8'),
 };
-const sparringFor = (archetype) => SPARRING[archetype === 'gorilla' ? 'gorilla' : 'octopus'];
+/*
+ * Спарринг-партнёр ОДИН, а не по виду.
+ *
+ * Он тут прибор: мозг допускается к арене, если он вообще шевелится против
+ * известного соперника. Разные партнёры под разные виды означали два разных
+ * прибора и два несравнимых результата; видов нет, прибор один.
+ */
+const sparringFor = () => SPARRING.octopus;
 
 /*
  * Три стартовых кита — пресеты §10.5, они же и запасной вариант разбора.
@@ -105,7 +112,6 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
      * есть ближнее тело), так что материал был; его просто не связывали с
      * выбором. Теперь выбор стартового набора — это выбор существа целиком.
      */
-    archetype: 'octopus',
     kit: [
       /* Снаряд, а не луч. Луч попадает мгновенно на двадцать четыре метра —
          это вся арена и никакого ответа: держащий дистанцию просто не мог
@@ -120,7 +126,6 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
   breaker: {
     ru: 'Ломает вблизи',
     why: 'входит в упор и не даёт разорвать дистанцию',
-    archetype: 'gorilla',
     kit: [
       /* Обездвиживание висит на КОНУСЕ, а не на рывке, и это разница между
          «не даёт уйти» и «не даёт жить». На рывке оно достаётся бесплатно:
@@ -143,7 +148,6 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
   saboteur: {
     ru: 'Портит чувства',
     why: 'бьёт по тому, чем противник принимает решения',
-    archetype: 'octopus',
     /*
      * ХРЕБЕТ, а потом уже характер.
      *
@@ -311,7 +315,6 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
        потому что он попадает в unfit явной строкой. */
     return {
       name: fallbackName(prompt),
-      archetype: 'octopus',
       kit: start.kit,
       unfit: [{ phrase: prompt.slice(0, 80), why: 'разбор описания не удался, поставлен стартовый набор' }],
       why: start.why,
@@ -324,7 +327,7 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   try { obj = extractJson(raw.text); }
   catch {
     return {
-      name: fallbackName(prompt), archetype: 'octopus', kit: start.kit,
+      name: fallbackName(prompt), kit: start.kit,
       unfit: [{ phrase: prompt.slice(0, 80), why: 'модель вернула не-JSON, поставлен стартовый набор' }],
       why: start.why, costUsd: raw.costUsd, degraded: true,
     };
@@ -514,11 +517,11 @@ const SAY_RU = `Одно дополнение к промпту выше, и о�
 
 /** Шаг 3 — мозг. Промпт описывает ЕГО кит, а не четыре умения из конфига. */
 export async function forgeBrain({
-  archetype, bundle, kit = null, call = callWithRepair, onAttempt = null,
+  bundle, kit = null, call = callWithRepair, onAttempt = null,
   /* Размер существа: от него зависят здоровье, радиус, скорость и сила удара,
      и мозг планирует дистанции по этим числам (D103). Обе стороны — своя и
      чужая: соперник в бою может быть другого размера. */
-  sizes = null,
+  builds = null,
 }) {
   const r = await call({
     modelId: bundle.modelId,
@@ -532,7 +535,7 @@ export async function forgeBrain({
        * рассказали про `laser` и `smash`, а выдали `k1..k3` из грамматики,
        * получил бы ровно такой промпт.
        */
-      { role: 'user', content: `${brainPrompt(archetype, kit ? { own: kit, enemy: kit } : null, sizes)}\n\n${SAY_RU}` },
+      { role: 'user', content: `${brainPrompt('octopus', kit ? { own: kit, enemy: kit } : null, builds)}\n\n${SAY_RU}` },
     ],
     accept: (t) => {
       try { return extractSource(t).length > 200; } catch { return false; }
@@ -561,7 +564,7 @@ export function trimToSentence(text, limit) {
   return `${(word > limit * 0.5 ? cut.slice(0, word) : cut).trim()}…`;
 }
 
-export async function tacticsCard({ source, archetype, bundle, call = callWithRepair }) {
+export async function tacticsCard({ source, bundle, call = callWithRepair }) {
   try {
     const r = await call({
       modelId: bundle.modelId,
@@ -569,7 +572,7 @@ export async function tacticsCard({ source, archetype, bundle, call = callWithRe
       thinkBudget: 0,
       messages: [
         { role: 'system', content: CARD_SYSTEM },
-        { role: 'user', content: `Боец: ${archetype}.\n\n${source.slice(0, 12000)}` },
+        { role: 'user', content: source.slice(0, 12000) },
       ],
       accept: (t) => t.trim().length > 30,
       attempts: 1,
@@ -766,7 +769,7 @@ export const OUR_CODES = new Set(['no_key', 'network', 'wall', 'no_catalog', 'in
 const ourFault = (e) => (OUR_CODES.has(e?.code) ? e.code : 'brain_failed');
 
 export async function forgeCreature({
-  prompt, bundle, catalog, archetypeHint = null, keepKit = null,
+  prompt, bundle, catalog, keepKit = null,
   onStage = () => {}, call = callWithRepair,
   /* Событие наружу. Конвейер не знает про базу и про аналитику — он сообщает,
      что случилось, а записывает вызывающий (`jobs.js`). */
@@ -779,7 +782,6 @@ export async function forgeCreature({
   onStage('parse', 0.1);
   const parsed = await parsePrompt({ prompt, bundle: use, call });
   spent.usd += parsed.costUsd || 0;
-  const archetype = archetypeHint || parsed.archetype;
   /*
    * НА РЕФАКТОРЕ НАБОР — СТАРЫЙ, и мозг пишется под него.
    *
@@ -819,7 +821,7 @@ export async function forgeCreature({
 
   let brain;
   try {
-    brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call, sizes: { own: parsed.size ?? 1, enemy: 1 } });
+    brain = await forgeBrain({ bundle: use, kit: kitDefs, call, builds: { own: parsed.build, enemy: null } });
   } catch (e) {
     /* Молчаливая подмена запрещена (§5.1): «Fable не справилась, существо
        сделала Gemini» — обязательная строка, а не любезность. */
@@ -830,7 +832,7 @@ export async function forgeCreature({
     use = alt;
     onStage('brain_retry', 0.45);
     try {
-      brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call, sizes: { own: parsed.size ?? 1, enemy: 1 } });
+      brain = await forgeBrain({ bundle: use, kit: kitDefs, call, builds: { own: parsed.build, enemy: null } });
     } catch (e2) {
       spent.usd += e2.costUsd || 0;
       return { ok: false, code: ourFault(e2), message: 'мозг не собрался даже на запасной модели', costUsd: spent.usd };
@@ -933,7 +935,7 @@ export async function forgeCreature({
    * Порядок важен: допуск ДО записи в БД. Тогда «в базе нет ни одного
    * мозга, не прошедшего стены» — свойство схемы, а не привычка.
    */
-  const v = await admit(brain.source, archetype, { sparring: sparringFor(archetype), kit: kitDefs });
+  const v = await admit(brain.source, 'octopus', { sparring: sparringFor(), kit: kitDefs });
   if (!v.ok) {
     /* E5: отклонённая валидатором генерация бесплатна для игрока. Деньги,
        которые провайдер уже списал, в дневной бюджет попадают — это два
@@ -946,7 +948,7 @@ export async function forgeCreature({
   }
 
   onStage('card', 0.9);
-  const cardOut = await tacticsCard({ source: brain.source, archetype, bundle: use, call });
+  const cardOut = await tacticsCard({ source: brain.source, bundle: use, call });
   spent.usd += cardOut.costUsd || 0;
 
   /*
@@ -1001,11 +1003,12 @@ export async function forgeCreature({
   return {
     ok: true,
     name: parsed.name,
-    archetype,
     /* `gen:` подставит слой хранения, когда у существа появится id:
        ссылка на тело — это ссылка на существо (F2), и раньше id её не
        существует. Здесь остаётся архетип как физика и как запасное тело. */
-    bodyRef: archetype,
+    /* Ссылка на тело, когда своего нет. Вида нет — берём нейтральную
+       заглушку одну на всех; заменяется сгенерированным телом. */
+    bodyRef: 'octopus',
     bodySource: bodyOut.ok ? bodyOut.source : null,
     bodySafe: bodyOut.ok ? bodyOut.safe : null,
     bodyDraws: bodyOut.ok ? (bodyOut.draws ?? null) : null,

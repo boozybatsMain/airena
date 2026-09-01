@@ -35,7 +35,7 @@ export const EVENTS = {
      сколько людей досмотрело бой до конца. */
   result_shown: { feeds: 'Матчей на DAU', props: ['matchId'] },
   create_opened: { feeds: 'Посетитель → создал существо', props: [] },
-  create_submitted: { feeds: 'Посетитель → создал существо', props: ['bundle', 'archetype', 'promptChars'] },
+  create_submitted: { feeds: 'Посетитель → создал существо', props: ['bundle', 'promptChars'] },
   create_done: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'ms', 'attempts', 'fallback'], server: true },
   create_failed: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'code'], server: true },
   /* Отказ ТЕЛА, отдельно от отказа генерации: тело может не собраться, а

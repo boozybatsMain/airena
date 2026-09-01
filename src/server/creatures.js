@@ -12,6 +12,7 @@
  * ответ API не собирается из строки БД напрямую.
  */
 
+import { BUILD_AXES, axisCost } from '../core/config.js';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -43,12 +44,56 @@ export const SIDES = ['octopus', 'gorilla'];
  * в снапшот, в лог, в экспорт, в поддержку. Функция построена так, что забыть
  * это нельзя: она перечисляет поля явно, а не вычитает лишние из строки.
  */
+const BODY_RU = {
+  hp: ['живучее', 'хрупкое'],
+  maxSpeed: ['быстрое', 'медленное'],
+  accel: ['резкое', 'вялое на разгоне'],
+  turnRate: ['вёрткое', 'неповоротливое'],
+  radius: ['мелкое', 'крупное'],
+  jumpHeight: ['прыгучее', 'низкое в прыжке'],
+};
+
+/** «мелкое, но хрупкое» — самая дорогая ось тела и самая дешёвая. */
+function bodyLine(buildJson) {
+  let b = null;
+  try { b = buildJson ? JSON.parse(buildJson) : null; } catch { b = null; }
+  if (!b) return 'тело обычное';
+  const share = [];
+  for (const [name, a] of Object.entries(BUILD_AXES)) {
+    const v = Number(b[name]);
+    if (!Number.isFinite(v)) continue;
+    /* Доля пути по оси, от дешёвого конца к дорогому: сравнимо между осями с
+       разными единицами, потому что считается в долях самой оси. */
+    const span = (a.max - a.min) / a.per;
+    share.push({ name, at: span ? axisCost(name, v) / ((a.weight ?? 1) * span) : 0.5 });
+  }
+  if (share.length < 2) return 'тело обычное';
+  share.sort((x, y) => y.at - x.at);
+  const top = share[0]; const bot = share[share.length - 1];
+  /* Ровное тело незачем описывать крайностями: они будут выдуманными. */
+  if (top.at - bot.at < 0.2) return 'тело ровное';
+  return `${BODY_RU[top.name][0]}, но ${BODY_RU[bot.name][1]}`;
+}
+
 export function card(row, { viewerId = null } = {}) {
   if (!row) return null;
   return {
     id: row.id,
     name: row.name,
-    archetype: row.archetype,
+    /*
+     * ── ОДНА СТРОКА ПРО ТЕЛО, А НЕ ПРО ВИД ──────────────────────────────────
+     *
+     * Здесь отдавался `archetype`, и экран выбора печатал по нему «тяжёлое,
+     * ближний бой» — то есть существу, названному игроком «стеклянная
+     * медуза», приписывалась чужая характеристика. Видов нет; вместо них
+     * называется то, за что существо ЗАПЛАТИЛО: самая дорогая его ось и самая
+     * дешёвая. Две крайности честнее шести чисел — карточка отвечает на
+     * «чем оно отличается», а не показывает таблицу.
+     *
+     * Считает сервер, потому что цены и границы осей живут здесь: клиент,
+     * знающий их, был бы второй копией экономики.
+     */
+    bodyLine: bodyLine(row.build_json),
     bodyRef: row.body_ref,
     kit: safeJson(row.kit_json, []),
     unfit: safeJson(row.unfit_json, []),
@@ -112,7 +157,7 @@ export function sanitizeName(raw, seedStr) {
 }
 
 export function create(db, {
-  ownerId, name, archetype, bodyRef, kit, brainSource, brainModel,
+  ownerId, name, bodyRef, kit, brainSource, brainModel,
   constantsVersion, prompt, unfit = [], isLibrary = false, season = 1,
   rating = 1200, tacticsCard = null, kitActive = false, now = Date.now(),
   /* Тело: исходник модели и его обезвреженный вариант. Оба или ни одного —
@@ -164,11 +209,11 @@ export function create(db, {
    */
   const refToStore = bodySafe ? `gen:${id}` : bodyRef;
   db.prepare(`INSERT INTO creature
-    (id, owner_id, name, body_ref, archetype, kit_json, brain_source, brain_model,
+    (id, owner_id, name, body_ref, kit_json, brain_source, brain_model,
      constants_version, prompt, unfit_json, rating, peak_rating, tactics_card,
      is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size, build_json)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-    id, ownerId ?? null, name, refToStore, archetype, JSON.stringify(kit),
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    id, ownerId ?? null, name, refToStore, JSON.stringify(kit),
     brainSource ?? null, brainModel ?? null, constantsVersion, prompt ?? null,
     JSON.stringify(unfit), rating, rating, tacticsCard,
     isLibrary ? 1 : 0, now, now, season, kitActive ? 1 : 0,

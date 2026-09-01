@@ -37,10 +37,12 @@ export async function enter(root, args, ctx) {
   const mine = c.isMine;
 
   const head = h('div.row', { style: { alignItems: 'flex-start', gap: '18px' } },
-    h('div', { html: glyphSvg(c.id, { size: 64, color: c.archetype === 'gorilla' ? 'var(--gor)' : 'var(--oct)' }) }),
+    /* Свой цвет существа. Не назван — нейтральный: выдумывать за него цвет
+       вида нельзя, потому что видов нет. */
+    h('div', { html: glyphSvg(c.id, { size: 64, color: c.colour || 'var(--fg)' }) }),
     h('div.col.gap6',
       h('div.row',
-        h(`div.t-name.big${c.archetype === 'gorilla' ? '.or' : ''}`, c.name),
+        h('div.t-name.big', { style: c.colour ? { color: c.colour } : null }, c.name),
         c.isLibrary ? badge('БИБЛИОТЕЧНОЕ · общее для всех', 'warn') : null,
         /* Бейдж честен только на масштабе: «топ-100» в лестнице из
            девятнадцати существ — это «топ-100 из 19», то есть похвала ни за

@@ -100,21 +100,31 @@ export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random
    * в маленьком сезоне чужого архетипа может не быть вовсе, а «нет боя» хуже,
    * чем «бой в чужом теле».
    */
+  /*
+   * ── СОПЕРНИК ЛЮБОЙ. ВИДОВ НЕТ ─────────────────────────────────────────────
+   *
+   * Здесь стояло `AND archetype != ?` — то есть подбор требовал существо
+   * ДРУГОГО ВИДА, а вид нёс характеристики. Двухпроходность («сначала чужой
+   * вид, потом любой») была вынужденной: в маленьком сезоне чужого вида могло
+   * не быть вовсе.
+   *
+   * Видов больше нет. Существа отличаются набором, телом, мозгом и внешностью
+   * — и ничем таким, что делило бы их на два лагеря. Условие снято, проход
+   * остался один, и `wantOpposite` больше ничего не значит: он сохранён в
+   * сигнатуре только чтобы не переписывать вызовы, и игнорируется.
+   */
   const scan = (wantOpposite, freshOnly) => {
     for (const w of WINDOWS) {
       const lo = w === Infinity ? -1e9 : creature.rating - w;
       const hi = w === Infinity ? 1e9 : creature.rating + w;
       const rows = db.prepare(`
-        SELECT id, name, rating, fights, is_library, archetype
+        SELECT id, name, rating, fights, is_library
         FROM creature
         WHERE state = 'active' AND id != ? AND season = ?
           AND rating BETWEEN ? AND ?
-          ${wantOpposite ? 'AND archetype != ?' : ''}
         ORDER BY abs(rating - ?) ASC
         LIMIT 24
-      `).all(...(wantOpposite
-        ? [creature.id, creature.season, lo, hi, creature.archetype, creature.rating]
-        : [creature.id, creature.season, lo, hi, creature.rating]));
+      `).all(creature.id, creature.season, lo, hi, creature.rating);
       /* Свежих соперников предпочитаем повторным: одно и то же существо шесть
          раз подряд читается как «игра сломалась», даже когда это честный подбор
          на пустой лестнице. */
@@ -211,7 +221,7 @@ export function ladderView(db, { creatureId = null, season = 1, windowSize = 4, 
   ).get(season).n;
 
   const top = db.prepare(`
-    SELECT id, name, rating, peak_rating, wins, losses, draws, fights, archetype, brain_model, owner_id, is_library
+    SELECT id, name, rating, peak_rating, wins, losses, draws, fights, brain_model, owner_id, is_library
     FROM creature WHERE state = 'active' AND season = ?
     ORDER BY rating DESC, fights DESC, id ASC LIMIT ?
   `).all(season, Math.max(1, Math.min(TOP_MAX, topLimit))).map((r, i) => ({ ...row(r), rank: i + 1 }));
@@ -228,7 +238,7 @@ export function ladderView(db, { creatureId = null, season = 1, windowSize = 4, 
    * Правило простое и живёт на сервере: в призах участвуют существа игроков.
    */
   const prizeBoard = db.prepare(`
-    SELECT id, name, rating, peak_rating, wins, losses, draws, fights, archetype, brain_model, owner_id, is_library
+    SELECT id, name, rating, peak_rating, wins, losses, draws, fights, brain_model, owner_id, is_library
     FROM creature WHERE state = 'active' AND season = ? AND is_library = 0
     ORDER BY rating DESC, fights DESC, id ASC LIMIT 10
   `).all(season).map((r, i) => ({ ...row(r), rank: i + 1 }));
@@ -333,7 +343,6 @@ const row = (r) => ({
   rating: Math.round(r.rating),
   peak: Math.round(r.peak_rating),
   wins: r.wins, losses: r.losses, draws: r.draws, fights: r.fights,
-  archetype: r.archetype,
   model: r.brain_model,
   isLibrary: !!r.is_library,
   /*

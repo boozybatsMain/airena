@@ -101,7 +101,7 @@ export function panel(db, creature, size = 6) {
      build_json — по той же причине: без него `buildOf` вернёт телосложение по
      умолчанию, и панель молча соберётся из тел, которых ни у кого нет. */
   const rows = db.prepare(`
-    SELECT id, brain_source, archetype, kit_json, kit_active, build_json FROM creature
+    SELECT id, brain_source, kit_json, kit_active, build_json FROM creature
     WHERE state='active' AND brain_source IS NOT NULL AND id != ?
     ORDER BY abs(rating - ?) ASC LIMIT ?
   `).all(creature.id, creature.rating, size);
@@ -146,9 +146,17 @@ export function panel(db, creature, size = 6) {
  * @param {{[slot: string]: object|((o: object) => object)}|null} builds
  *   телосложения бойцов: своё — объектом, соперника — функцией от его строки.
  */
-export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null) {
+/*
+ * Сторона у прибора ФИКСИРОВАНА, а не выбирается по виду.
+ *
+ * Здесь стояло `archetype === 'gorilla' ? ...` — то есть замер сажал мозг на
+ * ту сторону, которую диктовал вид, и вместе со стороной он получал её числа.
+ * Видов нет, числа у существа свои, а прибор обязан быть одним и тем же от
+ * замера к замеру: иначе два прогона одного мозга несравнимы.
+ */
+export async function score(source, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
-  const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  const mySlot = 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
 
   /* Панель разбивается на группы по сопернику: изолят грузит мозги один раз
@@ -214,14 +222,14 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
    * игры. `kitOf` — та же функция, которой набор превращается в умения перед
    * настоящим матчем, поэтому второго места, где это делается, не появляется.
    */
-  const mySlot = c.archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  const mySlot = 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
   const kits = { [mySlot]: kitOf(c), [oppSlot]: (o) => kitOf(o) };
   /* Телосложение — по той же причине, что и набор, и той же формой: своё
      тело объектом, тело соперника функцией от его строки. */
   const builds = { [mySlot]: buildOf(c), [oppSlot]: (o) => buildOf(o) };
 
-  const base = await score(c.brain_source, c.archetype, opponents, rounds, kits, builds);
+  const base = await score(c.brain_source, opponents, rounds, kits, builds);
   if (base.broken) return null;
 
   /* Три кандидата за заход: один порог, три множителя. Больше — дороже по CPU
@@ -233,7 +241,7 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   for (const f of factors) {
     const cand = twist(c.brain_source, knob, f);
     if (!cand) continue;
-    const s = await score(cand, c.archetype, opponents, rounds, kits, builds);
+    const s = await score(cand, opponents, rounds, kits, builds);
     if (s.broken) continue;
     if (!best || s.wins > best.s.wins) best = { source: cand, s, f };
   }
@@ -305,21 +313,21 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
 const readBack = (src, knob) => src.slice(knob.at).match(/^\d+(?:\.\d+)?/)?.[0] ?? '?';
 
 /** A/B двух мозгов на одной панели — используется рефактором (D4). */
-export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS, kit = null, build = null } = {}) {
+export async function duelBrains(db, candidateSource, incumbentSource, { rounds = DUEL_ROUNDS, kit = null, build = null } = {}) {
   const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, build_json FROM creature
     WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
   const opponents = any.filter((r) => r.brain_source);
   /* Дуэль идёт теми же наборами, что настоящий бой: иначе рефактор
      сравнивает два мозга в игре, в которую ни один из них не играет. */
-  const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  const mySlot = 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
   const kits = { [mySlot]: kit, [oppSlot]: (o) => kitOf(o) };
   /* `null` здесь честнее единицы: тела нет — значит боец выйдет в
      `DEFAULT_BUILD`, ровно как его выпустит симуляция. */
   const builds = { [mySlot]: build, [oppSlot]: (o) => buildOf(o) };
   const [a, b] = await Promise.all([
-    score(candidateSource, archetype, opponents, rounds, kits, builds),
-    score(incumbentSource, archetype, opponents, rounds, kits, builds),
+    score(candidateSource, opponents, rounds, kits, builds),
+    score(incumbentSource, opponents, rounds, kits, builds),
   ]);
   return { candidate: a.wins, incumbent: b.wins, rounds: Math.min(a.rounds, b.rounds) || rounds };
 }

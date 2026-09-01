@@ -240,7 +240,6 @@ export class Jobs {
       prompt: payload.prompt || (row.kind === 'refactor' ? refactorPrompt(this.db, row.creature_id) : ''),
       bundle,
       catalog: this.ctx.catalog.current(),
-      archetypeHint: row.kind === 'refactor' ? archetypeOf(this.db, row.creature_id) : payload.archetype,
       /* Рефактор меняет мозг, а не набор (F3): отдаём конвейеру существующий,
          иначе он разберёт промпт заново и напишет мозг под другие умения. */
       keepKit: row.kind === 'refactor' ? kitOfCreature(this.db, row.creature_id) : null,
@@ -272,7 +271,7 @@ export class Jobs {
     } else {
       const c = createCreature(this.db, {
         ownerId: row.account_id,
-        name: out.name, archetype: out.archetype, bodyRef: out.bodyRef,
+        name: out.name, bodyRef: out.bodyRef,
         bodySource: out.bodySource, bodySafe: out.bodySafe, bodyDraws: out.bodyDraws,
         kit: out.kit, brainSource: out.brainSource, brainModel: out.brainModel,
         constantsVersion: out.constantsVersion, prompt: payload.prompt,
@@ -306,7 +305,7 @@ export class Jobs {
     if (!c) { this.update(id, { state: 'failed', error_code: 'no_creature', error_msg: 'существо исчезло' }); return; }
     this.update(id, { stage: STAGE_RU.duel, progress: 0.95 });
 
-    const score = await this.ctx.duel(out.brainSource, c.brain_source, c.archetype,
+    const score = await this.ctx.duel(out.brainSource, c.brain_source, null,
       { kit: kitOf(c), build: buildOf(c) });
     const better = score.candidate > score.incumbent;
 
@@ -355,5 +354,4 @@ const kitOfCreature = (db, id) => {
   try { const k = JSON.parse(row?.kit_json || 'null'); return Array.isArray(k) && k.length ? k : null; }
   catch { return null; }
 };
-const archetypeOf = (db, id) => db.prepare('SELECT archetype FROM creature WHERE id = ?').get(id)?.archetype || 'octopus';
 const refactorPrompt = (db, id) => db.prepare('SELECT prompt FROM creature WHERE id = ?').get(id)?.prompt || '';

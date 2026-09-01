@@ -163,7 +163,24 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
      когда оба одного архетипа, второй занимает противоположную сторону и
      дерётся её статами. Это записано здесь, потому что иначе следующий
      читатель решит, что арена умеет только осьминога против гориллы. */
-  const aSlot = a.archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  /*
+   * ── СТОРОНА НЕ ГОВОРИТ О СУЩЕСТВЕ НИЧЕГО ─────────────────────────────────
+   *
+   * Здесь сторона выдавалась ПО ВИДУ: `a.archetype === 'gorilla' ? ...`. Пока
+   * сторона несла характеристики, это означало, что вид решает, каким телом
+   * ты дерёшься; замерено — 11.76% боёв прошли числами чужой записи. Числа
+   * уехали к существу, и последнее, что осталось у стороны, — это цвет.
+   *
+   * Значит сторону надо раздавать так, чтобы она не была свойством существа.
+   * Раздаётся по СИДУ МАТЧА: одно и то же существо оказывается и синим, и
+   * оранжевым примерно поровну, а повтор остаётся побитовым (A2) — сид всё
+   * равно входит во вход матча.
+   *
+   * Чётность именно сида, а не времени и не порядка в очереди: время не
+   * воспроизводится, а порядок сделал бы сторону свойством того, кто первым
+   * попал в расписание.
+   */
+  const aSlot = (seed % 2 === 0) ? 'octopus' : 'gorilla';
   const bSlot = aSlot === 'octopus' ? 'gorilla' : 'octopus';
 
   let result;
@@ -668,8 +685,9 @@ export class ArenaLoop {
    */
   library(c, busy = null) {
     if (c.fights === 0 && this.deps.trainingIds) {
-      const want = c.archetype === 'gorilla' ? 'octopus' : 'gorilla';
-      const id = this.deps.trainingIds[want];
+      /* Тренировочный партнёр один на всех: видов нет, и «партнёр другого
+         вида» больше ничего не значит. Берём того, кто назначен первым. */
+      const id = this.deps.trainingIds.octopus || this.deps.trainingIds.gorilla;
       if (id && !(busy && busy.has(id))) {
         const row = this.db.prepare(`SELECT id FROM creature WHERE id = ? AND state = 'active'`).get(id);
         if (row) return row;
@@ -680,9 +698,8 @@ export class ArenaLoop {
        (см. шапку D161). */
     const rows = this.db.prepare(`
       SELECT id, kit_active FROM creature WHERE is_library = 1 AND state = 'active' AND id != ?
-        AND archetype != ?
       ORDER BY abs(rating - ?) ASC LIMIT 24
-    `).all(c.id, c.archetype, c.rating);
+    `).all(c.id, c.rating);
     const free = rows.filter((r) => !(busy && busy.has(r.id)));
     /*
      * СУЩЕСТВО С НАБОРОМ — ПЕРВЫМ, И ЭТО НЕ ВКУСОВЩИНА.
@@ -750,10 +767,18 @@ export class ArenaLoop {
        прямо сейчас дерётся с игроком, не может одновременно идти витриной —
        зритель увидел бы одно имя в двух боях. */
     const held = this.busySet(now);
-    const pick = (arch) => {
+    /*
+     * Витрина берёт ЛЮБЫХ двоих, а не по одному от каждого вида.
+     *
+     * Отбор по `archetype = ?` делал ровно то, за что видов и не стало: он
+     * обещал зрителю, что стороны разные по существу. Теперь единственное
+     * условие — не брать одного и того же дважды.
+     */
+    const taken = new Set();
+    const pick = () => {
       const all = this.db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state='active'
-        AND archetype = ? AND brain_source IS NOT NULL`).all(arch)
-        .filter((r) => !held.has(r.id));
+        AND brain_source IS NOT NULL`).all()
+        .filter((r) => !held.has(r.id) && !taken.has(r.id));
       const model = (r) => r.brain_model && !/рукописн/i.test(r.brain_model);
       const tiers = [
         all.filter((r) => r.kit_active && model(r)),
@@ -762,7 +787,10 @@ export class ArenaLoop {
         all,
       ];
       const rows = tiers.find((t) => t.length) || [];
-      return rows.length ? rows[Math.floor(rnd() * rows.length)] : null;
+      if (!rows.length) return null;
+      const got = rows[Math.floor(rnd() * rows.length)];
+      taken.add(got.id);
+      return got;
     };
     /*
      * ВЫБОР ГОСТЯ ДОЛЖЕН ЧТО-ТО ЗНАЧИТЬ.
@@ -783,12 +811,13 @@ export class ArenaLoop {
       const want = this.db.prepare(`SELECT * FROM creature WHERE id = ? AND is_library = 1
         AND state='active' AND brain_source IS NOT NULL`).get(prefer);
       if (want && !held.has(want.id)) {
-        if (want.archetype === 'gorilla') { b = want; a = pick('octopus'); }
-        else { a = want; b = pick('gorilla'); }
+        /* Выбранное существо идёт первым участником; сторону ему, как и всем,
+           раздаст сид матча. Своей стороны у существа нет. */
+        a = want; taken.add(want.id); b = pick();
       }
     }
-    if (!a) a = pick('octopus');
-    if (!b) b = pick('gorilla');
+    if (!a) a = pick();
+    if (!b) b = pick();
     if (!a || !b) return null;
     this.hold(a.id, now + MAX_MATCH_MS);
     this.hold(b.id, now + MAX_MATCH_MS);
