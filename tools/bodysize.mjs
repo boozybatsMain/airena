@@ -21,11 +21,31 @@ import * as THREE from 'three/webgpu';
 import { buildBody } from '../src/viewer/loadbody.js';
 import * as TSL from 'three/tsl';
 import { drawCost } from '../src/server/forge/body.js';
-import * as cfg from '../src/core/config.js';
+import { statsOf } from '../src/core/config.js';
 
 const dbFile = process.argv.includes('--db') ? process.argv[process.argv.indexOf('--db') + 1] : 'data/airena.db';
 const db = new DatabaseSync(dbFile);
-const rows = db.prepare('select id, name, archetype, body_safe, size from creature where body_safe is not null').all();
+/*
+ * Читается `build_json`, а не `archetype` и `size`.
+ *
+ * Диаметр, под который вьювер жмёт меш, — это диаметр КОЛЛАЙДЕРА, а коллайдер
+ * теперь принадлежит существу: раньше он собирался как «радиус архетипа ×
+ * множитель размера», то есть тело мерилось по чужой записи, помноженной на
+ * одну свою ось. Записей нет, множителя нет, радиус лежит прямо в
+ * телосложении и оплачен очками бюджета.
+ *
+ * Колонка спрашивается через `pragma_table_info`, а не берётся на веру.
+ * Миграции накатывает `openDb`, то есть СЕРВЕР; этот инструмент открывает файл
+ * напрямую и на базе, которую сервер ещё не поднимал, просто падал бы с «no
+ * such column». Инструмент замера, умирающий от возраста базы, не измеряет
+ * ничего — он читает то, что есть, и говорит, чего не хватило.
+ */
+const hasBuild = !!db.prepare("select 1 AS y from pragma_table_info('creature') where name = 'build_json'").get();
+const rows = db.prepare(`select id, name, body_safe${hasBuild ? ', build_json' : ''} from creature where body_safe is not null`).all();
+if (!hasBuild) {
+  console.log('  в этой базе ещё нет колонки build_json (её добавляет миграция при старте сервера):');
+  console.log('  тела меряются против ТЕЛОСЛОЖЕНИЯ ПО УМОЛЧАНИЮ, а не против своего.');
+}
 
 
 const out = [];
@@ -37,8 +57,14 @@ for (const r of rows) {
   const box = new THREE.Box3().setFromObject(root);
   const s = new THREE.Vector3(); box.getSize(s);
   const foot = Math.max(s.x, s.z) || 1;
-  const k = Math.max(0.75, Math.min(1.5, Number(r.size) || 1));
-  const d = cfg.FIGHTERS[r.archetype].radius * k * 2;
+  /* Через `statsOf`, а не через свой разбор: границы, потолок бюджета и
+     сжатие перебора — правила боя, и цифра, посчитанная здесь по другим
+     правилам, описывала бы тело, которого на арене не будет. Кривой или
+     пустой `build_json` даёт телосложение по умолчанию — ровно то же, что
+     получит это существо в бою. */
+  let raw = null;
+  try { raw = r.build_json ? JSON.parse(r.build_json) : null; } catch { raw = null; }
+  const d = statsOf(raw).radius * 2;
   const scale = d / foot;
 
   /*
@@ -88,8 +114,12 @@ if (process.argv.includes('--backfill')) {
     if (r.meshes > DRAW_MAX) heavy++;
   }
   console.log(`\nзаписано цен: ${wrote}, из них выше потолка ${DRAW_MAX}: ${heavy}`);
-  console.log('Тела выше потолка сервер теперь не отдаёт: боец выйдет в теле архетипа,');
-  console.log('и на арене встанет строка об этом.\n');
+  /* Потолок — правило ПРИЁМКИ, а не выдачи: тела, принятые до его появления,
+     сервер по-прежнему отдаёт, и почему — написано в `src/server/api.js`
+     (отказ стоил внешности половине населения ради непроверенной пользы).
+     Эта строка их СЧИТАЕТ, а не отбирает. */
+  console.log('Потолок действует на приёмке; принятые раньше тела сервер отдаёт как есть.');
+  console.log('Строка выше — сколько таких в базе, а не сколько отобрано.\n');
 }
 
 console.log(`строк с телом: ${out.length}, различных исходников: ${uniq}, собралось: ${ok.length}, упало: ${out.length - ok.length}`);

@@ -22,7 +22,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { MATCH_SECONDS, SIZE_MAX, SIZE_MIN, TICK_HZ } from '../core/config.js';
+import { MATCH_SECONDS, TICK_HZ, normalizeBuild } from '../core/config.js';
 import { compileKit } from '../skills/compile.js';
 import { runIsolated } from './sandbox/index.js';
 
@@ -49,20 +49,21 @@ export function kitOf(c) {
 }
 
 /**
- * Размер существа — ОДНО место, где строка базы превращается в число матча.
+ * Телосложение существа — ОДНО место, где строка базы превращается в числа матча.
  *
- * Ровно та же причина, по которой рядом живёт `kitOf`: размер меняет
- * здоровье, скорость, урон и коллайдер (`statsFor`), то есть это вход матча, а
- * не украшение карточки. Пока `?? 1` стоял по месту вызова, он стоял в двух
- * местах из шести: боевой цикл и трансляция размер передавали, а проверка
- * набора, адаптация и дуэль рефактора — нет, и мозг отбирался для существа
- * другого телосложения.
+ * Ровно та же причина, по которой рядом живёт `kitOf`: телосложение задаёт
+ * здоровье, скорость, ускорение, разворот и коллайдер, то есть это вход матча,
+ * а не украшение карточки. Пока умолчание стояло по месту вызова, оно стояло в
+ * двух местах из шести: боевой цикл и трансляция числа передавали, а проверка
+ * набора, адаптация и дуэль рефактора — нет, и мозг отбирался для существа с
+ * другим телом.
  *
- * @param {{size?: number}} c строка существа
+ * @param {{build_json?: string}} c строка существа
  */
-export function sizeOf(c) {
-  const v = Number(c?.size);
-  return Number.isFinite(v) && v > 0 ? Math.max(SIZE_MIN, Math.min(SIZE_MAX, v)) : 1;
+export function buildOf(c) {
+  let raw = null;
+  try { raw = c?.build_json ? JSON.parse(c.build_json) : null; } catch { raw = null; }
+  return normalizeBuild(raw).build;
 }
 import { FLOOR_RATING as FLOOR, clampRating, pickOpponent, rate } from './ladder.js';
 
@@ -173,9 +174,9 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
         seed,
         curtainSeconds: CURTAIN,
         kits: { [aSlot]: kitOf(a), [bSlot]: kitOf(b) },
-        /* Размер — такой же вход матча, как набор и сид: от него зависят
-           здоровье, радиус, скорость и масса (`statsFor`). */
-        sizes: { [aSlot]: sizeOf(a), [bSlot]: sizeOf(b) },
+        /* Телосложение — такой же вход матча, как набор и сид: от него
+           зависят здоровье, радиус, скорость, разворот и масса. */
+        builds: { [aSlot]: buildOf(a), [bSlot]: buildOf(b) },
       },
     );
     result = out.result;
@@ -226,7 +227,7 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
   db.prepare(`INSERT INTO match
     (id, seed, a_id, b_id, a_slot, b_slot, winner, reason, seconds, constants_version,
      a_delta, b_delta, a_rating_after, b_rating_after, result_json, verified, started_at, ended_at, kind,
-     kits_json, sizes_json)
+     kits_json, builds_json)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?,?)`).run(
     id, seed, a.id, b.id, aSlot, bSlot,
     winnerSlot === null ? null : (winnerSlot === aSlot ? a.id : b.id),
@@ -242,7 +243,7 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
     /* Наборы обоих на момент боя — чтобы повтор показывал ТОТ бой. */
     JSON.stringify({ [aSlot]: kitOf(a), [bSlot]: kitOf(b) }),
     /* И размеры: они меняют характеристики, значит без них повтор — другой бой. */
-    JSON.stringify({ [aSlot]: sizeOf(a), [bSlot]: sizeOf(b) }),
+    JSON.stringify({ [aSlot]: buildOf(a), [bSlot]: buildOf(b) }),
   );
 
   bump(db, a, score, aAfter, now(), faulted.length > 0);

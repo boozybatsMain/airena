@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 
 import { compileBrain } from '../src/brain/host.js';
 import { runMatch } from '../src/core/match.js';
-import { FIGHTERS, SKILLS } from '../src/core/config.js';
+import { SKILLS } from '../src/core/config.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -144,8 +144,17 @@ for (let round = 0; round < ROUNDS; round++) {
    * plus both radii, which is exactly the test `inCone` performs. It was
    * `range + 2.0` for a while, which is neither fighter's radius and agreed
    * with the simulation's own counter only by coincidence.
+   *
+   * ── РАДИУСЫ БЕРУТСЯ ИЗ ПЕРЦЕПЦИИ, А НЕ ИЗ ТАБЛИЦЫ ────────────────────────
+   *
+   * Здесь стояла сумма радиусов двух архетипов — одно число на весь прогон.
+   * Записей больше нет, и постоянного числа тоже: радиус принадлежит телу
+   * бойца и у каждого свой. `p.self.radius` и `p.enemy.radius` — те же самые
+   * `def.radius`, что использует `inCone` в симуляции, поэтому порог остаётся
+   * ровно тем, чем был обещан, при любых телах — включая бой двух тел разного
+   * размера, где ОДНОГО правильного числа не существует вовсе.
    */
-  const MELEE = SKILLS.smash.range + FIGHTERS.octopus.radius + FIGHTERS.gorilla.radius;
+  const meleeReach = (p) => SKILLS.smash.range + p.self.radius + p.enemy.radius;
 
   const observer = (id, p, q, calls) => {
     const a = acc[id];
@@ -153,7 +162,7 @@ for (let round = 0; round < ROUNDS; round++) {
 
     // distance held
     a.distSum += p.enemy.dist; a.distN++;
-    if (p.enemy.dist < MELEE) a.meleeThinks++;
+    if (p.enemy.dist < meleeReach(p)) a.meleeThinks++;
     if (p.enemy.visible) a.visibleThinks++;
 
     // did this brain steer with the opponent in mind?

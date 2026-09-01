@@ -19,13 +19,14 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
-  ARENA_HALF, FIGHTERS, MATCH_SECONDS, OBSTACLES, SKILLS,
+  ARENA_HALF, DEFAULT_BUILD, MATCH_SECONDS, OBSTACLES, SKILLS,
   SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT,
+  skillsOf, statsOf,
 } from '../core/config.js';
 import { constantsVersion } from '../core/version.js';
 import { grammar, validateKit, costOf } from '../skills/registry.js';
 import { EVENTS, record as trackEvent, metrics } from './analytics.js';
-import { REST_MS, sizeOf } from './arena-loop.js';
+import { REST_MS, buildOf } from './arena-loop.js';
 import { card, history, refactor as applyRefactor, sinceSummary } from './creatures.js';
 import { viability } from './forge/viability.js';
 import { Router, cookies, fail, json, readJson, setCookie } from './http.js';
@@ -56,9 +57,41 @@ import { compileKit, readable } from '../skills/compile.js';
 /** Мозги, чей исходник читаем: научный артефакт §1 (F11, единственное исключение). */
 const OPEN_BRAIN_TAGS = /^(u[1-6]|stub)$/;
 
+/**
+ * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обоими именами сторон.
+ *
+ * `FIGHTERS` больше нет — тела принадлежат существам, общей таблицы тел в мире
+ * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
+ * десятках мест: радиус кругов, конусов и теней, скорость поворота для
+ * сглаживания, список чипов кулдаунов. `octopus` и `gorilla` там — ИМЕНА
+ * СТОРОН (голубая и оранжевая), и их переименование идёт отдельным шагом.
+ *
+ * Пока оно не сделано, обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`.
+ * Соврать одинаково обеим честнее двух других вариантов: уронить экран на
+ * `cfg.fighters[id].radius` от `undefined` или оставить одной из сторон числа
+ * архетипа, которого больше не существует ни для кого.
+ *
+ * Настоящие числа бойца приезжают в кадрах матча, а не отсюда. Здесь остаётся
+ * только то, по чему вьюер строит геометрию ДО начала боя.
+ *
+ * Мост уедет вместе с переименованием сторон. Такой же живёт в
+ * `src/server/index.js` — дев-сервер отдаёт тому же вьюеру тот же
+ * `/api/config`.
+ */
+const sideBridge = (side) => ({
+  id: side,
+  name: side,
+  ...statsOf(DEFAULT_BUILD),
+  /* Без `jump`: вьюер сам дописывает его к списку чипов. */
+  skills: skillsOf(side).filter((s) => s !== 'jump'),
+});
+
 export const SIM_CONFIG = {
   arena: { half: ARENA_HALF, wallHeight: WALL_HEIGHT, obstacles: OBSTACLES },
-  fighters: FIGHTERS,
+  /* Телосложение по умолчанию — то, что получает существо, о теле которого
+     ничего не сказано. Не архетип: наследоваться от него некому. */
+  defaultBuild: DEFAULT_BUILD,
+  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,
@@ -245,7 +278,7 @@ export function buildRouter(ctx) {
    *   1) собран набор из грамматики — иначе гость не увидит §8 вообще;
    *   2) мозг написан моделью — иначе он не увидит и тезиса продукта;
    *   3) настоящий счёт побед, а не поставленное число.
-   * Разные архетипы среди троих — чтобы выбор был выбором, а не оттенком.
+   * Разные НАБОРЫ среди троих — чтобы выбор был выбором, а не оттенком.
    */
   r.get('/api/starters', (req, res) => {
     const all = db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state = 'active'
@@ -268,18 +301,20 @@ export function buildRouter(ctx) {
     const decent = all.filter((c) => !c.fights || winrate(c) >= 0.25);
     const ranked = (decent.length >= 3 ? decent : all).sort((a, b) => score(b) - score(a));
     /*
-     * ТРЕТЬЯ КАРТОЧКА ВЫБИРАЕТСЯ ПО НЕПОХОЖЕСТИ, А НЕ ПО РЕЙТИНГУ.
+     * ВТОРАЯ И ТРЕТЬЯ КАРТОЧКИ ВЫБИРАЮТСЯ ПО НЕПОХОЖЕСТИ, А НЕ ПО РЕЙТИНГУ.
      *
-     * Архетипа всего два, поэтому «по одному на архетип, потом лучший из
-     * оставшихся» гарантированно давало третью карточку того же архетипа, что
-     * одна из первых двух. А карточка показывает архетип и набор — и гость
-     * видел два прямоугольника, отличающихся только именем. Выбор из трёх, где
-     * два неотличимы, это выбор из двух с лишним кликом.
+     * Первые две брались «по одной на архетип». Архетипов больше нет — есть
+     * две СТОРОНЫ арены, и они не говорят о существе ничего: сторона не несёт
+     * ни здоровья, ни скорости, ни набора. Разложить троих по цветам значило
+     * бы обещать гостю разницу, которой в карточке нет, и одновременно
+     * выбрасывать по-настоящему непохожее существо только за то, что оно
+     * дерётся с той же стороны.
      *
-     * Поэтому третьей берётся та, чей набор дальше всего от уже выбранных:
-     * похожесть считается по долям общих пар «доставка+эффекты». Рейтинг
-     * решает только при равной непохожести — среди неотличимых он всё равно
-     * ничего не решает для гостя.
+     * Поэтому непохожесть теперь решает всё, кроме первой карточки: первая —
+     * лучшая по показательности, каждая следующая — та, чей набор дальше всего
+     * от уже выбранных. Похожесть считается по долям общих пар
+     * «доставка+эффекты». Рейтинг решает только при равной непохожести — среди
+     * неотличимых он всё равно ничего не решает для гостя.
      */
     const sig = (c) => {
       let kit = [];
@@ -292,20 +327,18 @@ export function buildRouter(ctx) {
       for (const x of a) if (b.has(x)) n++;
       return n / Math.max(a.size, b.size);
     };
-    const out = []; const seen = new Set();
-    for (const c of ranked) {
-      if (out.length >= 2 || seen.has(c.archetype)) continue;
-      seen.add(c.archetype); out.push(c);
-    }
-    if (out.length < 3) {
+    /* Подпись набора считается по разу на существо: `sig` разбирает JSON, а
+       ниже он спрашивается на каждом шаге отбора у каждого кандидата. */
+    const sigs = new Map(ranked.map((c) => [c, sig(c)]));
+    const out = ranked.slice(0, 1);
+    while (out.length < 3 && out.length < ranked.length) {
+      const near = (c) => Math.max(0, ...out.map((x) => overlap(sigs.get(c), sigs.get(x))));
       const rest = ranked.filter((c) => !out.includes(c));
-      const chosen = out.map(sig);
       rest.sort((a, b) => {
-        const da = Math.max(0, ...chosen.map((x) => overlap(sig(a), x)));
-        const dbb = Math.max(0, ...chosen.map((x) => overlap(sig(b), x)));
+        const da = near(a); const dbb = near(b);
         return da === dbb ? score(b) - score(a) : da - dbb;
       });
-      for (const c of rest) { if (out.length >= 3) break; out.push(c); }
+      out.push(rest[0]);
     }
     json(res, out.map((x) => card(x)));
   });
@@ -511,7 +544,7 @@ export function buildRouter(ctx) {
     if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
 
     try {
-      const v = await viability(body.kit, row.archetype, { size: sizeOf(row) });
+      const v = await viability(body.kit, { build: buildOf(row) });
       json(res, {
         ok: v.ok, hits: v.hits, wins: v.wins, rounds: v.rounds, why: v.why,
         /* Форма важнее среднего: «бьёт всех» и «бьёт одних» — разные ответы,
@@ -602,30 +635,34 @@ export function buildRouter(ctx) {
     }
 
     /*
-     * ВСЁ, ЧТО ПРИШЛО ОТ КЛИЕНТА, ПРИВОДИТСЯ К ИЗВЕСТНОМУ ВИДУ.
+     * ОТ КЛИЕНТА ПРИЕЗЖАЕТ ОПИСАНИЕ, И БОЛЬШЕ НИЧЕГО.
      *
-     * `body.archetype` уезжал в задание как есть — объектом, массивом, чем
-     * угодно. Дальше он доходил до `INSERT` и SQLite бросал; отказ уходил
-     * мимо всех ловушек, задание помечалось `internal`, а право на
-     * единственное за жизнь бесплатное существо (F7) уже было списано строкой
-     * выше и не возвращалось.
+     * Здесь принималось поле `archetype`: клиент называл «осьминог» или
+     * «горилла», сервер сверял имя со списком и передавал его конвейеру как
+     * подсказку. Это был последний вход, через который снаружи выбирали
+     * ХАРАКТЕРИСТИКИ — имя архетипа тянуло за собой готовую запись здоровья,
+     * скорости, радиуса и умений.
      *
-     * Возврат теперь стоит на любом провале (`jobs.pump`), но это лечение
-     * последствия. Причина — доверие к форме входа: `kitPreset` уже однажды
-     * пробили именем из прототипа, и урок был ровно про это. Само поле с
-     * клиента больше не принимается — набор следует из описания, — но урок
-     * остаётся: `archetype` ниже сверяется со списком, а не с истинностью.
+     * Записей больше нет. Тело существа — это его телосложение, оно следует из
+     * описания и оплачивается очками (`BUILD_AXES`, `BUILD_BUDGET`), а сторона
+     * арены не даёт ни одного числа. Так что выбирать здесь стало нечего:
+     * поле осталось бы формой без содержания, а список имён — вторым местом,
+     * где живут имена сторон (первое и единственное — `SIDES`
+     * в `creatures.js`).
+     *
+     * Урок, ради которого стояла сверка, никуда не делся и записан там же, где
+     * ему место: всё, что приезжает от клиента, приводится к известному виду.
+     * `prompt` выше — строка, обрезанная по длине; ничего другого этот
+     * маршрут от клиента и не берёт.
      */
-    const ARCHETYPES = ['octopus', 'gorilla'];
     const job = jobs.enqueue({
       accountId: acct.id, kind: 'create', bundle,
-      payload: {
-        prompt,
-        archetype: ARCHETYPES.includes(body.archetype) ? body.archetype : null,
-      },
+      payload: { prompt },
     });
+    /* `archetype` в событии больше не шлётся: словарь `analytics.js` берёт
+       только объявленные свойства, а несуществующее просто не доедет. */
     trackEvent(db, { name: 'create_submitted', accountId: acct.id,
-      props: { bundle: bundle.bundle, archetype: job.payload?.archetype ?? null, promptChars: prompt.length } });
+      props: { bundle: bundle.bundle, promptChars: prompt.length } });
     json(res, jobView(job), 202);
   });
 

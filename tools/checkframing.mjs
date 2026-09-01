@@ -144,8 +144,8 @@ import * as THREE from 'three/webgpu';
 import * as TSL from 'three/tsl';
 
 import {
-  ARENA_HALF, FIGHTERS, MATCH_SECONDS, OBSTACLES, SKILLS, SUDDEN_DEATH_AT,
-  SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT,
+  ARENA_HALF, DEFAULT_BUILD, MATCH_SECONDS, OBSTACLES, SKILLS, SUDDEN_DEATH_AT,
+  SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT, skillsOf, statsOf,
 } from '../src/core/config.js';
 import { compileBrain } from '../src/brain/host.js';
 import { createWorld, snapshot, step } from '../src/core/sim.js';
@@ -384,10 +384,45 @@ return {
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
+/**
+ * ── МОСТ ПОД `cfg.fighters`, СКОПИРОВАННЫЙ С `src/server/index.js` ─────────
+ *
+ * `FIGHTERS` больше нет: тела принадлежат существам, общей таблицы тел в мире
+ * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
+ * десятках мест — радиус кругов, конусов и теней, скорость поворота для
+ * сглаживания, список чипов кулдаунов, — а `octopus` и `gorilla` там ИМЕНА
+ * СТОРОН, и переименование сторон идёт отдельным шагом. Пока оно не сделано,
+ * сервер отдаёт обеим сторонам одну и ту же копию телосложения по умолчанию.
+ *
+ * Здесь тот же мост, а не свой: этот гейт режет живой `src/viewer/main.js` и
+ * обязан кормить его тем объектом, который придёт в браузер. Мост, разошедшийся
+ * с `index.js`, проверял бы камеру на конфиге, которого никто не увидит.
+ *
+ * И это ЧЕСТНО НАЗВАННАЯ вторая копия — ровно то, чего шапка этого файла
+ * избегает везде, где может. Импортировать её из `src/server/index.js` нельзя:
+ * модуль на импорте поднимает сервер и занимает порт. Копия поэтому сведена к
+ * пяти строкам, читающим те же `DEFAULT_BUILD`, `statsOf` и `skillsOf`, — и
+ * это единственное место здесь, где расхождение с браузером возможно и не
+ * будет поймано.
+ *
+ * `skills` — без `jump`, потому что вьюер дописывает его сам
+ * (`cfg.fighters[id].skills.concat('jump')`), как дописывал к
+ * `FIGHTERS[id].skills`, где прыжка тоже не было.
+ *
+ * Мост уедет отсюда вместе с переименованием сторон.
+ */
+const sideBridge = (side) => ({
+  id: side,
+  name: side,
+  ...statsOf(DEFAULT_BUILD),
+  skills: skillsOf(side).filter((sk) => sk !== 'jump'),
+});
+
 /** Exactly what `src/server/index.js` answers `/api/config` with. */
 const CONFIG = {
   arena: { half: ARENA_HALF, wallHeight: WALL_HEIGHT, obstacles: OBSTACLES },
-  fighters: FIGHTERS,
+  defaultBuild: DEFAULT_BUILD,
+  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,

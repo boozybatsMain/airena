@@ -41,7 +41,7 @@
  * deleting a disclosure fails here as loudly as breaking one.
  */
 
-import { FIGHTERS, SKILLS, TICK_HZ } from '../src/core/config.js';
+import { SKILLS, TICK_HZ } from '../src/core/config.js';
 import { createWorld, step } from '../src/core/sim.js';
 import { tracePrompt } from '../src/brain/prompt.js';
 
@@ -260,8 +260,23 @@ function agreeSum(what, labels, measured, unit) {
 /** How long the act existed, from the tick it was ordered on. Same +TICK as `windupOf`. */
 const totalOf = (o) => (o.endT - o.startT) + TICK;
 
-const O = FIGHTERS.octopus;
-const G = FIGHTERS.gorilla;
+/**
+ * ТЕЛА, ПО КОТОРЫМ ИДЁТ ЗАМЕР, БЕРУТСЯ СО СЦЕНЫ, А НЕ ИЗ КОНФИГА.
+ *
+ * Здесь стояло `FIGHTERS.octopus` / `FIGHTERS.gorilla` — две литеральные
+ * записи, которые арена раздавала сторонам. Записей больше нет: числа бойца
+ * приходят из его ТЕЛОСЛОЖЕНИЯ, и `stage()` — то есть `createWorld` без
+ * `builds` — ставит на пол телосложение по умолчанию.
+ *
+ * Радиусы читаются прямо с этой сцены, а не пересчитываются из конфига, и это
+ * не удобство: шапка файла запрещает второй экземпляр той же арифметики. Зонд
+ * обязан мерить ровно то тело, по которому он стреляет, — иначе он однажды
+ * будет искать границу конуса вокруг радиуса, которого на арене нет.
+ */
+const { octopus: O, gorilla: G } = (() => {
+  const w = stage();
+  return { octopus: w.fighters.octopus.def, gorilla: w.fighters.gorilla.def };
+})();
 const EAST = Math.PI / 2; // heading convention: 0 faces +Z, increasing toward +X
 const touching = O.radius + G.radius;
 

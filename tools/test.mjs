@@ -13,9 +13,13 @@ import { readFileSync } from 'node:fs';
 
 import { compileBrain } from '../src/brain/host.js';
 import {
-  ARENA_HALF, FIGHTERS, OBSTACLES, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, DT,
+  ARENA_HALF, BUILD_AXES, BUILD_BUDGET, DEFAULT_BUILD, OBSTACLES, SKILLS,
+  SPAWN_RADIUS, SUDDEN_DEATH_AT, buildCost, normalizeBuild, statsOf,
 } from '../src/core/config.js';
-import { dist2, hasLos, inCone, segBox } from '../src/core/geom.js';
+/* `inCone`, `segBox` и `DT` отсюда ушли: первый жил в единственной проверке,
+   которую съел архетип (см. группу `simulation`), а два других не читались
+   уже давно — мёртвый импорт врёт про то, что файл проверяет. */
+import { dist2, hasLos } from '../src/core/geom.js';
 import { createNav } from '../src/core/nav.js';
 import { runMatch } from '../src/core/match.js';
 import { createWorld, perceive, snapshot, step, SOLIDS, burnRate } from '../src/core/sim.js';
@@ -62,13 +66,27 @@ group('arena');
   ok('200 seeded spawn pairs are legal, diametric and face each other', bad === 0, `${bad} violations`);
 }
 {
-  const nav = createNav(SOLIDS, ARENA_HALF, FIGHTERS.gorilla.radius);
+  /*
+   * САМОЕ ТОЛСТОЕ ТЕЛО, КОТОРОЕ ВООБЩЕ МОЖНО КУПИТЬ, а не радиус архетипа.
+   *
+   * Здесь стоял `FIGHTERS.gorilla.radius` — радиус более крупной из двух
+   * записей, то есть худший случай в мире, где тел ровно два. Тел теперь
+   * сколько угодно, и худший случай — верхняя граница оси. Она к тому же
+   * БЕСПЛАТНА: цена радиуса убывает (`axisCost`, `inverse`), так что тело
+   * шириной в потолок — не экзотика, а самый дешёвый способ потратить
+   * бюджет, и через арену оно обязано проходить.
+   *
+   * Тем же радиусом берётся отступ при выборе точек: точка, в которую такое
+   * тело просто не помещается, про связность не говорит ничего.
+   */
+  const fattest = BUILD_AXES.radius.max;
+  const nav = createNav(SOLIDS, ARENA_HALF, fattest);
   let unreachable = 0, tested = 0;
   for (let i = 0; i < 400; i++) {
     const rand = (n) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
-    const p = (n) => (rand(n) * 2 - 1) * (ARENA_HALF - 2);
+    const p = (n) => (rand(n) * 2 - 1) * (ARENA_HALF - fattest);
     const a = { x: p(1), z: p(2) }, b = { x: p(3), z: p(4) };
-    const inside = (q) => OBSTACLES.some((o) => Math.abs(q.x - o.x) < o.hx + 2 && Math.abs(q.z - o.z) < o.hz + 2);
+    const inside = (q) => OBSTACLES.some((o) => Math.abs(q.x - o.x) < o.hx + fattest && Math.abs(q.z - o.z) < o.hz + fattest);
     if (inside(a) || inside(b)) continue;
     tested++;
     if (!nav.path(a.x, a.z, b.x, b.z)) unreachable++;
@@ -145,16 +163,47 @@ group('simulation');
     `max reported ${maxReported.toFixed(1)} m/s, expected ~${SKILLS.charge.dashSpeed}`);
 }
 {
-  // the reach a document can state and the reach the code applies must be one number
-  const rA = FIGHTERS.gorilla.radius, rB = FIGHTERS.octopus.radius;
-  const reach = SKILLS.smash.range + rA;
-  let bad = 0;
-  for (let d = 1.0; d < 8.0; d += 0.05) {
-    const connects = inCone(0, 0, 0, SKILLS.smash.halfAngle, reach, 0, d, rB);
-    const expected = d <= reach + rB + 1e-9;
-    if (connects !== expected) bad++;
-  }
-  ok('smash connects exactly when dist <= range + both radii (dead ahead)', bad === 0, `${bad} boundary mismatches`);
+  /*
+   * ── ЗАМЕНА ИНВАРИАНТА, УМЕРШЕГО ВМЕСТЕ С АРХЕТИПОМ ────────────────────
+   *
+   * Здесь стояло «smash connects exactly when dist <= range + both radii»,
+   * и оба радиуса читались из `FIGHTERS.gorilla` и `FIGHTERS.octopus` — из
+   * двух литеральных записей, одинаковых в каждом бою. Записей больше нет, и
+   * одного числа «докуда достаёт удар» у игры не существует: радиус
+   * принадлежит СУЩЕСТВУ, и у каждой пары он свой. Проверять «ту самую»
+   * длину стало нечего.
+   *
+   * Свойство при этом не потеряно, и потому слот освободился честно:
+   * `tools/checkbehaviour.mjs` меряет и длину удара, и ширину конуса
+   * двоичным поиском на живой симуляции и сверяет с тем, что промпт сказал
+   * мозгу. Это строго сильнее, чем сверка `inCone` с той же арифметикой,
+   * записанной строкой ниже.
+   *
+   * Слот отдан правилу, у которого другого дома в гейтах нет. «Любые
+   * характеристики» держатся ровно на одном: у каждой оси есть цена, а у
+   * набора — потолок. Если перебор проходит молча, свобода превращается в
+   * «999 здоровья»; если сжатие не доезжает до мира — существо дерётся не
+   * теми числами, которые ему выдали. Проверяются обе половины: арифметика
+   * и её доставка в бой.
+   */
+  const greedy = Object.fromEntries(
+    Object.entries(BUILD_AXES).map(([k, a]) => [k, a.inverse ? a.min : a.max]),
+  );
+  const norm = normalizeBuild(greedy);
+  const world = createWorld(77, { builds: { octopus: greedy, gorilla: DEFAULT_BUILD } });
+  const axes = Object.keys(BUILD_AXES);
+  const same = (a, b) => axes.every((k) => Math.abs(a[k] - b[k]) < 1e-9);
+  const served = world.fighters.octopus.def;
+  ok('a build over budget is squeezed, and the fight uses the squeezed numbers',
+    buildCost(greedy) > BUILD_BUDGET
+      && norm.squeezed > 0 && norm.cost <= BUILD_BUDGET + 1e-9
+      && served.hp < greedy.hp
+      && same(served, statsOf(greedy))
+      /* И вторая сторона держит СВОЁ телосложение: сжатие соседа её не
+         касается, потому что числа больше не принадлежат стороне арены. */
+      && same(world.fighters.gorilla.def, statsOf(DEFAULT_BUILD)),
+    `cost ${buildCost(greedy)} -> ${norm.cost} at a budget of ${BUILD_BUDGET}; `
+    + `hp asked ${greedy.hp}, served ${served.hp}`);
 }
 {
   const t0 = burnRate(SUDDEN_DEATH_AT - 0.1), t1 = burnRate(SUDDEN_DEATH_AT + 10);

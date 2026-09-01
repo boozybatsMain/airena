@@ -45,7 +45,7 @@ export class IsolateError extends Error {
  * @param {object} brains  { octopus: source, gorilla: source } — уже допущенные
  * @param {object} opts    seed, record, curtainSeconds, timeoutMs
  */
-export function runIsolated(brains, { seed = 1, seeds = null, kits = null, sizes = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
+export function runIsolated(brains, { seed = 1, seeds = null, kits = null, builds = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
   const prepared = {};
   for (const [slot, src] of Object.entries(brains)) {
     prepared[slot] = instrument(src).code;
@@ -53,10 +53,10 @@ export function runIsolated(brains, { seed = 1, seeds = null, kits = null, sizes
 
   return new Promise((resolve, reject) => {
     const w = new Worker(WORKER, {
-      /* `sizes` едет наравне с `kits` и `seed`: это вход матча, от него
+      /* `builds` едет наравне с `kits` и `seed`: это вход матча, от него
          зависят здоровье, радиус, скорость и масса. Забыть его — значит
          показать бой, которого не было. */
-      workerData: { seed, seeds, brains: prepared, kits, sizes, record, curtainSeconds },
+      workerData: { seed, seeds, brains: prepared, kits, builds, record, curtainSeconds },
       resourceLimits: LIMITS,
       /* Ни аргументов, ни переменных окружения, ни stdin: изолят не должен
          уметь прочитать ни ключ (E4: ключ Anthropic живёт в env хоста), ни

@@ -21,11 +21,11 @@
 
 import {
   AIRBORNE_DODGE_MIN,
-  ARENA_HALF, BEAM_RADIUS, BRAKE_ACCEL, DT, FAULT_LIMIT, FIGHTERS,
+  ARENA_HALF, BEAM_RADIUS, BRAKE_ACCEL, DT, FAULT_LIMIT,
   KNOCKBACK_DRAG, KNOCKBACK_MIN, MATCH_SECONDS, MAX_ORDERS_PER_THINK,
   MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, MEM_MAX_VALUE_BYTES, OBSTACLES,
   SAY_MAX_CHARS, SAY_SECONDS, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
-  SUDDEN_DEATH_RAMP, THINK_EVERY, skillsOf, statsFor,
+  SUDDEN_DEATH_RAMP, THINK_EVERY, DEFAULT_BUILD, skillsOf, statsOf,
 } from './config.js';
 import {
   clamp, dirOf, dist2, hasLos, headingOf, inCone, len2, norm2,
@@ -114,7 +114,18 @@ function phasesOf(id) {
  * Where the two of them start: opposite ends of a diameter whose angle comes
  * from the seed, rotated until both ends are clear of every block.
  */
-function spawnPair(seed) {
+function spawnPair(seed, builds = null) {
+  /*
+   * Проходимость проверяется НАСТОЯЩИМИ радиусами бойцов.
+   *
+   * Здесь стояли радиусы двух записей архетипов — то есть точка рождения
+   * подбиралась под чужой размер. Замерено до правки: 12 спавнов из 3000
+   * сидов ставили крупного бойца внутрь стены. Записей больше нет, а радиус
+   * у каждого свой, и брать его надо у него.
+   */
+  const rA = statsOf(builds?.octopus || DEFAULT_BUILD).radius;
+  const rB = statsOf(builds?.gorilla || DEFAULT_BUILD).radius;
+
   const draw = streamFrom(seed, 'spawn');
   const base = draw() * Math.PI * 2;
   for (let k = 0; k < 64; k++) {
@@ -127,7 +138,7 @@ function spawnPair(seed) {
       }
       return true;
     };
-    if (ok(ax, az, FIGHTERS.octopus.radius) && ok(-ax, -az, FIGHTERS.gorilla.radius)) {
+    if (ok(ax, az, rA) && ok(-ax, -az, rB)) {
       return {
         octopus: { x: ax, z: az, heading: headingOf(-2 * ax, -2 * az) },
         gorilla: { x: -ax, z: -az, heading: headingOf(2 * ax, 2 * az) },
@@ -140,12 +151,20 @@ function spawnPair(seed) {
   };
 }
 
-function makeFighter(id, sp, seed, size = 1) {
-  /* Размер — ось существа (см. `statsFor` в config.js): он меняет здоровье,
-     радиус коллайдера, скорость и массу. Единица — прежнее поведение. */
-  const def = statsFor(id, size);
+function makeFighter(id, sp, seed, build = null, kitNames = null) {
+  /*
+   * Числа приезжают ВМЕСТЕ С БОЙЦОМ, а не берутся по имени стороны.
+   *
+   * До этого здесь стояло `statsFor(id, size)`, где `id` — сторона арены; то
+   * есть характеристики выдавала СТОРОНА, а существо получало их по факту
+   * того, куда его посадили. Замерено: 11.76% боёв прошли с числами чужой
+   * записи. Теперь сторона — это только сторона.
+   */
+  const def = statsOf(build || DEFAULT_BUILD);
   const cooldowns = {};
-  for (const k of skillsOf(id)) cooldowns[k] = 0;
+  /* Кулдауны заводятся под ТО, чем боец дерётся: набор грамматики, если он
+     есть, иначе — эталонная фикстура §1 по тегу мозга. */
+  for (const k of (kitNames || skillsOf(id))) cooldowns[k] = 0;
   return {
     id,
     def,
@@ -206,15 +225,16 @@ function makeFighter(id, sp, seed, size = 1) {
  *   with a fighter standing bolt upright at 0 hp. The animation IS the ending.
  */
 /**
- * @param {object} sizes { octopus: 0.75..1.5, gorilla: ... } — размер существа.
- *   Часть входа матча наравне с сидом: от него зависят здоровье, радиус,
- *   скорость и масса, значит без него повтор не побитовый (A2).
+ * @param {object} builds { octopus: {hp,maxSpeed,...}, gorilla: {...} } —
+ *   ТЕЛОСЛОЖЕНИЕ бойца: его собственные числа. Часть входа матча наравне с
+ *   сидом, значит без него повтор не побитовый (A2). Наследовать не от кого:
+ *   таблицы архетипов больше нет.
  * @param {object} kits  { octopus: {k1,k2,k3}, gorilla: {...} } — скомпилированные
  *   киты грамматики §8. Без них мир собирается на четырёх захардкоженных
  *   умениях, и это по-прежнему тот мир, в котором измерены §1 и §16.
  */
-export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, sizes = null } = {}) {
-  const spawns = spawnPair(seed);
+export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds = null } = {}) {
+  const spawns = spawnPair(seed, builds);
   const world = {
     seed,
     tick: 0,
@@ -225,10 +245,12 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, sizes =
     half: ARENA_HALF,
     spawns,
     fighters: {
-      /* `sizes` — часть ВХОДА матча, как сид и наборы: повтор обязан быть
-         побитовым (A2), значит размер нельзя брать ниоткуда, кроме входа. */
-      octopus: makeFighter('octopus', spawns.octopus, seed, sizes?.octopus),
-      gorilla: makeFighter('gorilla', spawns.gorilla, seed, sizes?.gorilla),
+      /* `builds` — часть ВХОДА матча, как сид и наборы: повтор обязан быть
+         побитовым (A2), значит числа нельзя брать ниоткуда, кроме входа. */
+      octopus: makeFighter('octopus', spawns.octopus, seed, builds?.octopus,
+        kits?.octopus ? Object.keys(kits.octopus) : null),
+      gorilla: makeFighter('gorilla', spawns.gorilla, seed, builds?.gorilla,
+        kits?.gorilla ? Object.keys(kits.gorilla) : null),
     },
     /** Transient things the viewer draws for one tick: beams, cones, flashes. */
     fx: [],
@@ -1144,6 +1166,8 @@ function damage(world, fromId, toId, amount, skill) {
    * потому что иначе множитель пришлось бы дублировать в каждом из
    * четырнадцати эффектов и не забыть в пятнадцатом.
    */
+  /* Тело урон не масштабирует: он живёт в наборе умений. См. шапку
+     телосложения в config.js — две оси разведены нарочно. */
   amount *= src.def.dmgScale ?? 1;
   if (dst.iframes > 0) {
     src.stats.misses[skill] = (src.stats.misses[skill] || 0) + 1;

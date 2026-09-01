@@ -81,53 +81,53 @@
 /** Пятеро соперников, найденных замером. Порядок фиксирован: он входит в сиды. */
 export const GAUNTLET = [
   {
-    id: 'beamer',
-    ru: 'лучевой',
-    why: 'стена и горение лучом, добивание снарядом; держит линию и не пускает',
+    id: 'striker',
+    ru: 'штурмовик',
+    why: 'луч гасит и чистит, мигание под щит, навес добивает; давит на средней',
     kit: [
-      { delivery: 'beam', effects: ['wall', 'burn'], element: 'ember' },
-      { delivery: 'bolt', effects: ['damage'], element: 'arc' },
-      { delivery: 'beam', effects: ['damage', 'shield'], element: 'void' },
+      { delivery: 'beam', effects: ['cleanse', 'silence'], element: 'ember' },
+      { delivery: 'blink', effects: ['shield'], element: 'ember' },
+      { delivery: 'lob', effects: ['damage'], element: 'ember' },
     ],
   },
   {
-    id: 'burner',
-    ru: 'поджигатель',
-    why: 'горение в упор и площадь под ноги; наказывает тех, кто стоит рядом',
+    id: 'warden',
+    ru: 'страж',
+    why: 'лечится лучом и ставит стены, снаряд стягивает и бьёт; тянет бой',
     kit: [
-      { delivery: 'cone', effects: ['burn'], element: 'kinetic' },
-      { delivery: 'cone', effects: ['boost', 'pull'], element: 'arc', channel: 'armor' },
-      { delivery: 'zone', effects: ['damage', 'wall'], element: 'ember' },
+      { delivery: 'beam', effects: ['heal', 'wall'], element: 'frost' },
+      { delivery: 'blink', effects: ['wall'], element: 'ember' },
+      { delivery: 'bolt', effects: ['cleanse', 'pull', 'damage'], element: 'void' },
     ],
   },
   {
-    id: 'blinder',
-    ru: 'слепильщик',
-    why: 'немота, ослепление и замедление — почти без урона; наказывает тех, кто зависит от умений',
+    id: 'conjurer',
+    ru: 'ворожей',
+    why: 'зоны усиливают и лечат, мигание расширяет обзор; играет от площади',
     kit: [
-      { delivery: 'bolt', effects: ['silence', 'weaken'], element: 'frost', channel: 'speed' },
-      { delivery: 'lob', effects: ['blind'], element: 'frost' },
-      { delivery: 'dash', effects: ['burn'], element: 'arc' },
+      { delivery: 'zone', effects: ['boost'], channel: 'range', element: 'kinetic' },
+      { delivery: 'blink', effects: ['boost'], channel: 'vision', element: 'void' },
+      { delivery: 'zone', effects: ['heal', 'damage'], element: 'arc' },
     ],
   },
   {
-    id: 'dasher',
-    ru: 'рывковый',
-    why: 'входит рывком и выходит рывком; наказывает тех, кто не держит ближнюю',
+    id: 'runner',
+    ru: 'бегун',
+    why: 'рывки жгут, слабят и разгоняют самого себя; живёт на дистанции рывка',
     kit: [
-      { delivery: 'dash', effects: ['shield', 'heal'], element: 'frost' },
-      { delivery: 'beam', effects: ['wall'], element: 'void' },
-      { delivery: 'dash', effects: ['damage', 'stun'], element: 'void' },
+      { delivery: 'dash', effects: ['burn', 'weaken'], channel: 'range', element: 'arc' },
+      { delivery: 'zone', effects: ['boost'], channel: 'cooldown', element: 'arc' },
+      { delivery: 'dash', effects: ['boost'], channel: 'range', element: 'void' },
     ],
   },
   {
-    id: 'mender',
-    ru: 'лекарь',
-    why: 'лечится и оглушает, живёт долго; наказывает тех, у кого мало урона в единицу времени',
+    id: 'lobber',
+    ru: 'навесной',
+    why: 'три навеса: ослепление, стена, урон; бьёт из-за укрытия и не подходит',
     kit: [
-      { delivery: 'lob', effects: ['heal', 'stun'], element: 'void' },
-      { delivery: 'cone', effects: ['wall'], element: 'frost' },
-      { delivery: 'beam', effects: ['heal', 'burn'], element: 'kinetic' },
+      { delivery: 'lob', effects: ['blind', 'wall'], element: 'arc' },
+      { delivery: 'lob', effects: ['wall'], element: 'ember' },
+      { delivery: 'lob', effects: ['damage'], element: 'void' },
     ],
   },
 ];
@@ -194,7 +194,37 @@ export const BASELINE = {
    * число: «порог 75% → брать надо 88%». Здесь стояло 62.5% — ступень под
    * отсчётом, то есть строгость сравнения была потеряна в прозе.
    */
-  bestMin: 0.75,
+  /*
+   * ── ОТСЧЁТ ПЕРЕСНЯТ ПОСЛЕ СНОСА АРХЕТИПОВ (01.09) ─────────────────────────
+   *
+   * Старое число (0.75) снималось в мире, где у сторон были РАЗНЫЕ ТЕЛА, и
+   * значительная часть нетранзитивности поля бралась оттуда, а не из наборов.
+   * Тела стали одинаковыми по умолчанию — и прежняя пятёрка схлопнулась:
+   * замерено `tools/gauntletfield.mjs`, «лучевой» брал 94-100% у всех, стилей
+   * 2 из 5, ноль циклов. Прибор перестал мерить форму и стал мерить очередь.
+   *
+   * Пятёрка найдена заново `tools/gauntletpick.mjs` (пул 40, 6 раундов): 5
+   * стилей из 5, один цикл #0→#2→#4, худший результат лучшего 33.3%.
+   *
+   * Это тот самый урок, который стоит записать: НЕТРАНЗИТИВНОСТЬ ИГРЫ ЧАСТИЧНО
+   * ЖИЛА В ДВУХ ЗАПИСЯХ АРХЕТИПОВ. Убрав их, мы обязаны вернуть её туда, где
+   * ей место, — в умения и в телосложение, — а не оставить лестницу.
+   *
+   * ── ПОЧЕМУ ЧИСЛО 0.85, А НЕ ИЗМЕРЕННЫЕ 0.333 ──────────────────────────────
+   *
+   * По той же причине, что и раньше: вердикт `dominant` уезжает игроку словами
+   * «это дыра, её и надо резать», и сказать такое про СВОЙ ЖЕ стартовый набор
+   * игра не может. Замерено на новом поле: `keeper` держит 43.8%, `saboteur` —
+   * 81.3%. Отсчёт обязан стоять выше худшего из них.
+   *
+   * И вот это уже честный красный флаг, а не настройка: наши стартовые наборы
+   * бьют эталонное поле вдвое увереннее, чем лучший из самого поля. В старом
+   * мире разрыв закрывали разные тела; теперь его закрывать нечем, пока умения
+   * не получат собственную глубину. Разрыв записан числом, а не спрятан:
+   * следующий шаг (открытые параметры умений) обязан его сократить, и первым
+   * же признаком успеха будет то, что это число можно опустить.
+   */
+  bestMin: 0.85,
   /* Медианный худший результат по пятерым: ниже этого набор слабее поля. */
   medianMin: 0.13,
   measuredAt: '30.08, продуктовое поле, 20 сидов на соперника и сторону',

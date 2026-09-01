@@ -92,7 +92,16 @@ if (Array.isArray(raw)) {
   }
 }
 
-const SECTION_OF = { fighters: 'FIGHTERS', skills: 'SKILLS' };
+/*
+ * Имя секции тюнинга -> имя таблицы в `config.js`.
+ *
+ * Секция `fighters` (две записи архетипов) исчезла вместе с самими записями:
+ * тело принадлежит существу, а не стороне арены. Общего у всех тел остались
+ * ОСИ — их границы, цена и потолок трат, — и тюнится теперь именно `build`.
+ * Имена берутся отсюда, а не из файла тюнинга, поэтому старый файл с секцией
+ * `fighters` не молча пропускается, а падает с «unknown section».
+ */
+const SECTION_OF = { build: 'BUILD_AXES', skills: 'SKILLS' };
 
 let src = readFileSync(CONFIG, 'utf8');
 const applied = [];
@@ -115,7 +124,16 @@ for (const [path, value] of Object.entries(flat)) {
     else if (src[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
   }
   const block = src.slice(keyAt, end);
-  const re = new RegExp(`(\\n\\s*${field}:\\s*)(-?[0-9.]+)`);
+  /*
+   * Поле ищется после ПЕРЕНОСА, СКОБКИ ИЛИ ЗАПЯТОЙ, а не только после переноса.
+   *
+   * Записи умений расписаны по строкам, а оси телосложения — однострочные
+   * (`hp: { min: 60, max: 360, def: 210, per: 30 }`), и якорь только на `\n`
+   * не находил в них ничего: `bake` падал с «not found (or not a plain
+   * number)» на всякой правке тела. Разделитель перед именем поля обязателен
+   * по-прежнему — без него `min` нашлось бы внутри `halfAngleMin`.
+   */
+  const re = new RegExp(`([\\n{,]\\s*${field}:\\s*)(-?[0-9.]+)`);
   if (!re.test(block)) { console.error(`${objName}.${key}.${field} not found (or not a plain number)`); process.exit(1); }
   const was = block.match(re)[2];
   if (Number(was) === Number(value)) continue;
@@ -140,7 +158,7 @@ writeFileSync(CONFIG, src);
  */
 const probe = execFileSync('node', ['-e',
   `import(${JSON.stringify(CONFIG)}).then((c) => {`
-  + `const o = {}; for (const [k, v] of Object.entries({ fighters: c.FIGHTERS, skills: c.SKILLS }))`
+  + `const o = {}; for (const [k, v] of Object.entries({ build: c.BUILD_AXES, skills: c.SKILLS }))`
   + ` for (const [n, rec] of Object.entries(v)) for (const [f, val] of Object.entries(rec)) o[k+'.'+n+'.'+f] = val;`
   + `console.log(JSON.stringify(o)); });'`.slice(0, -1),
 ], { cwd: ROOT, env: { ...process.env, AIRENA_TUNING: join(tmpdir(), 'airena-no-such-tuning.json') } }).toString();

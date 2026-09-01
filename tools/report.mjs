@@ -36,7 +36,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { FIGHTERS, SKILLS, ARENA_HALF, MATCH_SECONDS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, TICK_HZ, THINK_HZ, OBSTACLES } from '../src/core/config.js';
+import { BUILD_AXES, BUILD_BUDGET, DEFAULT_BUILD, SKILLS, ARENA_HALF, MATCH_SECONDS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, TICK_HZ, THINK_HZ, OBSTACLES, axisCost, buildCost } from '../src/core/config.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FORCE = process.argv.includes('--force');
@@ -282,11 +282,33 @@ say(`Arena ${ARENA_HALF * 2} x ${ARENA_HALF * 2} m with ${OBSTACLES.length} bloc
   + `Sudden death from ${SUDDEN_DEATH_AT} s at ${SUDDEN_DEATH_RAMP} of maximum hp per second per second; `
   + `backstop clock ${MATCH_SECONDS} s.`);
 say();
-say('| | octopus | gorilla |');
-say('|---|---|---|');
-for (const k of ['hp', 'radius', 'maxSpeed', 'accel', 'turnRate', 'mass', 'jumpHeight']) {
-  say(`| ${k} | ${n(FIGHTERS.octopus[k])} | ${n(FIGHTERS.gorilla[k])} |`);
+/*
+ * ── ТЕЛО БОЛЬШЕ НЕ ТАБЛИЦА ИЗ ДВУХ КОЛОНОК ────────────────────────────────
+ *
+ * Здесь печатались две колонки, octopus и gorilla, — паспорта двух архетипов,
+ * от которых боец наследовал тело целиком. Наследовать не от чего: числа тела
+ * принадлежат существу. Общего у всех тел осталось три вещи, и они и есть то,
+ * что документ обязан цитировать: ГРАНИЦЫ оси, ЦЕНА единицы на ней и ПОТОЛОК
+ * трат. Читатель по этой таблице может сам собрать законное тело и проверить
+ * его цену — по двум колонкам он мог только поверить.
+ *
+ * Колонка «default» — не архетип: это значение оси у существа, о теле
+ * которого ничего не сказано, и никто от него не наследуется.
+ */
+say(`Body: every creature spends its own **${BUILD_BUDGET} points** across these axes. `
+  + 'There is no archetype to inherit from; the default column is what a creature gets when its '
+  + 'description says nothing about its body.');
+say();
+say('| axis | min | default | max | one point buys | default costs |');
+say('|---|---|---|---|---|---|');
+for (const [k, a] of Object.entries(BUILD_AXES)) {
+  /* `inverse` — единственная ось, где меньше значит лучше (мелкая цель), и
+     поэтому единственная, где цена убывает. Написать это словом дешевле, чем
+     заставлять читателя выводить знак из чисел. */
+  say(`| ${k}${a.inverse ? ' _(smaller is dearer)_' : ''} | ${n(a.min)} | ${n(a.def)} | ${n(a.max)} `
+    + `| ${n(a.per)} | ${n(axisCost(k, a.def))} |`);
 }
+say(`| **total** | | | | | **${n(buildCost(DEFAULT_BUILD))} / ${BUILD_BUDGET}** |`);
 say();
 const fields = ['windup', 'airborne', 'dashSeconds', 'recover', 'cooldown', 'damage', 'range',
   'distance', 'dashSpeed', 'halfAngle', 'knockback', 'stun', 'iframes', 'moveScale', 'turnScale'];

@@ -65,10 +65,10 @@
  */
 
 import {
-  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, FIGHTERS, KNOCKBACK_DRAG, MATCH_SECONDS,
+  ARENA_HALF, BEAM_RADIUS, DEFAULT_BUILD, FAULT_LIMIT, KNOCKBACK_DRAG, MATCH_SECONDS,
   MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
   SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
-  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ,
+  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, statsOf,
 } from '../src/core/config.js';
 import { brainPrompt, tracePrompt, TRACE_MARKS } from '../src/brain/prompt.js';
 import { checkTactics } from './checktactics.mjs';
@@ -79,8 +79,6 @@ import { FUEL_PER_THINK } from '../src/server/sandbox/instrument.js';
 /** The same two formatters the prompt uses; computed here, never imported. */
 const n = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000));
 const deg = (rad) => String(Math.round((rad * 180) / Math.PI));
-
-const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
 
 /**
  * Every timing, as the WORLD serves it rather than as config declares it.
@@ -134,8 +132,22 @@ function servedCountdown(seconds) {
 /** Which of a skill's fields are timings, and which accumulator serves each. */
 const COUNTDOWN_FIELDS = new Set(['cooldown', 'iframes', 'stun']);
 
-/** Per fighter, the fields the prompt must quote. */
-const FIGHTER_FIELDS = ['hp', 'radius', 'maxSpeed', 'accel', 'turnRate', 'mass'];
+/**
+ * Per BODY, the fields the prompt must quote.
+ *
+ * Раньше это был «per fighter» список, и фигурировал он дважды — по разу на
+ * каждую из двух литеральных записей. Записей нет: тело принадлежит существу,
+ * и промпт печатает два тела, СВОЁ и ЧУЖОЕ, обоим бойцам. Поэтому и метки
+ * теперь `body.own.*` / `body.enemy.*`, а не имя стороны арены: метка,
+ * называющая сторону, врала бы о том, откуда взялись числа.
+ *
+ * `jumpHeight` в списке новый и появился не от щедрости: это ОСЬ
+ * телосложения, за неё платят очками, и без неё нельзя посчитать, проходит ли
+ * наземная доставка под прыгнувшим. Раскрывается она только тому, кому есть
+ * чем прыгать, — см. `canHop` в `src/brain/prompt.js`, — и у эталонной
+ * фикстуры §1 прыжок есть всегда, поэтому здесь она обязательна.
+ */
+const BODY_FIELDS = ['hp', 'radius', 'maxSpeed', 'accel', 'turnRate', 'mass', 'jumpHeight'];
 
 /**
  * Per skill, the fields the prompt must quote — per skill and not one shared
@@ -165,11 +177,21 @@ function expected() {
   const w = new Map();
   const put = (label, value, fmt = n) => w.set(label, fmt(value));
 
-  for (const id of ['octopus', 'gorilla']) {
-    const f = FIGHTERS[id];
-    for (const k of FIGHTER_FIELDS) put(`fighters.${id}.${k}`, f[k]);
-    put(`fighters.${id}.timeToTopSpeed`, f.maxSpeed / f.accel);
-    put(`fighters.${id}.halfTurnSeconds`, Math.PI / f.turnRate);
+  /*
+   * ОДНА боевая запись на оба тела — потому что это промпт ЭТАЛОНА.
+   *
+   * `brainPrompt(id)` зовётся без телосложений, а `statsOf(undefined)` отдаёт
+   * телосложение по умолчанию: у эталонной фикстуры §1 своего тела нет, и оба
+   * бойца в её промпте описаны одним и тем же телом. Это не «архетип обратно»
+   * — от умолчания никто не наследуется, и существу игрока сюда приезжает его
+   * собственная запись. Проверять её отсюда нечем: `tracePrompt` рендерит
+   * ровно `brainPrompt(id)`, без второго и третьего аргумента.
+   */
+  const body = statsOf(DEFAULT_BUILD);
+  for (const side of ['own', 'enemy']) {
+    for (const k of BODY_FIELDS) put(`body.${side}.${k}`, body[k]);
+    put(`body.${side}.timeToTopSpeed`, body.maxSpeed / body.accel);
+    put(`body.${side}.halfTurnSeconds`, Math.PI / body.turnRate);
   }
 
   for (const [name, fields] of Object.entries(SKILL_FIELDS)) {
@@ -183,22 +205,29 @@ function expected() {
   }
 
   const laser = SKILLS.laser;
-  const shooter = FIGHTERS[laser.owner];
-  const shot = FIGHTERS[opponentOf(laser.owner)];
+  /*
+   * Стреляющее тело и то, по которому стреляют, — ОДНА И ТА ЖЕ запись.
+   *
+   * Здесь стояло `FIGHTERS[laser.owner]` и `FIGHTERS[opponentOf(...)]`, то
+   * есть досягаемость считалась по двум разным литералам. Владелец умения в
+   * `SKILLS` остался тегом фикстуры §1, а тело у обоих бойцов эталонного
+   * промпта одно — то же самое `body` выше. Считать по нему честно, и это же
+   * даёт `skills.laser.muzzle` одинаковым в обоих промптах, каким его и
+   * печатает `src/brain/prompt.js`.
+   */
   // The beam leaves `radius + 0.2` ahead of the centre; that 0.2 is a literal
   // in sim.js `resolveStrike` with no name in config, so it is written out in
   // both places rather than imported from one of them.
-  const muzzle = shooter.radius + 0.2;
+  const muzzle = body.radius + 0.2;
   put('skills.laser.muzzle', muzzle);
-  put('skills.laser.maxHitDistance', muzzle + laser.range + shot.radius + BEAM_RADIUS);
+  put('skills.laser.maxHitDistance', muzzle + laser.range + body.radius + BEAM_RADIUS);
   put('beam.radius', BEAM_RADIUS);
 
   const smash = SKILLS.smash;
-  const swinger = FIGHTERS[smash.owner];
-  const struck = FIGHTERS[opponentOf(smash.owner)];
-  const reach = smash.range + swinger.radius + struck.radius;
-  const touching = swinger.radius + struck.radius;
-  const widened = (d) => smash.halfAngle + Math.asin(struck.radius / d);
+  /* То же самое, что у луча: бьющее тело и битое — одна запись. */
+  const reach = smash.range + body.radius + body.radius;
+  const touching = body.radius + body.radius;
+  const widened = (d) => smash.halfAngle + Math.asin(body.radius / d);
   put('skills.smash.halfAngleDeg', smash.halfAngle, deg);
   put('skills.smash.maxHitDistance', reach);
   put('skills.smash.halfAngleAtReachDeg', widened(reach), deg);
@@ -325,7 +354,11 @@ if (bad === 0) console.log('prompt and config agree, in both directions.');
     for (const [i, kit] of KITS.entries()) {
       const built = compileKit(kit);
       if (built.problems.length) { fail(`kit ${i} does not compile: ${JSON.stringify(built.problems)}`); continue; }
-      const text = brainPrompt(id, { own: built.defs, enemy: built.defs }, { own: 1, enemy: 1 });
+      /* Третий аргумент — ТЕЛОСЛОЖЕНИЯ, а не множители размера: раньше здесь
+         стояло `{ own: 1, enemy: 1 }`. Он опущен, потому что проверяется
+         только строка `skills`, а тело обоим здесь и так достаётся по
+         умолчанию. */
+      const text = brainPrompt(id, { own: built.defs, enemy: built.defs });
       /* Строка `skills` — единственное место, где имена перечисляются списком;
          в остальном тексте слова вроде "blink" законно встречаются как проза. */
       for (const line of text.split('\n')) {

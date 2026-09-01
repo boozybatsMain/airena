@@ -58,7 +58,7 @@
 
 import {
   AIRBORNE_DODGE_MIN,
-  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, FIGHTERS, KNOCKBACK_DRAG, MATCH_SECONDS, statsFor,
+  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, KNOCKBACK_DRAG, MATCH_SECONDS, statsOf,
   MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
   SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
   THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf,
@@ -245,22 +245,30 @@ exactly equal fractions is a draw.`;
 // 3. bodies
 // ---------------------------------------------------------------------------
 
-function bodyBlock(id, mine, size = 1, kit = null) {
+/**
+ * Одно тело, своими числами.
+ *
+ * @param {boolean} mine       чьё тело описывается — своё или соперника
+ * @param {object}  f          боевая запись из `statsOf(телосложение)`
+ * @param {object}  [kit]      набор §8, если он есть
+ * @param {string}  fixtureTag тег эталонной фикстуры §1 — им называются умения
+ *                             только тогда, когда набора нет
+ *
+ * ── ЧИСЛА ПРИНАДЛЕЖАТ СУЩЕСТВУ, А НЕ ВИДУ (01.09) ──────────────────────────
+ *
+ * Здесь звался `statsFor(id, size)`: характеристики выдавала СТОРОНА арены, а
+ * своей у существа была одна ось — множитель размера. Записей архетипов больше
+ * нет и наследовать не от кого; телосложение приезжает вместе с бойцом, и
+ * печатается ровно оно.
+ *
+ * Печатается и телосложение СОПЕРНИКА — оно тоже его собственное. Весь этот
+ * файл построен на «каждое число — факт», и мозг планирует дистанции по этим
+ * числам: ошибиться в чужом радиусе значит ошибиться в том, с какого
+ * расстояния по нему достают.
+ */
+function bodyBlock(mine, f, kit, fixtureTag) {
   /*
-   * ХАРАКТЕРИСТИКИ БЕРУТСЯ ПРИ ЭТОМ РАЗМЕРЕ, а не базовые.
-   *
-   * Размер существа выбирает модель (D103), и он меняет здоровье, радиус,
-   * скорость, массу и силу удара. Промпт же читал `FIGHTERS[id]` напрямую —
-   * то есть существу размера 1.5 сообщалось 155 здоровья вместо 285 и радиус
-   * 1.0 вместо 1.5.
-   *
-   * Весь этот файл построен на «каждое число — факт из конфига», и мозг
-   * планирует дистанции по этим числам. Ошибиться в радиусе значит ошибиться
-   * в том, с какого расстояния существо достаёт.
-   */
-  const f = statsFor(id, size);
-  /*
-   * ИМЕНА УМЕНИЙ БЕРУТСЯ ИЗ НАБОРА ЭТОГО БОЙЦА, А НЕ ИЗ АРХЕТИПА (D160).
+   * ИМЕНА УМЕНИЙ БЕРУТСЯ ИЗ НАБОРА ЭТОГО БОЙЦА, А НЕ ИЗ ФИКСТУРЫ (D160).
    *
    * Здесь безусловно печаталось `skillsOf(id)`, то есть `laser, blink, jump`
    * или `smash, charge, jump`. Существу с набором из грамматики это называло
@@ -273,16 +281,37 @@ function bodyBlock(id, mine, size = 1, kit = null) {
    * понимает, почему её умения не работают.
    */
   const who = mine ? 'YOUR BODY' : 'YOUR OPPONENT\'S BODY';
-  const lbl = (field) => `fighters.${id}.${field}`;
-  return `${who} — ${f.name}
+  /* Метка — «своё тело» или «чужое», а не имя стороны: числа больше не
+     принадлежат стороне арены, и метка, называющая сторону, врала бы о том,
+     откуда они взялись. */
+  const lbl = (field) => `body.${mine ? 'own' : 'enemy'}.${field}`;
+  /*
+   * ВЫСОТА ПРЫЖКА — ТОЛЬКО ТОМУ, КОМУ ЕСТЬ ЧЕМ ПРЫГАТЬ.
+   *
+   * Это ось телосложения, за неё платят очками, и без неё нельзя посчитать,
+   * проходит ли наземная доставка под тобой: дуга прыжка — `4·h·u·(1−u)`, и
+   * без `h` порог `AIRBORNE_DODGE_MIN` не с чем сравнить.
+   *
+   * Но оторваться от земли может только доставка `jump`: у эталонной фикстуры
+   * §1 она есть всегда, у набора — если куплена. Тому, у кого её нет, строка
+   * называла бы число, которым нечего сделать, и подсказывала бы глагол,
+   * которого у бойца нет, — ровно тот вред, что D160 нашёл в строке `skills`.
+   */
+  const canHop = kit
+    ? Object.values(kit).some((d) => d.kind === 'jump')
+    : skillsOf(fixtureTag).some((nm) => SKILLS[nm]?.kind === 'hop');
+  const hop = canHop
+    ? `\n  hop height          ${q(lbl('jumpHeight'), f.jumpHeight)} m at the top of the arc`
+    : '';
+  return `${who}
 
   hp                  ${q(lbl('hp'), f.hp)}
   collision radius    ${q(lbl('radius'), f.radius)} m
   top speed           ${q(lbl('maxSpeed'), f.maxSpeed)} m/s
   acceleration        ${q(lbl('accel'), f.accel)} m/s^2   (so ${q(lbl('maxSpeed'), f.maxSpeed)} m/s is reached in ${q(lbl('timeToTopSpeed'), f.maxSpeed / f.accel)} s)
   turn rate           ${q(lbl('turnRate'), f.turnRate)} rad/s  (a half turn takes ${q(lbl('halfTurnSeconds'), Math.PI / f.turnRate)} s)
-  mass                ${q(lbl('mass'), f.mass)}        (the heavier body yields less when they collide)
-  skills              ${kit ? Object.keys(kit).join(', ') : skillsOf(id).join(', ')}
+  mass                ${q(lbl('mass'), f.mass)}        (the heavier body yields less when they collide)${hop}
+  skills              ${kit ? Object.keys(kit).join(', ') : skillsOf(fixtureTag).join(', ')}
 
 Movement direction and facing are independent: a body can walk in one direction
 while pointing in another. Facing turns toward what you asked for at the turn
@@ -294,14 +323,30 @@ rate above; it never snaps.`;
 // ---------------------------------------------------------------------------
 
 /**
- * The other fighter. With exactly two bodies in the world, a skill's owner
- * fixes the only body it can ever be aimed at — which is what lets the blocks
- * below quote a concrete reach against a named opponent instead of handing the
- * model a formula and a radius to substitute into it.
+ * Другая СТОРОНА арены. Только сторона: тег, под которым боец сидит в матче.
+ *
+ * Раньше эта функция отвечала на вопрос «кто напротив» в смысле вида, и по
+ * ответу брались чужие характеристики. Теперь она нужна ровно для двух вещей:
+ * выбрать эталонную фикстуру §1 для той стороны, у которой нет набора, и
+ * назвать `p.self.id`. Числа обоих тел приезжают телосложениями и к стороне
+ * отношения не имеют.
  */
 const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
 
-function skillBlock(name) {
+/**
+ * Одно умение эталонной фикстуры §1, с его настоящей геометрией.
+ *
+ * @param {string} name    имя умения в `SKILLS`
+ * @param {object} me      боевая запись ТОГО, КТО ПРИМЕНЯЕТ
+ * @param {object} you     боевая запись ТОГО, ПО КОМУ ПРИМЕНЯЮТ
+ * @param {string} youLbl  префикс метки для чисел цели ('body.own' | 'body.enemy')
+ *
+ * `me`/`you` передаются, а не берутся по `s.owner`: досягаемость луча и ширина
+ * конуса считаются от радиусов ДВУХ конкретных тел, и раньше на их месте
+ * стояли две литеральные записи архетипов. В блоке чужих умений применяющий —
+ * соперник, а цель — я, поэтому пара приходит перевёрнутой.
+ */
+function skillBlock(name, me, you, youLbl) {
   const s = SKILLS[name];
   // Every duration below goes through `p` (a phase) or `servedCountdown` (an
   // accumulator) rather than reading `s` directly, because config's figure and
@@ -318,20 +363,24 @@ function skillBlock(name) {
      * alongside the range because without them the range is a lie by omission.
      * The sim fires from `radius + 0.2` ahead of the centre and counts a hit
      * when the target's SURFACE enters the beam, which puts the last hitting
-     * centre-to-centre distance 2.85 m beyond the 24 m the range field names —
-     * so a brain holding station at 25 m "out of range" is standing inside the
-     * weapon. The 0.2 has no name in config; it exists only at the call site in
-     * `sim.js` (resolveStrike), so it is spelled out rather than imported.
+     * centre-to-centre distance well beyond the range field — by the muzzle
+     * offset, the target's radius and the beam's margin, all three of which are
+     * spelled out below — so a brain holding station just outside the range
+     * number is standing inside the weapon. The 0.2 has no name in config; it
+     * exists only at the call site in `sim.js` (resolveStrike), so it is
+     * spelled out rather than imported.
+     *
+     * Оба радиуса — радиусы ДВУХ ЭТИХ ТЕЛ. Стояли записи архетипов, то есть
+     * досягаемость считалась по чужому телу всегда, когда телосложение
+     * отличалось от литерала.
      */
-    const me = FIGHTERS[s.owner];
-    const you = FIGHTERS[opponentOf(s.owner)];
     const muzzle = me.radius + 0.2;
     push('cast', `${q(lbl('windup'), p.windup)} s, then the beam fires, then ${q(lbl('recover'), p.recover)} s of recovery`);
     push('damage', q(lbl('damage'), s.damage));
     push('muzzle', `the beam starts ${q(lbl('muzzle'), muzzle)} m ahead of your centre, along your facing, not at your centre`);
     push('range', `${q(lbl('range'), s.range)} m of beam, measured from the muzzle`);
     push('beam', `a straight line carrying ${q('beam.radius', BEAM_RADIUS)} m of margin around itself. A body is hit when its SURFACE enters that margin, so it is hit while its centre is still off the line. The beam stops at the first block, wall or body it meets`);
-    push('reach', `${q(lbl('maxHitDistance'), muzzle + s.range + you.radius + BEAM_RADIUS)} m between the two centres, at the very most: ${q(lbl('muzzle'), muzzle)} of muzzle + ${q(lbl('range'), s.range)} of beam + the ${q(`fighters.${you.id}.radius`, you.radius)} radius of the ${you.name} + ${q('beam.radius', BEAM_RADIUS)} of margin`);
+    push('reach', `${q(lbl('maxHitDistance'), muzzle + s.range + you.radius + BEAM_RADIUS)} m between the two centres, at the very most: ${q(lbl('muzzle'), muzzle)} of muzzle + ${q(lbl('range'), s.range)} of beam + the ${q(`${youLbl}.radius`, you.radius)} radius of the body it is aimed at + ${q('beam.radius', BEAM_RADIUS)} of margin`);
     push('aim', `the beam leaves along your facing AT THE INSTANT IT FIRES, not at the instant you ordered it. You keep turning through the cast, at the reduced rate below`);
     push('line of sight', 'required — a block between you and the target eats the beam');
     /*
@@ -359,21 +408,23 @@ function skillBlock(name) {
      * Both of the cone's real edges are wider than its two config fields.
      * Range is tested against the target's SURFACE, and a circular body is
      * accepted whenever any part of it is inside the arc — `inCone` widens by
-     * asin(targetR / d), which against the octopus is another 11 degrees at
-     * full extension and another 26 with the bodies touching. Disclosing 55
-     * alone described a cone the gorilla does not have, and the difference is
-     * largest exactly where the fight is decided, in contact.
+     * asin(targetR / d), which is worth another ten-odd degrees at full
+     * extension and two to three times that with the bodies touching.
+     * Disclosing the config half-angle alone described a cone nobody has, and
+     * the difference is largest exactly where the fight is decided, in contact.
+     *
+     * НАСКОЛЬКО ШИРЕ — ЗАВИСИТ ОТ ТЕЛА ЦЕЛИ, поэтому обе величины считаются от
+     * переданных телосложений. Прежде тут стояли две записи архетипов, и
+     * существу с другим радиусом называлась чужая ширина конуса.
      */
-    const me = FIGHTERS[s.owner];
-    const you = FIGHTERS[opponentOf(s.owner)];
     const reach = s.range + me.radius + you.radius;
     const touching = me.radius + you.radius;
     const widened = (d) => s.halfAngle + Math.asin(you.radius / d);
     push('wind-up', `${q(lbl('windup'), p.windup)} s, then it lands, then ${q(lbl('recover'), p.recover)} s of recovery`);
     push('damage', q(lbl('damage'), s.damage));
     push('shape', `a cone ${q(lbl('halfAngleDeg'), s.halfAngle, deg)} degrees either side of your facing, reaching ${q(lbl('range'), s.range)} m past your own radius`);
-    push('reach', `that range is measured to their SURFACE, not to their centre, so the farthest centre-to-centre hit on the ${you.name} is ${q(lbl('maxHitDistance'), reach)} m`);
-    push('width', `a body counts as inside the cone when ANY PART of it is, so the accepted half-angle grows by asin(their radius / distance): against the ${you.name} it is ${q(lbl('halfAngleAtReachDeg'), widened(reach), deg)} degrees at that farthest distance and ${q(lbl('halfAngleAtContactDeg'), widened(touching), deg)} degrees when the two of you are touching`);
+    push('reach', `that range is measured to their SURFACE, not to their centre, so the farthest centre-to-centre hit on the body it is aimed at is ${q(lbl('maxHitDistance'), reach)} m`);
+    push('width', `a body counts as inside the cone when ANY PART of it is, so the accepted half-angle grows by asin(their radius / distance): against the body it is aimed at that is ${q(lbl('halfAngleAtReachDeg'), widened(reach), deg)} degrees at that farthest distance and ${q(lbl('halfAngleAtContactDeg'), widened(touching), deg)} degrees when the two of you are touching`);
     push('aim', 'the cone is measured from your facing AT THE INSTANT IT LANDS, not when you ordered it');
     push('knockback', `${q(lbl('knockback'), s.knockback)} m/s pushed away from you, decaying at ${q('physics.knockbackDrag', KNOCKBACK_DRAG)} m/s^2`);
     push('airborne', 'it sweeps the ground — a body that is off the ground when it lands takes nothing');
@@ -399,15 +450,24 @@ function skillBlock(name) {
   return `${name}\n${L.join('\n')}`;
 }
 
-function skillsFor(id, kit) {
+/**
+ * Свои умения: набор §8, если он есть, иначе эталонная фикстура §1 по тегу.
+ *
+ * Фикстура остаётся ради шести эталонных мозгов в `brains/`, написанных против
+ * имён `laser/blink/smash/charge/jump`. Это стенд замера, а не архетип: она
+ * ничего не даёт существу и выбирается тегом стороны только тогда, когда
+ * набора нет вовсе.
+ */
+function skillsFor(tag, kit, mine, theirs) {
   if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit)}`;
-  return `YOUR SKILLS\n\n${skillsOf(id).map(skillBlock).join('\n\n')}`;
+  return `YOUR SKILLS\n\n${skillsOf(tag).map((nm) => skillBlock(nm, mine, theirs, 'body.enemy')).join('\n\n')}`;
 }
 
-function enemySkillsFor(id, enemyKit) {
+/** Умения соперника. Применяющий — он, цель — я, поэтому пара перевёрнута. */
+function enemySkillsFor(tag, enemyKit, theirs, mine) {
   const head = "YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n";
   if (enemyKit) return head + kitBlocks(enemyKit);
-  return head + skillsOf(opponentOf(id)).map(skillBlock).join('\n\n');
+  return head + skillsOf(tag).map((nm) => skillBlock(nm, theirs, mine, 'body.own')).join('\n\n');
 }
 
 /**
@@ -519,7 +579,9 @@ p.burn          fraction of your maximum hp the arena is burning off you per
 p.burnStartsIn  seconds until it does
 
 p.self
-  .id           'octopus' or 'gorilla'
+  .id           'octopus' or 'gorilla' — which of the two slots of the arena
+                you are standing in. Two names for two sides; neither carries
+                a body, a skill set or a shape
   .x .z         position on the ground plane
   .y            height above the ground; > 0 only during a hop
   .vx .vz       velocity, m/s, knockback included
@@ -747,27 +809,54 @@ You answer with source code and nothing else — no explanation before it, no
 summary after it, no markdown fence around it. The first character of your reply
 is the first character of the program.`;
 
-/** The whole instruction for one fighter. */
 /**
- * @param {string} id  which body: 'octopus' or 'gorilla'
+ * Вся инструкция для одного бойца.
+ *
+ * @param {string} id  СТОРОНА арены: 'octopus' или 'gorilla'. Это не вид и не
+ *   архетип — под этим именем боец сидит в матче, это же значение он прочитает
+ *   в `p.self.id`, и по нему же выбирается эталонная фикстура §1, если набора
+ *   нет. Никаких характеристик сторона не несёт.
  * @param {object} [kits]  { own, enemy } — compiled §8 kits. Passing them
- *   replaces the two skill sections and NOTHING else, so a prompt rendered
- *   without them is byte-identical to the one every measured brain was
- *   written from. That identity is the reason this is a parameter rather
- *   than a rewrite: §1 rests on six brains sharing one prompt, and a prompt
- *   that quietly changed shape would rewrite that measurement backwards.
+ *   replaces the two skill sections and NOTHING else: §1 rests on six brains
+ *   sharing one prompt, and a prompt that quietly changed shape would rewrite
+ *   that measurement backwards.
+ * @param {object} [builds]  { own, enemy } — ТЕЛОСЛОЖЕНИЯ двух бойцов. Здесь
+ *   стояли `sizes` — два числа-множителя поверх записи архетипа. Записей нет,
+ *   и множителю не к чему прикладываться: тело приезжает целиком, своими
+ *   осями. Без него `statsOf` вернёт `DEFAULT_BUILD` — середину каждой оси, то
+ *   есть ровно то тело, которое даст симуляция бойцу без своего телосложения.
+ *   Это НЕ архетип: от него никто не наследуется, он просто значение по
+ *   умолчанию по обе стороны.
  */
-export function brainPrompt(id, kits = null, sizes = null) {
-  const f = statsFor(id, sizes?.own ?? 1);
+export function brainPrompt(id, kits = null, builds = null) {
+  const me = statsOf(builds?.own);
+  const foe = statsOf(builds?.enemy);
   const otherId = opponentOf(id);
   return [
-    `You are the mind of the ${f.name}. Your opponent is the ${FIGHTERS[otherId].name}.`,
+    /*
+     * Первой строкой стояло «ты осьминог, соперник — горилла». Это называло
+     * ВИД, и вид тянул за собой всё, чего в мире больше нет: модель писала
+     * мозг «под осьминога», хотя числа тела теперь у каждого свои. Сторона
+     * названа отдельно и ровно как сторона — иначе `p.self.id` было бы нечем
+     * объяснить.
+     */
+    `You are the mind of one creature in a duel.
+
+Your body is yours alone. Every number in it was chosen for THIS creature and
+describes nothing else: there are no kinds here, and no creature inherits
+anything from another. Your opponent is another creature with its own numbers,
+and both bodies are spelled out below — yours to you, theirs to you, and the
+same disclosure the other way round.
+
+You will find yourself in perception as p.self.id = '${id}'. That is the side
+of the arena you were put on. It is a label for one of the two slots and says
+nothing about a body, a skill or a shape.`,
     shape(),
     world(),
-    bodyBlock(id, true, sizes?.own ?? 1, kits?.own),
-    skillsFor(id, kits?.own),
-    bodyBlock(otherId, false, sizes?.enemy ?? 1, kits?.enemy),
-    enemySkillsFor(id, kits?.enemy),
+    bodyBlock(true, me, kits?.own, id),
+    skillsFor(id, kits?.own, me, foe),
+    bodyBlock(false, foe, kits?.enemy, otherId),
+    enemySkillsFor(otherId, kits?.enemy, foe, me),
     perception(),
     verbs(),
     HELPERS,

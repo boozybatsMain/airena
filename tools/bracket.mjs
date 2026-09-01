@@ -156,7 +156,7 @@ import { execFileSync } from 'node:child_process';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { FIGHTERS, SKILLS } from '../src/core/config.js';
+import { BUILD_AXES, BUILD_BUDGET, SKILLS } from '../src/core/config.js';
 import { brainPrompt } from '../src/brain/prompt.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -257,9 +257,16 @@ const liveHash = Object.fromEntries(['octopus', 'gorilla']
   .map((id) => [id, createHash('sha256').update(brainPrompt(id)).digest('hex').slice(0, 12)]));
 
 function provenance(dir, tags) {
-  const now = { fighters: FIGHTERS, skills: SKILLS };
+  /*
+   * Секции стало две, и обе — про мир, а не про бойца.
+   *
+   * `fighters` была таблицей двух архетипов: тело выдавала сторона арены.
+   * Тело теперь принадлежит существу, и общего у всех тел осталось ровно
+   * то, что здесь сравнивается, — границы и цена осей плюс потолок трат.
+   */
+  const now = { build: BUILD_AXES, skills: SKILLS };
   const moved = new Set();
-  let told = 0, seen = 0, norec = 0;
+  let told = 0, seen = 0, norec = 0, archetypes = 0;
   for (const tag of tags) {
     for (const id of ['octopus', 'gorilla']) {
       const p = join(dir, tag, `${id}.json`);
@@ -268,7 +275,18 @@ function provenance(dir, tags) {
       const rec = JSON.parse(readFileSync(p, 'utf8'));
       if (rec.promptHash === liveHash[id]) told++;
       if (!rec.constants) { norec++; continue; }
-      for (const section of ['fighters', 'skills']) {
+      /*
+       * Популяция из мира архетипов помечается ОДНИМ фактом, а не четырнадцатью
+       * расхождениями. Считать `fighters.octopus.hp` «сдвинувшейся константой»
+       * значит мерить исчезновение таблицы её же размером: четырнадцать полей
+       * дали бы четырнадцать строк, и читатель решил бы, что мир уехал в
+       * четырнадцати мелочах, а не в одном месте целиком.
+       */
+      if (rec.constants.fighters) { archetypes++; continue; }
+      if (typeof rec.constants.buildBudget === 'number' && rec.constants.buildBudget !== BUILD_BUDGET) {
+        moved.add('buildBudget');
+      }
+      for (const section of ['build', 'skills']) {
         for (const [k, table] of Object.entries(rec.constants[section] || {})) {
           for (const [f, v] of Object.entries(table)) {
             if (typeof v === 'number' && now[section]?.[k]?.[f] !== v) moved.add(`${section}.${k}.${f}`);
@@ -278,6 +296,16 @@ function provenance(dir, tags) {
     }
   }
   if (seen === 0 || norec === seen) return { told: false, note: 'provenance not recorded' };
+  /* Мир архетипов — не «другая настройка того же мира», а другая физика тела,
+     поэтому такая популяция не может быть `told` ни при каком совпадении
+     хеша промпта. */
+  if (archetypes) {
+    return {
+      told: false,
+      note: `written against the archetype bodies — ${archetypes} of ${seen} brain${archetypes === 1 ? '' : 's'} `
+        + 'record a FIGHTERS table, and there is none: a body is the creature\'s own now',
+    };
+  }
   if (told === seen) return { told: true, note: 'told this world' };
   /* A population only half of which matches the live prompt is not "told this
      world" by any reading — it is a directory somebody regenerated in part. */

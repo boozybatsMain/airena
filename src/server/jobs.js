@@ -13,7 +13,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { kitOf, sizeOf } from './arena-loop.js';
+import { buildOf, kitOf } from './arena-loop.js';
 import { create as createCreature, refactor as applyRefactor } from './creatures.js';
 import { LIMITS, recordSpend } from './limits.js';
 import { record as trackEvent } from './analytics.js';
@@ -307,7 +307,7 @@ export class Jobs {
     this.update(id, { stage: STAGE_RU.duel, progress: 0.95 });
 
     const score = await this.ctx.duel(out.brainSource, c.brain_source, c.archetype,
-      { kit: kitOf(c), size: sizeOf(c) });
+      { kit: kitOf(c), build: buildOf(c) });
     const better = score.candidate > score.incumbent;
 
     this.db.prepare(`INSERT INTO adaptation (id, creature_id, at, kind, summary, score_before, score_after, accepted)

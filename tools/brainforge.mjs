@@ -16,7 +16,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { FIGHTERS, SKILLS, ARENA_HALF, MATCH_SECONDS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, TICK_HZ, THINK_HZ } from '../src/core/config.js';
+import { BUILD_AXES, BUILD_BUDGET, SKILLS, ARENA_HALF, MATCH_SECONDS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, TICK_HZ, THINK_HZ } from '../src/core/config.js';
 import { askClaude, modelFamily } from '../src/brain/claude.js';
 import { extractSource } from '../src/brain/host.js';
 import { brainPrompt, repairPrompt, SYSTEM_PROMPT } from '../src/brain/prompt.js';
@@ -50,12 +50,27 @@ async function forge(id) {
      * reading a population later will need answered — and `promptHash` alone
      * answers it only if you still have the prompt that produced it. Storing
      * the table makes a stale brain visible instead of merely suspected.
+     *
+     * ── `build`, А НЕ `fighters` ──────────────────────────────────────────
+     *
+     * Здесь замораживались две записи архетипов, из которых боец наследовал
+     * тело целиком. Их больше нет, и заморозить вместо них конкретное тело
+     * НЕЛЬЗЯ: тело принадлежит существу, а мозг пишется не под существо, а
+     * под мир. Мир задан осями — их границами, ценой и общим потолком трат,
+     * — и именно они говорят мозгу, чего вообще можно ожидать от чужого
+     * тела. Сдвинули границу или цену — прошлая популяция стала
+     * misinformed так же, как раньше от сдвига здоровья гориллы.
+     *
+     * Читают эту запись `tools/checkstale.mjs`, `tools/bracket.mjs` и
+     * `tools/seed.mjs`; секцию `fighters` они теперь считают меткой старого
+     * мира, а не набором расхождений.
      */
     constants: {
       arenaHalf: ARENA_HALF, matchSeconds: MATCH_SECONDS,
       suddenDeathAt: SUDDEN_DEATH_AT, suddenDeathRamp: SUDDEN_DEATH_RAMP,
       tickHz: TICK_HZ, thinkHz: THINK_HZ,
-      fighters: JSON.parse(JSON.stringify(FIGHTERS)),
+      buildBudget: BUILD_BUDGET,
+      build: JSON.parse(JSON.stringify(BUILD_AXES)),
       skills: JSON.parse(JSON.stringify(SKILLS)),
     },
     attempts: [], costUsd: 0, wallMs: 0,

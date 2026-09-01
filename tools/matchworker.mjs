@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url';
 import { parentPort } from 'node:worker_threads';
 
 import { compileBrain } from '../src/brain/host.js';
-import { FIGHTERS } from '../src/core/config.js';
 import { runMatch } from '../src/core/match.js';
 import { compileKit } from '../src/skills/compile.js';
 
@@ -22,39 +21,32 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * СИММЕТРИЧНАЯ АРЕНА — только для замера, никогда для игры.
  *
- * Тела в игре разные нарочно: у гориллы 205 здоровья и 5.35 скорости против
- * 155 и 4.22, и config.js объясняет на трёх страницах, почему именно так.
- * Но для замера НАБОРА это шум, и шум подавляющий: с одинаковым набором и
- * одинаковым мозгом горилла выигрывает 16 из 16. Значит, разница наборов
- * видна только там, где она перевешивает разницу тел, — а она почти нигде её
- * не перевешивает, и все атомы схлопываются в 0% и 100%. Ровно это и вышло
- * на двух первых прогонах.
+ * Замеряя НАБОР, надо убрать всё остальное. Пока стороны различались телом,
+ * разница наборов была видна только там, где она перевешивала разницу тел, —
+ * а она почти нигде её не перевешивала, и все атомы схлопывались в 0% и 100%.
+ * Ровно это и вышло на двух первых прогонах: с одинаковым набором и одинаковым
+ * мозгом одна сторона выигрывала 16 из 16.
  *
- * Поэтому на время замера обе стороны получают одно тело и один мозг.
- * Тогда единственное различие между бойцами — третье умение, и винрейт
- * говорит про него.
+ * ── ТЕЛА БОЛЬШЕ НЕ ПОДМЕНЯЮТСЯ: ПОДМЕНЯТЬ НЕЧЕГО ──────────────────────────
  *
- * Это мутация конфига в ПРОЦЕССЕ ВОРКЕРА и нигде больше: сервер, CI и
- * `tools/checkframing.mjs` этот файл не импортируют. Включается только по
- * флагу в задаче, и в шапке отчёта написано, что арена была симметричной, —
- * цифра, снятая на подменённом теле, обязана об этом говорить сама.
+ * Здесь стояла мутация `FIGHTERS.gorilla` — тело гориллы на время замера
+ * переписывалось телом осьминога, поле за полем. Двух записей архетипов
+ * больше нет: тело принадлежит существу, а матч без `builds` выдаёт ОБЕИМ
+ * сторонам `DEFAULT_BUILD`. То есть симметрия тел теперь не достигается, а
+ * выполняется по построению, и мутировать конфиг в процессе воркера незачем.
+ *
+ * От флага `sym` осталась ровно вторая половина — ОДИН ПИЛОТ на обе стороны
+ * (`twin` ниже): два разных мозга это снова две переменные вместо одной.
+ *
+ * Кому нужны РАЗНЫЕ тела (лига телосложений, `tools/sizebalance.mjs`), тот
+ * кладёт их в задачу полем `builds` — так же, как кладёт наборы и сид.
  */
-const REAL_GORILLA = { ...FIGHTERS.gorilla };
-const symmetrise = (on) => {
-  Object.assign(FIGHTERS.gorilla, on
-    ? { hp: FIGHTERS.octopus.hp, radius: FIGHTERS.octopus.radius, maxSpeed: FIGHTERS.octopus.maxSpeed,
-      accel: FIGHTERS.octopus.accel, turnRate: FIGHTERS.octopus.turnRate, mass: FIGHTERS.octopus.mass,
-      jumpHeight: FIGHTERS.octopus.jumpHeight }
-    : REAL_GORILLA);
-};
-
 const OCT_SRC = readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8');
 const brains = {
   octopus: compileBrain(OCT_SRC, 'octopus'),
   gorilla: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'gorilla'),
 };
-/* Симметричная арена требует и одного пилота: два разных мозга — снова две
-   переменные вместо одной. */
+/* Один пилот на обе стороны — вторая половина `sym`, см. шапку выше. */
 const twin = { octopus: brains.octopus, gorilla: compileBrain(OCT_SRC, 'gorilla') };
 
 const cache = new Map();
@@ -100,14 +92,15 @@ parentPort.on('message', (m) => {
   if (a && b) {
     try {
       const use = m.job.sym ? twin : brains;
-      symmetrise(!!m.job.sym);
       use.octopus.reset?.(); use.gorilla.reset?.();
       winner = runMatch(use, {
         seed: m.job.seed,
         kits: { octopus: a, gorilla: b },
-        /* Размер — часть входа матча (см. `statsFor`): лига размеров задаёт
-           его так же, как лига атомов задаёт наборы. */
-        ...(m.job.sizes ? { sizes: m.job.sizes } : {}),
+        /* Телосложение — часть ВХОДА матча (см. `statsOf`), наравне с сидом и
+           наборами: лига телосложений задаёт его так же, как лига атомов
+           задаёт наборы. Не передали — обе стороны выходят в `DEFAULT_BUILD`,
+           и тела равны. */
+        ...(m.job.builds ? { builds: m.job.builds } : {}),
       }).result.winner;
     } catch { winner = 'error'; }
   }

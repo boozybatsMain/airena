@@ -22,7 +22,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { runIsolated } from './sandbox/index.js';
-import { kitOf, sizeOf } from './arena-loop.js';
+import { buildOf, kitOf } from './arena-loop.js';
 
 /** Сколько боёв на сторону в проверке. 100 × 70 мс ≈ 7 с — по цене ноль. */
 export const DUEL_ROUNDS = 100;
@@ -97,9 +97,11 @@ export function twist(source, knob, factor) {
 /** Панель соперников: одни и те же мозги, одни и те же сиды, для обоих. */
 export function panel(db, creature, size = 6) {
   /* kit_json и kit_active — чтобы соперник на панели дрался СВОИМ набором,
-     как в настоящем бою, а не четырьмя захардкоженными умениями. */
+     как в настоящем бою, а не четырьмя захардкоженными умениями.
+     build_json — по той же причине: без него `buildOf` вернёт телосложение по
+     умолчанию, и панель молча соберётся из тел, которых ни у кого нет. */
   const rows = db.prepare(`
-    SELECT id, brain_source, archetype, kit_json, kit_active, size FROM creature
+    SELECT id, brain_source, archetype, kit_json, kit_active, build_json FROM creature
     WHERE state='active' AND brain_source IS NOT NULL AND id != ?
     ORDER BY abs(rating - ?) ASC LIMIT ?
   `).all(creature.id, creature.rating, size);
@@ -129,14 +131,22 @@ export function panel(db, creature, size = 6) {
  * разойдётся с первым.
  */
 /**
- * @param {{[slot: string]: number|((o: object) => number)}|null} sizes размеры
- *   бойцов. Размер меняет здоровье, скорость, урон и КОЛЛАЙДЕР (`statsFor`),
- *   то есть это такая же часть входа матча, как набор. Без него адаптация
- *   отбирает мозг для существа другого телосложения: замерено, что один и тот
- *   же набор против гантлета даёт 100/100/0/100/100 при размере 1.0 и
- *   50/50/25/100/25 при 0.75 — это разные игры, а не шум.
+ * ── ТЕЛОСЛОЖЕНИЕ, А НЕ РАЗМЕР ─────────────────────────────────────────────
+ *
+ * Здесь стояли `sizes` — числа-множители, которые `statsFor(id, size)`
+ * накладывал на запись архетипа. Ни архетипов, ни `statsFor` больше нет:
+ * здоровье, скорость, ускорение, разворот и КОЛЛАЙДЕР существо носит своё,
+ * и в матч они едут полем `builds` наравне с сидом и наборами.
+ *
+ * Причина передавать их сюда та же, что и у наборов: без тела адаптация
+ * отбирает мозг для существа другого телосложения. Замерено ещё на размерах —
+ * один и тот же набор против гантлета давал 100/100/0/100/100 на одном теле и
+ * 50/50/25/100/25 на другом; это разные игры, а не шум.
+ *
+ * @param {{[slot: string]: object|((o: object) => object)}|null} builds
+ *   телосложения бойцов: своё — объектом, соперника — функцией от его строки.
  */
-export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS, kits = null, sizes = null) {
+export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
   const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
@@ -153,14 +163,14 @@ export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS, 
       const pair = kits && (kits[mySlot] || kits[oppSlot])
         ? { [mySlot]: kits[mySlot] || null, [oppSlot]: kits[oppSlot] ? kits[oppSlot](o) : null }
         : null;
-      const sz = sizes
+      const bld = builds
         ? {
-          [mySlot]: typeof sizes[mySlot] === 'function' ? sizes[mySlot](o) : sizes[mySlot],
-          [oppSlot]: typeof sizes[oppSlot] === 'function' ? sizes[oppSlot](o) : sizes[oppSlot],
+          [mySlot]: typeof builds[mySlot] === 'function' ? builds[mySlot](o) : builds[mySlot],
+          [oppSlot]: typeof builds[oppSlot] === 'function' ? builds[oppSlot](o) : builds[oppSlot],
         }
         : null;
       out = await runIsolated({ [mySlot]: source, [oppSlot]: o.brain_source },
-        { seeds, ...(pair ? { kits: pair } : {}), ...(sz ? { sizes: sz } : {}) });
+        { seeds, ...(pair ? { kits: pair } : {}), ...(bld ? { builds: bld } : {}) });
     } catch (e) {
       /* Кандидат, который не запускается, — не «ноль побед», а брак: вернуть
          ноль значило бы сравнить его с действующим по силе, а сравнивать
@@ -207,11 +217,11 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   const mySlot = c.archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
   const kits = { [mySlot]: kitOf(c), [oppSlot]: (o) => kitOf(o) };
-  /* Размер — по той же причине, что и набор, и той же формой: своё число и
-     функция от соперника. */
-  const sizes = { [mySlot]: sizeOf(c), [oppSlot]: (o) => sizeOf(o) };
+  /* Телосложение — по той же причине, что и набор, и той же формой: своё
+     тело объектом, тело соперника функцией от его строки. */
+  const builds = { [mySlot]: buildOf(c), [oppSlot]: (o) => buildOf(o) };
 
-  const base = await score(c.brain_source, c.archetype, opponents, rounds, kits, sizes);
+  const base = await score(c.brain_source, c.archetype, opponents, rounds, kits, builds);
   if (base.broken) return null;
 
   /* Три кандидата за заход: один порог, три множителя. Больше — дороже по CPU
@@ -223,7 +233,7 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   for (const f of factors) {
     const cand = twist(c.brain_source, knob, f);
     if (!cand) continue;
-    const s = await score(cand, c.archetype, opponents, rounds, kits, sizes);
+    const s = await score(cand, c.archetype, opponents, rounds, kits, builds);
     if (s.broken) continue;
     if (!best || s.wins > best.s.wins) best = { source: cand, s, f };
   }
@@ -295,8 +305,8 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
 const readBack = (src, knob) => src.slice(knob.at).match(/^\d+(?:\.\d+)?/)?.[0] ?? '?';
 
 /** A/B двух мозгов на одной панели — используется рефактором (D4). */
-export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS, kit = null, size = 1 } = {}) {
-  const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, size FROM creature
+export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS, kit = null, build = null } = {}) {
+  const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, build_json FROM creature
     WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
   const opponents = any.filter((r) => r.brain_source);
   /* Дуэль идёт теми же наборами, что настоящий бой: иначе рефактор
@@ -304,10 +314,12 @@ export async function duelBrains(db, candidateSource, incumbentSource, archetype
   const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
   const kits = { [mySlot]: kit, [oppSlot]: (o) => kitOf(o) };
-  const sizes = { [mySlot]: size, [oppSlot]: (o) => sizeOf(o) };
+  /* `null` здесь честнее единицы: тела нет — значит боец выйдет в
+     `DEFAULT_BUILD`, ровно как его выпустит симуляция. */
+  const builds = { [mySlot]: build, [oppSlot]: (o) => buildOf(o) };
   const [a, b] = await Promise.all([
-    score(candidateSource, archetype, opponents, rounds, kits, sizes),
-    score(incumbentSource, archetype, opponents, rounds, kits, sizes),
+    score(candidateSource, archetype, opponents, rounds, kits, builds),
+    score(incumbentSource, archetype, opponents, rounds, kits, builds),
   ]);
   return { candidate: a.wins, incumbent: b.wins, rounds: Math.min(a.rounds, b.rounds) || rounds };
 }

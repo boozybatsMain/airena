@@ -68,26 +68,42 @@ const GEN_TAGS_B = arg('gen2', null) === null ? null : String(arg('gen2'));
 const WORKERS = Number(arg('workers', 6));
 const SEED = Number(arg('seed', 7));
 
-/** The search space. Each entry is a list; a candidate picks one from each. */
+/**
+ * The search space. Each entry is a list; a candidate picks one from each.
+ *
+ * ── ТЕЛО ВЫШЛО ИЗ ПРОСТРАНСТВА ПОИСКА, И ЭТО НАДО ЧИТАТЬ БУКВАЛЬНО ─────────
+ *
+ * Здесь стояли четыре оси тела: `fighters.gorilla.maxSpeed`,
+ * `fighters.octopus.maxSpeed` и два здоровья. Таблицы `FIGHTERS` больше нет —
+ * тело принадлежит существу, — и оставить эти строки было нельзя даже как
+ * мёртвые: `tune()` в `config.js` падает с «tuning names unknown fighters.
+ * gorilla» на первом же кандидате, то есть весь прогон умирал бы на входе.
+ *
+ * Заменить их на `build.<ось>.def` — соблазн, и он не работает. Замерено:
+ *   1. `DEFAULT_BUILD` собирается из `a.def` РАНЬШЕ вызова `tune()` в конце
+ *      `config.js`, поэтому оверлей его не двигает: при `build.hp.def = 300`
+ *      печатается прежние 210.
+ *   2. Матч без `builds` берёт именно `DEFAULT_BUILD` (`sim.js`,
+ *      `makeFighter(..., build || DEFAULT_BUILD)`), а `tools/tournament.mjs`
+ *      никаких `builds` не передаёт. Значит ось двигала бы файл тюнинга и не
+ *      двигала бы бой — худший вид пустого рычага: поиск отчитывается о
+ *      находке, мир не меняется.
+ *   3. Оси `min`/`max`/`per` до боя доходят, но не как оси: цена
+ *      `DEFAULT_BUILD` ровно равна `BUILD_BUDGET`, поэтому любое их движение
+ *      вверх включает пропорциональное СЖАТИЕ всех шести осей разом. Это не
+ *      координата, это общий масштаб, и координатный спуск по нему ищет не то.
+ *
+ * Поэтому тело здесь не ищется вовсе, а поиск честно сузился до умений. Что
+ * при этом осталось от `fairness`: обе стороны выходят в ОДНОМ теле, и
+ * асимметрия боя целиком в эталонных наборах (луч/блинк против удара/рывка).
+ * Это и есть то, что теперь мерит винрейт, — раньше он мерил ещё и разницу
+ * тел, которой больше нет.
+ *
+ * Вернуть тело в поиск можно ровно одним способом: научить `tournament.mjs`
+ * принимать `builds` и искать по НИМ, а не по осям. Это следующий шаг, и он
+ * не делается молча внутри перебора констант.
+ */
 const SPACE = {
-  /*
-   * One ladder, shared by both fighters, because the thing that decides this
-   * fight is the GAP and not the pace.
-   *
-   * These two axes used to run [5.1 … 5.7] for the gorilla and [4.5 … 5.1] for
-   * the octopus. On that grid the gorilla is never slower than the octopus, the
-   * two are level in one of sixteen combinations, and the whole half of the
-   * space where the kiter is the faster body does not exist — so a search over
-   * it could not have found what a hand sweep did: on brains-l at 25 rounds the
-   * octopus wins 34.2% at a +0.50 m/s gap, 35.7% at +0.25, and 41.6/43.8/43.3%
-   * at the three level pairs 5.35, 5.10 and 4.85. Nine points of the answer sat
-   * outside the search space. A shared ladder is also the honest shape: there
-   * is no reason for the two bodies to be searched over different speeds.
-   */
-  'fighters.gorilla.maxSpeed': [4.7, 4.9, 5.1, 5.3, 5.5],
-  'fighters.octopus.maxSpeed': [4.7, 4.9, 5.1, 5.3, 5.5],
-  'fighters.gorilla.hp': [190, 205, 220],
-  'fighters.octopus.hp': [140, 152, 165],
   'skills.blink.cooldown': [3.0, 3.8, 4.6],
   'skills.blink.distance': [6.5, 7.5],
   'skills.charge.cooldown': [3.4, 4.0, 4.8],
@@ -132,7 +148,7 @@ const DEFAULTS = JSON.parse(
   (await import('node:child_process')).execFileSync('node', ['-e',
     `import('${resolve(ROOT, 'src/core/config.js').replace(/\\/g, '/')}').then(c=>{`
     + `const o={};`
-    + `for(const [k,v] of Object.entries({fighters:c.FIGHTERS,skills:c.SKILLS}))`
+    + `for(const [k,v] of Object.entries({build:c.BUILD_AXES,skills:c.SKILLS}))`
     + ` for(const [n,rec] of Object.entries(v))`
     + `  for(const [f,val] of Object.entries(rec)) o[k+'.'+n+'.'+f]=val;`
     + `console.log(JSON.stringify(o));})`,
@@ -284,7 +300,7 @@ const results = await evalBatch(candidates, 'r');
 results.sort((a, b) => a.score.total - b.score.total);
 
 /*
- * Random search over seventeen axes is sparse — a hundred and forty samples
+ * Random search over thirteen axes is sparse — a hundred and forty samples
  * touch a vanishing fraction of the grid — so the best of them is a starting
  * point rather than an answer. Coordinate descent from it is cheap and, on a
  * space this smooth, is where the real gain is.

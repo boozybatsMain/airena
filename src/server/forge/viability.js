@@ -33,6 +33,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { DEFAULT_BUILD } from '../../core/config.js';
 import { runIsolated } from '../sandbox/index.js';
 import { compileKit } from '../../skills/compile.js';
 import { GAUNTLET, readShape } from '../../skills/gauntlet.js';
@@ -82,19 +83,22 @@ function reference() {
  * @returns {{ok: boolean, hits: number, wins: number, rounds: number, why: string|null}}
  */
 /**
- * @param {number} [opts.size] размер существа. Он меняет здоровье, скорость,
- *   урон и коллайдер (`statsFor`), значит замер набора без него — это замер
- *   набора на чужом теле. Замерено на одном наборе против гантлета:
- *   100/100/0/100/100 при размере 1.0 и 50/50/25/100/25 при 0.75.
+ * @param {object} [opts.build] ТЕЛОСЛОЖЕНИЕ существа: его собственные числа.
+ *   Замер набора без него — это замер набора на чужом теле. Замерено на одном
+ *   наборе против гантлета: 100/100/0/100/100 на одном теле и 50/50/25/100/25
+ *   на другом. Соперник гантлета всегда на теле по умолчанию: прибор не
+ *   меняется вместе с испытуемым.
  */
-export async function viability(kit, archetype, { rounds = VIABILITY_ROUNDS, size = 1 } = {}) {
+export async function viability(kit, { rounds = VIABILITY_ROUNDS, build = null } = {}) {
   const built = compileKit(kit);
   if (built.problems.length) {
     return { ok: false, hits: 0, wins: 0, rounds: 0, why: 'набор не собирается' };
   }
   const ref = reference();
-  const mine = archetype === 'gorilla' ? 'gorilla' : 'octopus';
-  const foe = mine === 'gorilla' ? 'octopus' : 'gorilla';
+  /* Сторона выбирается ФИКСИРОВАННО, а не по виду: видов нет, а прибор обязан
+     быть одним и тем же от замера к замеру. */
+  const mine = 'octopus';
+  const foe = 'gorilla';
 
   /*
    * СОПЕРНИК — НЕ ОДИН, А ПЯТЕРО РАЗНЫХ (гантлет).
@@ -143,10 +147,10 @@ export async function viability(kit, archetype, { rounds = VIABILITY_ROUNDS, siz
           {
             seed: 900 + i * 7919,
             kits: { [my]: built.defs, [их]: foeKit.defs },
-            /* Свой размер — кандидату, соперник гантлета всегда единичный:
-               гантлет — это прибор, и менять его вместе с испытуемым значит
-               менять две вещи разом. */
-            sizes: { [my]: size, [их]: 1 },
+            /* Своё тело — кандидату, соперник гантлета всегда на теле по
+               умолчанию: гантлет — это прибор, и менять его вместе с
+               испытуемым значит менять две вещи разом. */
+            builds: { [my]: build || DEFAULT_BUILD, [их]: DEFAULT_BUILD },
           },
         );
       } catch { continue; }

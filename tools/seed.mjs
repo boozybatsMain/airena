@@ -26,7 +26,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compileBrain } from '../src/brain/host.js';
-import { FIGHTERS, SKILLS } from '../src/core/config.js';
+import { BUILD_AXES, BUILD_BUDGET, SKILLS } from '../src/core/config.js';
 import { runMatch } from '../src/core/match.js';
 import { constantsVersion } from '../src/core/version.js';
 import { KIT_PRESETS } from '../src/server/forge/pipeline.js';
@@ -71,6 +71,9 @@ const POOLS = [join(ROOT, 'brains'), ...readdirSync(join(ROOT, 'reports'))
   .filter((d) => d.startsWith('brains-'))
   .map((d) => join(ROOT, 'reports', d))];
 
+/** Сколько мозгов пришло из мира архетипов. Считается в `isCurrent`. */
+let archetypeEra = 0;
+
 /**
  * Мозг «текущий», если записанные при генерации константы совпадают с
  * сегодняшними. Та же проверка, что делает `tools/checkstale.mjs`, — но нам
@@ -82,8 +85,35 @@ function isCurrent(dir, id) {
   let rec;
   try { rec = JSON.parse(readFileSync(p, 'utf8')); } catch { return false; }
   if (!rec.constants) return false;
-  const now = { fighters: FIGHTERS, skills: SKILLS };
-  for (const section of ['fighters', 'skills']) {
+  /*
+   * ПРОВЕНАНС С СЕКЦИЕЙ `fighters` — МОЗГ ИЗ МИРА АРХЕТИПОВ.
+   *
+   * Тогда тело выдавала СТОРОНА арены: две записи, и боец наследовал одну
+   * целиком. Записей нет; такой мозг хардкодил чужие 155 и 205 здоровья и в
+   * этом смысле misinformed — `tools/checkstale.mjs` честно печатает его
+   * STALE.
+   *
+   * ЗДЕСЬ ОН ВСЁ РАВНО ПРОХОДИТ, и это решение, а не недосмотр. Отбраковка
+   * по этому признаку выносит ВСЮ эталонную панель u1..u6 — ту самую, на
+   * которой замерен §1 и которую `config.js` держит намеренно
+   * (`REFERENCE_SKILLS`), — и `measure()` падает с «нет эталонной панели».
+   * То есть строгость здесь означала бы не чистую библиотеку, а отсутствие
+   * библиотеки.
+   *
+   * Цена честная и напечатана: обе стороны в такой паре выходят в
+   * телосложении по умолчанию, оно одинаково у всех, и бой остаётся
+   * симметричным. Неверно мозг знает не мир, а только собственное тело.
+   * Счётчик уходит в отчёт `main()` — и считается ниже, у самого `return
+   * true`: иначе он считал бы просмотренные файлы, а не принятые пары.
+   */
+  const archetype = !!rec.constants.fighters;
+  /*
+   * Сравниваются оси телосложения (границы и цена) и потолок трат: это всё,
+   * что осталось общего у всех тел, и ровно это обещано мозгу про мир.
+   */
+  if (typeof rec.constants.buildBudget === 'number' && rec.constants.buildBudget !== BUILD_BUDGET) return false;
+  const now = { build: BUILD_AXES, skills: SKILLS };
+  for (const section of ['build', 'skills']) {
     for (const [k, table] of Object.entries(rec.constants[section] || {})) {
       for (const [f, v] of Object.entries(table)) {
         const cur = now[section]?.[k]?.[f];
@@ -93,6 +123,7 @@ function isCurrent(dir, id) {
       }
     }
   }
+  if (archetype) archetypeEra++;
   return true;
 }
 
@@ -183,6 +214,13 @@ function main() {
 
   const pairs = discover();
   console.log(`\n  нашлось ${pairs.length} пар на сегодняшних константах (${constantsVersion()})`);
+  if (archetypeEra) {
+    /* Не украшение отчёта: цифра ниже говорит, какой долей библиотеки правит
+       мозг, знающий собственное тело неверно. Молчать об этом нельзя. */
+    console.log(`  из них ${archetypeEra} писались против АРХЕТИПНЫХ тел (в провенансе секция fighters):`);
+    console.log('  мир они знают верно, своё тело — нет. Тела больше не наследуются, и в библиотеке');
+    console.log('  все выходят в телосложении по умолчанию, так что бой остаётся симметричным.');
+  }
   console.log(`  замер по ${ROUNDS} боёв против эталонной панели u1..u6…`);
   const t0 = Date.now();
   const rows = measure(pairs, ROUNDS).filter((r) => r.played > 0).sort((a, b) => a.rate - b.rate);
@@ -258,6 +296,17 @@ function main() {
         unfit: [],
         isLibrary: true,
         season,
+        /*
+         * Телосложение НЕ задаётся — библиотечные выходят в умолчании.
+         *
+         * Соблазн раздать им разные тела («существо может быть любым») здесь
+         * вреден: эталонные мозги написаны против фиксированных чисел тела и
+         * не читают своё телосложение из перцепции. Раздав им случайные тела,
+         * мы замерили бы рассогласование мозга с телом, а не силу мозга, —
+         * и рейтинг, по которому подбирается соперник новичку, стал бы про
+         * это рассогласование. Разные тела приедут вместе с мозгами, которые
+         * умеют их читать.
+         */
         /* Рейтинг из замера: лестница, где все библиотечные стоят в 1200,
            даёт новичку случайного соперника вместо подходящего. */
         rating: Math.round(850 + r.rate * 800),

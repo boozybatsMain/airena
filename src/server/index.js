@@ -16,8 +16,8 @@ import { WebSocketServer } from 'ws';
 
 import { compileBrain } from '../brain/host.js';
 import {
-  ARENA_HALF, FIGHTERS, MATCH_SECONDS, OBSTACLES, SKILLS, SUDDEN_DEATH_AT,
-  SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT,
+  ARENA_HALF, DEFAULT_BUILD, MATCH_SECONDS, OBSTACLES, SKILLS, SUDDEN_DEATH_AT,
+  SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT, skillsOf, statsOf,
 } from '../core/config.js';
 import { createWorld, snapshot, step } from '../core/sim.js';
 
@@ -78,9 +78,41 @@ function brainMeta(id, tag) {
   } catch { return null; }
 }
 
+/**
+ * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обоими именами сторон.
+ *
+ * `FIGHTERS` больше нет — тела принадлежат существам, общей таблицы тел в мире
+ * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
+ * десятках мест: радиус кругов, конусов и теней, скорость поворота для
+ * сглаживания, список чипов кулдаунов. `octopus` и `gorilla` там — ИМЕНА
+ * СТОРОН (голубая и оранжевая), и их переименование идёт отдельным шагом.
+ *
+ * Пока оно не сделано, обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`.
+ * Соврать одинаково обеим честнее двух других вариантов: уронить экран на
+ * `cfg.fighters[id].radius` от `undefined` или оставить одной из сторон числа
+ * архетипа, которого больше не существует ни для кого.
+ *
+ * Настоящие числа бойца приезжают в кадрах матча, а не отсюда. Здесь остаётся
+ * только то, по чему вьюер строит геометрию ДО начала боя.
+ *
+ * Мост уедет вместе с переименованием сторон. Такой же живёт в
+ * `src/server/api.js` (`SIM_CONFIG`) — продуктовый сервер отдаёт тому же
+ * вьюеру тот же `/api/config`.
+ */
+const sideBridge = (side) => ({
+  id: side,
+  name: side,
+  ...statsOf(DEFAULT_BUILD),
+  /* Без `jump`: вьюер сам дописывает его к списку чипов. */
+  skills: skillsOf(side).filter((s) => s !== 'jump'),
+});
+
 const CONFIG = {
   arena: { half: ARENA_HALF, wallHeight: WALL_HEIGHT, obstacles: OBSTACLES },
-  fighters: FIGHTERS,
+  /* Телосложение по умолчанию — то, что получает существо, о теле которого
+     ничего не сказано. Не архетип: наследоваться от него некому. */
+  defaultBuild: DEFAULT_BUILD,
+  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,

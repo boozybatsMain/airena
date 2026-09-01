@@ -289,6 +289,11 @@ const MIGRATIONS = [
     /* Размер обоих на момент боя — тем же правилом, что и наборы: он вход
        матча, значит без него повтор не побитовый (A2). */
     `ALTER TABLE match ADD COLUMN sizes_json TEXT`,
+    /* Телосложение вместо архетипа: у существа свои числа, у матча — те,
+       которыми дрались. Старые колонки остаются пустыми и не читаются: сносить
+       их миграцией дороже, чем игнорировать. */
+    `ALTER TABLE creature ADD COLUMN build_json TEXT`,
+    `ALTER TABLE match ADD COLUMN builds_json TEXT`,
   ],
   /*
    * НОВЫЙ ШАГ ДОБАВЛЯЕТСЯ В КОНЕЦ, а не в середину.
@@ -381,6 +386,8 @@ export function openDb(file = 'data/airena.db') {
     ensure('creature', 'birth_note', 'TEXT'),
     ensure('creature', 'vfx_json', 'TEXT'),
     ensure('match', 'sizes_json', 'TEXT'),
+    ensure('creature', 'build_json', 'TEXT'),
+    ensure('match', 'builds_json', 'TEXT'),
     ensure('match', 'kits_json', 'TEXT'),
     ensure('job', 'stage_code', 'TEXT'),
   ].filter(Boolean);

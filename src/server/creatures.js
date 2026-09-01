@@ -14,9 +14,27 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { FIGHTERS } from '../core/config.js';
-
-export const ARCHETYPES = Object.keys(FIGHTERS);
+/**
+ * ДВА ИМЕНИ СТОРОН АРЕНЫ. НЕ ВИДЫ И НЕ АРХЕТИПЫ.
+ *
+ * Здесь стояло `ARCHETYPES = Object.keys(FIGHTERS)` — то есть «какие бывают
+ * существа» выводилось из таблицы тел: два тела в конфиге, значит два вида
+ * существ, и каждое новое существо наследовало одно из них целиком.
+ *
+ * Таблицы тел больше нет. Наследовать не от кого: числа принадлежат существу
+ * (`build_json`), и «как у гориллы» не значит ничего. То, что осталось от
+ * прежних двух имён, — ровно две СТОРОНЫ арены: голубая и оранжевая. Сторона
+ * не несёт ни здоровья, ни скорости, ни радиуса; она отвечает на вопрос
+ * «слева или справа», и на неё смотрит подбор соперника (`arena-loop.js`,
+ * `ladder.js`), чтобы не сводить существо с самим собой по цвету.
+ *
+ * Имена пока прежние, и это ВРЕМЕННО: переименование сторон — отдельный шаг,
+ * и делать его вместе с удалением архетипов значило бы менять две вещи разом
+ * и не знать потом, какая из них сломала подбор. Когда шаг дойдёт, менять
+ * придётся эту строку, колонку `creature.archetype` и цвета вьюера — и это
+ * единственное место, где список имён записан словами.
+ */
+export const SIDES = ['octopus', 'gorilla'];
 
 /**
  * Публичная карточка существа. ЕДИНСТВЕННЫЙ способ отдать существо наружу.
@@ -48,6 +66,9 @@ export function card(row, { viewerId = null } = {}) {
     isLibrary: !!row.is_library,
     isMine: viewerId != null && row.owner_id === viewerId,
     size: row.size ?? 1,
+    /* Телосложение — свои числа существа. Карточка показывает их как есть:
+       наследовать не от кого, и «как у гориллы» больше не значит ничего. */
+    build: (() => { try { return row.build_json ? JSON.parse(row.build_json) : null; } catch { return null; } })(),
     /* Что пошло не так при рождении. Наружу едет всем: «носит тело архетипа»
        — это про то, что зритель видит на арене, а не тайна владельца. */
     birthNote: (() => { try { return JSON.parse(row.birth_note || 'null'); } catch { return null; } })(),
@@ -105,9 +126,23 @@ export function create(db, {
   /* Что пошло не так при рождении (§5.1): подмена модели, несобравшееся тело.
      Пустой массив и null — одно и то же: «всё как заказано». */
   birthNote = null,
-  /* Размер: 0.75…1.5, единица — как раньше. Влияет на hp, радиус, скорость и
-     массу (`statsFor`), поэтому это вход матча, а не украшение. */
+  /*
+   * Размер: 0.75…1.5, единица — как раньше. На БОЙ он больше не влияет.
+   *
+   * Раньше это была единственная своя ось существа: `statsFor(archetype, size)`
+   * растягивала числа архетипа показателями степени. Ни функции, ни архетипа
+   * больше нет — боевые числа целиком приходят из телосложения (`build`,
+   * `statsOf`), включая радиус, который прежде был производной размера.
+   *
+   * Колонка осталась внешней величиной: вьюер масштабирует ею меш тела
+   * (`live.js` отдаёт `sizes` в кадре матча). То есть теперь это про то, каким
+   * существо ВЫГЛЯДИТ, а не про то, как оно дерётся.
+   */
   size = null,
+  /* Телосложение — свои числа существа, уже нормализованные конвейером.
+     Пишется одной вставкой с `brain_source`: «против какого тела написан этот
+     мозг» должно читаться из той же строки, что и сам мозг. */
+  build = null,
 }) {
   const id = `c_${randomUUID().slice(0, 12)}`;
   /*
@@ -131,8 +166,8 @@ export function create(db, {
   db.prepare(`INSERT INTO creature
     (id, owner_id, name, body_ref, archetype, kit_json, brain_source, brain_model,
      constants_version, prompt, unfit_json, rating, peak_rating, tactics_card,
-     is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+     is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size, build_json)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id, ownerId ?? null, name, refToStore, archetype, JSON.stringify(kit),
     brainSource ?? null, brainModel ?? null, constantsVersion, prompt ?? null,
     JSON.stringify(unfit), rating, rating, tacticsCard,
@@ -141,6 +176,7 @@ export function create(db, {
     vfxIr ? JSON.stringify(vfxIr) : null,
     birthNote && birthNote.length ? JSON.stringify(birthNote) : null,
     Number.isFinite(size) ? size : null,
+    build ? JSON.stringify(build) : null,
   );
   return db.prepare('SELECT * FROM creature WHERE id = ?').get(id);
 }

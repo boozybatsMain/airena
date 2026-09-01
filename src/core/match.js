@@ -17,8 +17,8 @@ import { createWorld, snapshot, step } from './sim.js';
  *   record    keep every snapshot (a replay), off by default
  *   onFrame   called with each snapshot as it is produced
  */
-export function runMatch(brains, { seed = 1, record = false, onFrame = null, observer = null, curtainSeconds = 0, kits = null, sizes = null } = {}) {
-  const world = createWorld(seed, { curtainSeconds, kits, sizes });
+export function runMatch(brains, { seed = 1, record = false, onFrame = null, observer = null, curtainSeconds = 0, kits = null, builds = null } = {}) {
+  const world = createWorld(seed, { curtainSeconds, kits, builds });
   if (observer) world.observer = observer;
   const frames = record ? [] : null;
 

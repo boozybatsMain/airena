@@ -30,6 +30,7 @@ import { extractSource } from '../../brain/host.js';
 import { admit } from '../sandbox/index.js';
 import { forgeBody } from './body.js';
 import { viability } from './viability.js';
+import { BUILD_AXES, BUILD_BUDGET, normalizeBuild } from '../../core/config.js';
 import { constantsVersion } from '../../core/version.js';
 import { EFFECTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
 import { compileKit } from '../../skills/compile.js';
@@ -180,13 +181,12 @@ const PARSE_SYSTEM = `Ты переводишь описание существ�
 
 Поля:
   name       — короткое имя существа, 2-22 символа, заглавными. Русский или латиница.
-  archetype  — "octopus" (лёгкий, быстрый, дальнобойный) или "gorilla" (тяжёлый, ближний бой).
-  size       — число 0.75…1.5. РАЗМЕР ТЕЛА, и у него есть цена в обе стороны:
-               мельче — меньше здоровья, но быстрее и труднее попасть;
-               крупнее — больше здоровья, но медленнее и попасть легче.
-               Комар, оса, стриж → 0.75-0.9. Человек, волк → 1.0.
-               Медведь, бык, кит → 1.3-1.5. Если в описании про размер ничего
-               нет — ставь 1.0, а не угадывай.
+  build      — ТЕЛО ЭТОГО СУЩЕСТВА: шесть своих чисел. Ни от кого не наследуется,
+               видов и заготовок нет. Каждое число стоит очки, у набора есть
+               потолок — таблица с ценами ниже. Считай, прежде чем писать.
+               {hp, maxSpeed, accel, turnRate, radius, jumpHeight}
+  colour     — свой цвет существа, "#rrggbb". Он ничего не делает в бою, только
+               вид. Не назван — подберём сами.
   kit        — РОВНО 3 скилла. Каждый: {delivery, effects:[1..3], channel?, element}.
   unfit      — массив строк: понятия из описания игрока, которых в грамматике НЕТ.
                Пиши их словами игрока. Пустой массив, если вошло всё.
@@ -218,7 +218,37 @@ const PARSE_SYSTEM = `Ты переводишь описание существ�
  */
 function parseUserPrompt(g) {
   const list = (o) => Object.values(o).map((x) => `${x.id} (${x.ru}, ${x.cost})`).join(', ');
-  return `Каждый атом стоит очки. Цена скилла = доставка + сумма эффектов
+  const axes = Object.entries(BUILD_AXES).map(([name, a]) => {
+    const ru = {
+      hp: 'здоровье', maxSpeed: 'предельная скорость, м/с', accel: 'ускорение',
+      turnRate: 'скорость разворота', radius: 'радиус тела, м',
+      jumpHeight: 'высота прыжка, м',
+    }[name];
+    const dir = a.inverse
+      ? `дороже МЕНЬШЕЕ: цена = (${a.max} − значение) / ${a.per}`
+      : `цена = (значение − ${a.min}) / ${a.per}`;
+    return `\n  ${name} (${ru}) от ${a.min} до ${a.max}, по умолчанию ${a.def}; ${dir}`;
+  }).join('');
+
+  return `ТЕЛО СУЩЕСТВА. Шесть чисел, и все они твои: заготовок нет, наследовать
+не от кого. У каждого числа есть цена в очках, у тела — потолок ${BUILD_BUDGET}.
+${axes}
+
+Радиус — это и есть размер существа: мелкая цель дороже, потому что по ней
+труднее попасть. Крупное тело дешевле, но в него легче попасть, и медленным
+или живучим оно становится не само — за это платят отдельными осями.
+
+Урон тело не даёт вообще. Урон живёт в умениях. Крупное существо не бьёт
+сильнее — оно просто больше.
+
+Посчитай сумму ПЕРЕД тем, как писать. Перебор не отклоняется, но сжимается
+пропорционально, и существо получится не тем, что ты задумал.
+
+НЕДОБОР ТОЖЕ ОШИБКА: неистраченные очки просто пропадают, и существо выходит
+слабее без всякой причины. Трать потолок целиком — если тело выходит дешёвым,
+значит где-то можно взять больше, не отнимая у замысла.
+
+Каждый атом стоит очки. Цена скилла = доставка + сумма эффектов
 + канал, плюс надбавка за комбинацию: два эффекта +2, три эффекта +5.
 
 Умение НЕ решает, когда ему сработать: его всегда вызывает мозг. Если по
@@ -316,11 +346,26 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
    * сломано, и записываем ровно это: «скилл 2 не собрался» читается, а
    * «весь набор не собрался» — это отказ, замаскированный под починку.
    */
-  const archetype = obj.archetype === 'gorilla' ? 'gorilla' : 'octopus';
-  /* Починка идёт из пресета ТОГО ЖЕ ТЕЛА, что выбрала модель. D29: ближний
-     набор на лёгком дальнобойном теле не работает — значит и запасное умение
-     обязано быть от тела, иначе починка одного слота ломает связку целиком. */
-  const fallback = archetype === 'gorilla' ? KIT_PRESETS.breaker : KIT_PRESETS.keeper;
+  /*
+   * Телосложение — своё. Перебор по бюджету не отвергается, а сжимается:
+   * модель, потратившая тридцать очков вместо двадцати пяти, хотела примерно
+   * такое существо, и вернуть ей отказ значит потерять существо ради
+   * арифметики, которую можно поправить. Сжатие уезжает наружу отчётом —
+   * молчаливая подмена запрещена (§5.1).
+   */
+  const built = normalizeBuild(obj.build);
+
+  /*
+   * Пресет починки выбирается по ТЕЛУ, а не по виду.
+   *
+   * D29 говорит: ближний набор на лёгком быстром теле не работает, значит
+   * запасное умение обязано быть от тела, иначе починка одного слота ломает
+   * связку целиком. Раньше телом был архетип; теперь его нет, и «какое это
+   * тело» решается тем, что модель за него заплатила: тяжёлое и медленное или
+   * лёгкое и вёрткое.
+   */
+  const heavy = built.build.hp >= BUILD_AXES.hp.def && built.build.maxSpeed <= BUILD_AXES.maxSpeed.def;
+  const fallback = heavy ? KIT_PRESETS.breaker : KIT_PRESETS.keeper;
 
   let kit = Array.isArray(obj.kit) ? obj.kit.slice(0, KIT_SIZE) : [];
   kit = kit.map((s) => normalizeSkill(s));
@@ -376,11 +421,12 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
 
   return {
     name: sanitizeName(obj.name, prompt),
-    archetype,
+    /* Тело существа — вход матча, а не украшение карточки. */
+    build: built.build,
+    buildCost: built.cost,
+    buildSqueezed: built.squeezed,
+    colour: normalizeColour(obj.colour),
     kit,
-    /* Размер тела — ось существа, а не картинка (см. `statsFor`). Модель
-       выбирает его по описанию; вне диапазона приводится, отсутствует — 1. */
-    size: normalizeSize(obj.size),
     unfit,
     why: typeof obj.why === 'string' ? obj.why.slice(0, 200) : fallback.why,
     costUsd: raw.costUsd,
@@ -390,6 +436,18 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
 
 /* `trigger` намеренно НЕ читается: оси нет. Модель, обученная на прошлой
    версии промпта, может его прислать — он просто не попадает в набор. */
+/**
+ * Цвет приводится к «#rrggbb» или отбрасывается.
+ *
+ * Отбрасывается молча и это осознанно: цвет ничего не решает в бою, и ронять
+ * из-за него существо было бы дороже, чем подобрать оттенок самим.
+ */
+const normalizeColour = (v) => {
+  if (typeof v !== 'string') return null;
+  const m = v.trim().match(/^#?([0-9a-f]{6})$/i);
+  return m ? `#${m[1].toLowerCase()}` : null;
+};
+
 /** Размер приводится к диапазону: модель может прислать что угодно. */
 const normalizeSize = (v) => {
   const n = Number(v);
@@ -932,7 +990,7 @@ export async function forgeCreature({
          выбрала размер, и мерить годность набора на теле размера 1 значит
          мерить чужое существо. D123 требует размер на всех путях матча, и
          этот путь был последним, где его не было. */
-      const v = await viability(parsed.kit, archetype, { size: parsed.size ?? 1 });
+      const v = await viability(parsed.kit, { build: parsed.build ?? null });
       if (!v.ok) {
         note.push({ kind: 'kit_unviable', message: v.why, hits: v.hits, rounds: v.rounds });
       }
