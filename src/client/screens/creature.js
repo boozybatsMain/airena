@@ -117,6 +117,52 @@ export async function enter(root, args, ctx) {
         h('div.ln', h('b', `«${u.phrase}»`), ' — ', u.why)))));
   }
 
+  /*
+   * ССЫЛКА НА СУЩЕСТВО — ЭТО ПРОДУКТ, А НЕ УДОБСТВО.
+   *
+   * Страница существа и так открыта любому: `/api/creature/:id` владения не
+   * проверяет, гостю заводится сессия на месте. То есть поделиться было МОЖНО
+   * с самого начала — и неоткуда: ни кнопки, ни адреса на виду, а сам адрес
+   * лежит за решёткой (`#/creature/<id>`) и руками не набирается.
+   *
+   * Копируем абсолютный адрес вместе с origin: относительная ссылка в чужом
+   * мессенджере не ссылка.
+   *
+   * Буфер обмена может быть закрыт — во фрейме без разрешения он молча
+   * отказывает. Тогда показываем адрес текстом и выделяем его сами: человек
+   * жмёт copy и всё равно уходит со ссылкой. Форму не заводим — A6 запрещает
+   * формы на встроенной поверхности, и обойти запрет ради удобства нельзя.
+   */
+  if (mine) {
+    const out = h('div.t-sub', { style: { marginTop: '10px' } });
+    body.appendChild(h('div.section',
+      h('div.hcut', 'ПОКАЗАТЬ ДРУГИМ'),
+      h('div.t-body', { style: { maxWidth: '58ch' } },
+        'По этой ссылке любой откроет твоё существо и сможет смотреть его бои — аккаунт для этого не нужен.'),
+      h('div.row', { style: { marginTop: '12px' } },
+        h('button.btn.primary', {
+          onclick: async (e) => {
+            const url = `${location.origin}${location.pathname}${location.search}#/creature/${c.id}`;
+            try {
+              await navigator.clipboard.writeText(url);
+              e.target.textContent = 'СКОПИРОВАНО';
+              setTimeout(() => { e.target.textContent = 'СКОПИРОВАТЬ ССЫЛКУ'; }, 1800);
+              clear(out);
+            } catch {
+              clear(out);
+              const span = h('span', { style: { userSelect: 'all', color: 'var(--oct)', wordBreak: 'break-all' } }, url);
+              out.appendChild(h('span', 'буфер закрыт — вот адрес: '));
+              out.appendChild(span);
+              try {
+                const r = document.createRange(); r.selectNodeContents(span);
+                const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+              } catch { /* выделение — удобство, не обязанность */ }
+            }
+          },
+        }, 'СКОПИРОВАТЬ ССЫЛКУ')),
+      out));
+  }
+
   if (!mine) {
     /*
      * «СМОТРЕТЬ ЕГО БОИ» — ОТВЕТ НА ВОПРОС, КОТОРОГО НЕ БЫЛО ГДЕ ЗАДАТЬ.
