@@ -149,11 +149,31 @@ export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random
   return scan(true, true) || scan(false, true) || scan(true, false) || scan(false, false);
 }
 
+/*
+ * СКОЛЬКО СТРОК ОТДАВАТЬ.
+ *
+ * Лестница была доской ТОП-10 и ничем больше: `top` брал десять строк, `around`
+ * — окно вокруг твоего существа, и всё. При сорока двух активных существах это
+ * значило, что тридцать с лишним из них недостижимы из интерфейса ВООБЩЕ: у
+ * страницы существа нет ни поиска, ни списка, а попасть на неё можно только
+ * кликом по строке лестницы или по карточке из тройки «за кем следить».
+ *
+ * Обнаружилось это ровно там, где больнее: свежесозданное существо с нулём
+ * побед стоит в середине таблицы, в тройку не попадает (она сортирует по
+ * винрейту) — и посмотреть, что с ним не так, нельзя никак. Основатель об
+ * этом и спросил.
+ *
+ * Потолок нужен: сегодня существ сорок, завтра тысячи, и «отдай всё» станет
+ * запросом, который никто не заметит, пока он не начнёт занимать секунду.
+ */
+const TOP_DEFAULT = 10;
+export const TOP_MAX = 200;
+
 /**
  * Таблица строится ОТ ИГРОКА (§10.4): топ-10, окно вокруг своей строки,
  * процентиль. Аркадный столбик на тысячу строк запрещён как форма.
  */
-export function ladderView(db, { creatureId = null, season = 1, windowSize = 4 } = {}) {
+export function ladderView(db, { creatureId = null, season = 1, windowSize = 4, topLimit = TOP_DEFAULT } = {}) {
   /*
    * ПРОЦЕНТИЛЬ СЧИТАЕТСЯ ПО ИГРОКАМ, А НЕ ПО ВСЕЙ ТАБЛИЦЕ.
    *
@@ -193,8 +213,8 @@ export function ladderView(db, { creatureId = null, season = 1, windowSize = 4 }
   const top = db.prepare(`
     SELECT id, name, rating, peak_rating, wins, losses, draws, fights, archetype, brain_model, owner_id, is_library
     FROM creature WHERE state = 'active' AND season = ?
-    ORDER BY rating DESC, fights DESC, id ASC LIMIT 10
-  `).all(season).map((r, i) => ({ ...row(r), rank: i + 1 }));
+    ORDER BY rating DESC, fights DESC, id ASC LIMIT ?
+  `).all(season, Math.max(1, Math.min(TOP_MAX, topLimit))).map((r, i) => ({ ...row(r), rank: i + 1 }));
 
   /*
    * ПРИЗОВАЯ ДОСКА — ОТДЕЛЬНЫЙ СПИСОК, а не первые строки лестницы.

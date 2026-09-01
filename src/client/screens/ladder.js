@@ -12,7 +12,7 @@
  */
 
 import { get, track } from '../lib/api.js';
-import { h, mount, num, badge, empty } from '../lib/dom.js';
+import { h, mount, num, badge, empty, clear } from '../lib/dom.js';
 import { glyphSvg } from '../ui/glyph.js';
 
 export async function enter(root, args, ctx) {
@@ -39,8 +39,10 @@ const sub = (text, on, onclick) => h(`button.btn.sub${on ? '.on' : ''}`, {
   style: { textTransform: 'uppercase' },
 }, text);
 
-async function ladder(body, ctx) {
-  const d = await get('/api/ladder');
+async function ladder(body, ctx, topLimit = null) {
+  /* `topLimit` приходит только от кнопки «показать всех»: первый заход всегда
+     просит десять, потому что вопрос лестницы — «кто сильнейший». */
+  const d = await get(topLimit ? `/api/ladder?top=${topLimit}` : '/api/ladder');
   track('ladder_viewed', { rank: d.me?.rank ?? null });
 
   /* Заголовок — процентиль, а не место. Ровно то, что §10.4 требует. */
@@ -98,10 +100,38 @@ async function ladder(body, ctx) {
       + 'и того же. Счёт побед у них настоящий.'));
   }
 
+  /*
+   * ТАБЛИЦА РАСКРЫВАЕТСЯ ДО ВСЕХ, А НЕ ЗАКАНЧИВАЕТСЯ НА ДЕСЯТОМ.
+   *
+   * Лестница была доской ТОП-10, и это делало недостижимой всю середину: при
+   * сорока двух активных существах тридцать с лишним не показывались НИГДЕ.
+   * Страница существа открывается только кликом отсюда или из тройки «за кем
+   * следить», а тройка сортирует по винрейту — значит существо со слабым
+   * счётом не показывалось ни там, ни там, и посмотреть, что с ним не так,
+   * было нельзя. Именно с этим и пришёл основатель.
+   *
+   * Кнопка, а не «всегда всё»: десять строк — это ответ на вопрос «кто
+   * сильнейший», и подменять его списком из сорока значит отвечать на другой.
+   */
+  const full = d.top.length >= (d.total ?? 0);
   body.appendChild(h('div.section',
-    h('div.hcut', 'ТОП-10'),
+    h('div.hcut', full ? 'ВСЕ СУЩЕСТВА' : 'ТОП-10'),
     head(),
-    d.top.length ? d.top.map((r) => row(r, d.me, ctx)) : empty('ТОП ПУСТ', 'Первые бои ещё идут.')));
+    d.top.length ? d.top.map((r) => row(r, d.me, ctx)) : empty('ТОП ПУСТ', 'Первые бои ещё идут.'),
+    full ? null : h('div.row', { style: { marginTop: '14px' } },
+      h('button.btn.ghost', {
+        onclick: async (e) => {
+          e.target.disabled = true;
+          e.target.textContent = 'загружаю…';
+          try {
+            clear(body);
+            await ladder(body, ctx, Math.max(1, d.total || 200));
+          } catch {
+            e.target.disabled = false;
+            e.target.textContent = 'не получилось — ещё раз';
+          }
+        },
+      }, `ПОКАЗАТЬ ВСЕХ${d.total ? ` (${d.total})` : ''}`))));
 
   if (d.around?.length > 1) {
     body.appendChild(h('div.section',

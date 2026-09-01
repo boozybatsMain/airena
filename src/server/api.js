@@ -696,7 +696,14 @@ export function buildRouter(ctx) {
     const mine = db.prepare(`SELECT id, season FROM creature WHERE owner_id = ? AND state='active'
                              ORDER BY created_at DESC LIMIT 1`).get(acct.id);
     const season = ctx.kv.get('season', { n: 1 });
-    const view = ladderView(db, { creatureId: mine?.id ?? null, season: mine?.season ?? season.n });
+    /* `?top=` — сколько строк таблицы отдать. Экран просит десять, а по кнопке
+       «показать всех» — столько, сколько есть. Потолок и пол ставит `ladderView`. */
+    const asked = Number(new URL(req.url, 'http://x').searchParams.get('top'));
+    const view = ladderView(db, {
+      creatureId: mine?.id ?? null,
+      season: mine?.season ?? season.n,
+      ...(Number.isFinite(asked) && asked > 0 ? { topLimit: asked } : {}),
+    });
     trackEvent(db, { name: 'ladder_viewed', accountId: acct.id, props: { rank: view.me?.rank ?? null } });
     json(res, { ...view, seasonMeta: season });
   });
