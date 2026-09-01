@@ -408,6 +408,12 @@ body.fighting #clock .byline { opacity: .38; transition: opacity .6s ease; }
 .jrow .what { font-family: var(--font-body); font-size: 13.5px; color: var(--dim); }
 .jrow .score { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--oct); }
 .jrow.no .score { color: var(--dim); }
+/* Строка истории кликабельна — значит обязана выглядеть кликабельной.
+   Ряд, который ведёт на повтор боя и ничем этого не показывает, читается
+   как таблица, и по нему не жмут. */
+.jrow.tap { cursor: pointer; transition: background 120ms; margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+.jrow.tap:hover { background: var(--hover, rgba(127, 127, 127, 0.09)); }
+.jrow.tap:hover .what { color: var(--fg); }
 
 .spark { display: block; width: 100%; height: 46px; }
 

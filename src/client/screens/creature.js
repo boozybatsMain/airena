@@ -117,6 +117,30 @@ export async function enter(root, args, ctx) {
         h('div.ln', h('b', `«${u.phrase}»`), ' — ', u.why)))));
   }
 
+  if (!mine) {
+    /*
+     * «СМОТРЕТЬ ЕГО БОИ» — ОТВЕТ НА ВОПРОС, КОТОРОГО НЕ БЫЛО ГДЕ ЗАДАТЬ.
+     *
+     * Следить за библиотечным существом можно было ровно одним способом:
+     * выбрать его из тройки на вкладке «Существо». Тройка отбирается по
+     * винрейту, поэтому только что созданное существо в неё не попадает —
+     * у него ноль боёв, — и посмотреть на него было нельзя вообще никак,
+     * хотя оно дерётся на арене прямо сейчас.
+     *
+     * Делает ровно то же, что карточка тройки, и той же парой действий:
+     * запоминает выбор (иначе он не переживёт возврат на арену — см. D2 и
+     * шапку `pickStarter`) и переподписывает сокет.
+     */
+    body.appendChild(h('div.row', { style: { marginTop: '18px' } },
+      h('button.btn.primary', {
+        onclick: () => {
+          try { localStorage.setItem('airena.starter', c.id); } catch { /* приватный режим */ }
+          try { window.__airenaSend?.({ cmd: 'watch', creatureId: c.id }); } catch { /* сокета нет */ }
+          ctx.go('/arena');
+        },
+      }, 'СМОТРЕТЬ ЕГО БОИ')));
+  }
+
   body.appendChild(h('div.section',
     h('div.hcut', 'УМЕНИЯ'),
     kitEditor(c, d, ctx, mine)));
@@ -128,7 +152,7 @@ export async function enter(root, args, ctx) {
   }
 
   if (mine) body.appendChild(journal(c, d));
-  body.appendChild(historyBlock(d, c));
+  body.appendChild(historyBlock(d, c, ctx, mine));
 
   if (mine) {
     /*
@@ -253,21 +277,35 @@ function journal(c, d) {
   return sec;
 }
 
-function historyBlock(d, c) {
+function historyBlock(d, c, ctx, mine) {
   const sec = h('div.section', h('div.hcut', 'ПОСЛЕДНИЕ БОИ'));
+  /*
+   * СТРОКА ИСТОРИИ — ССЫЛКА НА БОЙ, А НЕ ЗАПИСЬ О НЁМ.
+   *
+   * Здесь лежал список исходов, и открыть из него было нечего: чтобы
+   * посмотреть бой конкретного существа, надо было знать `matchId` и набрать
+   * адрес руками. То есть повтор боя существовал (`#/watch/<id>`, экран
+   * `watch.js`), а дойти до него из продукта было нельзя ниоткуда.
+   *
+   * `id` матча приезжает в этом же ответе с самого начала (`history()` в
+   * creatures.js кладёт его первым полем) — не хватало только клика.
+   */
   if (!d.history?.length) {
     sec.appendChild(empty('БОЁВ ЕЩЁ НЕ БЫЛО', 'Первый — в течение минуты после появления существа.'));
     return sec;
   }
   for (const m of d.history.slice(0, 10)) {
     const w = m.outcome === 'win' ? 'победа' : (m.outcome === 'loss' ? 'поражение' : 'ничья');
-    sec.appendChild(h('div.jrow',
-      h('div.when', ago(m.at)),
-      h('div.what', [
-        `${w} · ${m.opponent.name}`,
-        m.training ? h('span.badge.warn', { style: { marginLeft: '8px' } }, 'ТРЕНИРОВОЧНЫЙ') : null,
-      ]),
-      h('div.score', { class: m.delta > 0 ? '' : 'no' }, signed(m.delta))));
+    sec.appendChild(h('div.jrow.tap', {
+      onclick: () => ctx.go(`/watch/${m.id}`),
+      title: 'посмотреть этот бой',
+    },
+    h('div.when', ago(m.at)),
+    h('div.what', [
+      `${w} · ${m.opponent.name}`,
+      m.training ? h('span.badge.warn', { style: { marginLeft: '8px' } }, 'ТРЕНИРОВОЧНЫЙ') : null,
+    ]),
+    h('div.score', { class: m.delta > 0 ? '' : 'no' }, signed(m.delta))));
   }
   return sec;
 }
