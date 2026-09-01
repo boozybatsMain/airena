@@ -169,9 +169,11 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
 
 // ── 4. мир остаётся корректным: солиды с размерами, позиции — числа ────────
 {
+  /* Ключ — СТОРОНА арены (цвет), справа — ИМЯ ФАЙЛА эталонного пилота §1 в
+     `brains/kit-stub/`. Это разные вещи, и совпадали они только по случаю. */
   const brains = {
-    octopus: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8'), 'octopus'),
-    gorilla: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'gorilla'),
+    blue: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8'), 'blue'),
+    orange: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'orange'),
   };
   const bad = [];
   const effIds = Object.keys(EFFECTS);
@@ -198,8 +200,8 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
       const kit = compileKit([s, ...fill]);
       if (kit.problems.length) { bad.push(`${d}:${eff} не собрался`); continue; }
       n++;
-      brains.octopus.reset?.(); brains.gorilla.reset?.();
-      const r = runMatch(brains, { seed: 911, kits: { octopus: kit.defs, gorilla: kit.defs } });
+      brains.blue.reset?.(); brains.orange.reset?.();
+      const r = runMatch(brains, { seed: 911, kits: { blue: kit.defs, orange: kit.defs } });
       const w = r.world;
       for (const box of [...(w.solids || []), ...(w.obstacles || [])]) {
         if (!Number.isFinite(box.hx) || !Number.isFinite(box.hz)) {
@@ -207,7 +209,7 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
           break;
         }
       }
-      for (const id of ['octopus', 'gorilla']) {
+      for (const id of ['blue', 'orange']) {
         const f = w.fighters[id];
         if (!Number.isFinite(f.x) || !Number.isFinite(f.z) || !Number.isFinite(f.hp)) {
           bad.push(`${d}:${eff} боец ${id} в нечисле: x=${f.x} z=${f.z} hp=${f.hp}`);
@@ -223,9 +225,11 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
   /* undefined исчезает при сериализации, и мозг видит объект без размеров —
      ровно так стена доехала до промпта пустой коробкой. Проверяем, что
      сериализация ничего не роняет. */
+  /* Ключ — СТОРОНА арены (цвет), справа — ИМЯ ФАЙЛА эталонного пилота §1 в
+     `brains/kit-stub/`. Это разные вещи, и совпадали они только по случаю. */
   const brains = {
-    octopus: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8'), 'octopus'),
-    gorilla: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'gorilla'),
+    blue: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8'), 'blue'),
+    orange: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'orange'),
   };
   const kit = compileKit([
     { delivery: 'self', effects: ['wall'], element: 'kinetic' },
@@ -233,15 +237,15 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
     { delivery: 'bolt', effects: ['damage'], element: 'kinetic' },
   ]);
   if (kit.problems.length) console.log('  · набор для проверки перцепции:', JSON.stringify(kit.problems[0]));
-  brains.octopus.reset?.(); brains.gorilla.reset?.();
-  const r = runMatch(brains, { seed: 913, kits: { octopus: kit.defs, gorilla: kit.defs } });
+  brains.blue.reset?.(); brains.orange.reset?.();
+  const r = runMatch(brains, { seed: 913, kits: { blue: kit.defs, orange: kit.defs } });
   const holes = [];
   const scan = (v, path) => {
     if (v === undefined) { holes.push(path); return; }
     if (Array.isArray(v)) { v.forEach((x, i) => scan(x, `${path}[${i}]`)); return; }
     if (v && typeof v === 'object') { for (const k of Object.keys(v)) scan(v[k], `${path}.${k}`); }
   };
-  for (const id of ['octopus', 'gorilla']) scan(perceive(r.world, id), `p(${id})`);
+  for (const id of ['blue', 'orange']) scan(perceive(r.world, id), `p(${id})`);
   ok('перцепция не содержит undefined', holes.length === 0, holes.slice(0, 4).join(', '));
 }
 

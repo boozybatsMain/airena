@@ -263,7 +263,11 @@
     </svg>
     <div class="col">
       <div class="namerow">
-        <div class="name" data-fighter="octopus">Octopus</div>
+        <!-- Текст — СТОРОНА (её перепишет имя существа из `match`).
+             `data-fighter` — слот эталонного мозга на диске
+             (`brains/<тег>/octopus.js`): его читает devpanel.js и строит из
+             него путь к исходнику. Это имя файла, и оно не переименовано. -->
+        <div class="name" data-fighter="octopus">Blue</div>
         <div class="sub" id="meta-oct">—</div>
       </div>
       <div class="hprow">
@@ -289,7 +293,8 @@
     </svg>
     <div class="col">
       <div class="namerow">
-        <div class="name" data-fighter="gorilla">Gorilla</div>
+        <!-- То же, что у синей: текст — сторона, `data-fighter` — файл. -->
+        <div class="name" data-fighter="gorilla">Orange</div>
         <div class="sub" id="meta-gor">—</div>
       </div>
       <div class="hprow">
@@ -325,13 +330,15 @@
   <div id="code"><button class="close" id="code-close">close</button><h2></h2><div class="meta"></div><pre></pre></div>
   <div id="err"></div>
   <div id="controls">
-    <label>octopus</label><select id="sel-oct"></select>
-    <label>gorilla</label><select id="sel-gor"></select>
+    <!-- Выбор эталонного мозга НА СТОРОНУ. Идентификаторы узлов остались
+         `sel-oct`/`sel-gor` — это имена элементов, вида они не называют. -->
+    <label>blue</label><select id="sel-oct"></select>
+    <label>orange</label><select id="sel-gor"></select>
     <label>speed</label><select id="sel-speed">
       <option value="0.35">0.35x</option><option value="0.5">0.5x</option>
       <option value="1" selected>1x</option><option value="2">2x</option>
     </select>
-    <label>seed</label><input id="seed" size="7" placeholder="random" title="A match is a pure function of (seed, octopus brain, gorilla brain). Type a seed to replay a fight exactly.">
+    <label>seed</label><input id="seed" size="7" placeholder="random" title="A match is a pure function of (seed, blue brain, orange brain). Type a seed to replay a fight exactly.">
     <button id="btn-run">Fight</button>
     <label><input type="checkbox" id="chk-loop"> loop</label>
     <button id="btn-cam">Camera: auto</button>

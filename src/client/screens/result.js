@@ -66,12 +66,13 @@ export async function showInline(c) {
   const mine0 = ++epoch;
 
   const mine = ctx.state.session?.creature || null;
-  const myKey = m?.ids ? (m.ids.octopus === mine?.id ? 'octopus' : (m.ids.gorilla === mine?.id ? 'gorilla' : null)) : null;
+  const myKey = m?.ids ? (m.ids.blue === mine?.id ? 'blue' : (m.ids.orange === mine?.id ? 'orange' : null)) : null;
 
   const stats = o.stats || {};
-  const side = myKey || o.winner || 'octopus';
+  const side = myKey || o.winner || 'blue';
   const st = stats[side] || {};
-  const sideName = m?.names?.[side] || (side === 'gorilla' ? 'горилла' : 'осьминог');
+  /* Запасное имя — это СТОРОНА, а не вид: видов нет, есть два цвета. */
+  const sideName = m?.names?.[side] || (side === 'orange' ? 'оранжевая сторона' : 'синяя сторона');
 
   /* Ключи — из `sim.js:139`: hits/misses/uses это СЛОВАРИ по умениям, а не
      числа. Сложить их значения — не украшательство: «попаданий NaN» на экране

@@ -61,7 +61,7 @@ import {
   ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, KNOCKBACK_DRAG, MATCH_SECONDS, statsOf,
   MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
   SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
-  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf,
+  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf, referenceTagOf,
 } from '../core/config.js';
 import { FUEL_PER_THINK } from '../server/sandbox/instrument.js';
 
@@ -251,8 +251,9 @@ exactly equal fractions is a draw.`;
  * @param {boolean} mine       чьё тело описывается — своё или соперника
  * @param {object}  f          боевая запись из `statsOf(телосложение)`
  * @param {object}  [kit]      набор §8, если он есть
- * @param {string}  fixtureTag тег эталонной фикстуры §1 — им называются умения
- *                             только тогда, когда набора нет
+ * @param {string}  fixtureTag СТОРОНА арены; через `referenceTagOf` она
+ *                             выбирает эталонную фикстуру §1 — но только
+ *                             тогда, когда набора нет
  *
  * ── ЧИСЛА ПРИНАДЛЕЖАТ СУЩЕСТВУ, А НЕ ВИДУ (01.09) ──────────────────────────
  *
@@ -299,7 +300,7 @@ function bodyBlock(mine, f, kit, fixtureTag) {
    */
   const canHop = kit
     ? Object.values(kit).some((d) => d.kind === 'jump')
-    : skillsOf(fixtureTag).some((nm) => SKILLS[nm]?.kind === 'hop');
+    : skillsOf(referenceTagOf(fixtureTag)).some((nm) => SKILLS[nm]?.kind === 'hop');
   const hop = canHop
     ? `\n  hop height          ${q(lbl('jumpHeight'), f.jumpHeight)} m at the top of the arc`
     : '';
@@ -311,7 +312,7 @@ function bodyBlock(mine, f, kit, fixtureTag) {
   acceleration        ${q(lbl('accel'), f.accel)} m/s^2   (so ${q(lbl('maxSpeed'), f.maxSpeed)} m/s is reached in ${q(lbl('timeToTopSpeed'), f.maxSpeed / f.accel)} s)
   turn rate           ${q(lbl('turnRate'), f.turnRate)} rad/s  (a half turn takes ${q(lbl('halfTurnSeconds'), Math.PI / f.turnRate)} s)
   mass                ${q(lbl('mass'), f.mass)}        (the heavier body yields less when they collide)${hop}
-  skills              ${kit ? Object.keys(kit).join(', ') : skillsOf(fixtureTag).join(', ')}
+  skills              ${kit ? Object.keys(kit).join(', ') : skillsOf(referenceTagOf(fixtureTag)).join(', ')}
 
 Movement direction and facing are independent: a body can walk in one direction
 while pointing in another. Facing turns toward what you asked for at the turn
@@ -323,7 +324,8 @@ rate above; it never snaps.`;
 // ---------------------------------------------------------------------------
 
 /**
- * Другая СТОРОНА арены. Только сторона: тег, под которым боец сидит в матче.
+ * Другая СТОРОНА арены. Только сторона — то есть цвет, под которым боец сидит
+ * в матче.
  *
  * Раньше эта функция отвечала на вопрос «кто напротив» в смысле вида, и по
  * ответу брались чужие характеристики. Теперь она нужна ровно для двух вещей:
@@ -331,7 +333,7 @@ rate above; it never snaps.`;
  * назвать `p.self.id`. Числа обоих тел приезжают телосложениями и к стороне
  * отношения не имеют.
  */
-const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
+const opponentOf = (id) => (id === 'blue' ? 'orange' : 'blue');
 
 /**
  * Одно умение эталонной фикстуры §1, с его настоящей геометрией.
@@ -455,19 +457,19 @@ function skillBlock(name, me, you, youLbl) {
  *
  * Фикстура остаётся ради шести эталонных мозгов в `brains/`, написанных против
  * имён `laser/blink/smash/charge/jump`. Это стенд замера, а не архетип: она
- * ничего не даёт существу и выбирается тегом стороны только тогда, когда
- * набора нет вовсе.
+ * ничего не даёт существу и выбирается по стороне (через мост
+ * `referenceTagOf`) только тогда, когда набора нет вовсе.
  */
 function skillsFor(tag, kit, mine, theirs) {
   if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit)}`;
-  return `YOUR SKILLS\n\n${skillsOf(tag).map((nm) => skillBlock(nm, mine, theirs, 'body.enemy')).join('\n\n')}`;
+  return `YOUR SKILLS\n\n${skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, mine, theirs, 'body.enemy')).join('\n\n')}`;
 }
 
 /** Умения соперника. Применяющий — он, цель — я, поэтому пара перевёрнута. */
 function enemySkillsFor(tag, enemyKit, theirs, mine) {
   const head = "YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n";
   if (enemyKit) return head + kitBlocks(enemyKit);
-  return head + skillsOf(tag).map((nm) => skillBlock(nm, theirs, mine, 'body.own')).join('\n\n');
+  return head + skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, theirs, mine, 'body.own')).join('\n\n');
 }
 
 /**
@@ -579,9 +581,10 @@ p.burn          fraction of your maximum hp the arena is burning off you per
 p.burnStartsIn  seconds until it does
 
 p.self
-  .id           'octopus' or 'gorilla' — which of the two slots of the arena
-                you are standing in. Two names for two sides; neither carries
-                a body, a skill set or a shape
+  .id           'blue' or 'orange' — which of the two slots of the arena
+                you are standing in. The two sides are told apart by colour
+                and nothing else; neither carries a body, a skill set or a
+                shape
   .x .z         position on the ground plane
   .y            height above the ground; > 0 only during a hop
   .vx .vz       velocity, m/s, knockback included
@@ -812,10 +815,11 @@ is the first character of the program.`;
 /**
  * Вся инструкция для одного бойца.
  *
- * @param {string} id  СТОРОНА арены: 'octopus' или 'gorilla'. Это не вид и не
- *   архетип — под этим именем боец сидит в матче, это же значение он прочитает
- *   в `p.self.id`, и по нему же выбирается эталонная фикстура §1, если набора
- *   нет. Никаких характеристик сторона не несёт.
+ * @param {string} id  СТОРОНА арены: 'blue' или 'orange'. Сторона — это ЦВЕТ,
+ *   а не вид и не архетип: под этим именем боец сидит в матче, это же значение
+ *   он прочитает в `p.self.id`, а эталонная фикстура §1 выбирается по нему
+ *   через мост `referenceTagOf` — и только если набора нет. Никаких
+ *   характеристик сторона не несёт.
  * @param {object} [kits]  { own, enemy } — compiled §8 kits. Passing them
  *   replaces the two skill sections and NOTHING else: §1 rests on six brains
  *   sharing one prompt, and a prompt that quietly changed shape would rewrite

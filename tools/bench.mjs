@@ -41,6 +41,10 @@ const TAGS = String(arg('tags', '')).length
   ? String(arg('tags')).split(',')
   : discover().filter((t) => /^(or-|sweep-)/.test(t));
 
+/* СТОРОНА -> ИМЯ ФАЙЛА эталонного мозга. Файлы §1 на диске зовутся
+   `octopus.js` и `gorilla.js`; стороны арены зовутся цветами. */
+const BRAIN_FILE = { blue: 'octopus', orange: 'gorilla' };
+
 const load = (id, tag) => {
   const p = join(BRAINS, tag, `${id}.js`);
   if (!existsSync(p)) throw new Error(`нет ${id} для тега "${tag}"`);
@@ -51,25 +55,27 @@ const load = (id, tag) => {
  * Одна пара, ROUNDS сидов. Возвращает список исходов (1 = победа замеряемого)
  * плюс то, ЧЕМ он победил: без этого таблица говорит «кто», но не «почему».
  */
-function pair(subjectId, subjectTag, refTag) {
-  const refId = subjectId === 'octopus' ? 'gorilla' : 'octopus';
+function pair(subject, subjectTag, refTag) {
+  const ref = subject === 'blue' ? 'orange' : 'blue';
+  /* Слева СТОРОНА арены (цвет), справа ИМЯ ФАЙЛА в `brains/<тег>/`. Две разные
+     вещи: сторона — это цвет, файл — это фикстура §1. */
   const brains = {
-    [subjectId]: load(subjectId, subjectTag),
-    [refId]: load(refId, refTag),
+    [subject]: load(BRAIN_FILE[subject], subjectTag),
+    [ref]: load(BRAIN_FILE[ref], refTag),
   };
   const wins = [];
   const acc = { dealt: 0, taken: 0, secs: 0, faults: 0, uses: {}, hits: {}, melee: 0, ticks: 0 };
   for (let r = 0; r < ROUNDS; r++) {
-    brains.octopus.reset();
-    brains.gorilla.reset();
+    brains.blue.reset();
+    brains.orange.reset();
     const { result, world } = runMatch(brains, { seed: 5000 + r });
-    wins.push(result.winner === subjectId ? 1 : 0);
-    acc.dealt += result[subjectId].damageDealt;
-    acc.taken += result[refId].damageDealt;
-    acc.faults += result[subjectId].faults;
+    wins.push(result.winner === subject ? 1 : 0);
+    acc.dealt += result[subject].damageDealt;
+    acc.taken += result[ref].damageDealt;
+    acc.faults += result[subject].faults;
     acc.secs += result.seconds;
-    for (const [k, v] of Object.entries(result[subjectId].uses)) acc.uses[k] = (acc.uses[k] || 0) + v;
-    for (const [k, v] of Object.entries(result[subjectId].hits)) acc.hits[k] = (acc.hits[k] || 0) + v;
+    for (const [k, v] of Object.entries(result[subject].uses)) acc.uses[k] = (acc.uses[k] || 0) + v;
+    for (const [k, v] of Object.entries(result[subject].hits)) acc.hits[k] = (acc.hits[k] || 0) + v;
     acc.melee += world.meleeTicks || 0;
     acc.ticks += world.tick;
   }
@@ -104,14 +110,14 @@ const rows = [];
 for (const tag of TAGS) {
   if (tag === REF) continue;
   const out = { tag };
-  for (const role of ['octopus', 'gorilla']) {
+  for (const side of ['blue', 'orange']) {
     try {
-      const { wins, acc } = pair(role, tag, REF);
+      const { wins, acc } = pair(side, tag, REF);
       const mean = wins.reduce((a, b) => a + b, 0) / wins.length;
       const bounds = ci(wins);
       const totalUses = Object.values(acc.uses).reduce((a, b) => a + b, 0);
       const totalHits = Object.values(acc.hits).reduce((a, b) => a + b, 0);
-      out[role] = {
+      out[side] = {
         win: mean, lo: bounds.lo, hi: bounds.hi, flip: coinflip(wins),
         dealt: acc.dealt / ROUNDS, taken: acc.taken / ROUNDS,
         secs: acc.secs / ROUNDS, faults: acc.faults / ROUNDS,
@@ -120,11 +126,11 @@ for (const tag of TAGS) {
         melee: acc.ticks ? acc.melee / acc.ticks : 0,
       };
     } catch (e) {
-      out[role] = { error: e.message };
+      out[side] = { error: e.message };
     }
   }
-  if (out.octopus?.win != null && out.gorilla?.win != null) {
-    out.score = (out.octopus.win + out.gorilla.win) / 2;
+  if (out.blue?.win != null && out.orange?.win != null) {
+    out.score = (out.blue.win + out.orange.win) / 2;
   }
   rows.push(out);
   if (!JSON_OUT) process.stderr.write('.');
@@ -137,21 +143,21 @@ if (JSON_OUT) {
 } else {
   process.stderr.write('\n\n');
   console.log(`эталон: ${REF} · ${ROUNDS} сидов на пару · ${rows.length} мозгов\n`);
-  console.log('тег'.padEnd(16) + 'счёт'.padStart(7) + 'осьминог'.padStart(18) + 'горилла'.padStart(18)
+  console.log('тег'.padEnd(16) + 'счёт'.padStart(7) + 'синяя'.padStart(18) + 'оранжевая'.padStart(18)
     + 'урон'.padStart(9) + 'сбоев'.padStart(8));
   console.log('-'.repeat(76));
   for (const r of rows) {
     const cell = (c) => c?.error ? '  ошибка'.padStart(18)
       : `${pct(c.win)} (${pct(c.lo)}–${pct(c.hi)})`.padStart(18);
-    const dmg = r.octopus?.dealt != null
-      ? ((r.octopus.dealt + r.gorilla.dealt) / 2).toFixed(0).padStart(9) : ''.padStart(9);
-    const f = r.octopus?.faults != null
-      ? ((r.octopus.faults + r.gorilla.faults) / 2).toFixed(1).padStart(8) : ''.padStart(8);
+    const dmg = r.blue?.dealt != null
+      ? ((r.blue.dealt + r.orange.dealt) / 2).toFixed(0).padStart(9) : ''.padStart(9);
+    const f = r.blue?.faults != null
+      ? ((r.blue.faults + r.orange.faults) / 2).toFixed(1).padStart(8) : ''.padStart(8);
     console.log(r.tag.padEnd(16) + (r.score != null ? pct(r.score) : '—').padStart(7)
-      + cell(r.octopus) + cell(r.gorilla) + dmg + f);
+      + cell(r.blue) + cell(r.orange) + dmg + f);
   }
   console.log('\nв скобках — интервал: куда уехала бы средняя, будь выборка другой.');
-  const flips = rows.flatMap((r) => [r.octopus?.flip, r.gorilla?.flip].filter((x) => x != null));
+  const flips = rows.flatMap((r) => [r.blue?.flip, r.orange?.flip].filter((x) => x != null));
   if (flips.length) {
     const avg = flips.reduce((a, b) => a + b, 0) / flips.length;
     console.log(`один случайный сид даёт исход, противоположный общей картине, в ${pct(avg)} случаев.`);

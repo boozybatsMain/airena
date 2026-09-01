@@ -158,13 +158,12 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
   const id = `m_${randomUUID().slice(0, 12)}`;
   const startedAt = now();
 
-  /* Стороны арены зовутся octopus/gorilla исторически — это ИМЕНА СТОРОН
-     (циан и оранж), а не виды. Существо занимает сторону по своему архетипу;
-     когда оба одного архетипа, второй занимает противоположную сторону и
-     дерётся её статами. Это записано здесь, потому что иначе следующий
-     читатель решит, что арена умеет только осьминога против гориллы. */
   /*
    * ── СТОРОНА НЕ ГОВОРИТ О СУЩЕСТВЕ НИЧЕГО ─────────────────────────────────
+   *
+   * Стороны зовутся `blue` и `orange`, и это ровно то, чем они являются:
+   * циан и оранж. Прежние имена называли ВИДЫ, а видов нет — между двумя
+   * существами нет ничего общего, кроме того, что оба существа.
    *
    * Здесь сторона выдавалась ПО ВИДУ: `a.archetype === 'gorilla' ? ...`. Пока
    * сторона несла характеристики, это означало, что вид решает, каким телом
@@ -180,8 +179,8 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
    * воспроизводится, а порядок сделал бы сторону свойством того, кто первым
    * попал в расписание.
    */
-  const aSlot = (seed % 2 === 0) ? 'octopus' : 'gorilla';
-  const bSlot = aSlot === 'octopus' ? 'gorilla' : 'octopus';
+  const aSlot = (seed % 2 === 0) ? 'blue' : 'orange';
+  const bSlot = aSlot === 'blue' ? 'orange' : 'blue';
 
   let result;
   try {
@@ -250,7 +249,9 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
     winnerSlot === null ? null : (winnerSlot === aSlot ? a.id : b.id),
     result.reason, result.seconds, constantsVersion,
     d.a, d.b, aAfter, bAfter,
-    JSON.stringify({ octopus: result.octopus, gorilla: result.gorilla, log: keepLog(result.log) }),
+    /* Имена сторон уходят в базу НЫНЕШНИЕ. Старые строки остаются как есть и
+       читаются через мост `sideResult` (`creatures.js`). */
+    JSON.stringify({ [aSlot]: result[aSlot], [bSlot]: result[bSlot], log: keepLog(result.log) }),
     /* `training` приходит от вызывающего: он один знает, был ли соперник
        ИЗМЕРЕННЫМ спарринг-партнёром или просто библиотечным. Пока не знает —
        старое поведение, чтобы не переписывать историю задним числом. */
@@ -686,8 +687,10 @@ export class ArenaLoop {
   library(c, busy = null) {
     if (c.fights === 0 && this.deps.trainingIds) {
       /* Тренировочный партнёр один на всех: видов нет, и «партнёр другого
-         вида» больше ничего не значит. Берём того, кто назначен первым. */
-      const id = this.deps.trainingIds.octopus || this.deps.trainingIds.gorilla;
+         вида» больше ничего не значит. Берём того, кто назначен первым.
+         Ключи здесь — стороны; замер (`tools/seed.mjs`) кладёт их в `kv` под
+         прежними именами, и `app.js` приводит их к нынешним на входе. */
+      const id = this.deps.trainingIds.blue || this.deps.trainingIds.orange;
       if (id && !(busy && busy.has(id))) {
         const row = this.db.prepare(`SELECT id FROM creature WHERE id = ? AND state = 'active'`).get(id);
         if (row) return row;

@@ -88,7 +88,9 @@ export const glyph = {
   install() {
     addEventListener('airena:match', (e) => {
       const m = e.detail;
-      for (const [side, key] of [['oct', 'octopus'], ['gor', 'gorilla']]) {
+      /* `oct`/`gor` — имена ПЛИТ в разметке, `blue`/`orange` — ключи СТОРОН
+         в кадре с сервера. Стороны — это цвета и ничего больше. */
+      for (const [side, key] of [['oct', 'blue'], ['gor', 'orange']]) {
         const g = document.querySelector(`.glyph[data-side="${side}"]`);
         if (!g) continue;
         const id = m.ids?.[key] || m.names?.[key] || key;

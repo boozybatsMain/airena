@@ -9,12 +9,13 @@
  * его увеличить до первого ожидания, поэтому к моменту, когда собиралось тело
  * первого бойца, его `mine` уже отставал — и готовое тело выбрасывалось.
  *
- * Страдала всегда одна сторона, та, что в цикле первая: осьминог. Замерено по
+ * Страдала всегда одна сторона, та, что в цикле первая, — синяя. Замерено по
  * последним 2000 матчам живой базы — существо с клон-телом занимало 1065 левых
- * слотов и 58 правых. То есть слева зритель видел не существо, а сток
- * `/bodies/octopus.js`, и жалоба основателя «2 осьминога очень часто вижу с
- * разными именами» описывала именно это: имена разные, тело одно, потому что
- * своё тело левому бойцу не доезжало НИКОГДА.
+ * слотов и 58 правых. То есть слева зритель видел не существо, а стоковый файл
+ * `/bodies/octopus.js` (запаска синей стороны), и жалоба основателя
+ * «2 осьминога очень часто вижу с разными именами» описывала именно это:
+ * видом он назвал эту запаску — имена разные, тело одно, потому что своё тело
+ * левому бойцу не доезжало НИКОГДА.
  *
  * Почему не поймали раньше. Ни один гейт не проверял ДВЕ СТОРОНЫ СРАЗУ:
  * `checkbody` меряет безопасность одного тела, `checkforgebody` — качество
@@ -53,7 +54,7 @@ console.log('\n  ГЕЙТ ГОНКИ ТЕЛ\n');
  * детерминированно, а не «иногда».
  */
 function makeSwap({ shared }) {
-  const epoch = shared ? { n: 0 } : { octopus: 0, gorilla: 0 };
+  const epoch = shared ? { n: 0 } : { blue: 0, orange: 0 };
   const bodies = {};
   const refOf = {};
   const bump = (id) => (shared ? ++epoch.n : ++epoch[id]);
@@ -76,24 +77,24 @@ function makeSwap({ shared }) {
 {
   const s = makeSwap({ shared: true });
   await Promise.all([
-    s.swap('octopus', 'body-oct', 20),
-    s.swap('gorilla', 'body-gor', 5),
+    s.swap('blue', 'body-blue', 20),
+    s.swap('orange', 'body-orange', 5),
   ]);
   ok('общий счётчик эпох ТЕРЯЕТ тело первого бойца (так и было)',
-    s.bodies.octopus === undefined && s.bodies.gorilla === 'body-gor',
-    `осьминог=${s.bodies.octopus ?? 'потерян'} горилла=${s.bodies.gorilla}`);
+    s.bodies.blue === undefined && s.bodies.orange === 'body-orange',
+    `синяя=${s.bodies.blue ?? 'потеряна'} оранжевая=${s.bodies.orange}`);
 }
 
 /* ── починенная версия обязана доносить оба тела ───────────────────────── */
 {
   const s = makeSwap({ shared: false });
   await Promise.all([
-    s.swap('octopus', 'body-oct', 20),
-    s.swap('gorilla', 'body-gor', 5),
+    s.swap('blue', 'body-blue', 20),
+    s.swap('orange', 'body-orange', 5),
   ]);
   ok('счётчик по стороне доносит ОБА тела',
-    s.bodies.octopus === 'body-oct' && s.bodies.gorilla === 'body-gor',
-    `осьминог=${s.bodies.octopus} горилла=${s.bodies.gorilla}`);
+    s.bodies.blue === 'body-blue' && s.bodies.orange === 'body-orange',
+    `синяя=${s.bodies.blue} оранжевая=${s.bodies.orange}`);
 }
 
 /* ── охрана от настоящей гонки ОДНОЙ стороны обязана сохраниться ───────── */
@@ -105,18 +106,18 @@ function makeSwap({ shared }) {
    */
   const s = makeSwap({ shared: false });
   await Promise.all([
-    s.swap('octopus', 'старое', 30),
-    s.swap('octopus', 'новое', 5),
+    s.swap('blue', 'старое', 30),
+    s.swap('blue', 'новое', 5),
   ]);
   ok('перезапрос ОДНОЙ стороны по-прежнему выигрывает у отставшего ответа',
-    s.bodies.octopus === 'новое', `осьминог=${s.bodies.octopus}`);
+    s.bodies.blue === 'новое', `синяя=${s.bodies.blue}`);
 }
 
 /* ── и то же самое на настоящем файле ──────────────────────────────────── */
 const main = readFileSync(join(ROOT, 'src/viewer/main.js'), 'utf8');
 
 ok('main.js: счётчик эпох заведён по стороне',
-  /const bodyEpoch = \{\s*octopus:\s*0\s*,\s*gorilla:\s*0\s*\}/.test(main),
+  /const bodyEpoch = \{\s*blue:\s*0\s*,\s*orange:\s*0\s*\}/.test(main),
   'иначе гонка вернётся ровно в том же виде');
 
 ok('main.js: обе точки счётчика читают сторону',
@@ -127,12 +128,12 @@ ok('main.js: скалярного счётчика не осталось',
 
 /*
  * Отдельно — обещание из шапки `swapBody`: «при любой ошибке на стороне
- * остаётся тело архетипа». Оно было враньём: `catch` гасил ссылку и оставлял
+ * остаётся её стоковое тело». Оно было враньём: `catch` гасил ссылку и оставлял
  * тело ПРЕДЫДУЩЕГО существа, то есть зритель видел чужое существо под новым
  * именем. Проверяется наличие отката, а не его текст.
  */
-ok('main.js: провал сборки откатывает сторону к телу архетипа',
-  /if \(ref !== id\) swapBody\(id, id, size\);/.test(main),
+ok('main.js: провал сборки откатывает сторону к её СТОКОВОМУ телу',
+  /if \(ref !== STOCK_BODY\[id\]\) swapBody\(id, STOCK_BODY\[id\], size\);/.test(main),
   'иначе на стороне остаётся тело предыдущего боя');
 
 
@@ -166,15 +167,15 @@ function makeCache({ keyHasSide }) {
    */
   const bad = makeCache({ keyHasSide: false });
   ok('ключ без стороны ОТДАЁТ ОДИН объект обеим сторонам (так и было)',
-    bad.load('gen:одно-тело', 'octopus', 1) === bad.load('gen:одно-тело', 'gorilla', 1));
+    bad.load('gen:одно-тело', 'blue', 1) === bad.load('gen:одно-тело', 'orange', 1));
 
   const good = makeCache({ keyHasSide: true });
-  const g1 = good.load('gen:одно-тело', 'octopus', 1);
-  const g2 = good.load('gen:одно-тело', 'gorilla', 1);
+  const g1 = good.load('gen:одно-тело', 'blue', 1);
+  const g2 = good.load('gen:одно-тело', 'orange', 1);
   ok('ключ со стороной даёт КАЖДОЙ стороне свой экземпляр', g1 !== g2,
     `собрано тел: ${good.built}`);
   ok('и кэш остаётся кэшем: повтор той же стороны не пересобирает',
-    good.load('gen:одно-тело', 'octopus', 1) === g1, `собрано тел: ${good.built}`);
+    good.load('gen:одно-тело', 'blue', 1) === g1, `собрано тел: ${good.built}`);
 }
 
 ok('main.js: ключ кэша тела включает сторону',

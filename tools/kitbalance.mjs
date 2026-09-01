@@ -136,16 +136,18 @@ async function league(entries, label) {
   const res = await runJobs(jobs, (d, n) => process.stdout.write(`\r  ${label}: ${d}/${n} боёв   `));
   const score = entries.map(() => ({ pts: 0, played: 0, errors: 0 }));
   for (let k = 0; k < res.length; k++) {
-    const [oct, gor] = meta[k];
-    /* Ошибка сборки принадлежит ОБОИМ участникам пары: сказать «не собрался
-       осьминог» там, где не собрался соперник, — это назвать пострадавшим
+    /* Воркер кладёт набор `a` на СИНЮЮ сторону, `b` — на оранжевую, и
+       победителя называет цветом: сторон арены две и обе — цвета. */
+    const [blue, orange] = meta[k];
+    /* Ошибка сборки принадлежит ОБОИМ участникам пары: сказать «не собралась
+       синяя» там, где не собрался соперник, — это назвать пострадавшим
        того, кто цел. Первая версия так и делала и печатала список из
        пятнадцати имён на одну сломанную сборку. */
-    if (res[k] === 'error') { score[oct].errors++; score[gor].errors++; continue; }
-    score[oct].played++; score[gor].played++;
-    if (res[k] === 'octopus') score[oct].pts += 1;
-    else if (res[k] === 'gorilla') score[gor].pts += 1;
-    else { score[oct].pts += 0.5; score[gor].pts += 0.5; }
+    if (res[k] === 'error') { score[blue].errors++; score[orange].errors++; continue; }
+    score[blue].played++; score[orange].played++;
+    if (res[k] === 'blue') score[blue].pts += 1;
+    else if (res[k] === 'orange') score[orange].pts += 1;
+    else { score[blue].pts += 0.5; score[orange].pts += 0.5; }
   }
   process.stdout.write(`\r  ${label}: ${jobs.length} боёв за ${Math.round((Date.now() - t) / 1000)} с      \n\n`);
   return entries.map((e, i) => ({
@@ -352,21 +354,24 @@ async function deliveries() {
 /**
  * Стартовые наборы: не грамматика, а то, что реально попадает игроку.
  *
- * Меряются НА СВОИХ ТЕЛАХ. У каждого пресета есть архетип (см. KIT_PRESETS),
- * и это часть замысла: ближний набор на лёгком дальнобойном теле не может
- * навязать ближний бой, и его винрейт тогда говорит про тело, а не про
- * набор. Пара с разными архетипами играет ровно одну ориентацию — ту, в
- * которой оба стоят на своём; пара с одинаковыми играет зеркально, как
- * обычно.
+ * Здесь стояла развилка ПО АРХЕТИПУ: у пресета читалось поле `archetype`, и
+ * пара с разными архетипами играла одну ориентацию вместо зеркальной. Ни
+ * архетипов, ни поля `archetype` у `KIT_PRESETS` больше нет — развилка была
+ * мёртвой (`arch` выходил одинаковым у всех, все пары и так играли зеркально),
+ * а подпись строки печатала вид, которого не существует. Убрано.
+ *
+ * Все пары играют ЗЕРКАЛЬНО: каждый набор стоит и на синей стороне, и на
+ * оранжевой. Стороны — это цвета, тела у обеих одинаковые, и зеркало снимает
+ * то немногое, что от стороны всё же зависит, — точку рождения и порядок
+ * мысли.
  */
 async function presets() {
   const names = Object.keys(KIT_PRESETS);
   const entries = names.map((n) => ({
     key: n,
-    label: `${n} (${KIT_PRESETS[n].archetype === 'gorilla' ? 'горилла' : 'осьминог'})`,
+    label: n,
     cost: KIT_PRESETS[n].kit.reduce((s, k) => s + costOf(k), 0),
     kit: KIT_PRESETS[n].kit,
-    arch: KIT_PRESETS[n].archetype || 'octopus',
   }));
 
   /*
@@ -395,16 +400,9 @@ async function presets() {
       const A = entries[i]; const B = entries[j];
       for (let s2 = 0; s2 < rounds; s2++) {
         const seed = 900 + s2 * 7919;
-        if (A.arch !== B.arch) {
-          /* Каждый на своём теле — ровно одна ориентация. */
-          const oct = A.arch === 'octopus' ? i : j;
-          const gor = A.arch === 'octopus' ? j : i;
-          jobs.push({ a: entries[oct].kit, b: entries[gor].kit, seed, sym: false });
-          meta.push([oct, gor]);
-        } else {
-          jobs.push({ a: A.kit, b: B.kit, seed, sym: false }); meta.push([i, j]);
-          jobs.push({ a: B.kit, b: A.kit, seed, sym: false }); meta.push([j, i]);
-        }
+        /* Зеркально: сперва A на синей, потом A на оранжевой. */
+        jobs.push({ a: A.kit, b: B.kit, seed, sym: false }); meta.push([i, j]);
+        jobs.push({ a: B.kit, b: A.kit, seed, sym: false }); meta.push([j, i]);
       }
     }
   }
@@ -412,14 +410,14 @@ async function presets() {
   const res = await runJobs(jobs, (d, n) => process.stdout.write(`\r  ПРЕСЕТЫ: ${d}/${n} боёв   `));
   const score = entries.map(() => ({ pts: 0, played: 0 }));
   for (let k = 0; k < res.length; k++) {
-    const [oct, gor] = meta[k];
+    const [blue, orange] = meta[k];
     if (res[k] === 'error') continue;
-    score[oct].played++; score[gor].played++;
-    if (res[k] === 'octopus') score[oct].pts += 1;
-    else if (res[k] === 'gorilla') score[gor].pts += 1;
-    else { score[oct].pts += 0.5; score[gor].pts += 0.5; }
+    score[blue].played++; score[orange].played++;
+    if (res[k] === 'blue') score[blue].pts += 1;
+    else if (res[k] === 'orange') score[orange].pts += 1;
+    else { score[blue].pts += 0.5; score[orange].pts += 0.5; }
   }
-  process.stdout.write(`\r  ПРЕСЕТЫ: ${jobs.length} боёв, каждый на своём теле      \n\n`);
+  process.stdout.write(`\r  ПРЕСЕТЫ: ${jobs.length} боёв, каждый набор на обеих сторонах      \n\n`);
   const rows = entries.map((e, i) => ({ ...e, rate: score[i].played ? score[i].pts / score[i].played : null }));
   rows.sort((x, y) => (y.rate ?? 0) - (x.rate ?? 0));
   console.log('  стартовые наборы — круговая лига\n');
@@ -457,8 +455,8 @@ async function selftest() {
   if (REAL) {
     /* На настоящих телах ничья не обязана быть: тела разные, и в этом смысл
        режима. Печатаем как показание, а не как приговор. */
-    const gor = r.filter((w) => w === 'gorilla').length;
-    console.log(`  прибор (настоящие тела): одинаковые наборы → горилла ${gor}/${r.length}, ничьих ${draws}`);
+    const orange = r.filter((w) => w === 'orange').length;
+    console.log(`  прибор (настоящие тела): одинаковые наборы → оранжевая ${orange}/${r.length}, ничьих ${draws}`);
     return true;
   }
   for (const [label, v] of per) {

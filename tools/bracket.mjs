@@ -253,8 +253,16 @@ function discover() {
  * written from — but "yes/no" is not enough to read a number by, so the moved
  * constants are counted from the table `brainforge` freezes beside each brain.
  */
-const liveHash = Object.fromEntries(['octopus', 'gorilla']
-  .map((id) => [id, createHash('sha256').update(brainPrompt(id)).digest('hex').slice(0, 12)]));
+/*
+ * ИМЯ ФАЙЛА -> СТОРОНА. Слева ключ, которым провенанс лежит на диске
+ * (`brains/<тег>/octopus.json` — фикстура §1), справа СТОРОНА арены, которой
+ * промпт адресуется теперь: стороны — это цвета. Хеш считается по стороне,
+ * а раскладывается по файлу, иначе сравнивать было бы не с чем.
+ */
+const SIDE_OF_FILE = { octopus: 'blue', gorilla: 'orange' };
+
+const liveHash = Object.fromEntries(Object.entries(SIDE_OF_FILE)
+  .map(([file, side]) => [file, createHash('sha256').update(brainPrompt(side)).digest('hex').slice(0, 12)]));
 
 function provenance(dir, tags) {
   /*
@@ -268,12 +276,14 @@ function provenance(dir, tags) {
   const moved = new Set();
   let told = 0, seen = 0, norec = 0, archetypes = 0;
   for (const tag of tags) {
-    for (const id of ['octopus', 'gorilla']) {
-      const p = join(dir, tag, `${id}.json`);
+    /* Перебираются ФАЙЛЫ провенанса, а не стороны: у популяции §1 два файла и
+       зовутся они так. */
+    for (const file of ['octopus', 'gorilla']) {
+      const p = join(dir, tag, `${file}.json`);
       if (!existsSync(p)) continue;
       seen++;
       const rec = JSON.parse(readFileSync(p, 'utf8'));
-      if (rec.promptHash === liveHash[id]) told++;
+      if (rec.promptHash === liveHash[file]) told++;
       if (!rec.constants) { norec++; continue; }
       /*
        * Популяция из мира архетипов помечается ОДНИМ фактом, а не четырнадцатью

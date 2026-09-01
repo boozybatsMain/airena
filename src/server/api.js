@@ -27,7 +27,7 @@ import { constantsVersion } from '../core/version.js';
 import { grammar, validateKit, costOf } from '../skills/registry.js';
 import { EVENTS, record as trackEvent, metrics } from './analytics.js';
 import { REST_MS, buildOf } from './arena-loop.js';
-import { card, history, refactor as applyRefactor, sinceSummary } from './creatures.js';
+import { card, history, refactor as applyRefactor, sideKey, sideResult, sinceSummary } from './creatures.js';
 import { viability } from './forge/viability.js';
 import { Router, cookies, fail, json, readJson, setCookie } from './http.js';
 import { ladderView, modelTable } from './ladder.js';
@@ -58,32 +58,46 @@ import { compileKit, readable } from '../skills/compile.js';
 const OPEN_BRAIN_TAGS = /^(u[1-6]|stub)$/;
 
 /**
- * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обоими именами сторон.
+ * СТОРОНА → ФАЙЛ ЭТАЛОННОГО МОЗГА. ЭТО ДВЕ РАЗНЫЕ ВЕЩИ, И ИМЕНА У НИХ РАЗНЫЕ.
+ *
+ * Стороны арены зовутся `blue` и `orange` — это цвета, и больше ничего.
+ * Эталонные мозги §1 лежат в `brains/<tag>/octopus.js` и `.../gorilla.js`, а
+ * их умения записаны в `REFERENCE_SKILLS` под теми же тегами. Это ФИКСТУРА
+ * замера: под этими именами напечатаны числа §1 и §16, и переименование
+ * сдвинуло бы не код, а опубликованный результат.
+ *
+ * Поэтому связь между стороной и фикстурой записана здесь явно, одной
+ * строкой, вместо того чтобы «работать сама» из-за совпадения имён — именно
+ * такое совпадение и позволяло годами читать сторону как вид.
+ */
+const REF_BRAIN = { blue: 'octopus', orange: 'gorilla' };
+
+/**
+ * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обеими сторонами.
  *
  * `FIGHTERS` больше нет — тела принадлежат существам, общей таблицы тел в мире
  * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
  * десятках мест: радиус кругов, конусов и теней, скорость поворота для
- * сглаживания, список чипов кулдаунов. `octopus` и `gorilla` там — ИМЕНА
- * СТОРОН (голубая и оранжевая), и их переименование идёт отдельным шагом.
+ * сглаживания, список чипов кулдаунов. Ключи там — СТОРОНЫ, голубая и
+ * оранжевая, и с переименованием они стали называться тем, чем являются.
  *
- * Пока оно не сделано, обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`.
- * Соврать одинаково обеим честнее двух других вариантов: уронить экран на
+ * Обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`. Соврать одинаково
+ * обеим честнее двух других вариантов: уронить экран на
  * `cfg.fighters[id].radius` от `undefined` или оставить одной из сторон числа
- * архетипа, которого больше не существует ни для кого.
+ * записи, которой больше не существует ни для кого.
  *
  * Настоящие числа бойца приезжают в кадрах матча, а не отсюда. Здесь остаётся
  * только то, по чему вьюер строит геометрию ДО начала боя.
  *
- * Мост уедет вместе с переименованием сторон. Такой же живёт в
- * `src/server/index.js` — дев-сервер отдаёт тому же вьюеру тот же
- * `/api/config`.
+ * Такой же мост живёт в `src/server/index.js` — дев-сервер отдаёт тому же
+ * вьюеру тот же `/api/config`.
  */
 const sideBridge = (side) => ({
   id: side,
   name: side,
   ...statsOf(DEFAULT_BUILD),
   /* Без `jump`: вьюер сам дописывает его к списку чипов. */
-  skills: skillsOf(side).filter((s) => s !== 'jump'),
+  skills: skillsOf(REF_BRAIN[side]).filter((s) => s !== 'jump'),
 });
 
 export const SIM_CONFIG = {
@@ -91,7 +105,7 @@ export const SIM_CONFIG = {
   /* Телосложение по умолчанию — то, что получает существо, о теле которого
      ничего не сказано. Не архетип: наследоваться от него некому. */
   defaultBuild: DEFAULT_BUILD,
-  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
+  fighters: { blue: sideBridge('blue'), orange: sideBridge('orange') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,
@@ -761,7 +775,9 @@ export function buildRouter(ctx) {
                           JOIN creature cb ON cb.id = m.b_id
                           WHERE m.id = ?`).get(req.params.id);
     if (!m) return fail(res, 404, 'no_match', 'такого боя нет');
-    const result = m.result_json ? JSON.parse(m.result_json) : null;
+    /* Строка матча может быть любой давности: слоты и ключи `result_json` в
+       старых записаны прежними именами сторон. Мост — в `creatures.js`. */
+    const result = m.result_json ? sideResult(JSON.parse(m.result_json)) : null;
     json(res, {
       id: m.id, seed: m.seed, at: m.ended_at, seconds: m.seconds,
       winner: m.winner, reason: m.reason, kind: m.kind,
@@ -783,7 +799,7 @@ export function buildRouter(ctx) {
        * существа в конкретном бою, а набор живёт на сервере.
        */
       skills: skillNames(db, m),
-      stats: result ? { octopus: result.octopus, gorilla: result.gorilla } : null,
+      stats: result ? { blue: result.blue, orange: result.orange } : null,
     });
   });
 
@@ -870,22 +886,29 @@ export function buildRouter(ctx) {
     r.get('/api/brains', (req, res) => {
       const dir = join(root, 'brains');
       if (!existsSync(dir)) return json(res, []);
+      /* Имена файлов — фикстурные (`REF_BRAIN`), ключи ответа — стороны. */
       const tags = readdirSync(dir).filter((d) => OPEN_BRAIN_TAGS.test(d)
-        && existsSync(join(dir, d, 'octopus.js')) && existsSync(join(dir, d, 'gorilla.js')));
-      json(res, tags.map((tag) => ({ tag, octopus: null, gorilla: null, has: { octopus: true, gorilla: true } })));
+        && existsSync(join(dir, d, `${REF_BRAIN.blue}.js`)) && existsSync(join(dir, d, `${REF_BRAIN.orange}.js`)));
+      json(res, tags.map((tag) => ({ tag, blue: null, orange: null, has: { blue: true, orange: true } })));
     });
   }
 
   // ── научный артефакт: шесть эталонных мозгов остаются читаемыми (F11) ──
   r.get('/api/source/:tag/:id', (req, res) => {
     const { tag, id } = req.params;
-    if (!OPEN_BRAIN_TAGS.test(tag) || !/^(octopus|gorilla)$/.test(id)) {
+    /* `id` приезжает СТОРОНОЙ (`blue`/`orange`), а файл фикстуры называется
+       иначе — см. `REF_BRAIN`. Прежние имена принимаются тоже: ссылки на
+       исходник эталона разошлись по документации и по репозиторию, и ломать
+       их переименованием сторон не за что. */
+    const file = Object.hasOwn(REF_BRAIN, id) ? REF_BRAIN[id]
+      : (Object.values(REF_BRAIN).includes(id) ? id : null);
+    if (!OPEN_BRAIN_TAGS.test(tag) || !file) {
       /* Не 404, а 403 с причиной: молчаливый 404 читается как «сломалось»,
          а здесь работает правило, и правило стоит назвать. */
       return fail(res, 403, 'brain_closed',
         'исходник мозга закрыт: открыты только шесть эталонных мозгов репозитория');
     }
-    const p = join(root, 'brains', tag, `${id}.js`);
+    const p = join(root, 'brains', tag, `${file}.js`);
     if (!existsSync(p)) return fail(res, 404, 'no_brain', 'такого мозга нет');
     res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
     res.end(readFileSync(p, 'utf8'));
@@ -895,7 +918,9 @@ export function buildRouter(ctx) {
 }
 
 const side = (m, k) => ({
-  id: m[`${k}_id`], name: m[`${k}_name`], slot: m[`${k}_slot`],
+  /* `slot` приводится к нынешнему имени: в старых строках он записан прежним,
+     и клиент, сравнивающий его с ключами кадра, промахнулся бы мимо обоих. */
+  id: m[`${k}_id`], name: m[`${k}_name`], slot: sideKey(m[`${k}_slot`]),
   model: m[`${k}_model`], kit: safe(m[`${k}_kit`]), tacticsCard: m[`${k}_card`],
   delta: Math.round(m[`${k}_delta`] * 10) / 10,
   ratingAfter: Math.round(m[`${k}_rating_after`] ?? 0),
@@ -937,7 +962,7 @@ export function skillNames(db, m) {
   for (const slot of ['a', 'b']) {
     const id = m[`${slot}_id`] ?? m[`${slot}Id`];
     if (!id) continue;
-    const side = m[`${slot}_slot`] ?? m[`${slot}Slot`] ?? slot;
+    const side = sideKey(m[`${slot}_slot`] ?? m[`${slot}Slot`] ?? slot);
     out.bySide[side] = { ...base };
     const row = db.prepare('SELECT kit_json, kit_active FROM creature WHERE id = ?').get(id);
     if (!row || !row.kit_active) continue;
@@ -1030,7 +1055,12 @@ export function beatsFrom(log, m) {
    * массив это законный ответ.
    */
   const out = [];
-  const name = (slot) => (slot === m.a_slot ? m.a_name : m.b_name);
+  /* ОБЕ стороны сравнения — через мост, и это не перестраховка: слот строки и
+     `who` строки лога могут прийти из разных эпох (строка старая, лог уже
+     переведён `sideResult`). Перевести одну сторону сравнения значило бы
+     сверять нынешнее имя со старым — совпадений ноль, и весь разбор боя молча
+     уехал бы на второго бойца. */
+  const name = (slot) => (sideKey(slot) === sideKey(m.a_slot) ? m.a_name : m.b_name);
   const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned', 'landed']);
   for (const e of log) {
     if (!e || typeof e !== 'object' || !KEEP.has(e.type)) continue;

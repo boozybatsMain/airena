@@ -233,8 +233,8 @@ export function onOver(o) {
   document.body.classList.add('decided');
   const win = o.winner;
   if (win) {
-    $(win === 'octopus' ? '#bar-oct' : '#bar-gor')?.classList.add('won');
-    $(win === 'octopus' ? '#bar-gor' : '#bar-oct')?.classList.add('dead');
+    $(win === 'blue' ? '#bar-oct' : '#bar-gor')?.classList.add('won');
+    $(win === 'blue' ? '#bar-gor' : '#bar-oct')?.classList.add('dead');
   }
   /* Один раз на бой, со временем от начала просмотра до конца боя. */
   if (watchedMatchId === o.matchId && watchStartedAt) {
@@ -319,12 +319,12 @@ function paintSides(m = watchedMatch) {
   const mineSide = m
     ? ('mine' in m ? m.mine
       : (m.ids && ctx?.state.session?.creature
-        ? (m.ids.octopus === ctx.state.session.creature.id ? 'octopus'
-          : (m.ids.gorilla === ctx.state.session.creature.id ? 'gorilla' : null))
+        ? (m.ids.blue === ctx.state.session.creature.id ? 'blue'
+          : (m.ids.orange === ctx.state.session.creature.id ? 'orange' : null))
         : null))
     : null;
 
-  for (const [side, key] of [['oct', 'octopus'], ['gor', 'gorilla']]) {
+  for (const [side, key] of [['oct', 'blue'], ['gor', 'orange']]) {
     const tag = document.querySelector(`.sidetag[data-side="${side}"]`);
     if (!tag) continue;
     clear(tag);
@@ -370,7 +370,7 @@ function paintWhose(m, mineSide) {
   if (mineSide) {
     el.classList.add('mine');
     el.appendChild(h('i.dot', {
-      style: { background: mineSide === 'gorilla' ? 'var(--gor)' : 'var(--oct)' },
+      style: { background: mineSide === 'orange' ? 'var(--gor)' : 'var(--oct)' },
     }));
     el.appendChild(document.createTextNode('твой бой'));
     return;

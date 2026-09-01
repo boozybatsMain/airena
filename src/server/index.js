@@ -48,6 +48,19 @@ const MOUNTS = [
   ['/', join(ROOT, 'src/viewer')],
 ];
 
+/**
+ * СТОРОНА → ФАЙЛ ЭТАЛОННОГО МОЗГА. ДВЕ РАЗНЫЕ ВЕЩИ С РАЗНЫМИ ИМЕНАМИ.
+ *
+ * Стороны арены зовутся `blue` и `orange`: это цвета, и больше ничего. А
+ * эталонные мозги §1 лежат на диске как `brains/<tag>/octopus.js` и
+ * `.../gorilla.js` — это ФИКСТУРА замера, под её именами напечатаны числа §1
+ * и §16, и переименование сдвинуло бы не код, а опубликованный результат.
+ *
+ * Совпадение имён кончилось, и связь записана явно. Ровно такая же живёт в
+ * `src/server/api.js`.
+ */
+const REF_BRAIN = { blue: 'octopus', orange: 'gorilla' };
+
 function brainTags() {
   const dir = join(ROOT, 'brains');
   if (!existsSync(dir)) return [];
@@ -55,7 +68,8 @@ function brainTags() {
     .filter((d) => statSync(join(dir, d)).isDirectory())
     // Both, not either: a half-generated directory in the dropdown is a
     // fight that fails to start for a reason the viewer cannot explain.
-    .filter((d) => existsSync(join(dir, d, 'octopus.js')) && existsSync(join(dir, d, 'gorilla.js')))
+    .filter((d) => existsSync(join(dir, d, `${REF_BRAIN.blue}.js`))
+      && existsSync(join(dir, d, `${REF_BRAIN.orange}.js`)))
     .sort();
 }
 
@@ -79,32 +93,32 @@ function brainMeta(id, tag) {
 }
 
 /**
- * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обоими именами сторон.
+ * ВРЕМЕННЫЙ МОСТ: одна и та же запись под обеими сторонами.
  *
  * `FIGHTERS` больше нет — тела принадлежат существам, общей таблицы тел в мире
  * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
  * десятках мест: радиус кругов, конусов и теней, скорость поворота для
- * сглаживания, список чипов кулдаунов. `octopus` и `gorilla` там — ИМЕНА
- * СТОРОН (голубая и оранжевая), и их переименование идёт отдельным шагом.
+ * сглаживания, список чипов кулдаунов. Ключи там — СТОРОНЫ, голубая и
+ * оранжевая, и с переименованием они стали называться тем, чем являются.
  *
- * Пока оно не сделано, обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`.
- * Соврать одинаково обеим честнее двух других вариантов: уронить экран на
+ * Обе стороны получают ОДНУ И ТУ ЖЕ копию `DEFAULT_BUILD`. Соврать одинаково
+ * обеим честнее двух других вариантов: уронить экран на
  * `cfg.fighters[id].radius` от `undefined` или оставить одной из сторон числа
- * архетипа, которого больше не существует ни для кого.
+ * записи, которой больше не существует ни для кого.
  *
  * Настоящие числа бойца приезжают в кадрах матча, а не отсюда. Здесь остаётся
  * только то, по чему вьюер строит геометрию ДО начала боя.
  *
- * Мост уедет вместе с переименованием сторон. Такой же живёт в
- * `src/server/api.js` (`SIM_CONFIG`) — продуктовый сервер отдаёт тому же
- * вьюеру тот же `/api/config`.
+ * Такой же мост живёт в `src/server/api.js` (`SIM_CONFIG`) — продуктовый
+ * сервер отдаёт тому же вьюеру тот же `/api/config`.
  */
 const sideBridge = (side) => ({
   id: side,
   name: side,
   ...statsOf(DEFAULT_BUILD),
-  /* Без `jump`: вьюер сам дописывает его к списку чипов. */
-  skills: skillsOf(side).filter((s) => s !== 'jump'),
+  /* Без `jump`: вьюер сам дописывает его к списку чипов. Умения берутся у
+     эталонной фикстуры §1, и её теги — не имена сторон (см. `REF_BRAIN`). */
+  skills: skillsOf(REF_BRAIN[side]).filter((s) => s !== 'jump'),
 });
 
 const CONFIG = {
@@ -112,7 +126,7 @@ const CONFIG = {
   /* Телосложение по умолчанию — то, что получает существо, о теле которого
      ничего не сказано. Не архетип: наследоваться от него некому. */
   defaultBuild: DEFAULT_BUILD,
-  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
+  fighters: { blue: sideBridge('blue'), orange: sideBridge('orange') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,
@@ -159,13 +173,15 @@ const server = createServer((req, res) => {
     catch { return json(res, null); }
   }
   if (path === '/api/brains') {
+    /* Ключи ответа — СТОРОНЫ (у вьюера по списку на сторону), а читаются под
+       ними файлы фикстуры со своими именами. */
     return json(res, brainTags().map((tag) => ({
       tag,
-      octopus: brainMeta('octopus', tag),
-      gorilla: brainMeta('gorilla', tag),
+      blue: brainMeta(REF_BRAIN.blue, tag),
+      orange: brainMeta(REF_BRAIN.orange, tag),
       has: {
-        octopus: existsSync(join(ROOT, 'brains', tag, 'octopus.js')),
-        gorilla: existsSync(join(ROOT, 'brains', tag, 'gorilla.js')),
+        blue: existsSync(join(ROOT, 'brains', tag, `${REF_BRAIN.blue}.js`)),
+        orange: existsSync(join(ROOT, 'brains', tag, `${REF_BRAIN.orange}.js`)),
       },
     })));
   }
@@ -176,7 +192,9 @@ const server = createServer((req, res) => {
     // costs one line to refuse.
     const NAME = /^[A-Za-z0-9_-]+$/;
     if (!NAME.test(tag || '') || !NAME.test(id || '')) { res.writeHead(400); return res.end('bad name'); }
-    try { return text(res, brainSource(id, tag)); }
+    /* Панель спрашивает исходник ПО СТОРОНЕ; на диске файл называется по
+       фикстуре. Прежнее имя тоже проходит: оно и есть имя файла. */
+    try { return text(res, brainSource(Object.hasOwn(REF_BRAIN, id) ? REF_BRAIN[id] : id, tag)); }
     catch (e) { res.writeHead(404); return res.end(e.message); }
   }
 
@@ -243,12 +261,14 @@ wss.on('connection', (ws) => {
     stop();
 
     const seed = Number.isFinite(msg.seed) ? msg.seed : Math.floor(Math.random() * 1e6);
-    const tags = { octopus: msg.octopus || 'v1', gorilla: msg.gorilla || 'v1' };
+    /* Тег выбирается НА СТОРОНУ, а файл внутри тега называется по фикстуре:
+       `blue` берёт `octopus.js`, `orange` — `gorilla.js` (см. `REF_BRAIN`). */
+    const tags = { blue: msg.blue || 'v1', orange: msg.orange || 'v1' };
     let brains;
     try {
       brains = {
-        octopus: compileBrain(brainSource('octopus', tags.octopus), 'octopus'),
-        gorilla: compileBrain(brainSource('gorilla', tags.gorilla), 'gorilla'),
+        blue: compileBrain(brainSource(REF_BRAIN.blue, tags.blue), 'blue'),
+        orange: compileBrain(brainSource(REF_BRAIN.orange, tags.orange), 'orange'),
       };
     } catch (err) {
       send({ type: 'error', message: err.message });
@@ -263,7 +283,7 @@ wss.on('connection', (ws) => {
       type: 'match',
       seed,
       tags,
-      meta: { octopus: brainMeta('octopus', tags.octopus), gorilla: brainMeta('gorilla', tags.gorilla) },
+      meta: { blue: brainMeta(REF_BRAIN.blue, tags.blue), orange: brainMeta(REF_BRAIN.orange, tags.orange) },
       spawns: world.spawns,
     });
     send({ type: 'frame', frame: snapshot(world) });
@@ -276,10 +296,10 @@ wss.on('connection', (ws) => {
           winner: world.winner,
           reason: world.reason,
           stats: {
-            octopus: world.fighters.octopus.stats,
-            gorilla: world.fighters.gorilla.stats,
+            blue: world.fighters.blue.stats,
+            orange: world.fighters.orange.stats,
           },
-          logs: { octopus: brains.octopus.logs.slice(-20), gorilla: brains.gorilla.logs.slice(-20) },
+          logs: { blue: brains.blue.logs.slice(-20), orange: brains.orange.logs.slice(-20) },
         });
         return;
       }

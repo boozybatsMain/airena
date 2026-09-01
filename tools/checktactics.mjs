@@ -329,7 +329,7 @@ export async function checkTactics({ show = false, log = () => {} } = {}) {
 
   const texts = new Map(); // segment text -> the fighter prompts it appears in
   const contexts = {};
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const text = brainPrompt(id);
     contexts[id] = text;
     const segs = segments(text);
@@ -363,7 +363,7 @@ export async function checkTactics({ show = false, log = () => {} } = {}) {
      * it is not in.
      */
     let spent = 0, batchNo = 0;
-    for (const id of ['octopus', 'gorilla']) {
+    for (const id of ['blue', 'orange']) {
       const mine = todo.filter((s) => s.where.includes(id) && !s.done);
       for (let i = 0; i < mine.length; i += BATCH) {
         const batch = mine.slice(i, i + BATCH);

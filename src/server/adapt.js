@@ -153,11 +153,14 @@ export function panel(db, creature, size = 6) {
  * ту сторону, которую диктовал вид, и вместе со стороной он получал её числа.
  * Видов нет, числа у существа свои, а прибор обязан быть одним и тем же от
  * замера к замеру: иначе два прогона одного мозга несравнимы.
+ *
+ * `blue` взята не потому, что она чем-то лучше: сторона — это цвет, и обе
+ * дают ровно одно и то же. Важно единственное — чтобы она не менялась.
  */
 export async function score(source, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
-  const mySlot = 'octopus';
-  const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+  const mySlot = 'blue';
+  const oppSlot = 'orange';
 
   /* Панель разбивается на группы по сопернику: изолят грузит мозги один раз
      и прогоняет пачку сидов, поэтому сто боёв стоят столько же переходов
@@ -222,8 +225,8 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
    * игры. `kitOf` — та же функция, которой набор превращается в умения перед
    * настоящим матчем, поэтому второго места, где это делается, не появляется.
    */
-  const mySlot = 'octopus';
-  const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+  const mySlot = 'blue';
+  const oppSlot = 'orange';
   const kits = { [mySlot]: kitOf(c), [oppSlot]: (o) => kitOf(o) };
   /* Телосложение — по той же причине, что и набор, и той же формой: своё
      тело объектом, тело соперника функцией от его строки. */
@@ -319,8 +322,8 @@ export async function duelBrains(db, candidateSource, incumbentSource, { rounds 
   const opponents = any.filter((r) => r.brain_source);
   /* Дуэль идёт теми же наборами, что настоящий бой: иначе рефактор
      сравнивает два мозга в игре, в которую ни один из них не играет. */
-  const mySlot = 'octopus';
-  const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+  const mySlot = 'blue';
+  const oppSlot = 'orange';
   const kits = { [mySlot]: kit, [oppSlot]: (o) => kitOf(o) };
   /* `null` здесь честнее единицы: тела нет — значит боец выйдет в
      `DEFAULT_BUILD`, ровно как его выпустит симуляция. */

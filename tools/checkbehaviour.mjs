@@ -13,7 +13,7 @@
  * This exists because that happened twice, in the two disclosures a fighter's
  * whole positioning is built on:
  *
- *   the laser said "range 24 m". The beam leaves 1.2 m ahead of the octopus's
+ *   the laser said "range 24 m". The beam leaves 1.2 m ahead of the shooter's
  *   centre, runs 24 m from there, carries 0.4 m of margin, and connects on the
  *   target's SURFACE — 26.85 m between centres. A brain that held station at
  *   25 m was standing inside a weapon it had been told could not reach it.
@@ -46,7 +46,8 @@ import { createWorld, step } from '../src/core/sim.js';
 import { tracePrompt } from '../src/brain/prompt.js';
 
 const TICK = 1 / TICK_HZ;
-const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
+/* Стороны арены — два цвета и больше ничего: ни вида, ни архетипа. */
+const opponentOf = (id) => (id === 'blue' ? 'orange' : 'blue');
 
 /**
  * What the prompt claims, by label.
@@ -57,7 +58,7 @@ const opponentOf = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
  */
 function claims() {
   const m = new Map();
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     for (const { label, text } of tracePrompt(id).records) m.set(label, Number(text));
   }
   return m;
@@ -273,17 +274,17 @@ const totalOf = (o) => (o.endT - o.startT) + TICK;
  * обязан мерить ровно то тело, по которому он стреляет, — иначе он однажды
  * будет искать границу конуса вокруг радиуса, которого на арене нет.
  */
-const { octopus: O, gorilla: G } = (() => {
+const { blue: BLUE, orange: ORANGE } = (() => {
   const w = stage();
-  return { octopus: w.fighters.octopus.def, gorilla: w.fighters.gorilla.def };
+  return { blue: w.fighters.blue.def, orange: w.fighters.orange.def };
 })();
 const EAST = Math.PI / 2; // heading convention: 0 faces +Z, increasing toward +X
-const touching = O.radius + G.radius;
+const touching = BLUE.radius + ORANGE.radius;
 
 // ── laser ──────────────────────────────────────────────────────────────────
 {
   const shoot = (d) => fire({
-    shooter: 'octopus', skill: 'laser',
+    shooter: 'blue', skill: 'laser',
     from: { x: -13.5, z: 0 }, heading: EAST, target: { x: -13.5 + d, z: 0 },
   });
   const reach = edgeOf((d) => shoot(d).hit, touching, 30, 1e-4);
@@ -298,7 +299,7 @@ const touching = O.radius + G.radius;
 // ── smash ──────────────────────────────────────────────────────────────────
 {
   const swing = (d, bearing) => fire({
-    shooter: 'gorilla', skill: 'smash',
+    shooter: 'orange', skill: 'smash',
     from: { x: 0, z: 0 }, heading: 0,
     target: { x: Math.sin(bearing) * d, z: Math.cos(bearing) * d },
   });
@@ -323,9 +324,9 @@ const touching = O.radius + G.radius;
 // ── charge ─────────────────────────────────────────────────────────────────
 {
   // Nothing in the lane: the dash has to run its full time to be measured, so
-  // the octopus is parked off to one side rather than in front.
+  // the target is parked off to one side rather than in front.
   const open = fire({
-    shooter: 'gorilla', skill: 'charge', hold: false,
+    shooter: 'orange', skill: 'charge', hold: false,
     from: { x: -16, z: 0 }, heading: EAST, target: { x: 0, z: 16 },
   });
   agree('charge wind-up', 'skills.charge.windup', windupOf(open), ROUND, 's');
@@ -336,7 +337,7 @@ const touching = O.radius + G.radius;
   agree('charge dash distance', 'skills.charge.dashDistance', open.travelled, SKILLS.charge.dashSpeed * TICK, 'm');
 
   const onto = fire({
-    shooter: 'gorilla', skill: 'charge', hold: false,
+    shooter: 'orange', skill: 'charge', hold: false,
     from: { x: -16, z: 0 }, heading: EAST, target: { x: -8, z: 0 },
   });
   agree('charge damage', 'skills.charge.damage', onto.damage, 1e-6, 'hp');
@@ -346,7 +347,7 @@ const touching = O.radius + G.radius;
 // ── blink ──────────────────────────────────────────────────────────────────
 {
   const away = fire({
-    shooter: 'octopus', skill: 'blink', hold: false,
+    shooter: 'blue', skill: 'blink', hold: false,
     from: { x: -10, z: 0 }, heading: EAST, target: { x: 10, z: 10 },
   });
   agree('blink distance', 'skills.blink.distance', away.blinked, 0.01, 'm');
@@ -358,7 +359,7 @@ const touching = O.radius + G.radius;
 // ── jump ───────────────────────────────────────────────────────────────────
 {
   const hop = fire({
-    shooter: 'octopus', skill: 'jump', hold: false,
+    shooter: 'blue', skill: 'jump', hold: false,
     from: { x: -10, z: 0 }, heading: EAST, target: { x: 10, z: 10 },
   });
   agree('jump wind-up', 'skills.jump.windup', windupOf(hop), ROUND, 's');

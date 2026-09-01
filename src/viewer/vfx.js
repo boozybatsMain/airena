@@ -1134,7 +1134,7 @@ export class Vfx {
       return true;
     }
     const list = Array.isArray(e.effects) && e.effects.length ? e.effects : ['damage'];
-    const at = ctx && ctx.bodyPos ? ctx.bodyPos(e.who === 'octopus' ? 'gorilla' : 'octopus') : null;
+    const at = ctx && ctx.bodyPos ? ctx.bodyPos(e.who === 'blue' ? 'orange' : 'blue') : null;
     const x = e.x; const z = e.z;
     let drew = false;
     for (const id of list) drew = this.atomImpact(id, x, z, P, e, at) || drew;

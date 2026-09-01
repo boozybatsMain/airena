@@ -11,7 +11,9 @@ import { MATCH_SECONDS, TICK_HZ } from './config.js';
 import { createWorld, snapshot, step } from './sim.js';
 
 /**
- * @param {object} brains { octopus, gorilla } — each `{ tick(p, api) }`
+ * @param {object} brains { blue, orange } — по мозгу на сторону арены, каждый
+ *   `{ tick(p, api) }`. Ключи — стороны, а не виды: кто именно синий, решает
+ *   сид матча, и ничего кроме цвета сторона не значит.
  * @param {object} opts
  *   seed      match seed
  *   record    keep every snapshot (a replay), off by default
@@ -41,7 +43,7 @@ export function runMatch(brains, { seed = 1, record = false, onFrame = null, obs
 }
 
 export function summarise(world, seed) {
-  const o = world.fighters.octopus, g = world.fighters.gorilla;
+  const blue = world.fighters.blue, orange = world.fighters.orange;
   const f = (x) => ({
     hp: Math.round(x.hp * 100) / 100,
     hpFrac: Math.round((x.hp / x.def.hp) * 1000) / 1000,
@@ -53,8 +55,8 @@ export function summarise(world, seed) {
     ticks: world.tick,
     winner: world.winner,
     reason: world.reason,
-    octopus: f(o),
-    gorilla: f(g),
+    blue: f(blue),
+    orange: f(orange),
     log: world.log,
   };
 }

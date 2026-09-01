@@ -41,10 +41,27 @@ import { fallbackName, sanitizeName } from '../creatures.js';
 import { callWithRepair, extractJson, LlmError } from './llm.js';
 import { fallbackBundle, REQUEST_BUDGET_USD } from './models.js';
 
-/** Спарринг-партнёр допуска — рукописный эталон противоположной стороны. */
+/**
+ * СТОРОНА КАНДИДАТА В КОНВЕЙЕРЕ — ОДНА И ТА ЖЕ ВСЕГДА.
+ *
+ * Мозг пишется под сторону (`p.self.id` в промпте) и на ней же проходит
+ * допуск. Какая из двух — безразлично: сторона это цвет, и обе дают ровно
+ * одно и то же. Важно, чтобы промпт и допуск называли ОДНУ, иначе модель
+ * пишет под одну сторону, а проверяют её на другой.
+ */
+const CANDIDATE_SIDE = 'blue';
+
+/**
+ * Спарринг-партнёр допуска — рукописный эталон противоположной стороны.
+ *
+ * Ключи — СТОРОНЫ кандидата, имена файлов — фикстура §1: рукописные эталоны
+ * лежат на диске под своими старыми именами, и переименовывать их значило бы
+ * сдвинуть замер, а не код. Пары перекрёстные: кандидат на голубой стороне
+ * дерётся против эталона, написанного для оранжевой.
+ */
 const SPARRING = {
-  octopus: readFileSync(new URL('../../../brains/stub/gorilla.js', import.meta.url), 'utf8'),
-  gorilla: readFileSync(new URL('../../../brains/stub/octopus.js', import.meta.url), 'utf8'),
+  blue: readFileSync(new URL('../../../brains/stub/gorilla.js', import.meta.url), 'utf8'),
+  orange: readFileSync(new URL('../../../brains/stub/octopus.js', import.meta.url), 'utf8'),
 };
 /*
  * Спарринг-партнёр ОДИН, а не по виду.
@@ -53,7 +70,7 @@ const SPARRING = {
  * известного соперника. Разные партнёры под разные виды означали два разных
  * прибора и два несравнимых результата; видов нет, прибор один.
  */
-const sparringFor = () => SPARRING.octopus;
+const sparringFor = () => SPARRING.blue;
 
 /*
  * Три стартовых кита — пресеты §10.5, они же и запасной вариант разбора.
@@ -535,7 +552,10 @@ export async function forgeBrain({
        * рассказали про `laser` и `smash`, а выдали `k1..k3` из грамматики,
        * получил бы ровно такой промпт.
        */
-      { role: 'user', content: `${brainPrompt('octopus', kit ? { own: kit, enemy: kit } : null, builds)}\n\n${SAY_RU}` },
+      /* Сторона в промпте — ТА ЖЕ, на которую мозг сядет в допуске и в бою:
+         модель читает её как `p.self.id`, и расхождение здесь было бы враньём
+         в самом первом абзаце. */
+      { role: 'user', content: `${brainPrompt(CANDIDATE_SIDE, kit ? { own: kit, enemy: kit } : null, builds)}\n\n${SAY_RU}` },
     ],
     accept: (t) => {
       try { return extractSource(t).length > 200; } catch { return false; }
@@ -935,7 +955,7 @@ export async function forgeCreature({
    * Порядок важен: допуск ДО записи в БД. Тогда «в базе нет ни одного
    * мозга, не прошедшего стены» — свойство схемы, а не привычка.
    */
-  const v = await admit(brain.source, 'octopus', { sparring: sparringFor(), kit: kitDefs });
+  const v = await admit(brain.source, CANDIDATE_SIDE, { sparring: sparringFor(), kit: kitDefs });
   if (!v.ok) {
     /* E5: отклонённая валидатором генерация бесплатна для игрока. Деньги,
        которые провайдер уже списал, в дневной бюджет попадают — это два
@@ -1005,9 +1025,11 @@ export async function forgeCreature({
     name: parsed.name,
     /* `gen:` подставит слой хранения, когда у существа появится id:
        ссылка на тело — это ссылка на существо (F2), и раньше id её не
-       существует. Здесь остаётся архетип как физика и как запасное тело. */
-    /* Ссылка на тело, когда своего нет. Вида нет — берём нейтральную
-       заглушку одну на всех; заменяется сгенерированным телом. */
+       существует. Здесь остаётся стоковое тело как запасное.
+       Ссылка на тело, когда своего нет. Вида нет — берём одну заглушку на
+       всех; заменяется сгенерированным телом. `octopus` тут — ИМЯ ФАЙЛА
+       `bodies/octopus.js`, а не сторона: стороны зовутся `blue` и `orange`,
+       а стоковые тела лежат на диске под прежними именами. */
     bodyRef: 'octopus',
     bodySource: bodyOut.ok ? bodyOut.source : null,
     bodySafe: bodyOut.ok ? bodyOut.safe : null,

@@ -59,10 +59,27 @@ const DB_FILE = String(arg('db', process.env.AIRENA_DB || join(ROOT, 'data/airen
  */
 export const TRAINING_BAND = [0.05, 0.42];
 
+/*
+ * ── ДВА СЛОВАРЯ, И ОНИ РАЗНЫЕ ──────────────────────────────────────────────
+ *
+ * СТОРОНА арены — это ЦВЕТ: `blue` и `orange`. Ими ключуются `runMatch`,
+ * `result`, `winner`, замер и запись `kv.training`.
+ *
+ * ИМЯ ФАЙЛА — это то, как на диске лежат эталонные мозги (`brains/<тег>/
+ * octopus.js`) и стоковые тела (`bodies/octopus.js`). Их переименование —
+ * отдельная и грязная операция, и здесь она не делается.
+ *
+ * Пока сторона и файл звались одинаково, одно значение делало обе работы.
+ * Теперь перевод стоит явно и ровно в двух таблицах.
+ */
+const SIDES = ['blue', 'orange'];
+const BRAIN_FILE = { blue: 'octopus', orange: 'gorilla' };
+const SIDE_OF_FILE = { octopus: 'blue', gorilla: 'orange' };
+
 /** Имена библиотечных бойцов. Латиницы в них нет — это продуктовая поверхность. */
 const NAMES = {
-  octopus: ['ЛИНЗА', 'ШПИЛЬ', 'ЧЕРТА', 'ИГЛА', 'ЗЕРНО', 'СТЫК', 'МЕТКА', 'ПРОСВЕТ', 'НИТЬ', 'СКОБА', 'ГРАНЬ', 'ЩЕЛЬ', 'ОСЬ', 'ЛУЧИНА', 'ПРОРЕЗЬ', 'КРОМКА'],
-  gorilla: ['ОБУХ', 'ГРУНТ', 'КЛИН', 'ВАЛ', 'КРЯЖ', 'ПРЕСС', 'КОЛОДА', 'ГЛЫБА', 'ТАРАН', 'КУВАЛДА', 'ОТВАЛ', 'СВАЯ', 'ЧУРБАН', 'БАБА', 'ЯДРО', 'КАТОК'],
+  blue: ['ЛИНЗА', 'ШПИЛЬ', 'ЧЕРТА', 'ИГЛА', 'ЗЕРНО', 'СТЫК', 'МЕТКА', 'ПРОСВЕТ', 'НИТЬ', 'СКОБА', 'ГРАНЬ', 'ЩЕЛЬ', 'ОСЬ', 'ЛУЧИНА', 'ПРОРЕЗЬ', 'КРОМКА'],
+  orange: ['ОБУХ', 'ГРУНТ', 'КЛИН', 'ВАЛ', 'КРЯЖ', 'ПРЕСС', 'КОЛОДА', 'ГЛЫБА', 'ТАРАН', 'КУВАЛДА', 'ОТВАЛ', 'СВАЯ', 'ЧУРБАН', 'БАБА', 'ЯДРО', 'КАТОК'],
 };
 const PRESETS = ['keeper', 'breaker', 'saboteur'];
 
@@ -136,21 +153,23 @@ function discover() {
       const dir = join(pool, tag);
       if (!statSync(dir).isDirectory()) continue;
       const label = pool.endsWith('brains') ? tag : `${pool.split('/').pop()}/${tag}`;
-      for (const slot of ['octopus', 'gorilla']) {
-        const js = join(dir, `${slot}.js`);
+      /* Перебираются ФАЙЛЫ популяции, а не стороны: их на диске ровно два и
+         зовутся они так. Сторона, на которую файл сядет, — рядом. */
+      for (const file of ['octopus', 'gorilla']) {
+        const js = join(dir, `${file}.js`);
         if (!existsSync(js)) continue;
         /* `stub` — рукописный эталон без .json; §7.3 называет его прямо, и он
            входит независимо от провенанса. Остальные — только текущие. */
-        if (tag !== 'stub' && !isCurrent(dir, slot)) continue;
-        found.push({ tag: label, dir, slot, file: js });
+        if (tag !== 'stub' && !isCurrent(dir, file)) continue;
+        found.push({ tag: label, dir, slot: SIDE_OF_FILE[file], brainFile: file, file: js });
       }
     }
   }
   return found;
 }
 
-const modelOf = (dir, slot, tag) => {
-  const p = join(dir, `${slot}.json`);
+const modelOf = (dir, brainFile, tag) => {
+  const p = join(dir, `${brainFile}.json`);
   if (!existsSync(p)) return tag.endsWith('stub') ? 'рукописный эталон' : 'эталон репозитория';
   try { return JSON.parse(readFileSync(p, 'utf8')).model || 'эталон репозитория'; }
   catch { return 'эталон репозитория'; }
@@ -161,7 +180,7 @@ const modelOf = (dir, slot, tag) => {
  * фиксированных сидах. Панель одна для всех — иначе меряется расписание.
  */
 function measure(pairs, rounds) {
-  const byId = { octopus: [], gorilla: [] };
+  const byId = { blue: [], orange: [] };
   for (const p of pairs) {
     try { byId[p.slot].push({ ...p, brain: compileBrain(readFileSync(p.file, 'utf8'), p.slot) }); }
     catch (e) { console.log(`  ! ${p.tag}/${p.slot}: ${e.message.slice(0, 60)}`); }
@@ -169,14 +188,14 @@ function measure(pairs, rounds) {
   /* Панель — шесть эталонных мозгов u1..u6: они и есть популяция, против
      которой печатались все цифры §1 и §16. */
   const panel = {
-    octopus: byId.octopus.filter((x) => /^u[1-6]$/.test(x.tag)),
-    gorilla: byId.gorilla.filter((x) => /^u[1-6]$/.test(x.tag)),
+    blue: byId.blue.filter((x) => /^u[1-6]$/.test(x.tag)),
+    orange: byId.orange.filter((x) => /^u[1-6]$/.test(x.tag)),
   };
-  if (!panel.octopus.length || !panel.gorilla.length) throw new Error('нет эталонной панели u1..u6');
+  if (!panel.blue.length || !panel.orange.length) throw new Error('нет эталонной панели u1..u6');
 
   const out = [];
-  for (const slot of ['octopus', 'gorilla']) {
-    const foes = panel[slot === 'octopus' ? 'gorilla' : 'octopus'];
+  for (const slot of SIDES) {
+    const foes = panel[slot === 'blue' ? 'orange' : 'blue'];
     for (const me of byId[slot]) {
       let wins = 0; let played = 0;
       for (let i = 0; i < rounds; i++) {
@@ -227,7 +246,7 @@ function main() {
   console.log(`  ${Math.round((Date.now() - t0) / 1000)} с, ${rows.length} пар замерено\n`);
 
   const training = {};
-  for (const slot of ['octopus', 'gorilla']) {
+  for (const slot of SIDES) {
     const band = rows.filter((r) => r.slot === slot
       && r.rate >= TRAINING_BAND[0] && r.rate <= TRAINING_BAND[1]);
     /* Берём ВЕРХ коридора: самый сильный из тех, кого новичок ещё обыгрывает.
@@ -236,7 +255,7 @@ function main() {
   }
 
   console.log('  тренировочный соперник по сторонам:');
-  for (const slot of ['octopus', 'gorilla']) {
+  for (const slot of SIDES) {
     const t = training[slot];
     console.log(`    ${slot.padEnd(9)} ${t ? `${t.tag} — ${(t.rate * 100).toFixed(1)}%` : 'НЕТ ПАРЫ В КОРИДОРЕ'}`);
   }
@@ -251,10 +270,10 @@ function main() {
    * скромный, и он честно помечен библиотечным.
    */
   const KIT_LIB = [
-    { name: 'ПРИЗМА', slot: 'octopus', preset: 'keeper' },
-    { name: 'ОБЖИГ', slot: 'octopus', preset: 'saboteur' },
-    { name: 'ДРОБИЛКА', slot: 'gorilla', preset: 'breaker' },
-    { name: 'ОБВАЛ', slot: 'gorilla', preset: 'saboteur' },
+    { name: 'ПРИЗМА', slot: 'blue', preset: 'keeper' },
+    { name: 'ОБЖИГ', slot: 'blue', preset: 'saboteur' },
+    { name: 'ДРОБИЛКА', slot: 'orange', preset: 'breaker' },
+    { name: 'ОБВАЛ', slot: 'orange', preset: 'saboteur' },
   ];
 
   const have = db.prepare('SELECT count(*) AS n FROM creature WHERE is_library = 1').get().n;
@@ -267,12 +286,12 @@ function main() {
   /* Библиотека должна ПОКРЫВАТЬ диапазон силы, а не быть его верхушкой:
      подбор соперника ищет по рейтингу, и лестница из одних чемпионов даёт
      новичку чемпиона. Берём равномерно по отсортированному списку. */
-  const pick = { octopus: spread(rows.filter((r) => r.slot === 'octopus'), Math.ceil(KEEP / 2)),
-    gorilla: spread(rows.filter((r) => r.slot === 'gorilla'), Math.floor(KEEP / 2)) };
+  const pick = { blue: spread(rows.filter((r) => r.slot === 'blue'), Math.ceil(KEEP / 2)),
+    orange: spread(rows.filter((r) => r.slot === 'orange'), Math.floor(KEEP / 2)) };
   const trainingIds = {};
 
   let made = 0;
-  for (const slot of ['octopus', 'gorilla']) {
+  for (const slot of SIDES) {
     const chosen = [...pick[slot]];
     /* Тренировочная пара обязана попасть в библиотеку, даже если равномерная
        выборка её не взяла. */
@@ -286,11 +305,13 @@ function main() {
       const c = createCreature(db, {
         ownerId: null,
         name,
-        archetype: slot,
-        bodyRef: slot,
+        /* `bodyRef` — ИМЯ ФАЙЛА стокового тела (`bodies/octopus.js`), а не
+           сторона: сторона зовётся цветом. Поле `archetype` отсюда убрано —
+           колонки нет, `create()` его не принимает, значение было мёртвым. */
+        bodyRef: BRAIN_FILE[slot],
         kit: KIT_PRESETS[PRESETS[i % PRESETS.length]].kit,
         brainSource: readFileSync(r.file, 'utf8'),
-        brainModel: modelOf(r.dir, slot, r.tag),
+        brainModel: modelOf(r.dir, r.brainFile, r.tag),
         constantsVersion: constantsVersion(),
         prompt: null,
         unfit: [],
@@ -318,10 +339,11 @@ function main() {
   }
 
   for (const [i, row] of KIT_LIB.entries()) {
-    const src = join(ROOT, 'brains/kit-stub', `${row.slot}.js`);
+    /* Слева сторона, справа имя файла — перевод обязателен в обеих строках. */
+    const src = join(ROOT, 'brains/kit-stub', `${BRAIN_FILE[row.slot]}.js`);
     if (!existsSync(src)) continue;
     createCreature(db, {
-      ownerId: null, name: row.name, archetype: row.slot, bodyRef: row.slot,
+      ownerId: null, name: row.name, bodyRef: BRAIN_FILE[row.slot],
       kit: KIT_PRESETS[row.preset].kit,
       brainSource: readFileSync(src, 'utf8'),
       brainModel: 'рукописный эталон',

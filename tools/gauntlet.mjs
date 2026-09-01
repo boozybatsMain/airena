@@ -59,8 +59,9 @@ async function against(kit, label) {
     const m = meta[i]; const r = out[i];
     if (r === 'error') continue;
     score[m.g].n++;
-    /* Кандидат — осьминог, когда flip=false, и горилла, когда true. */
-    const mine = m.flip ? 'gorilla' : 'octopus';
+    /* Кандидат — синяя сторона, когда flip=false, и оранжевая, когда true:
+       воркер кладёт набор `a` на синюю, `b` на оранжевую. */
+    const mine = m.flip ? 'orange' : 'blue';
     if (r === mine) score[m.g].w++;
     else if (r === null) score[m.g].w += 0.5;
   }

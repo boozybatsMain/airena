@@ -11,14 +11,14 @@
  *
  *  - `speed` is in BODY LENGTHS per second, not metres. The body is measured
  *    with a Box3 at load and the sim's metres are divided by it. Feed it metres
- *    and a 4.6 m/s octopus reads as a sprint at the clamp ceiling and never
+ *    and a body at 4.6 m/s reads as a sprint at the clamp ceiling and never
  *    varies again.
  *  - `stride` is a gait phase that must accumulate by DISTANCE TRAVELLED, not
  *    by time. Accumulate by time and the feet skate whenever the body is
  *    accelerating, decelerating, knocked back or held against a wall — which
  *    in this game is most of the time.
  *  - `stride` carries the SIGN of travel against facing, so a body backing away
- *    from the gorilla backpedals instead of moonwalking.
+ *    from its opponent backpedals instead of moonwalking.
  *
  * ── and the part that decides whether it looks fair ─────────────────────────
  *
@@ -358,6 +358,29 @@ function hiddenCount(eye, f, height, mark) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Сторона -> имя СТОКОВОГО ТЕЛА на диске.
+ *
+ * Стороны арены зовутся по цвету: `blue` и `orange`. Ничего, кроме цвета, за
+ * ними не стоит — видов больше нет, соперник любой, сторона раздаётся по сиду
+ * матча.
+ *
+ * А файлы стоковых тел на диске так и лежат: `bodies/octopus.js` и
+ * `bodies/gorilla.js`. Их назвали, когда стороны ещё были видами, и
+ * переименовать их — отдельная операция (их читают тулы, отчёты и замеры).
+ *
+ * Пока два имени не совпадают, перевод обязан быть ОДИН и явный. Раньше его
+ * не было вовсе: сторона подставлялась в `/bodies/<сторона>.js` напрямую и
+ * работала ровно потому, что называлась так же, как файл. Мест, где это
+ * происходило, три — стартовая загрузка, откат после несобравшегося тела и
+ * бой, в котором у существа своего тела нет, — и разойтись они могли по
+ * отдельности.
+ *
+ * Стоковое тело — это ЗАПАСКА СТОРОНЫ, а не её вид. Ни одно существо им не
+ * описывается: у существа тело своё.
+ */
+const STOCK_BODY = { blue: 'octopus', orange: 'gorilla' };
+
+/**
  * Load one art asset.
  *
  * This used to say "these files are two of ours and there is nothing here to
@@ -376,12 +399,14 @@ function hiddenCount(eye, f, height, mark) {
  * pose function wants speed in body lengths, and the only place that number
  * exists is the geometry.
  *
- * @param {string} ref  'octopus' | 'gorilla' | 'gen:<creature id>'
- * @param {string} kind which set of physics the art is dressed on
+ * @param {string} ref  a stock body FILE — `octopus` | `gorilla`, see
+ *   `STOCK_BODY` — or `gen:<creature id>` for a generated one
+ * @param {string} kind which SIDE the art is dressed on: `blue` | `orange`.
+ *   It picks the physics (`cfg.fighters[kind]`), nothing else.
  * @param {number} size the creature's own size (0.75…1.5). The collider grows
  *   with it, so the mesh has to grow with it too — a body normalised to the
- *   archetype's base radius would make a whale and a mosquito the same width
- *   and put the picture back at odds with the physics.
+ *   default build's base radius would make a whale and a mosquito the same
+ *   width and put the picture back at odds with the physics.
  */
 async function loadBody(ref, kind = ref, bodySize = 1) {
   const generated = ref.startsWith('gen:');
@@ -421,10 +446,10 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
    * The meshes, listed once, with their bounds precomputed.
    *
    * `spanY` runs this list every frame (see below) and `Box3.setFromObject`
-   * over the same tree costs 0.437 ms for the octopus and 0.326 ms for the
-   * gorilla — 0.76 ms a frame for both, 4.6% of a 60 Hz budget, to answer one
-   * scalar question. The flat list plus a min-Y-only scan answers it in 0.049
-   * and 0.039 ms: 0.088 ms a frame, 13x cheaper, and it is the same number.
+   * over the same tree costs 0.437 ms on `bodies/octopus.js` and 0.326 ms on
+   * `bodies/gorilla.js` — 0.76 ms a frame for both, 4.6% of a 60 Hz budget, to
+   * answer one scalar question. The flat list plus a min-Y-only scan answers it
+   * in 0.049 and 0.039 ms: 0.088 ms a frame, 13x cheaper, same number.
    */
   /*
    * СКЛЕЙКА НЕПОДВИЖНЫХ ЧАСТЕЙ — до того, как считается список мешей.
@@ -490,16 +515,17 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
  * The lowest point of this body's geometry right now, in world Y.
  *
  * The obvious thing — measure the bounding box once at rest and lift by that —
- * is what shipped first, and it buries a corpse: the gorilla's `die` pose
- * reaches 2.07 m below its own origin against a rest-measured 0.02 m. The
+ * is what shipped first, and it buries a corpse: `bodies/gorilla.js`'s `die`
+ * pose reaches 2.07 m below its own origin against a rest-measured 0.02 m. The
  * second thing that shipped was a table sampled at load, nine actions by
  * sixteen phases by eight speed bins, and it is wrong in a subtler way: it
  * samples `turn: 0, health: 1, grounded: true` and the fight is full of
- * turning, wounded, airborne bodies. Swept on these two files, the octopus's
- * own pose drops from -0.102 m at turn 0 to -0.492 m at turn ±1 and -0.567 m at
- * a quarter health — nearly half a metre the table never saw. Measured over 12
- * matches / 16 573 live fighter-frames, geometry was below the floor plane in
- * 35.7% of them, worst -0.544 m on a body 1.13 m tall.
+ * turning, wounded, airborne bodies. Swept on the two stock files,
+ * `bodies/octopus.js`'s own pose drops from -0.102 m at turn 0 to -0.492 m at
+ * turn ±1 and -0.567 m at a quarter health — nearly half a metre the table
+ * never saw. Measured over 12 matches / 16 573 live fighter-frames, geometry
+ * was below the floor plane in 35.7% of them, worst -0.544 m on a body 1.13 m
+ * tall.
  *
  * So the pose is measured after it is struck, not predicted from a key. There
  * is no key left to get wrong, and no interpolation between bins to smooth over
@@ -549,11 +575,13 @@ function spanY(body) {
  * Which way this body has to turn to end up lying on the ground.
  *
  * Both `die` poses are authored as a collapse about the rig's own hip, and at
- * phase 1 they end up standing on end: measured on these two files, the gorilla
- * spans 2.601 m in Y — taller than its own 2.079 m standing pose — with 2.056 m
- * of it below the floor, and the octopus 1.853 m against a 1.127 m standing
- * height. Anything that lifts that back out of the floor produces a corpse
- * TALLER than the living animal, propped on one limb, which is what shipped.
+ * phase 1 they end up standing on end. Measured on the two stock files (they
+ * are named below by their file names, not by anything in the game):
+ * `bodies/gorilla.js` spans 2.601 m in Y — taller than its own 2.079 m standing
+ * pose — with 2.056 m of it below the floor, and `bodies/octopus.js` 1.853 m
+ * against a 1.127 m standing height. Anything that lifts that back out of the
+ * floor produces a corpse TALLER than the living animal, propped on one limb,
+ * which is what shipped.
  *
  * So the fall is searched rather than typed: the death pose is struck once at
  * load, turned through every 15 degrees of body-local pitch and roll within
@@ -562,14 +590,15 @@ function spanY(body) {
  * gravity would have taken out of it. Ties inside 3 cm go to the shortest turn.
  *
  * Height alone was tried first and it cannot tell a corpse from a crouch: both
- * ±90 degrees of roll leave the gorilla exactly 1.777 m tall, but at -90 it
- * comes to rest propped on its own limbs with its mass at 0.960 m and at +90 it
- * is on its back with its mass at 0.817 m, and only one of those reads as dead.
- * What the search settles on: the gorilla 15/90, its mass falling from 1.398 m
- * to 0.706 m and its height from 2.601 m to 1.754 m against a 2.079 m standing
- * pose; the octopus 30/90, mass 1.074 m to 0.406 m, height 1.853 m to 1.034 m
- * against 1.127 m standing. Both corpses end up lower and wider than the living
- * animal, which is the whole point — the silhouette has to say it.
+ * ±90 degrees of roll leave `bodies/gorilla.js` exactly 1.777 m tall, but at
+ * -90 it comes to rest propped on its own limbs with its mass at 0.960 m and at
+ * +90 it is on its back with its mass at 0.817 m, and only one of those reads
+ * as dead. What the search settles on: `bodies/gorilla.js` 15/90, its mass
+ * falling from 1.398 m to 0.706 m and its height from 2.601 m to 1.754 m
+ * against a 2.079 m standing pose; `bodies/octopus.js` 30/90, mass 1.074 m to
+ * 0.406 m, height 1.853 m to 1.034 m against 1.127 m standing. Both corpses
+ * end up lower and wider than the living animal, which is the whole point —
+ * the silhouette has to say it.
  *
  * The rotation is applied in Y-X-Z order at draw time so pitch and roll stay in
  * the BODY's frame: in the default X-Y-Z the pitch would be a world-space tip
@@ -643,10 +672,10 @@ const bodies = {};
  *   Загрузка асинхронная, а боёв может прийти несколько подряд. Поэтому у
  *   каждой загрузки свой номер, и опоздавшая не затирает актуальную.
  *
- *   Падение НЕ фатально: при любой ошибке на стороне остаётся тело
- *   архетипа. Существо будет выглядеть не собой — но бой будет виден, и
- *   это несравнимо лучше пустой сцены. Причина уходит в консоль и в
- *   `airena:bodyfail`, чтобы отказ был заметен, а не проглочен.
+ *   Падение НЕ фатально: при любой ошибке на стороне остаётся СТОКОВОЕ
+ *   тело стороны (`STOCK_BODY`). Существо будет выглядеть не собой — но бой
+ *   будет виден, и это несравнимо лучше пустой сцены. Причина уходит в
+ *   консоль и в `airena:bodyfail`, чтобы отказ был заметен, а не проглочен.
  */
 /*
  * СЧЁТЧИК ЭПОХ — ПО СТОРОНЕ, А НЕ ОДИН НА ДВОИХ.
@@ -659,17 +688,18 @@ const bodies = {};
  * загрузок ОДНОЙ стороны, а срабатывала на двух сторонах одного боя.
  *
  * Пострадавшая сторона всегда одна и та же — та, что в цикле первая, то есть
- * осьминог. Замерено по последним 2000 матчам: существо с клон-телом заняло
+ * СИНЯЯ. Замерено по последним 2000 матчам: существо с клон-телом заняло
  * 1065 левых слотов и 58 правых — то есть слева зритель видел не тело
- * существа, а сток `/bodies/octopus.js`. Отсюда и жалоба основателя: «2
- * осьминога очень часто вижу с разными именами». Имена разные, тело одно,
- * потому что своё тело левому бойцу не доезжало НИКОГДА.
+ * существа, а её запаску `/bodies/octopus.js`. Отсюда и жалоба основателя:
+ * «2 осьминога очень часто вижу с разными именами» — он назвал видом то, что
+ * было запаской синей стороны. Имена разные, тело одно, потому что своё тело
+ * левому бойцу не доезжало НИКОГДА.
  *
  * Хуже всего было то, что дефект самозакрепляющийся: `bodyRefOf[id]` пишется
  * ДО загрузки, поэтому повторный вызов с той же ссылкой выходил на первой
  * строке, и второго шанса у стороны не было до конца боя.
  */
-const bodyEpoch = { octopus: 0, gorilla: 0 };
+const bodyEpoch = { blue: 0, orange: 0 };
 const bodyRefOf = {};
 
 /**
@@ -707,12 +737,13 @@ async function bodyFor(ref, kind, size = 1) {
    * Ключ был `ref@size`, без стороны, и ломал сразу две вещи.
    *
    * Первая: масштаб тела считается ПО СТОРОНЕ — `loadBody` берёт
-   * `cfg.fighters[kind].radius`, а у сторон он разный (1.0 против 1.25).
-   * Тело, собранное для левой стороны и отданное из кэша правой, приезжает
-   * на четверть меньше своего коллайдера.
+   * `cfg.fighters[kind].radius`, а он приезжает с сервера НА СТОРОНУ и
+   * сторонам вольно разойтись (когда-то было 1.0 против 1.25). Тело,
+   * собранное для синей стороны и отданное из кэша оранжевой, приезжало бы
+   * не по своему коллайдеру.
    *
    * Вторая и хуже: при одинаковой ссылке обе стороны получали ОДИН И ТОТ ЖЕ
-   * объект. Тогда `bodies.octopus` и `bodies.gorilla` — это одна ссылка, цикл
+   * объект. Тогда `bodies.blue` и `bodies.orange` — это одна ссылка, цикл
    * кадра ставит её сначала в точку левого бойца, потом в точку правого,
    * и на арене остаётся ОДНО тело: правое едет, левый выглядит бестелесным.
    * А одинаковая ссылка — не редкость: двадцать четыре существа в базе носят
@@ -792,19 +823,20 @@ async function swapBody(id, ref, size = 1) {
     console.warn(`тело ${ref} не собралось:`, e.message);
     dispatchEvent(new CustomEvent('airena:bodyfail', { detail: { side: id, ref, message: e.message } }));
     /*
-     * ОТКАТ К ТЕЛУ АРХЕТИПА, А НЕ «ОСТАВИТЬ КАК БЫЛО».
+     * ОТКАТ К СТОКОВОМУ ТЕЛУ СТОРОНЫ, А НЕ «ОСТАВИТЬ КАК БЫЛО».
      *
-     * Шапка обещает: при любой ошибке на стороне остаётся тело архетипа. На
-     * деле оставалось тело ПРЕДЫДУЩЕГО СУЩЕСТВА — то, которое стояло здесь в
-     * прошлом бою, — и обещание было враньём ровно в том случае, ради
+     * Шапка обещает: при любой ошибке на стороне остаётся её стоковое тело.
+     * На деле оставалось тело ПРЕДЫДУЩЕГО СУЩЕСТВА — то, которое стояло здесь
+     * в прошлом бою, — и обещание было враньём ровно в том случае, ради
      * которого писалось. Зритель видел чужое существо под новым именем и
      * никак не мог этого распознать.
      *
-     * Рекурсия ограничена условием `ref !== id`: тело архетипа запрашивается
-     * не более одного раза, и если не собралось уже оно, сцена остаётся с
-     * тем, что есть, — но это уже отказ самого вьюера, а не подмена.
+     * Рекурсия ограничена условием `ref !== STOCK_BODY[id]`: запаска
+     * запрашивается не более одного раза, и если не собралась уже она, сцена
+     * остаётся с тем, что есть, — но это уже отказ самого вьюера, а не
+     * подмена.
      */
-    if (ref !== id) swapBody(id, id, size);
+    if (ref !== STOCK_BODY[id]) swapBody(id, STOCK_BODY[id], size);
   }
 }
 
@@ -836,7 +868,7 @@ async function swapBody(id, ref, size = 1) {
  */
 window.__airenaBodies = () => ({
   refOf: { ...bodyRefOf },
-  sides: Object.fromEntries(['octopus', 'gorilla'].map((id) => {
+  sides: Object.fromEntries(['blue', 'orange'].map((id) => {
     const b = bodies[id];
     return [id, b ? {
       visible: b.root.visible,
@@ -862,7 +894,7 @@ window.__airenaBodies = () => ({
   frame: frames.length ? (() => {
     const f = frames[frames.length - 1];
     const one = (id) => (f[id] ? { x: +(+f[id].x).toFixed(2), z: +(+f[id].z).toFixed(2), hp: f[id].hp } : null);
-    return { t: f.t, keys: Object.keys(f), octopus: one('octopus'), gorilla: one('gorilla') };
+    return { t: f.t, keys: Object.keys(f), blue: one('blue'), orange: one('orange') };
   })() : null,
 });
 
@@ -886,23 +918,26 @@ function disposeBody(b) {
   });
 }
 
-for (const id of ['octopus', 'gorilla']) {
+/* Стороны открываются на своих запасках: до первого `match` неизвестно, кто
+   дерётся, а пустая сцена читается как сломанная страница. Имя файла берётся
+   из `STOCK_BODY` — сторона зовётся цветом, файл на диске зовётся иначе. */
+for (const id of ['blue', 'orange']) {
   try {
-    bodies[id] = await bodyFor(id, id);
+    bodies[id] = await bodyFor(STOCK_BODY[id], id);
     bodies[id].root.visible = true;
     /* Сцену приводит в соответствие `syncBodies`, а не этот цикл: одно место,
        которое знает, что в сцене должно лежать. */
     syncBodies();
-    bodyRefOf[id] = id;
+    bodyRefOf[id] = STOCK_BODY[id];
   } catch (e) {
-    fail(`body "${id}" failed to build: ${e.message}`);
+    fail(`body "${STOCK_BODY[id]}" failed to build for the ${id} side: ${e.message}`);
   }
 }
 
 /** Per-fighter animation state that lives between frames. */
 const anim = {
-  octopus: { stride: 0, turn: 0, lastX: null, lastZ: null, hitUntil: 0, lastHp: null },
-  gorilla: { stride: 0, turn: 0, lastX: null, lastZ: null, hitUntil: 0, lastHp: null },
+  blue: { stride: 0, turn: 0, lastX: null, lastZ: null, hitUntil: 0, lastHp: null },
+  orange: { stride: 0, turn: 0, lastX: null, lastZ: null, hitUntil: 0, lastHp: null },
 };
 
 // ---------------------------------------------------------------------------
@@ -913,7 +948,7 @@ const anim = {
  * Цвета сторон В СЦЕНЕ — светящиеся, потому что там за ними белая платформа,
  * тень и объём: свет читается как свет.
  */
-const COLOR = { octopus: 0x39c6d8, gorilla: 0xe0762b };
+const COLOR = { blue: 0x39c6d8, orange: 0xe0762b };
 
 /*
  * ── КАКОГО ЦВЕТА ОПАСНАЯ ЗОНА (D162, решение основателя 01.09) ────────────
@@ -932,11 +967,11 @@ const COLOR = { octopus: 0x39c6d8, gorilla: 0xe0762b };
  * всплывающей цифры урона. Это и есть «как это сделано везде»: одна палитра
  * на всю сторону, а не вторая палитра только для зон.
  *
- * ПОЧЕМУ НЕ «моё синее, чужое оранжевое» БУКВАЛЬНО. Потому что существо
- * игрока занимает сторону по своему архетипу и в половине боёв оно и есть
- * оранжевая сторона. Красить его зоны синими значило бы завести ВТОРУЮ
- * систему цветов, противоречащую первой: плита оранжевая, кольцо оранжевое,
- * урон оранжевый — а зона синяя. Человек читает экран целиком, и такой
+ * ПОЧЕМУ НЕ «моё синее, чужое оранжевое» БУКВАЛЬНО. Потому что сторона
+ * раздаётся по сиду матча и в половине боёв существо игрока И ЕСТЬ оранжевая
+ * сторона. Красить его зоны синими значило бы завести ВТОРУЮ систему цветов,
+ * противоречащую первой: плита оранжевая, кольцо оранжевое, урон оранжевый —
+ * а зона синяя. Человек читает экран целиком, и такой
  * разнобой хуже одинакового красного.
  *
  * ЧТО ОТВЕЧАЕТ НА ВОПРОС «ГДЕ МОЯ». Две вещи, и обе явные:
@@ -948,7 +983,7 @@ const COLOR = { octopus: 0x39c6d8, gorilla: 0xe0762b };
  */
 
 /**
- * Какая сторона принадлежит зрителю: 'octopus', 'gorilla' или null.
+ * Какая сторона принадлежит зрителю: 'blue', 'orange' или null.
  *
  * Приходит с сервера в сообщении `match` полем `mine` — считается ТАМ, потому
  * что там уже лежит id существа этого сокета. Клиент второй раз этого не
@@ -1030,21 +1065,32 @@ const STRIDE_PER_LENGTH = 0.85;
  * The obvious divisor is the measured AABB, and that is what shipped: it is the
  * one number in the file that is already known. It is also the wrong one. The
  * AABB measures the animal nose to tail, and no animal covers its own length in
- * a stride. Measured on these two files — 2.5 m for the gorilla, 2.0 m for the
- * octopus — top speed came out at 2.14 and 2.43 body lengths per second, while
- * `bodies/gorilla.js` opens its gallop blend at 2.6 and its sprint at 2.8 and
- * `bodies/octopus.js` opens its fast blend at 3.0. So the gallop was pinned at
- * exactly 0.00 for entire matches: the gorilla could only walk, and the chase —
- * the part of the fight the camera is built to hold — was shot at a stroll.
+ * a stride. Measured on the two stock files — 2.5 m for `bodies/gorilla.js`,
+ * 2.0 m for `bodies/octopus.js` — top speed came out at 2.14 and 2.43 body
+ * lengths per second, while `bodies/gorilla.js` opens its gallop blend at 2.6
+ * and its sprint at 2.8 and `bodies/octopus.js` opens its fast blend at 3.0.
+ * So the gallop was pinned at exactly 0.00 for entire matches: one of the two
+ * could only walk, and the chase — the part of the fight the camera is built
+ * to hold — was shot at a stroll.
  *
  * These are gait lengths judged against those bands instead, and they put top
- * speed at 3.96 bl/s (gorilla) and 3.34 (octopus): inside the gallop, into the
- * sprint, with the whole walk/run/gallop ladder reachable. Not read from the
- * geometry, because what one stride covers is a property of how the animal is
- * animated, not of how long it is. `stride` keeps the measured length above —
- * that sets cadence, which was judged by eye and is right.
+ * speed at 3.96 and 3.34 bl/s: inside the gallop, into the sprint, with the
+ * whole walk/run/gallop ladder reachable. Not read from the geometry, because
+ * what one stride covers is a property of how the animal is animated, not of
+ * how long it is. `stride` keeps the measured length above — that sets
+ * cadence, which was judged by eye and is right.
+ *
+ * ── КЛЮЧ ЗДЕСЬ — СТОРОНА, И ЭТО НАДО СКАЗАТЬ ВСЛУХ ────────────────────────
+ *
+ * Числа снимались с двух стоковых тел, а таблица индексируется СТОРОНОЙ.
+ * Пока сторона и тело назывались одинаково, разницы было не видно; теперь
+ * видно: сгенерированное тело получает то число, которое несёт его сторона, а
+ * не то, которое сняли бы с него самого. Это приближение, и оно осознанное —
+ * длина шага у чужого тела ниоткуда не читается, а промах в этом множителе
+ * стоит темпа ног, а не правильности боя. Настоящий ответ — просить длину шага
+ * у самого тела; до тех пор здесь стоят два разумных числа на две стороны.
  */
-const GAIT_LENGTH = { octopus: 1.45, gorilla: 1.35 };
+const GAIT_LENGTH = { blue: 1.45, orange: 1.35 };
 
 const fxPool = [];
 
@@ -1193,7 +1239,7 @@ function playFx(e) {
     // changing.
     camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
     floatDamage(e.x, e.z, e.amount, e.who);
-    const src = e.who === 'octopus' ? 'gorilla' : 'octopus';
+    const src = e.who === 'blue' ? 'orange' : 'blue';
     pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${esc(sideName[src])}</span> · ${esc(skillRu(e.skill, src))} · <b>${Math.round(Number(e.amount) * 100) / 100}</b>`, `${src}|${e.skill}|${e.amount}`);
   }
 }
@@ -1429,9 +1475,9 @@ function makeTelegraph(id) {
  * The lane was drawn at its nominal 12 m — dashSpeed * dashSeconds — and never
  * trimmed, while the simulation ends a dash the instant the swept body meets
  * anything solid. Over an even sweep of the floor the sim cuts 73.2% of dashes
- * short, by 5.23 m on average, so the one telegraph the gorilla fully commits
- * to was routinely promising reach straight through a block it would stop dead
- * against — and the octopus was being told to clear ground it never had to
+ * short, by 5.23 m on average, so the one telegraph a charger fully commits to
+ * was routinely promising reach straight through a block it would stop dead
+ * against — and the other side was being told to clear ground it never had to
  * leave. A telegraph that overstates is worse than none: it teaches a dodge
  * that is not needed and hides the one that is.
  *
@@ -1439,7 +1485,7 @@ function makeTelegraph(id) {
  * the same circle-against-box rule, the same walls — rather than solving a ray
  * against the geometry. A closed-form answer was written first and it was wrong
  * in the place it mattered: expanding a block by the body radius squares off
- * its corners, so a gorilla standing on the diagonal beside a block read as
+ * its corners, so a body standing on the diagonal beside a block read as
  * already touching it and the lane collapsed to nothing in 8.3% of the sweep.
  * Twenty-four steps against six boxes, only on the frames a charge is being
  * telegraphed, is not worth being clever about.
@@ -1498,7 +1544,7 @@ function beamReach(x, z, h, rOff) {
   return best * range;
 }
 
-const tele = { octopus: makeTelegraph('octopus'), gorilla: makeTelegraph('gorilla') };
+const tele = { blue: makeTelegraph('blue'), orange: makeTelegraph('orange') };
 
 /**
  * What a fighter looks like when there is something between it and the eye.
@@ -1508,9 +1554,9 @@ const tele = { octopus: makeTelegraph('octopus'), gorilla: makeTelegraph('gorill
  * cannot be cleared from any angle the framing rule is allowed to take, and a
  * chase spends its life against cover. Measured: completely invisible in 12.1%
  * of live fighter-frames before, 10.5% after the camera work alone. The audit
- * caught the octopus casting its laser through an entire 0.83 s charge from
- * behind a block — the mage-and-warrior beat this whole viewer exists to show,
- * played with the mage off screen — so the last 10% is not a rounding error.
+ * caught a fighter casting its laser through an entire 0.83 s charge from
+ * behind a block — the kiter-and-chaser beat this whole viewer exists to show,
+ * played with the kiter off screen — so the last 10% is not a rounding error.
  *
  * Two answers, in this order. The occluders between eye and body fade (their
  * edge wireframes stay, so the cover is still legible), and a silhouette drawn
@@ -1554,7 +1600,7 @@ function makeGhost(id) {
   return { g, bodyMat, ringMat, on: 0 };
 }
 
-const ghosts = { octopus: makeGhost('octopus'), gorilla: makeGhost('gorilla') };
+const ghosts = { blue: makeGhost('blue'), orange: makeGhost('orange') };
 
 /**
  * Fade whatever is in the way, and show the silhouette while it is still there.
@@ -1568,7 +1614,7 @@ const ghosts = { octopus: makeGhost('octopus'), gorilla: makeGhost('gorilla') };
  */
 function updateOcclusion(view, dt) {
   for (const o of SOLIDS) o.want = 1;
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const v = view[id];
     const gh = ghosts[id];
     const body = bodies[id];
@@ -1585,7 +1631,7 @@ function updateOcclusion(view, dt) {
       // the one shape on screen still claiming the loser is on its feet
       gh.bodyMat.opacity = v.alive ? GHOST_BODY * gh.on : 0;
       gh.ringMat.opacity = GHOST_RING * gh.on;
-      // white while the blink i-frames are up, so the one moment the octopus is
+      // white while the blink i-frames are up, so the one moment a fighter is
       // untouchable still reads as untouchable when it happens behind a wall
       gh.bodyMat.color.setHex(v.inv ? 0xffffff : COLOR[id]);
       gh.ringMat.color.setHex(v.inv ? 0xffffff : COLOR[id]);
@@ -1608,7 +1654,9 @@ function updateOcclusion(view, dt) {
  * the simulation uses: heading 0 is +Z and heading PI/2 is +X.
  */
 (function checkTelegraphOrientation() {
-  const t = tele.gorilla;
+  /* Какая именно сторона — не важно: обе группы собраны одним и тем же
+     `makeTelegraph`, и проверяется здесь его геометрия, а не сторона. */
+  const t = tele.orange;
   const probe = new THREE.Object3D();
   probe.position.set(0, 1, 0); // the +Y axis of the flat geometries, before rotation
   t.cone.add(probe);
@@ -1747,7 +1795,7 @@ function updateTelegraph(id, v, view = null) {
       t.cone.visible = false;
       t.lane.visible = false;
       t.disc.visible = true;
-      const you = view && view[id === 'octopus' ? 'gorilla' : 'octopus'];
+      const you = view && view[id === 'blue' ? 'orange' : 'blue'];
       const toEnemy = you ? Math.hypot(you.x - v.x, you.z - v.z) : reach;
       const at = Math.min(reach || kd.range || 12, toEnemy);
       /*
@@ -1873,18 +1921,21 @@ function updateTelegraph(id, v, view = null) {
 
 const hud = $('#hud');
 const feed = $('#feed');
+/* Ключ — СТОРОНА (цвет). Идентификаторы в разметке остались `-oct`/`-gor`:
+   это имена узлов и CSS-переменных, их читают `index.html`, `hud-skin.js` и
+   продуктовые стили, и вида они уже не называют. Перевод один и здесь. */
 const bars = {
-  octopus: { wrap: $('#bar-oct'), fill: $('#bar-oct .hp > i'), label: $('#bar-oct .hp > b'), cds: $('#bar-oct .cds'), meta: $('#meta-oct') },
-  gorilla: { wrap: $('#bar-gor'), fill: $('#bar-gor .hp > i'), label: $('#bar-gor .hp > b'), cds: $('#bar-gor .cds'), meta: $('#meta-gor') },
+  blue: { wrap: $('#bar-oct'), fill: $('#bar-oct .hp > i'), label: $('#bar-oct .hp > b'), cds: $('#bar-oct .cds'), meta: $('#meta-oct') },
+  orange: { wrap: $('#bar-gor'), fill: $('#bar-gor .hp > i'), label: $('#bar-gor .hp > b'), cds: $('#bar-gor .cds'), meta: $('#meta-gor') },
 };
 /**
  * Русские подписи умений и имена существ на плитах.
  *
  * Экран боя утверждён поэлементно (§10.6) — но утверждён он был как
- * инструмент ревьюера, на английском и с видами вместо существ. В продукте
- * на плите стоит имя существа игрока, а не название стороны, и подпись чипа
- * читается по-русски. Таблица тут, а не в клиенте, потому что чипы строит
- * этот файл.
+ * инструмент ревьюера, на английском и с названиями сторон вместо имён
+ * существ. В продукте на плите стоит имя существа игрока, а не название
+ * стороны, и подпись чипа читается по-русски. Таблица тут, а не в клиенте,
+ * потому что чипы строит этот файл.
  */
 const SKILL_RU = {
   laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок',
@@ -1898,7 +1949,7 @@ const SKILL_RU = {
  * не говорят ничего: «ПРИЗМА · k1 · 26» — это строка для отладки, а стоит
  * она в ленте, то есть на месте свидетельства.
  */
-const kitLabels = { octopus: null, gorilla: null };
+const kitLabels = { blue: null, orange: null };
 const skillRu = (id, who) => {
   const k = who && kitLabels[who] && kitLabels[who][id];
   if (k) return k.ru.toLowerCase();
@@ -1925,10 +1976,17 @@ const REASON_RU = {
   'double-ko': 'оба выбыли в один тик',
 };
 
-/** Имя существа на стороне — приходит в сообщении `match`. */
-const sideName = { octopus: 'осьминог', gorilla: 'горилла' };
+/**
+ * Имя существа на стороне — приходит в сообщении `match`.
+ *
+ * До него в ленте и на плашке победы стоит сама сторона, а сторона — это
+ * цвет и только цвет. Здесь стояли «осьминог» и «горилла»: названия видов,
+ * которых больше нет, — и на гостевом бое без имён зритель читал их как
+ * настоящих участников.
+ */
+const sideName = { blue: 'синий', orange: 'оранжевый' };
 
-const cdEls = { octopus: {}, gorilla: {} };
+const cdEls = { blue: {}, orange: {} };
 
 /**
  * Перестроить чипы кулдаунов под набор бойца.
@@ -1963,8 +2021,8 @@ function rebuildCds(id, kit) {
   if (window.__airenaSkin) window.__airenaSkin();
 }
 
-const sayEls = { octopus: null, gorilla: null };
-const lastSaid = { octopus: null, gorilla: null };
+const sayEls = { blue: null, orange: null };
+const lastSaid = { blue: null, orange: null };
 function setSay(id, textValue) {
   /*
    * Реплика дублируется в ленту.
@@ -1999,7 +2057,7 @@ function floatDamage(x, z, amount, who) {
   /* Округление на всякий случай и здесь: старые записанные бои в базе несут
      сырое число, а повтор обязан читаться так же, как живой бой. */
   d.textContent = `-${Math.round(Number(amount) * 100) / 100}`;
-  d.style.color = `#${COLOR[who === 'octopus' ? 'gorilla' : 'octopus'].toString(16).padStart(6, '0')}`;
+  d.style.color = `#${COLOR[who === 'blue' ? 'orange' : 'blue'].toString(16).padStart(6, '0')}`;
   hud.appendChild(d);
   const born = performance.now();
   const tick = () => {
@@ -2025,9 +2083,9 @@ function project(x, y, z) {
  *
  * Every laser does exactly 27 and every smash exactly 35, so a fight that goes
  * the distance prints the same string eight times in a row and the feed carries
- * nothing but ordering — eight consecutive "octopus laser 27" lines in the
- * audit shots. Counting the repeat instead keeps the ordering, says how many,
- * and leaves room in fourteen lines for the events that are not repeats.
+ * nothing but ordering — eight consecutive "blue laser 27" lines in the audit
+ * shots. Counting the repeat instead keeps the ordering, says how many, and
+ * leaves room in fourteen lines for the events that are not repeats.
  */
 /**
  * Экранирование для ленты боя.
@@ -2077,7 +2135,7 @@ function pushFeed(line, key) {
  * only sign it was happening at all was a thin line on the floor.
  */
 const plates = {};
-for (const id of ['octopus', 'gorilla']) {
+for (const id of ['blue', 'orange']) {
   const d = document.createElement('div');
   d.className = 'plate';
   d.style.color = `#${COLOR[id].toString(16).padStart(6, '0')}`;
@@ -2241,7 +2299,7 @@ function connect() {
       camState.snap = true;
       $('#banner').classList.remove('on');
       feed.innerHTML = '';
-      for (const id of ['octopus', 'gorilla']) {
+      for (const id of ['blue', 'orange']) {
         const meta = m.meta[id];
         /* Под именем — автор мозга, и всё. Теги, effort и длина исходника —
            дев-телеметрия; на продуктовой плите они занимают место, где должно
@@ -2250,13 +2308,14 @@ function connect() {
         anim[id].lastHp = null; anim[id].lastX = null;
         /*
          * The plate carries the CREATURE's name when the server sends one.
-         * `octopus` and `gorilla` are the names of the two SIDES — cyan and
-         * orange — not of the things fighting; once creatures belong to
-         * players, printing the side name on the plate is printing the wrong
-         * word in the most visible place on the screen.
+         * `blue` and `orange` are the names of the two SIDES, and they are
+         * exactly what they say — cyan and orange, nothing else. They are not
+         * names of the things fighting; once creatures belong to players,
+         * printing the side on the plate is printing the wrong word in the
+         * most visible place on the screen.
          */
         if (m.names && m.names[id]) {
-          const el = $(id === 'octopus' ? '#bar-oct .name' : '#bar-gor .name');
+          const el = $(id === 'blue' ? '#bar-oct .name' : '#bar-gor .name');
           if (el) el.textContent = m.names[id];
           sideName[id] = m.names[id];
         }
@@ -2272,8 +2331,10 @@ function connect() {
         kitLabels[id] = (m.kits && m.kits[id]) || null;
         rebuildCds(id, kitLabels[id]);
         /* Тело этого бойца. Приезжает вместе с именем и набором, потому что
-           это третья часть одного и того же ответа на вопрос «кто дерётся». */
-        swapBody(id, (m.bodies && m.bodies[id]) || id, m.sizes?.[id] ?? 1);
+           это третья часть одного и того же ответа на вопрос «кто дерётся».
+           Своего тела может не быть — тогда сторона встаёт на свою запаску, и
+           её имя на диске даёт `STOCK_BODY`, а не сама сторона. */
+        swapBody(id, (m.bodies && m.bodies[id]) || STOCK_BODY[id], m.sizes?.[id] ?? 1);
       }
       /*
        * ПОДПИСЬ ПОД БОЕМ ГОВОРИТ ПРО ЭТОТ БОЙ.
@@ -2287,7 +2348,7 @@ function connect() {
        */
       const byline = $('#clock .byline');
       if (byline) {
-        const models = ['octopus', 'gorilla'].map((id) => m.meta?.[id]?.model || '');
+        const models = ['blue', 'orange'].map((id) => m.meta?.[id]?.model || '');
         const handmade = models.filter((x) => /рукописн/i.test(x)).length;
         byline.textContent = handmade === 2
           ? 'Оба мозга здесь наши: это эталонные спарринг-партнёры.'
@@ -2336,7 +2397,7 @@ function connect() {
        * она по-прежнему доступна — в дев-режиме, в консоли.
        */
       if (new URLSearchParams(location.search).get('dev')) {
-        for (const id of ['octopus', 'gorilla']) {
+        for (const id of ['blue', 'orange']) {
           const s = m.stats[id];
           console.log(`${id}: faults ${s.faults}/${s.thinks} · uses`, s.uses);
         }
@@ -2408,10 +2469,15 @@ function startMatch() {
   const typed = seedBox && seedBox.value.trim() !== '' ? Number(seedBox.value) : NaN;
   const seed = Number.isFinite(typed) ? typed : (forcedSeed !== null ? forcedSeed : undefined);
   forcedSeed = null;
+  /* Ключи — СТОРОНЫ, значения — теги эталонных мозгов: «этот мозг дерётся за
+     синюю». Дев-сервер сам переводит сторону в имя файла фикстуры
+     (`brains/<тег>/<слот>.js`) — там, где он этот файл и открывает. Такой же
+     перевод, как `STOCK_BODY` для тел, и по той же причине: имя стороны и имя
+     файла на диске больше не совпадают. */
   ws.send(JSON.stringify({
     cmd: 'start',
-    octopus: $('#sel-oct').value,
-    gorilla: $('#sel-gor').value,
+    blue: $('#sel-oct').value,
+    orange: $('#sel-gor').value,
     speed: Number($('#sel-speed').value),
     ...(seed === undefined ? {} : { seed }),
   }));
@@ -2474,7 +2540,27 @@ const BRAIN_GROUPS = [
   ['hand-written probes', (t, id) => !t[id] && t.tag !== 'stub'],
   ['reference stub', (t) => t.tag === 'stub'],
 ];
-for (const [sel, id] of [[$('#sel-oct'), 'octopus'], [$('#sel-gor'), 'gorilla']]) {
+/**
+ * Сторона -> слот ЭТАЛОННОГО МОЗГА в `brains/<тег>/<слот>.js`.
+ *
+ * Это второй и последний перевод в файле, и он ровно того же рода, что
+ * `STOCK_BODY`: сторона зовётся цветом, а фикстура замера §1 лежит на диске
+ * под старыми именами и переименованию не подлежит — на этих шести мозгах
+ * измерены §1 и §16, и сдвинуть их имена значит сдвинуть замер.
+ *
+ * Нужен он ровно в ОДНОМ месте ниже, и это стоит сказать явно, иначе легко
+ * перевести не то. `/api/brains` уже отвечает ПО СТОРОНАМ: файлы фикстуры под
+ * ними читает сам сервер. А `/api/recommended` — это кусок
+ * `reports/tournament.json`, отданный как есть; его пишет
+ * `tools/tournament.mjs` и ключует ИМЕНАМИ ФАЙЛОВ, потому что отчёт о турнире
+ * — это отчёт о том, что лежит в `brains/`, а не о том, кто какого цвета.
+ * Вот там перевод и стоит.
+ *
+ * Дев-инструмент: в продукте ни этих селекторов, ни этих ручек нет.
+ */
+const REF_BRAIN_SLOT = { blue: 'octopus', orange: 'gorilla' };
+
+for (const [sel, id] of [[$('#sel-oct'), 'blue'], [$('#sel-gor'), 'orange']]) {
   for (const [label, belongs] of BRAIN_GROUPS) {
     const group = document.createElement('optgroup');
     group.label = label;
@@ -2524,8 +2610,11 @@ try {
     ? await (await fetch('/api/recommended')).json()
     : null;
   if (rec) {
-    if ([...$('#sel-oct').options].some((o) => o.value === rec.octopus)) $('#sel-oct').value = rec.octopus;
-    if ([...$('#sel-gor').options].some((o) => o.value === rec.gorilla)) $('#sel-gor').value = rec.gorilla;
+    /* `reports/tournament.json` пишет `tools/tournament.mjs` и ключует его
+       СЛОТАМИ ФИКСТУРЫ, а не сторонами: это отчёт о файлах в `brains/`. */
+    const o = rec[REF_BRAIN_SLOT.blue], g = rec[REF_BRAIN_SLOT.orange];
+    if ([...$('#sel-oct').options].some((x) => x.value === o)) $('#sel-oct').value = o;
+    if ([...$('#sel-gor').options].some((x) => x.value === g)) $('#sel-gor').value = g;
   }
 } catch { /* no tournament has been run; the first tag is fine */ }
 
@@ -2616,7 +2705,7 @@ function eyeHides(az, dist, height, look, f, id) {
  * because swapping sides mid-chase reverses the picture and reads as a cut.
  */
 function updateCamera(a, b, dt) {
-  const pair = [['octopus', a], ['gorilla', b]];
+  const pair = [['blue', a], ['orange', b]];
   const mid = new THREE.Vector3((a.x + b.x) / 2, 1.2, (a.z + b.z) / 2);
   const sep = Math.hypot(b.x - a.x, b.z - a.z);
   const snap = camState.snap;
@@ -2690,8 +2779,8 @@ function updateCamera(a, b, dt) {
   /*
    * Anchor the perpendicular as they close.
    *
-   * The bisector rule is rigidly tied to the pair's axis, and a kite IS the
-   * octopus circling the gorilla — so the axis sweeps a full turn and the shot
+   * The bisector rule is rigidly tied to the pair's axis, and a kite IS one
+   * fighter circling the other — so the axis sweeps a full turn and the shot
    * sweeps with it. Damping lags that, it does not stop it, and the result is a
    * camera that never settles during the one part of the fight worth watching.
    * Below about twelve metres the framing blends toward a fixed arena azimuth,
@@ -2801,13 +2890,13 @@ function updateCamera(a, b, dt) {
   /*
    * Pull back fast, close in slow.
    *
-   * A blink moves the octopus 7.5 m in one tick, so `sep` and `targetDist` step
+   * A blink moves a body 7.5 m in one tick, so `sep` and `targetDist` step
    * discontinuously while `camState.dist` is still easing. At a symmetric 2.6
    * the eye is roughly half a second behind the jump, and half a second is long
    * enough to push the fighter who just teleported past `FRAME_EDGE` -- measured
-   * on the long-match seeds, where the octopus reached |ndc| 0.992 and the
+   * on the long-match seeds, where the blinker reached |ndc| 0.992 and the
    * framing assertion fired. The teleport is also the single most watchable
-   * thing the octopus does, so losing the frame exactly there is the worst
+   * thing a fighter does, so losing the frame exactly there is the worst
    * possible time to lose it.
    *
    * Widening is the safe direction: it can only ever show more of the arena, so
@@ -2874,8 +2963,8 @@ function updateCamera(a, b, dt) {
    * what the fade and the silhouette are for; this loop only buys the cases an
    * orbit or a climb can actually win.
    */
-  const hiddenAt = (az, h) => eyeHides(az, camState.dist, h, camState.look, a, 'octopus')
-    + eyeHides(az, camState.dist, h, camState.look, b, 'gorilla');
+  const hiddenAt = (az, h) => eyeHides(az, camState.dist, h, camState.look, a, 'blue')
+    + eyeHides(az, camState.dist, h, camState.look, b, 'orange');
   const here = hiddenAt(camState.az, camState.height);
   const blocked = here > 0;
   let wantOrbit = 0;
@@ -3095,7 +3184,7 @@ function checkFraming(view, t) {
   // refreshes at draw — without this the assertion grades the previous frame's
   // camera against this frame's positions and reports phantoms during a snap.
   camera.updateMatrixWorld();
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const v = view[id];
     // The same rule the framing solves against: the loser counts once the fight
     // is decided, so "the banner is on empty floor" is also an assertion
@@ -3124,8 +3213,8 @@ function checkFraming(view, t) {
  *
  * The phase is remapped per skill so that the visual wind-up occupies the same
  * wall time as the mechanical one. That is the difference between a telegraph a
- * watcher can act on and a decoration: when the gorilla's arms are over its
- * head, the cone has not landed yet, and when they come down it has.
+ * watcher can act on and a decoration: while a body's arms are over its head
+ * the cone has not landed yet, and when they come down it has.
  */
 /**
  * Доставка -> действие тела.
@@ -3348,7 +3437,7 @@ function frame() {
     // decided" and "this body is a corpse" can never disagree by a frame.
     decided = !!fr.a.over;
     const view = {};
-    for (const id of ['octopus', 'gorilla']) {
+    for (const id of ['blue', 'orange']) {
       const a = fr.a[id], b = fr.b[id];
       const x = lerp(a.x, b.x, fr.u), z = lerp(a.z, b.z, fr.u), y = lerp(a.y, b.y, fr.u);
       const h = shortAngle(a.h, b.h, fr.u);
@@ -3359,7 +3448,7 @@ function frame() {
        кадр; читается только диагностикой (`__airenaBodies`). */
     lastView = view;
 
-    for (const id of ['octopus', 'gorilla']) {
+    for (const id of ['blue', 'orange']) {
       const body = bodies[id];
       const v = view[id];
       const st = anim[id];
@@ -3440,7 +3529,7 @@ function frame() {
        * A corpse has no cooldowns.
        *
        * This loop had no `alive` guard, so a dead fighter's chips went on
-       * ticking and re-lighting: a gorilla at 0/205 read back
+       * ticking and re-lighting: a dead fighter at 0/205 read back
        * ['smash|cd ready', 'charge 1.0|cd cool', 'jump|cd ready'] — a glowing
        * ready smash on a body the banner had already declared dead, with a
        * charge timer counting down in real time. Freeze the chips, grey the
@@ -3465,7 +3554,7 @@ function frame() {
       }
     }
 
-    updateCamera(view.octopus, view.gorilla, dt);
+    updateCamera(view.blue, view.orange, dt);
     // after the camera, because both answers are about THIS frame's eye
     updateOcclusion(view, dt);
     checkFraming(view, fr.a.t);

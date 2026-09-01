@@ -96,13 +96,13 @@ export async function enter(root, args, ctx) {
   }
 
   const nameOf = (slot) => (slot === m.a.slot ? m.a.name : m.b.name);
-  const isOr = (slot) => slot === 'gorilla';
+  const isOr = (slot) => slot === 'orange';
   const lines = [];
 
   for (const b of m.beats || []) {
     const who = b.who;
     const side = m.a.name === who ? m.a.slot : m.b.slot;
-    const or = side === 'gorilla';
+    const or = side === 'orange';
     if (b.type === 'say') {
       /* Кавычки ставит сам `<q>`, и добавлять свои значило удваивать их:
          на экране стояло `««eight arms, one beam»»`. Вид кавычек задан в

@@ -173,7 +173,7 @@ console.log('\n  ГЕЙТ VFX УРОВНЯ 1 §9.2\n');
    */
   const { playIr, resetBudget } = await import('../src/viewer/vfxir.js');
   let cases = 0; let drawn = 0; let over = 0; const errs = [];
-  const evt = { element: 'kinetic', x0: 0, z0: 0, x1: 4, z1: 3, who: 'octopus', skill: 'k1' };
+  const evt = { element: 'kinetic', x0: 0, z0: 0, x1: 4, z1: 3, who: 'blue', skill: 'k1' };
 
   for (const emitter of Object.keys(EMITTERS)) {
     for (const motion of Object.keys(MOTIONS)) {
@@ -238,7 +238,7 @@ console.log('\n  ГЕЙТ VFX УРОВНЯ 1 §9.2\n');
    * проверять это надо не «нарисовалось ли что-то», а «отличается ли».
    */
   const { playIr, resetBudget } = await import('../src/viewer/vfxir.js');
-  const evt = { element: 'kinetic', x0: 0, z0: 0, x1: 4, z1: 3, who: 'octopus', skill: 'k1' };
+  const evt = { element: 'kinetic', x0: 0, z0: 0, x1: 4, z1: 3, who: 'blue', skill: 'k1' };
 
   const run = (over) => {
     resetBudget();
@@ -467,14 +467,15 @@ console.log('\n  ГЕЙТ VFX УРОВНЯ 1 §9.2\n');
   });
 
   const R = join(ROOT, 'brains/kit-stub/');
+  /* Слева — СТОРОНА арены (цвет), справа — ИМЯ ФАЙЛА эталонного пилота §1. */
   const brains = {
-    octopus: compileBrain(rf(join(R, 'octopus.js'), 'utf8'), 'octopus'),
-    gorilla: compileBrain(rf(join(R, 'gorilla.js'), 'utf8'), 'gorilla'),
+    blue: compileBrain(rf(join(R, 'octopus.js'), 'utf8'), 'blue'),
+    orange: compileBrain(rf(join(R, 'gorilla.js'), 'utf8'), 'orange'),
   };
   /* `record: true` — иначе кадры не пишутся вовсе и гейт «пройдёт» на нуле
      событий. Гейт, который ничего не померил и сказал «держит», хуже
      отсутствующего: он закрывает вопрос, не ответив на него. */
-  const m = runMatch(brains, { seed: 11, record: true, kits: { octopus: kit.defs, gorilla: kit.defs } });
+  const m = runMatch(brains, { seed: 11, record: true, kits: { blue: kit.defs, orange: kit.defs } });
 
   const all = [];
   for (const fr of (m.frames || [])) for (const f of (fr.fx || [])) all.push({ ...f, t: f.t ?? fr.t });

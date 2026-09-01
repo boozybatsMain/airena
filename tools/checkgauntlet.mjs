@@ -85,7 +85,9 @@ for (let k = 0; k < out.length; k++) {
   if (r === 'error') continue;
   const cell = score[m.i][m.j];
   cell.n++;
-  const mine = m.flip ? 'gorilla' : 'octopus';
+  /* Воркер кладёт набор `a` на СИНЮЮ сторону, `b` — на оранжевую. Стороны —
+     это цвета, и `flip` меняет только то, на какой из них стоит кандидат. */
+  const mine = m.flip ? 'orange' : 'blue';
   if (r === mine) cell.w++;
   else if (r === null) cell.w += 0.5;
 }
@@ -132,7 +134,11 @@ ok('и не оторван от поля', BASELINE.bestMin - bestMin < 0.55,
  * игроку отвечает именно он.
  */
 for (const [name, preset] of Object.entries(KIT_PRESETS)) {
-  const v = await viability(preset.kit, preset.archetype || 'octopus');
+  /* Второй аргумент `viability` — мешок настроек, а не сторона. Здесь стояло
+     `preset.archetype || 'octopus'`: поля `archetype` у пресета давно нет, и
+     строка молча уезжала в деструктуризацию, где от неё оставались одни
+     умолчания. Умолчания и берём — явно. */
+  const v = await viability(preset.kit);
   ok(`стартовый набор «${name}» не объявлен дырой`, v.shape.verdict !== 'dominant',
     `${v.shape.verdict}, худший ${(v.shape.min * 100).toFixed(1)}%`);
 }

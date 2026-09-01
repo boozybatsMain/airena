@@ -21,10 +21,22 @@ import { runMatch } from '../core/match.js';
 import { THINK_TIMEOUT_MS } from '../core/config.js';
 import { readFileSync } from 'node:fs';
 
+/**
+ * СТОРОНА -> ИМЯ ФАЙЛА спарринг-партнёра.
+ *
+ * Стороны арены — это цвета, `blue` и `orange`. Файлы на диске зовутся
+ * `brains/stub/octopus.js` и `.../gorilla.js` — это фикстура §1, её имена
+ * напечатаны под замером, и переименование файлов здесь ничего не чинит.
+ * Пока сторона и файл звались одинаково, подстановка стороны в путь работала
+ * по совпадению; теперь совпадения нет, и перевод стоит один раз, здесь.
+ */
+const STUB_FILE = { blue: 'octopus', orange: 'gorilla' };
+
 /** The house opponent every candidate is smoke-tested against. */
-function sparringPartner(id) {
-  const url = new URL(`../../brains/stub/${id}.js`, import.meta.url);
-  return compileBrain(readFileSync(url, 'utf8'), `stub-${id}`);
+function sparringPartner(side) {
+  const file = Object.hasOwn(STUB_FILE, side) ? STUB_FILE[side] : side;
+  const url = new URL(`../../brains/stub/${file}.js`, import.meta.url);
+  return compileBrain(readFileSync(url, 'utf8'), `stub-${side}`);
 }
 
 export function validate(source, id, { seeds = [11, 22] } = {}) {
@@ -41,7 +53,8 @@ export function validate(source, id, { seeds = [11, 22] } = {}) {
     };
   }
 
-  const otherId = id === 'octopus' ? 'gorilla' : 'octopus';
+  /* Другая сторона арены. Сторон ровно две, и обе — цвета. */
+  const otherId = id === 'blue' ? 'orange' : 'blue';
   const runs = [];
   for (const seed of seeds) {
     const brains = { [id]: brain, [otherId]: sparringPartner(otherId) };

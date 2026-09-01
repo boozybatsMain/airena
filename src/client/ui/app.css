@@ -105,7 +105,7 @@ body.overlay #hud > * { pointer-events: none; }
 }
 
 /* «ТВОЁ» и «СЛЕДИШЬ» на плите — цвет берётся у СТОРОНЫ, а не у слова.
-   Базовый `.badge` в kit.css циановый; на плите гориллы это чужой цвет
+   Базовый `.badge` в kit.css циановый; на ОРАНЖЕВОЙ плите это чужой цвет
    ровно на том экране, весь смысл которого в том, что цвет = сторона. */
 .sidetag .badge { border-color: currentColor; color: var(--oct); }
 #bar-gor .sidetag .badge { color: var(--gor); }

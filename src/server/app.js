@@ -23,6 +23,7 @@ import { constantsVersion } from '../core/version.js';
 import { adaptOnce, duelBrains } from './adapt.js';
 import { buildRouter } from './api.js';
 import { ArenaLoop, REST_MS } from './arena-loop.js';
+import { sideKey, sideKeys, sideResult } from './creatures.js';
 import { openDb, kv as makeKv } from './db.js';
 import { buildCatalog, fallbackBundle } from './forge/models.js';
 import { cookies, fail, json, serveStatic, crossSiteRefused } from './http.js';
@@ -91,8 +92,13 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     constantsVersion: constantsVersion(),
     adapt: (d, id) => adaptOnce(d, id),   // async: цикл ждёт её через .catch
     /* Замеренная тренировочная пара по сторонам — её считает tools/seed.mjs.
-       Без неё первый бой новичка становится монетой (§16: 3.7% против 58.3%). */
-    trainingIds: kv.get('training', {}).ids || null,
+       Без неё первый бой новичка становится монетой (§16: 3.7% против 58.3%).
+       Ключи приводятся к нынешним именам сторон: запись в `kv` сделана до
+       переименования и лежит под старыми (мост — `sideKeys`). */
+    trainingIds: (() => {
+      const ids = kv.get('training', {}).ids;
+      return ids ? sideKeys(ids) : null;
+    })(),
     /* Замеренный винрейт пары (мозг, сторона) — тот, по которому партнёр и
        отобран. Экран показывает ЕГО, а не общее «слабее среднего»: у
        партнёра может быть 91% побед за всю жизнь против всей библиотеки, и
@@ -100,7 +106,9 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     trainingRates: (() => {
       const picked = kv.get('training', {}).picked || {};
       const out = {};
-      for (const [side, v] of Object.entries(picked)) if (v && typeof v.rate === 'number') out[side] = v.rate;
+      /* Тот же мост, что и у `trainingIds`: `picked` записан старыми именами
+         сторон, а спрашивают его нынешними. */
+      for (const [side, v] of Object.entries(picked)) if (v && typeof v.rate === 'number') out[sideKey(side)] = v.rate;
       return Object.keys(out).length ? out : null;
     })(),
   });
@@ -399,14 +407,25 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
         const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.b_id);
         if (!a || !b) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'участника боя больше нет' })); return; }
         live.open({
-          id: m.id, seed: m.seed, aSlot: m.a_slot, bSlot: m.b_slot,
+          /*
+           * СТРОКА МАТЧА ЧИТАЕТСЯ ЧЕРЕЗ МОСТ ИМЁН СТОРОН.
+           *
+           * Здесь единственное место, где повтор поднимает старую строку из
+           * базы, а дальше по ней идут изолят, метаданные трансляции и экран.
+           * В базе десятки тысяч строк со слотами `octopus`/`gorilla`; они там
+           * и останутся, поэтому имена приводятся к нынешним на входе, разом и
+           * для слотов, и для всех снимков, которые этими слотами ключуются.
+           * Перевести часть значило бы завести бой, у которого мозг сидит на
+           * одной стороне, а набор лежит под другой.
+           */
+          id: m.id, seed: m.seed, aSlot: sideKey(m.a_slot), bSlot: sideKey(m.b_slot),
           winner: m.winner, reason: m.reason,
-          result: m.result_json ? JSON.parse(m.result_json) : null,
+          result: m.result_json ? sideResult(JSON.parse(m.result_json)) : null,
           /* Снимок наборов на момент боя — см. миграцию 4 и live.open. */
-          kits: m.kits_json ? JSON.parse(m.kits_json) : null,
+          kits: m.kits_json ? sideKeys(JSON.parse(m.kits_json)) : null,
           /* И размеров: они меняют здоровье, радиус, скорость и силу удара,
              значит повтор без них — другой бой. Поле писалось и не читалось. */
-          sizes: m.sizes_json ? JSON.parse(m.sizes_json) : null,
+          sizes: m.sizes_json ? sideKeys(JSON.parse(m.sizes_json)) : null,
           /* Вид матча: по нему трансляция решает, тренировочный он и был ли
              это бой со сломанным мозгом (D8). */
           kind: m.kind,

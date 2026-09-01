@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Every octopus against every gorilla.
+ * Every blue-slot brain against every orange-slot brain.
  *
  *   node tools/tournament.mjs --rounds=50 --tags=v2,v3,v4,v5 --with-stub
  *
@@ -84,7 +84,7 @@ const src = (id, tag) => {
 /*
  * The same treatment `src` gives a missing file. A brain that does not parse is
  * an ordinary outcome here — these are generated programs — and the raw V8
- * trace through the vm wrapper names `oct-j3.brain.js`, a file that exists
+ * trace through the vm wrapper names `blue-j3.brain.js`, a file that exists
  * nowhere, instead of the one on disk that needs regenerating.
  */
 const compile = (id, tag, label) => {
@@ -97,13 +97,30 @@ const compile = (id, tag, label) => {
   }
 };
 
+/*
+ * ── ДВА РАЗНЫХ СЛОВАРЯ, И ИХ НЕЛЬЗЯ ПУТАТЬ ────────────────────────────────
+ *
+ * СИМУЛЯЦИЯ адресуется СТОРОНАМИ, а стороны — это цвета: `blue` и `orange`.
+ * Через них ключуются `brains`, `result` и `winner`.
+ *
+ * ОТЧЁТ (`reports/tournament.json`) ключуется ИМЕНАМИ ФАЙЛОВ популяции §1 —
+ * `octopus` и `gorilla`, — потому что это опубликованный замер: под этими
+ * именами напечатаны §1 и §16, и по ним же его читают `tools/report.mjs`,
+ * `/api/recommended` и `src/viewer/main.js`. Переименовать схему отчёта —
+ * значит переписать замер задним числом; здесь этого не делается.
+ *
+ * Ниже эти два словаря разведены явно и встречаются только тут.
+ */
+const BLUE_FILE = 'octopus';
+const ORANGE_FILE = 'gorilla';
+
 const cells = [];
 const t0 = Date.now();
 for (const ot of all) {
   for (const gt of all) {
     const brains = {
-      octopus: compile('octopus', ot, `oct-${ot}`),
-      gorilla: compile('gorilla', gt, `gor-${gt}`),
+      blue: compile(BLUE_FILE, ot, `blue-${ot}`),
+      orange: compile(ORANGE_FILE, gt, `orange-${gt}`),
     };
     let octWins = 0, draws = 0, secs = 0, timeouts = 0, meleeTicks = 0, allTicks = 0;
     const dmg = { octopus: 0, gorilla: 0 };
@@ -112,18 +129,18 @@ for (const ot of all) {
     for (let r = 0; r < ROUNDS; r++) {
       // Reset, not recompiled — see `reset()` in src/brain/host.js. The clean
       // slate is what makes 60 seeded rounds 60 samples rather than one.
-      brains.octopus.reset();
-      brains.gorilla.reset();
+      brains.blue.reset();
+      brains.orange.reset();
       const { result, world } = runMatch(brains, { seed: 5000 + r });
-      if (result.winner === 'octopus') octWins++;
+      if (result.winner === 'blue') octWins++;
       else if (!result.winner) draws++;
       if (result.reason.startsWith('timeout')) timeouts++;
       secs += result.seconds;
-      dmg.octopus += result.octopus.damageDealt;
-      dmg.gorilla += result.gorilla.damageDealt;
-      faults.octopus += result.octopus.faults;
-      faults.gorilla += result.gorilla.faults;
-      for (const side of ['octopus', 'gorilla']) {
+      dmg.octopus += result.blue.damageDealt;
+      dmg.gorilla += result.orange.damageDealt;
+      faults.octopus += result.blue.faults;
+      faults.gorilla += result.orange.faults;
+      for (const side of ['blue', 'orange']) {
         for (const [k, v] of Object.entries(result[side].uses)) uses[k] = (uses[k] || 0) + v;
         for (const [k, v] of Object.entries(result[side].hits)) hits[k] = (hits[k] || 0) + v;
       }

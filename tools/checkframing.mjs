@@ -86,7 +86,7 @@
  *   camState.height  mean |Δ| 0.057 m   worst 0.499 m
  *   camState.az      mean |Δ| 0.0120 rad worst 0.0454 rad
  *   worst |ndc|      browser 0.6422     here 0.6430
- *   bodies.height    octopus 1.1272240730286684, gorilla 2.0790089545814134
+ *   bodies.height    blue 1.1272240730286684, orange 2.0790089545814134
  *                    — identical to the last digit, both sides
  *
  * Both worst-case rows are the FIRST checkpoint, 0.09 s in, where the browser's
@@ -104,7 +104,7 @@
  *
  * Driving two back-to-back matches in the real browser reproduced it exactly:
  * camState.dist 9.516 m carried over, then
- *   `camera lost octopus at t=0.0s — ndc (-1.29, -0.14), body at (15.5, 0.2),
+ *   `camera lost blue at t=0.0s — ndc (-1.29, -0.14), body at (15.5, 0.2),
  *    eye 14.4 m out`
  * in the viewer's own error box. main.js has since exempted the snap from the
  * 26 m/s dolly cap, and all 36 replays are clean. The opening still gets its
@@ -256,7 +256,7 @@ const SLICES = [
    * socket's `over` message and onto the frame's own flag, and a paraphrase of
    * this loop written an hour earlier silently kept the old behaviour.
    */
-  ['function frame() {', "    for (const id of ['octopus', 'gorilla']) {\n      const body = bodies[id];"],
+  ['function frame() {', "    for (const id of ['blue', 'orange']) {\n      const body = bodies[id];"],
 ];
 
 /**
@@ -310,14 +310,17 @@ const vfx = { update() {}, play() {} };
  * assertion grades.
  */
 const EPILOGUE = `
-    updateCamera(view.octopus, view.gorilla, dt);
+    updateCamera(view.blue, view.orange, dt);
     measure(view, fr.a.t);
     checkFraming(view, fr.a.t);
   }
 }
 
 const bodies = {};
-for (const id of ['octopus', 'gorilla']) bodies[id] = await loadBody(id);
+/* \`STOCK_BODY\` приезжает срезом из main.js — тем же, что несёт \`loadBody\`.
+   Сторона зовётся цветом, файл стокового тела на диске зовётся иначе, и
+   перевод между ними в браузере и здесь обязан быть ОДИН И ТОТ ЖЕ. */
+for (const id of ['blue', 'orange']) bodies[id] = await loadBody(STOCK_BODY[id], id);
 
 /**
  * The 'match' branch of the socket handler, minus its DOM half.
@@ -361,7 +364,7 @@ let graded = 0;
 function measure(view, t) {
   camera.updateMatrixWorld();
   let worst = 0, who = null;
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const v = view[id];
     if (!v || (!v.alive && !decided)) continue;
     graded++;
@@ -390,9 +393,9 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
  * `FIGHTERS` больше нет: тела принадлежат существам, общей таблицы тел в мире
  * не существует. Но `src/viewer/main.js` читает `cfg.fighters[side]` в двух
  * десятках мест — радиус кругов, конусов и теней, скорость поворота для
- * сглаживания, список чипов кулдаунов, — а `octopus` и `gorilla` там ИМЕНА
- * СТОРОН, и переименование сторон идёт отдельным шагом. Пока оно не сделано,
- * сервер отдаёт обеим сторонам одну и ту же копию телосложения по умолчанию.
+ * сглаживания, список чипов кулдаунов. Стороны теперь и зовутся сторонами:
+ * `blue` и `orange`, цвет и только цвет. Сервер отдаёт обеим одну и ту же
+ * копию телосложения по умолчанию.
  *
  * Здесь тот же мост, а не свой: этот гейт режет живой `src/viewer/main.js` и
  * обязан кормить его тем объектом, который придёт в браузер. Мост, разошедшийся
@@ -411,18 +414,26 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
  *
  * Мост уедет отсюда вместе с переименованием сторон.
  */
+/*
+ * `skillsOf` ключуется ТЕГОМ ЭТАЛОНА (`REFERENCE_SKILLS`), а не стороной: это
+ * фикстура §1, её имена лежат на диске в `brains/` и переименованию не
+ * подлежат. Поэтому сторона переводится в тег явно — тем же приёмом, каким
+ * `src/viewer/main.js` переводит сторону в имя файла стокового тела.
+ */
+const REF_TAG = { blue: 'octopus', orange: 'gorilla' };
+
 const sideBridge = (side) => ({
   id: side,
   name: side,
   ...statsOf(DEFAULT_BUILD),
-  skills: skillsOf(side).filter((sk) => sk !== 'jump'),
+  skills: skillsOf(REF_TAG[side]).filter((sk) => sk !== 'jump'),
 });
 
 /** Exactly what `src/server/index.js` answers `/api/config` with. */
 const CONFIG = {
   arena: { half: ARENA_HALF, wallHeight: WALL_HEIGHT, obstacles: OBSTACLES },
   defaultBuild: DEFAULT_BUILD,
-  fighters: { octopus: sideBridge('octopus'), gorilla: sideBridge('gorilla') },
+  fighters: { blue: sideBridge('blue'), orange: sideBridge('orange') },
   skills: SKILLS,
   tickHz: TICK_HZ,
   thinkHz: THINK_HZ,
@@ -540,7 +551,9 @@ function brain(tag, id) {
 /** The server's own loop: one snapshot before the first step, then one a tick. */
 function simulate(octTag, gorTag, seed) {
   const world = createWorld(seed, { curtainSeconds: CURTAIN });
-  const brains = { octopus: brain(octTag, 'octopus'), gorilla: brain(gorTag, 'gorilla') };
+  /* Ключ — сторона: `step` зовёт `think(side, …)`. Второй аргумент `brain` —
+     ИМЯ ФАЙЛА в `brains/<тег>/`, и оно от стороны отличается. */
+  const brains = { blue: brain(octTag, REF_TAG.blue), orange: brain(gorTag, REF_TAG.orange) };
   const think = (id, p, api) => brains[id].tick(p, api);
   const snaps = [snapshot(world)];
   const maxTicks = (MATCH_SECONDS + CURTAIN) * TICK_HZ + 8;

@@ -225,7 +225,7 @@ export async function enter(root, args, ctx) {
        не по тому, какую трансляцию сейчас показывает сокет. Признак с экрана
        остаётся запасным для старых ответов. */
     const ids = ctx.state.match?.ids;
-    const fighting = d.fightingNow ?? (!!ids && (ids.octopus === c.id || ids.gorilla === c.id));
+    const fighting = d.fightingNow ?? (!!ids && (ids.blue === c.id || ids.orange === c.id));
     body.appendChild(h('div.section', { style: { marginTop: '40px' } },
       h('span.seeking', h('button.btn.primary', { onclick: () => ctx.go('/arena') },
         fighting ? 'ИДЁТ БОЙ' : 'В БОЙ')),

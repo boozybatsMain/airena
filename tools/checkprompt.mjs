@@ -289,7 +289,7 @@ const PROSE_NUMERALS = [
 let bad = 0;
 const fail = (what) => { console.error(`  ${what}`); bad++; };
 
-for (const id of ['octopus', 'gorilla']) {
+for (const id of ['blue', 'orange']) {
   const { marked, plain, records } = tracePrompt(id);
   console.log(`checking the ${id} prompt (${plain.length} chars, ${records.length} emitted values)`);
 
@@ -350,7 +350,7 @@ if (bad === 0) console.log('prompt and config agree, in both directions.');
       { delivery: 'self', effects: ['heal'], element: 'frost' }],
   ];
   const HARDCODED = ['laser', 'blink', 'smash', 'charge', 'jump'];
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     for (const [i, kit] of KITS.entries()) {
       const built = compileKit(kit);
       if (built.problems.length) { fail(`kit ${i} does not compile: ${JSON.stringify(built.problems)}`); continue; }

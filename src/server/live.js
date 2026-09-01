@@ -24,6 +24,21 @@ import { kitOf } from './arena-loop.js';
 import { DELIVERIES, EFFECTS } from '../skills/registry.js';
 
 /**
+ * ЗАПАСНОЕ ТЕЛО — ЭТО ФАЙЛ, А НЕ СТОРОНА.
+ *
+ * Здесь стояло просто `matchRow.aSlot`: имя стороны совпадало с именем
+ * стокового файла, и одна строка работала за две. Совпадение кончилось —
+ * стороны зовутся `blue` и `orange`, а на диске по-прежнему лежат
+ * `bodies/octopus.js` и `bodies/gorilla.js`. Переименовать файлы — отдельная
+ * и грязная операция (сток раздаётся статикой и лежит в ссылках уже созданных
+ * существ), поэтому соответствие записано здесь явно и одной строкой.
+ *
+ * Существо со своим телом сюда не попадает вовсе: у него `gen:<id>`.
+ */
+const STOCK_BODY = { blue: 'octopus', orange: 'gorilla' };
+const stockBody = (side) => STOCK_BODY[side] ?? STOCK_BODY.blue;
+
+/**
  * Подписи умений для боевого HUD: короткое имя, которым мозг зовёт умение,
  * и русское название, которое читает игрок.
  */
@@ -310,8 +325,8 @@ export class Live {
       /* Ссылка на тело, а не тело: исходник в тысячу строк не место в
          сообщении о начале боя — вьювер запросит его сам и один раз. */
       bodies: {
-        [matchRow.aSlot]: a.body_safe ? `gen:${a.id}` : matchRow.aSlot,
-        [matchRow.bSlot]: b.body_safe ? `gen:${b.id}` : matchRow.bSlot,
+        [matchRow.aSlot]: a.body_safe ? `gen:${a.id}` : stockBody(matchRow.aSlot),
+        [matchRow.bSlot]: b.body_safe ? `gen:${b.id}` : stockBody(matchRow.bSlot),
       },
       /*
        * ТРЕНИРОВОЧНЫЙ — ЭТО ВИД МАТЧА, А НЕ ВИД СОПЕРНИКА.
@@ -565,15 +580,15 @@ export class Live {
       matchId: b.id,
       atSecond: b.frames[Math.min(b.at, b.frames.length - 1)]?.t ?? 0,
       training: b.training,
-      tags: { octopus: b.meta.octopus?.name ?? '—', gorilla: b.meta.gorilla?.name ?? '—' },
+      tags: { blue: b.meta.blue?.name ?? '—', orange: b.meta.orange?.name ?? '—' },
       kits: b.kits || null,
       bodies: b.bodies || null,
-      names: { octopus: b.meta.octopus?.name ?? '—', gorilla: b.meta.gorilla?.name ?? '—' },
-      ids: { octopus: b.meta.octopus?.id ?? null, gorilla: b.meta.gorilla?.id ?? null },
+      names: { blue: b.meta.blue?.name ?? '—', orange: b.meta.orange?.name ?? '—' },
+      ids: { blue: b.meta.blue?.id ?? null, orange: b.meta.orange?.id ?? null },
       /*
        * ЧЬЯ ЭТО СТОРОНА — РЕШАЕТ СЕРВЕР, И ДЛЯ КАЖДОГО СОКЕТА СВОЯ (D162).
        *
-       * Вьювер знал только слоты — `octopus` и `gorilla`, циан и оранж, — и
+       * Вьювер знал только стороны — `blue` и `orange`, циан и оранж, — и
        * ни одного признака принадлежности. Из этого следовало ровно то, на
        * что пожаловался основатель: обе опасные зоны рисовались одним и тем
        * же красным `0xff4d3d`, и та, что сейчас ударит ТЕБЯ, была пиксель в
@@ -589,8 +604,8 @@ export class Live {
        * об этом словами, а не оставить человека гадать.
        */
       mine: sub.owned && sub.creatureId
-        ? (b.meta.octopus?.id === sub.creatureId ? 'octopus'
-          : (b.meta.gorilla?.id === sub.creatureId ? 'gorilla' : null))
+        ? (b.meta.blue?.id === sub.creatureId ? 'blue'
+          : (b.meta.orange?.id === sub.creatureId ? 'orange' : null))
         : null,
       /*
        * За кем зритель СЛЕДИТ, если это не его существо: выбранный гостем
@@ -598,16 +613,16 @@ export class Live {
        * следишь», иначе гостю сообщат, что библиотечное существо — его.
        */
       following: !sub.owned && sub.creatureId
-        ? (b.meta.octopus?.id === sub.creatureId ? 'octopus'
-          : (b.meta.gorilla?.id === sub.creatureId ? 'gorilla' : null))
+        ? (b.meta.blue?.id === sub.creatureId ? 'blue'
+          : (b.meta.orange?.id === sub.creatureId ? 'orange' : null))
         : null,
       /* Размер существа: вьювер масштабирует тело под НЕГО, а не под
-         фиксированный радиус архетипа, иначе кит и комар снова станут
+         фиксированный радиус стороны, иначе кит и комар снова станут
          одинаковыми, а коллайдер разойдётся с картинкой. */
-      sizes: { octopus: b.meta.octopus?.size ?? 1, gorilla: b.meta.gorilla?.size ?? 1 },
+      sizes: { blue: b.meta.blue?.size ?? 1, orange: b.meta.orange?.size ?? 1 },
       meta: {
-        octopus: b.meta.octopus ? { model: b.meta.octopus.model, effort: '—', chars: null } : null,
-        gorilla: b.meta.gorilla ? { model: b.meta.gorilla.model, effort: '—', chars: null } : null,
+        blue: b.meta.blue ? { model: b.meta.blue.model, effort: '—', chars: null } : null,
+        orange: b.meta.orange ? { model: b.meta.orange.model, effort: '—', chars: null } : null,
       },
     });
     if (b.frames[0]) send(sub.ws, { type: 'frame', frame: b.frames[Math.min(sub.cursor, b.frames.length - 1)] });
@@ -757,8 +772,8 @@ export class Live {
       winner: m.winner === null ? null
         : (m.winner === b.meta[m.aSlot]?.id ? m.aSlot : m.bSlot),
       reason: m.reason,
-      stats: m.result ? { octopus: m.result.octopus, gorilla: m.result.gorilla } : {},
-      logs: { octopus: [], gorilla: [] },
+      stats: m.result ? { blue: m.result.blue, orange: m.result.orange } : {},
+      logs: { blue: [], orange: [] },
       deltas: m.deltas ?? null,
       training: b.training,
       /* D8: чей мозг выключился и считается ли бой. Без этих полей экран

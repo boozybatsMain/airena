@@ -26,7 +26,7 @@ export const POOL_SIZE = Number(process.env.POOL_SIZE)
 /**
  * @param {Array<{a: object[], b: object[], seed: number}>} jobs
  * @param {(done: number, total: number) => void} [onProgress]
- * @returns {Promise<Array<'octopus'|'gorilla'|null|'error'>>}
+ * @returns {Promise<Array<'blue'|'orange'|null|'error'>>}
  */
 /*
  * ПУЛ ОДИН НА ПРОЦЕСС, а не по одному на вызов.
@@ -121,7 +121,7 @@ function pump() {
 /**
  * @param {Array<{a: object[], b: object[], seed: number, sym?: boolean}>} jobs
  * @param {(done: number, total: number) => void} [onProgress]
- * @returns {Promise<Array<'octopus'|'gorilla'|null|'error'>>}
+ * @returns {Promise<Array<'blue'|'orange'|null|'error'>>}
  */
 /**
  * Надзиратель над собственным процессом: перезапуск при смерти от СИГНАЛА.

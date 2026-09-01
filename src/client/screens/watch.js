@@ -111,7 +111,7 @@ function endCard(root, ctx) {
      * существует ради этого утверждения (F11), и врал именно оно.
      */
     const models = ctx.state.match?.meta
-      ? ['octopus', 'gorilla'].map((k) => String(ctx.state.match.meta[k]?.model || ''))
+      ? ['blue', 'orange'].map((k) => String(ctx.state.match.meta[k]?.model || ''))
       : [];
     const ours = models.filter((x) => /рукописн/i.test(x)).length;
     const claim = ours === 2

@@ -12,11 +12,12 @@
  * 7. collide  — obstacles, walls, then body against body
  * 8. resolve  — deaths and the end of the match
  *
- * Steps 2 and 3 are split from 4 deliberately. If the octopus's brain ran, took
- * its turn, and then the gorilla's brain perceived the result, the second brain
- * would be reacting 33 ms sooner than the first every single tick — a bias that
- * is invisible in a replay and decisive over a hundred matches. Freezing the
- * snapshot costs one object allocation and makes the win rate mean something.
+ * Steps 2 and 3 are split from 4 deliberately. If one side's brain ran, took
+ * its turn, and then the other side's brain perceived the result, the second
+ * brain would be reacting 33 ms sooner than the first every single tick — a
+ * bias that is invisible in a replay and decisive over a hundred matches.
+ * Freezing the snapshot costs one object allocation and makes the win rate mean
+ * something.
  */
 
 import {
@@ -24,8 +25,9 @@ import {
   ARENA_HALF, BEAM_RADIUS, BRAKE_ACCEL, DT, FAULT_LIMIT,
   KNOCKBACK_DRAG, KNOCKBACK_MIN, MATCH_SECONDS, MAX_ORDERS_PER_THINK,
   MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, MEM_MAX_VALUE_BYTES, OBSTACLES,
-  SAY_MAX_CHARS, SAY_SECONDS, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
-  SUDDEN_DEATH_RAMP, THINK_EVERY, DEFAULT_BUILD, skillsOf, statsOf,
+  SAY_MAX_CHARS, SAY_SECONDS, SIDES, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
+  SUDDEN_DEATH_RAMP, THINK_EVERY, DEFAULT_BUILD, referenceTagOf, skillsOf,
+  statsOf,
 } from './config.js';
 import {
   clamp, dirOf, dist2, hasLos, headingOf, inCone, len2, norm2,
@@ -121,10 +123,11 @@ function spawnPair(seed, builds = null) {
    * Здесь стояли радиусы двух записей архетипов — то есть точка рождения
    * подбиралась под чужой размер. Замерено до правки: 12 спавнов из 3000
    * сидов ставили крупного бойца внутрь стены. Записей больше нет, а радиус
-   * у каждого свой, и брать его надо у него.
+   * у каждого свой, и брать его надо у него — по стороне, на которую его
+   * посадили, и ни по чему больше.
    */
-  const rA = statsOf(builds?.octopus || DEFAULT_BUILD).radius;
-  const rB = statsOf(builds?.gorilla || DEFAULT_BUILD).radius;
+  const rA = statsOf(builds?.blue || DEFAULT_BUILD).radius;
+  const rB = statsOf(builds?.orange || DEFAULT_BUILD).radius;
 
   const draw = streamFrom(seed, 'spawn');
   const base = draw() * Math.PI * 2;
@@ -140,14 +143,14 @@ function spawnPair(seed, builds = null) {
     };
     if (ok(ax, az, rA) && ok(-ax, -az, rB)) {
       return {
-        octopus: { x: ax, z: az, heading: headingOf(-2 * ax, -2 * az) },
-        gorilla: { x: -ax, z: -az, heading: headingOf(2 * ax, 2 * az) },
+        blue: { x: ax, z: az, heading: headingOf(-2 * ax, -2 * az) },
+        orange: { x: -ax, z: -az, heading: headingOf(2 * ax, 2 * az) },
       };
     }
   }
   return {
-    octopus: { x: 0, z: -SPAWN_RADIUS, heading: 0 },
-    gorilla: { x: 0, z: SPAWN_RADIUS, heading: Math.PI },
+    blue: { x: 0, z: -SPAWN_RADIUS, heading: 0 },
+    orange: { x: 0, z: SPAWN_RADIUS, heading: Math.PI },
   };
 }
 
@@ -163,8 +166,10 @@ function makeFighter(id, sp, seed, build = null, kitNames = null) {
   const def = statsOf(build || DEFAULT_BUILD);
   const cooldowns = {};
   /* Кулдауны заводятся под ТО, чем боец дерётся: набор грамматики, если он
-     есть, иначе — эталонная фикстура §1 по тегу мозга. */
-  for (const k of (kitNames || skillsOf(id))) cooldowns[k] = 0;
+     есть, иначе — эталонная фикстура §1. Сторона (`blue`/`orange`) сама не
+     раздаёт ничего: за фикстурой ходят через `referenceTagOf`, и это мост к
+     тестовому стенду, а не наследование от вида. */
+  for (const k of (kitNames || skillsOf(referenceTagOf(id)))) cooldowns[k] = 0;
   return {
     id,
     def,
@@ -176,10 +181,10 @@ function makeFighter(id, sp, seed, build = null, kitNames = null) {
      *
      * `vx/vz` are the CONTROL velocity and they are deliberately zero during a
      * charge, so the acceleration integrator does not fight the dash. Reporting
-     * them was a live defect: for the 0.8 s a gorilla spends crossing twelve
-     * metres at 15 m/s, both the viewer and the opposing brain were told it was
-     * standing still — so the most spectacular move in the game rendered as a
-     * statue on a conveyor belt, and `V.lead` aimed at a stationary target.
+     * them was a live defect: for the 0.8 s a charging body spends crossing
+     * twelve metres at 15 m/s, both the viewer and the opposing brain were told
+     * it was standing still — so the most spectacular move in the game rendered
+     * as a statue on a conveyor belt, and `V.lead` aimed at a stationary target.
      * Measured from the position delta instead, which is true by construction
      * whatever moved the body: control, knockback, dash or a collision push.
      */
@@ -225,11 +230,11 @@ function makeFighter(id, sp, seed, build = null, kitNames = null) {
  *   with a fighter standing bolt upright at 0 hp. The animation IS the ending.
  */
 /**
- * @param {object} builds { octopus: {hp,maxSpeed,...}, gorilla: {...} } —
+ * @param {object} builds { blue: {hp,maxSpeed,...}, orange: {...} } —
  *   ТЕЛОСЛОЖЕНИЕ бойца: его собственные числа. Часть входа матча наравне с
  *   сидом, значит без него повтор не побитовый (A2). Наследовать не от кого:
  *   таблицы архетипов больше нет.
- * @param {object} kits  { octopus: {k1,k2,k3}, gorilla: {...} } — скомпилированные
+ * @param {object} kits  { blue: {k1,k2,k3}, orange: {...} } — скомпилированные
  *   киты грамматики §8. Без них мир собирается на четырёх захардкоженных
  *   умениях, и это по-прежнему тот мир, в котором измерены §1 и §16.
  */
@@ -247,10 +252,10 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
     fighters: {
       /* `builds` — часть ВХОДА матча, как сид и наборы: повтор обязан быть
          побитовым (A2), значит числа нельзя брать ниоткуда, кроме входа. */
-      octopus: makeFighter('octopus', spawns.octopus, seed, builds?.octopus,
-        kits?.octopus ? Object.keys(kits.octopus) : null),
-      gorilla: makeFighter('gorilla', spawns.gorilla, seed, builds?.gorilla,
-        kits?.gorilla ? Object.keys(kits.gorilla) : null),
+      blue: makeFighter('blue', spawns.blue, seed, builds?.blue,
+        kits?.blue ? Object.keys(kits.blue) : null),
+      orange: makeFighter('orange', spawns.orange, seed, builds?.orange,
+        kits?.orange ? Object.keys(kits.orange) : null),
     },
     /** Transient things the viewer draws for one tick: beams, cones, flashes. */
     fx: [],
@@ -273,14 +278,14 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
   world.solids = [...SOLIDS];
 
   if (kits) {
-    for (const side of ['octopus', 'gorilla']) {
+    for (const side of SIDES) {
       if (!kits[side]) continue;
       world.fighters[side].kit = kits[side];
       /*
        * Кулдауны ПЕРЕЗАВОДЯТСЯ под имена кита, а не дописываются к ним.
        *
-       * `makeFighter` сеет ключи архетипа (`laser`, `blink`, `jump`) до того,
-       * как станет известен кит, а `perceive` копирует ВСЕ ключи
+       * `makeFighter` сеет ключи эталонной фикстуры (`laser`, `blink`,
+       * `jump`) до того, как станет известен кит, а `perceive` копирует ВСЕ ключи
        * `me.cooldowns` в `p.self.cooldowns`. Дописывание оставляло существу
        * с китом живые счётчики умений, которых у него нет: `api.use` и
        * `api.ready` их честно отвергали, а `api.cooldown('laser')` возвращал
@@ -293,7 +298,7 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
     }
   }
 
-  world.order = ['octopus', 'gorilla'];
+  world.order = [...SIDES];
   /**
    * One navigation graph per body radius, built once. See `nav.js` for why a
    * navigator is part of the body rather than part of the brain's homework.
@@ -305,14 +310,15 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
    * обходило проходы, в которые пролезает, — а на 1.5 срезало углы, в
    * которые не помещается.
    */
-  world.nav = {
-    octopus: createNav(SOLIDS, ARENA_HALF, world.fighters.octopus.def.radius),
-    gorilla: createNav(SOLIDS, ARENA_HALF, world.fighters.gorilla.def.radius),
-  };
+  world.nav = {};
+  for (const side of SIDES) {
+    world.nav[side] = createNav(SOLIDS, ARENA_HALF, world.fighters[side].def.radius);
+  }
   return world;
 }
 
-const other = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
+/** Сторон ровно две, и вторая — та, которая не эта. */
+const other = (id) => (id === 'blue' ? 'orange' : 'blue');
 
 /**
  * A fault message, from a value of unknown shape and unknown realm.
@@ -354,12 +360,14 @@ const round3 = (v) => Math.round(v * 1000) / 1000;
  * лежит в ките под именем `k1..k3`. Дописывать его сверху значило бы вернуть
  * четвёртый глагол, которого основатель просил не давать.
  *
- * Двум захардкоженным эталонам (кита нет) `skillsOf` по-прежнему отдаёт
+ * Бойцу без кита умения по-прежнему выдаёт эталонная фикстура §1 —
  * `laser/blink/jump` и `smash/charge/jump`: на этом входе написаны шесть
- * эталонных мозгов и сыграны 2450 матчей §1.
+ * эталонных мозгов и сыграны 2450 матчей §1. Ходим за ней через
+ * `referenceTagOf`: сторона зовётся цветом, у фикстуры свои теги, и путать их
+ * нельзя ни в одну сторону.
  */
 function namesOf(f) {
-  return f.kit ? Object.keys(f.kit) : skillsOf(f.id);
+  return f.kit ? Object.keys(f.kit) : skillsOf(referenceTagOf(f.id));
 }
 
 /**
@@ -1759,8 +1767,8 @@ function collide(world) {
       const [nx, nz] = d < 1e-6 ? [1, 0] : [(b.x - a.x) / d, (b.z - a.z) / d];
       const overlap = rr - d;
       /*
-       * Heavier body yields less — this is what makes the gorilla feel heavy
-       * and stops the octopus body-blocking a charge. But a body already
+       * Heavier body yields less — this is what makes a heavy body feel heavy
+       * and stops a light one body-blocking a charge. But a body already
        * against a wall cannot yield at all, so its share is handed to the
        * other one; without that the pair simply stays overlapped in a corner.
        */
@@ -1930,15 +1938,15 @@ export function step(world, think) {
     if (len2(f.rvx, f.rvz) > f.def.maxSpeed * 4) { f.rvx = f.vx + f.kx; f.rvz = f.vz + f.kz; }
   }
 
-  const o = world.fighters.octopus, g = world.fighters.gorilla;
+  const blue = world.fighters.blue, orange = world.fighters.orange;
   if (!world.over) {
-    if (!o.alive && !g.alive) finish(world, null, 'double-ko');
-    else if (!o.alive) finish(world, 'gorilla', 'kill');
-    else if (!g.alive) finish(world, 'octopus', 'kill');
+    if (!blue.alive && !orange.alive) finish(world, null, 'double-ko');
+    else if (!blue.alive) finish(world, 'orange', 'kill');
+    else if (!orange.alive) finish(world, 'blue', 'kill');
     else if (world.t >= MATCH_SECONDS) {
-      const fo = o.hp / o.def.hp, fg = g.hp / g.def.hp;
-      if (Math.abs(fo - fg) < 1e-6) finish(world, null, 'timeout-draw');
-      else finish(world, fo > fg ? 'octopus' : 'gorilla', 'timeout');
+      const fb = blue.hp / blue.def.hp, fo = orange.hp / orange.def.hp;
+      if (Math.abs(fb - fo) < 1e-6) finish(world, null, 'timeout-draw');
+      else finish(world, fb > fo ? 'blue' : 'orange', 'timeout');
     }
   } else {
     world.curtain -= DT;
@@ -2023,8 +2031,8 @@ export function snapshot(world) {
     over: world.over,
     winner: world.winner,
     reason: world.reason,
-    octopus: f('octopus'),
-    gorilla: f('gorilla'),
+    blue: f('blue'),
+    orange: f('orange'),
     fx: world.fx.map((e) => ({ ...e, t: round3(e.t) })),
   };
 }

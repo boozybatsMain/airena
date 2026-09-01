@@ -2,7 +2,7 @@
  * Генерация мозга через OpenRouter — эксперимент по стоимости.
  *
  *   OPENROUTER_API_KEY=... node tools/orbrain.mjs --model=anthropic/claude-sonnet-5
- *   OPENROUTER_API_KEY=... node tools/orbrain.mjs --model=google/gemini-3.7-flash --fighter=gorilla
+ *   OPENROUTER_API_KEY=... node tools/orbrain.mjs --model=google/gemini-3.7-flash --side=orange
  *
  * Берёт РОВНО тот же промпт, что и brainforge (`brainPrompt`), и шлёт его в
  * OpenRouter. Пишет `logs/or-<slug>.json` с честной стоимостью: `usage.include`
@@ -21,7 +21,12 @@ const arg = (n, d) => {
 };
 
 const MODEL = arg('model', 'anthropic/claude-sonnet-5');
-const FIGHTER = arg('fighter', 'octopus');
+/* СТОРОНА арены, и только она: стороны зовутся цветами, `blue` и `orange`.
+   Это же значение мозг прочитает в `p.self.id`. Прежние имена принимаются
+   псевдонимами, чтобы старые команды из логов не падали. */
+const SIDE_ALIAS = { octopus: 'blue', gorilla: 'orange' };
+const rawSide = String(arg('side', arg('fighter', 'blue')));
+const SIDE = Object.hasOwn(SIDE_ALIAS, rawSide) ? SIDE_ALIAS[rawSide] : rawSide;
 const REASONING = arg('reasoning', '');   // '' | low | medium | high
 const THINK = Number(arg('think', 0));   // потолок токенов на размышление
 const KEY = process.env.OPENROUTER_API_KEY;
@@ -30,7 +35,7 @@ if (!KEY) {
   process.exit(1);
 }
 
-const prompt = brainPrompt(FIGHTER);
+const prompt = brainPrompt(SIDE);
 const started = Date.now();
 
 /* Будильник. Модель, которая ушла думать, наружу не отдаёт ничего до самого
@@ -75,7 +80,7 @@ res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 } catch (e) {
   const secs = Math.round((Date.now() - started) / 1000);
   const bell_rang = e.name === 'TimeoutError' || e.name === 'AbortError';
-  console.log(`${MODEL} ${FIGHTER}: ` + (bell_rang
+  console.log(`${MODEL} ${SIDE}: ` + (bell_rang
     ? `⏱ СНЯТ по таймауту через ${secs} с — молчал дольше ${LIMIT_MS / 1000} с`
     : `✖ сорвался через ${secs} с — ${e.name}: ${e.message}`));
   /* Не ошибка прогона: «не уложился» — это и есть результат замера по модели.
@@ -85,7 +90,7 @@ res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 const elapsedMs = Date.now() - started;
 
 if (!res.ok || payload.error) {
-  console.error(`ОШИБКА ${MODEL}/${FIGHTER}: ${res.status}`,
+  console.error(`ОШИБКА ${MODEL}/${SIDE}: ${res.status}`,
     JSON.stringify(payload.error ?? payload).slice(0, 300));
   process.exit(2);
 }
@@ -99,7 +104,7 @@ const truncated = finish === 'length';
 const u = payload.usage ?? {};
 const rec = {
   model: MODEL,
-  fighter: FIGHTER,
+  side: SIDE,
   reasoning: REASONING || 'off',
   promptChars: prompt.length,
   replyChars: text.length,
@@ -113,7 +118,7 @@ const rec = {
   at: new Date().toISOString(),
 };
 
-const slug = `${MODEL.replace(/[^a-z0-9]+/gi, '-')}-${FIGHTER}${
+const slug = `${MODEL.replace(/[^a-z0-9]+/gi, '-')}-${SIDE}${
   THINK ? '-think' + THINK : REASONING ? '-' + REASONING : '-plain'}`;
 await mkdir(new URL('../logs/', import.meta.url), { recursive: true });
 await writeFile(new URL(`../logs/or-${slug}.json`, import.meta.url),
@@ -121,7 +126,7 @@ await writeFile(new URL(`../logs/or-${slug}.json`, import.meta.url),
 await writeFile(new URL(`../logs/or-${slug}.js`, import.meta.url), text);
 
 console.log(
-  `${MODEL} ${FIGHTER} [${REASONING || 'без размышления'}]: $${(rec.costUsd ?? 0).toFixed(4)} · ` +
+  `${MODEL} ${SIDE} [${REASONING || 'без размышления'}]: $${(rec.costUsd ?? 0).toFixed(4)} · ` +
   `${Math.round(elapsedMs / 1000)}s · ${rec.replyChars} символов · ` +
   `выход ${rec.completionTokens} ток (из них размышление ${rec.reasoningTokens ?? '?'})` +
   (truncated ? '  ⚠ ОБРЕЗАН по лимиту — код неполный' : ''),

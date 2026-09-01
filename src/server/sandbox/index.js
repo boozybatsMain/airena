@@ -42,7 +42,7 @@ export class IsolateError extends Error {
 /**
  * Прогнать матч в изоляте.
  *
- * @param {object} brains  { octopus: source, gorilla: source } — уже допущенные
+ * @param {object} brains  { blue: source, orange: source } — уже допущенные
  * @param {object} opts    seed, record, curtainSeconds, timeoutMs
  */
 export function runIsolated(brains, { seed = 1, seeds = null, kits = null, builds = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
@@ -118,7 +118,9 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
 
   if (!sparring) return { ok: true, stage: 'analyse', problems: [], probe: null };
 
-  const other = slot === 'octopus' ? 'gorilla' : 'octopus';
+  /* Вторая сторона — просто «не эта». Сторон две, они равноправны, и никаких
+     чисел за именем не стоит: важно лишь посадить спарринг напротив. */
+  const other = slot === 'blue' ? 'orange' : 'blue';
   const probe = [];
   for (const seed of seeds) {
     try {

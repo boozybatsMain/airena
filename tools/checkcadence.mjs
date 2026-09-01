@@ -77,16 +77,19 @@ function loopStand() {
 // ── 2. подбор соперника не берёт ни занятых, ни отдыхающих ────────────────
 {
   const db = new DatabaseSync(':memory:');
+  /* Колонки `archetype` в схеме нет — её снесли вместе с видами, и подбор её
+     не читает. Стенд обязан повторять НАСТОЯЩУЮ схему: лишняя колонка тут
+     означала бы, что гейт держит таблицу, которой не существует. */
   db.exec(`CREATE TABLE creature (id TEXT PRIMARY KEY, name TEXT, rating REAL, fights INT,
-             is_library INT, archetype TEXT, state TEXT, season INT)`);
+             is_library INT, state TEXT, season INT)`);
   db.exec(`CREATE TABLE match (a_id TEXT, b_id TEXT, started_at INT)`);
-  const add = (id, arch) => db.prepare(
-    `INSERT INTO creature VALUES (?,?,1200,10,0,?,'active',1)`).run(id, id, arch);
-  add('me', 'octopus');
-  add('free', 'gorilla');
-  add('busy', 'gorilla');
+  const add = (id) => db.prepare(
+    `INSERT INTO creature VALUES (?,?,1200,10,0,'active',1)`).run(id, id);
+  add('me');
+  add('free');
+  add('busy');
 
-  const me = { id: 'me', rating: 1200, season: 1, archetype: 'octopus' };
+  const me = { id: 'me', rating: 1200, season: 1 };
   const picks = new Set();
   for (let i = 0; i < 40; i++) {
     const p = pickOpponent(db, me, { rng: () => i / 40, busy: new Set(['busy']) });
@@ -107,18 +110,18 @@ function loopStand() {
    */
   const db = new DatabaseSync(':memory:');
   db.exec(`CREATE TABLE creature (id TEXT PRIMARY KEY, name TEXT, rating REAL, fights INT,
-             is_library INT, archetype TEXT, state TEXT, season INT)`);
+             is_library INT, state TEXT, season INT)`);
   db.exec(`CREATE TABLE match (a_id TEXT, b_id TEXT, started_at INT)`);
-  const add = (id, arch, rating) => db.prepare(
-    `INSERT INTO creature VALUES (?,?,?,10,0,?,'active',1)`).run(id, id, rating, arch);
-  add('leader', 'octopus', 1560);
-  add('near', 'gorilla', 1500);   // близко по рейтингу — и уже надоел
-  add('far', 'gorilla', 1180);    // далеко, но новый
+  const add = (id, rating) => db.prepare(
+    `INSERT INTO creature VALUES (?,?,?,10,0,'active',1)`).run(id, id, rating);
+  add('leader', 1560);
+  add('near', 1500);   // близко по рейтингу — и уже надоел
+  add('far', 1180);    // далеко, но новый
   /* Шесть последних боёв — все с `near`: ровно то состояние, в котором
      подбор раньше залипал. */
   for (let i = 0; i < 6; i++) db.prepare('INSERT INTO match VALUES (?,?,?)').run('leader', 'near', i);
 
-  const me = { id: 'leader', rating: 1560, season: 1, archetype: 'octopus' };
+  const me = { id: 'leader', rating: 1560, season: 1 };
   const got = new Set();
   for (let i = 0; i < 20; i++) {
     const p = pickOpponent(db, me, { rng: () => i / 20 });
@@ -156,8 +159,8 @@ function loopStand() {
   const live = new Live(null, { now: () => 1000 });
   const mk = (id, over, ids) => ({
     id, over: over ? { at: 0 } : null,
-    result: { aSlot: 'octopus', bSlot: 'gorilla' },
-    meta: { octopus: { id: ids[0] }, gorilla: { id: ids[1] } },
+    result: { aSlot: 'blue', bSlot: 'orange' },
+    meta: { blue: { id: ids[0] }, orange: { id: ids[1] } },
     frames: [{}], at: 0, watchers: new Set(),
   });
   /* Порядок вставки: доигравшая ПЕРВОЙ — ровно тот случай, в котором прежний
@@ -181,9 +184,9 @@ function loopStand() {
   const live = new Live(null, { now: () => 1000 });
   const b = {
     id: 'm', over: null, seed: 1, at: 0, frames: [{ t: 0 }],
-    result: { aSlot: 'octopus', bSlot: 'gorilla' },
-    meta: { octopus: { id: 'c1', name: 'A', size: 1, model: 'm' },
-      gorilla: { id: 'c2', name: 'B', size: 1, model: 'm' } },
+    result: { aSlot: 'blue', bSlot: 'orange' },
+    meta: { blue: { id: 'c1', name: 'A', size: 1, model: 'm' },
+      orange: { id: 'c2', name: 'B', size: 1, model: 'm' } },
     watchers: new Set(), training: false, kits: null, bodies: null,
   };
   live.broadcasts.set('m', b);
@@ -197,14 +200,14 @@ function loopStand() {
   live.sendMatch(mkSub('c1', true), b);
   const owner = sent.find((m) => m.type === 'match');
   ok('владельцу приходит mine с его стороной',
-    owner?.mine === 'octopus' && owner?.following === null,
+    owner?.mine === 'blue' && owner?.following === null,
     `mine=${owner?.mine} following=${owner?.following}`);
 
   sent.length = 0;
   live.sendMatch(mkSub('c2', false), b);
   const guest = sent.find((m) => m.type === 'match');
   ok('гостю со стартером приходит following, а не mine',
-    guest?.mine === null && guest?.following === 'gorilla',
+    guest?.mine === null && guest?.following === 'orange',
     `mine=${guest?.mine} following=${guest?.following}`);
 
   sent.length = 0;
@@ -224,7 +227,7 @@ function loopStand() {
   const live = new Live(null, { now: () => 1000 });
   live.opening = new Set(['a', 'b', 'c', 'd', 'e', 'f']);   // все слоты заняты
   const put = (id, kind) => live.open(
-    { id, aSlot: 'octopus', bSlot: 'gorilla' },
+    { id, aSlot: 'blue', bSlot: 'orange' },
     { a: { id: 'x' }, b: { id: 'y' }, kind },
   );
   put('r1', 'ranked'); put('s1', 'showcase'); put('r2', 'ranked'); put('s2', 'showcase');
@@ -251,8 +254,8 @@ function loopStand() {
   const sent = [];
   const mk = (id, over, at) => ({
     id, over: over ? { at: over } : null, seed: 1, at, frames: [{ t: 0 }],
-    result: { aSlot: 'octopus', bSlot: 'gorilla' },
-    meta: { octopus: { id: `${id}o` }, gorilla: { id: `${id}g` } },
+    result: { aSlot: 'blue', bSlot: 'orange' },
+    meta: { blue: { id: `${id}b` }, orange: { id: `${id}o` } },
     watchers: new Set(), training: false, kits: null, bodies: null,
   });
   const done = mk('done', clock, 5);
@@ -279,8 +282,8 @@ function loopStand() {
   const live = new Live(null, { now: () => 1000 });
   const mk = (id, at) => ({
     id, over: null, at, frames: [{}],
-    result: { aSlot: 'octopus', bSlot: 'gorilla' },
-    meta: { octopus: { id: `${id}o` }, gorilla: { id: `${id}g` } },
+    result: { aSlot: 'blue', bSlot: 'orange' },
+    meta: { blue: { id: `${id}b` }, orange: { id: `${id}o` } },
     watchers: new Set(),
   });
   live.broadcasts.set('old', mk('old', 900));    // 30-я секунда

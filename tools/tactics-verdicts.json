@@ -1770,6 +1770,60 @@
    "text": "width               a body counts as inside the cone when ANY PART of it is, so the accepted half-angle grows by asin(their radius / distance): against the body it is aimed at that is 70 degrees at that farthest distance and 85 degrees when the two of you are touching",
    "model": "claude-sonnet-5",
    "rubric": "a9a7dccdf1316489"
+  },
+  "defd7ad02e6aff2fac012f89": {
+   "c": 1,
+   "text": ".id           'blue' or 'orange' — which of the two slots of the arena",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d7afc572bb6948c689adf5b6": {
+   "c": 3,
+   "text": "you are standing in. The two sides are told apart by colour",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8ed6895b17ce7d6a018beeb4": {
+   "c": 3,
+   "text": "and nothing else; neither carries a body, a skill set or a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a629ec93f28c554f589baee4": {
+   "c": 5,
+   "text": "shape",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a30b601992ef7cf679b11f06": {
+   "c": 3,
+   "text": "You will find yourself in perception as p.self.id = 'blue'. That is the side of the arena you were put on. It is a label for one of the two slots and says nothing about a body, a skill or a shape.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1413da0ed0e5f924d73dee19": {
+   "c": 3,
+   "text": "You will find yourself in perception as p.self.id = 'orange'. That is the side of the arena you were put on. It is a label for one of the two slots and says nothing about a body, a skill or a shape.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8afc8cf69fa859993f3e03b0": {
+   "c": 3,
+   "text": "hp                  180",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c9390fb44f1210bf92be798d": {
+   "c": 3,
+   "text": "top speed           5.8 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e4273fd11134400483209d27": {
+   "c": 3,
+   "text": "acceleration        24 m/s^2   (so 5.8 m/s is reached in 0.242 s)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
   }
  }
 }

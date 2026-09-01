@@ -54,7 +54,7 @@
  *
  * Disagreement is likewise reported per ORDER channel — move, face, use — for
  * the same reason. A single boolean scores "held its ground and re-aimed the
- * beam" identical to "did nothing", and re-aiming is the octopus's main
+ * beam" identical to "did nothing", and re-aiming is the octopus brains' main
  * reactive channel.
  *
  * The identity ablation is the control. It must score ~0; if it does not, the
@@ -160,10 +160,20 @@ if (!process.argv.some((a) => a.startsWith('--tags='))) {
     process.exit(1);
   }
 }
-const src = (id, tag) => {
-  const p = join(ROOT, 'brains', tag, `${id}.js`);
+/*
+ * СТОРОНА → ФАЙЛ МОЗГА, и это единственное место, где они встречаются.
+ *
+ * Стороны арены зовутся `blue` и `orange`: это цвета и ровно ничего больше —
+ * видов, за которые можно было бы держаться, у игры нет. А эталонная
+ * популяция §16 лежит в `brains/<tag>/` под своими именами (`octopus.js`,
+ * `gorilla.js`); их переименование сдвинуло бы весь опубликованный артефакт,
+ * поэтому имена файлов остаются как есть.
+ */
+const BRAIN_FILE = { blue: 'octopus', orange: 'gorilla' };
+const src = (side, tag) => {
+  const p = join(ROOT, 'brains', tag, `${BRAIN_FILE[side]}.js`);
   if (!existsSync(p)) {
-    console.error(`\nno ${id} brain for tag "${tag}" (looked in ${p})\n`);
+    console.error(`\nno ${side} brain for tag "${tag}" (looked in ${p})\n`);
     process.exit(1);
   }
   return readFileSync(p, 'utf8');
@@ -269,7 +279,7 @@ function moveDirOf(q, self) {
  * Did two thoughts express the same intent, channel by channel?
  *
  * `face` was absent from this comparison for the whole first run of the
- * experiment, and its absence hid the octopus's primary reactive channel.
+ * experiment, and its absence hid the octopus brains' primary reactive channel.
  * `resolveStrike` reads aim at the instant the beam fires, not at the instant
  * the order was given — sim.js says so in as many words — so re-aiming through
  * a wind-up is a real decision that moves real damage, and a metric watching
@@ -391,13 +401,13 @@ function brainOf(who, tag, slot = 'main') {
   return b;
 }
 
-function ablationRun(octTag, gorTag, seed, who) {
+function ablationRun(blueTag, orangeTag, seed, who) {
   const drive = {
-    octopus: brainOf('octopus', octTag, 'drive'),
-    gorilla: brainOf('gorilla', gorTag, 'drive'),
+    blue: brainOf('blue', blueTag, 'drive'),
+    orange: brainOf('orange', orangeTag, 'drive'),
   };
   const shadow = {};
-  for (const k of ABLATION_NAMES) shadow[k] = brainOf(who, who === 'octopus' ? octTag : gorTag, `sh-${k}`);
+  for (const k of ABLATION_NAMES) shadow[k] = brainOf(who, who === 'blue' ? blueTag : orangeTag, `sh-${k}`);
   const disagree = Object.fromEntries(ABLATION_NAMES.map((k) => [k, zeroChannels()]));
   let thinks = 0;
   let first = null;
@@ -507,7 +517,7 @@ const OUT = {
   permutation: {},
 };
 const reactivity = OUT.reactivity;
-for (const who of ['octopus', 'gorilla']) {
+for (const who of ['blue', 'orange']) {
   console.log(`   ${who}`);
   console.log(`     ${'brain'.padEnd(7)}${'channel'.padEnd(9)}${ABLATION_NAMES.map((k) => (SHORT[k] || k).padStart(12)).join('')}`);
   for (const tag of TAGS) {
@@ -515,7 +525,7 @@ for (const who of ['octopus', 'gorilla']) {
     let n = 0;
     for (let r = 0; r < REACT_ROUNDS; r++) {
       const other = TAGS[(TAGS.indexOf(tag) + 1 + r) % TAGS.length];
-      const o = who === 'octopus' ? ablationRun(tag, other, 700 + r, who) : ablationRun(other, tag, 700 + r, who);
+      const o = who === 'blue' ? ablationRun(tag, other, 700 + r, who) : ablationRun(other, tag, 700 + r, who);
       for (const k of Object.keys(tot)) for (const c of CHANNELS) tot[k][c] += o.disagree[k][c];
       n += o.thinks;
     }
@@ -584,11 +594,11 @@ function winMatrix(side, labelTag, seedFor) {
       for (let r = 0; r < ROUNDS; r++) {
         const mineTag = labelTag(TAGS[mi]);
         const theirsTag = labelTag(TAGS[oi]);
-        const octTag = side === 'octopus' ? mineTag : theirsTag;
-        const gorTag = side === 'octopus' ? theirsTag : mineTag;
+        const blueTag = side === 'blue' ? mineTag : theirsTag;
+        const orangeTag = side === 'blue' ? theirsTag : mineTag;
         const brains = {
-          octopus: brainOf('octopus', octTag, 'perm'),
-          gorilla: brainOf('gorilla', gorTag, 'perm'),
+          blue: brainOf('blue', blueTag, 'perm'),
+          orange: brainOf('orange', orangeTag, 'perm'),
         };
         const world = createWorld(seedFor(mi, oi, r));
         const think = (id, p, api) => brains[id].tick(p, api);
@@ -682,14 +692,14 @@ const showP = (p) => (p < 1 / TRIALS ? `< ${(1 / TRIALS).toExponential(1)}` : p.
  */
 const control = CONTROLS_ONLY
   ? null
-  : permutationP(winMatrix('octopus', () => TAGS[0], (mi, oi, r) => 41000 + (mi * TAGS.length + oi) * ROUNDS + r));
+  : permutationP(winMatrix('blue', () => TAGS[0], (mi, oi, r) => 41000 + (mi * TAGS.length + oi) * ROUNDS + r));
 if (control && control.p < NEGATIVE_CONTROL_MIN_P) {
   failures.push(`permutation negative control p = ${control.p.toFixed(5)} (min ${NEGATIVE_CONTROL_MIN_P}) — `
     + `${TAGS.length} labels on one program (${TAGS[0]}) rejected exchangeability, so the test rejects things `
     + 'that are true and the headline p means nothing');
 }
 
-for (const side of CONTROLS_ONLY ? [] : ['octopus', 'gorilla']) {
+for (const side of CONTROLS_ONLY ? [] : ['blue', 'orange']) {
   const real = permutationP(winMatrix(side, (t) => t, (mi, oi, r) => 9000 + r));
   OUT.permutation[side] = {
     winRates: Object.fromEntries(TAGS.map((t, i) => [t, real.observed[i]])),
@@ -743,8 +753,8 @@ if (CONTROLS_ONLY) console.log('   --controls: the pairwise comparisons are skip
 
 function disagreement(who, tagA, tagB, opponentTag, seed) {
   const drive = {
-    octopus: brainOf('octopus', who === 'octopus' ? tagA : opponentTag, 'dA'),
-    gorilla: brainOf('gorilla', who === 'gorilla' ? tagA : opponentTag, 'dA'),
+    blue: brainOf('blue', who === 'blue' ? tagA : opponentTag, 'dA'),
+    orange: brainOf('orange', who === 'orange' ? tagA : opponentTag, 'dA'),
   };
   const rival = brainOf(who, tagB, 'dB');
   let thinks = 0, differ = 0;
@@ -787,7 +797,7 @@ const jaccard = (a, b) => {
 };
 
 OUT.diversity = {};
-for (const who of ['octopus', 'gorilla']) {
+for (const who of ['blue', 'orange']) {
   const opponent = TAGS[0];
   const sources = Object.fromEntries(TAGS.map((t) => [t, tokensOf(src(who, t))]));
   const pairs = [];

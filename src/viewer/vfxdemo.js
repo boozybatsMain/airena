@@ -103,7 +103,9 @@ if (params.get('vfx')) {
 
     const centre = { x: 0, z: 0 };
     const h = Math.PI * 0.25;
-    const base = { kind, element, who: 'octopus', t: 0, skill: 'k1' };
+    /* Кастует синяя сторона: `who` — это сторона, а не вид, и стенду нужна
+       ровно одна, чтобы цвет эффекта был определён. */
+    const base = { kind, element, who: 'blue', t: 0, skill: 'k1' };
     const shapes = {
       beam: { ...base, x0: -6, z0: -6, x1: 8, z1: 8, hit: true },
       cone: { ...base, x: -3, z: -3, h, range: 6, halfAngle: 0.96, hit: true },

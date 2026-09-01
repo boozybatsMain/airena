@@ -131,6 +131,15 @@ function think(p, api) {
   if (p.t - last > 5) api.say('жду');
 }`;
 
+/*
+ * СТОРОНА -> ИМЯ ФАЙЛА. Стороны арены зовутся цветами (`blue`, `orange`);
+ * файлы эталонной фикстуры §1 на диске так и лежат — `octopus.js` и
+ * `gorilla.js`. Пока имена совпадали, одно значение делало обе работы; теперь
+ * перевод стоит явно, по одной таблице в каждую сторону.
+ */
+const REF_FILE = { blue: 'octopus', orange: 'gorilla' };
+const SIDE_OF_FILE = { octopus: 'blue', gorilla: 'orange' };
+
 const sparring = readFileSync(join(ROOT, 'brains/stub/gorilla.js'), 'utf8');
 
 let held = 0; let escaped = 0; let miscaught = 0;
@@ -148,7 +157,7 @@ for (const a of ATTACKS) {
   } else {
     /* Анализ пропустил — значит держать обязана следующая стена. */
     try {
-      const r = await runIsolated({ octopus: a.src, gorilla: sparring }, {
+      const r = await runIsolated({ blue: a.src, orange: sparring }, {
         seed: 5,
         /*
          * Щедро — потому что здесь важно НЕ «за сколько», а «какой стеной».
@@ -162,8 +171,8 @@ for (const a of ATTACKS) {
          */
         timeoutMs: 60000,
       });
-      const fuel = r.fuel?.octopus;
-      const faults = r.result?.octopus?.faults ?? 0;
+      const fuel = r.fuel?.blue;
+      const faults = r.result?.blue?.faults ?? 0;
       if (fuel?.exhausted) { verdict = 'топливо'; detail = `потрачено ${fuel.spent} шагов`; }
       else if (faults > 0) { verdict = 'sim'; detail = `${faults} падений мысли`; }
       else { verdict = 'ПРОШЛА'; detail = 'мозг отработал без единого возражения'; }
@@ -191,7 +200,7 @@ for (const a of ATTACKS) {
 }
 
 /* Контроль: честный мозг обязан пройти все стены. */
-const ctl = await admit(CONTROL, 'octopus', { sparring });
+const ctl = await admit(CONTROL, 'blue', { sparring });
 console.log('  ' + '─'.repeat(74));
 console.log(`  контроль (честный мозг)              —          ${ctl.ok ? '✓ допущен' : '✗ ОТВЕРГНУТ'}`);
 if (!ctl.ok) console.log(`      ${JSON.stringify(ctl.problems).slice(0, 200)}`);
@@ -201,12 +210,15 @@ let refOk = 0; let refBad = 0; const refFiles = [];
 for (const tag of readdirSync(join(ROOT, 'brains'))) {
   const dir = join(ROOT, 'brains', tag);
   if (!statSync(dir).isDirectory()) continue;
-  for (const slot of ['octopus', 'gorilla']) {
-    const f = join(dir, `${slot}.js`);
+  /* Здесь перебираются ФАЙЛЫ на диске, а не стороны: у популяции §1 два файла
+     и зовутся они так. Сторона, на которую файл потом сажают, берётся из
+     `SIDE_OF_FILE` — это две разные вещи. */
+  for (const file of ['octopus', 'gorilla']) {
+    const f = join(dir, `${file}.js`);
     if (!existsSync(f)) continue;
     const r = analyse(readFileSync(f, 'utf8'));
-    if (r.ok) { refOk++; refFiles.push([`${tag}/${slot}`, slot, f]); }
-    else { refBad++; console.log(`  ✗ эталон ${tag}/${slot} отвергнут: ${r.problems[0].message.slice(0, 90)}`); }
+    if (r.ok) { refOk++; refFiles.push([`${tag}/${file}`, SIDE_OF_FILE[file], f]); }
+    else { refBad++; console.log(`  ✗ эталон ${tag}/${file} отвергнут: ${r.problems[0].message.slice(0, 90)}`); }
   }
 }
 console.log(`  эталонные мозги репозитория          —          ${refBad === 0 ? `✓ ${refOk} из ${refOk} (разбор)` : `✗ ${refBad} отвергнуто`}`);
@@ -240,8 +252,9 @@ let admitOk = 0; const admitNew = []; const admitOld = [];
  */
 const NEW_WALLS = new Set(['idle', 'never_uses', 'never_hits']);
 for (const [name, slot, f] of sample) {
-  const other = slot === 'octopus' ? 'gorilla' : 'octopus';
-  const spar = readFileSync(join(ROOT, `brains/kit-stub/${other}.js`), 'utf8');
+  const other = slot === 'blue' ? 'orange' : 'blue';
+  /* Слева сторона, справа имя файла — перевод обязателен. */
+  const spar = readFileSync(join(ROOT, `brains/kit-stub/${REF_FILE[other]}.js`), 'utf8');
   const r = await admit(readFileSync(f, 'utf8'), slot, { sparring: spar });
   if (r.ok) admitOk++;
   else if (NEW_WALLS.has(r.problems[0].code)) admitNew.push(`${name}: ${r.problems[0].code}`);
@@ -280,7 +293,7 @@ const idleKit = compileKit([
 ]).defs;
 const slipped = [];
 for (const [name, src] of idleBrains) {
-  const r = await admit(src, 'octopus', { sparring, kit: idleKit });
+  const r = await admit(src, 'blue', { sparring, kit: idleKit });
   if (r.ok) slipped.push(name);
 }
 console.log(`  бездействующий мозг отвергается      —          ${slipped.length === 0

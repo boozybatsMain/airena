@@ -2,13 +2,23 @@
 /**
  * Ask Claude for a mind, check it, keep it.
  *
- *   node tools/brainforge.mjs --fighter=octopus --model=opus --effort=high
+ *   node tools/brainforge.mjs --side=blue --model=opus --effort=high
  *   node tools/brainforge.mjs --all --tag=v1
  *
- * Writes `brains/<tag>/<fighter>.js` and a sibling `.json` recording exactly
+ * Writes `brains/<tag>/<file>.js` and a sibling `.json` recording exactly
  * how it was made — model, effort, prompt hash, attempts, what failed, cost,
  * wall clock. The `.json` is the thing that makes a later comparison between
- * two brains mean something; without it "the octopus got smarter" is a story.
+ * two brains mean something; without it "the blue brain got smarter" is a
+ * story.
+ *
+ * ── СТОРОНА И ИМЯ ФАЙЛА — ЭТО РАЗНЫЕ ВЕЩИ ─────────────────────────────────
+ *
+ * Стороны арены зовутся цветами: `blue` и `orange`. Именно это значение уходит
+ * в `brainPrompt` и в `validate`, и именно его мозг прочитает в `p.self.id`.
+ * А файлы популяции §1 на диске зовутся `octopus.js` и `gorilla.js` — под
+ * этими именами напечатаны §1 и §16, и их читают `falsify`, `tournament`,
+ * `checkframing`, `api.js`. Пока сторона и файл звались одинаково, одно
+ * значение делало обе работы; теперь перевод стоит один раз, в `BRAIN_FILE`.
  */
 
 import { createHash } from 'node:crypto';
@@ -59,7 +69,7 @@ async function forge(id) {
      * под мир. Мир задан осями — их границами, ценой и общим потолком трат,
      * — и именно они говорят мозгу, чего вообще можно ожидать от чужого
      * тела. Сдвинули границу или цену — прошлая популяция стала
-     * misinformed так же, как раньше от сдвига здоровья гориллы.
+     * misinformed так же, как раньше от сдвига здоровья одного из тел.
      *
      * Читают эту запись `tools/checkstale.mjs`, `tools/bracket.mjs` и
      * `tools/seed.mjs`; секцию `fighters` они теперь считают меткой старого
@@ -156,13 +166,22 @@ async function forge(id) {
 function flush(id, source, record) {
   const dir = resolve(ROOT, 'brains', TAG);
   mkdirSync(dir, { recursive: true });
-  if (source) writeFileSync(resolve(dir, `${id}.js`), `${source}\n`);
-  writeFileSync(resolve(dir, `${id}.json`), `${JSON.stringify(record, null, 2)}\n`);
+  /* Имя файла — фикстурное (`octopus.js`/`gorilla.js`), сторона — цвет. */
+  const file = BRAIN_FILE[id] || id;
+  if (source) writeFileSync(resolve(dir, `${file}.js`), `${source}\n`);
+  writeFileSync(resolve(dir, `${file}.json`), `${JSON.stringify(record, null, 2)}\n`);
 }
 
+/* СТОРОНА -> ИМЯ ФАЙЛА в `brains/<tag>/`. См. шапку. */
+const BRAIN_FILE = { blue: 'octopus', orange: 'gorilla' };
+/* Прежние имена сторон принимаются как псевдонимы, чтобы строки из README и
+   §9.3 не превратились в ошибку на ровном месте. */
+const SIDE_ALIAS = { octopus: 'blue', gorilla: 'orange' };
+const asSide = (v) => (Object.hasOwn(SIDE_ALIAS, v) ? SIDE_ALIAS[v] : v);
+
 const wanted = arg('all', false)
-  ? ['octopus', 'gorilla']
-  : [String(arg('fighter', 'octopus'))];
+  ? ['blue', 'orange']
+  : [asSide(String(arg('side', arg('fighter', 'blue'))))];
 
 console.log(`brainforge: ${wanted.join(', ')} — ${MODEL}/${EFFORT}, tag "${TAG}"`);
 const t0 = Date.now();

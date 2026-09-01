@@ -563,8 +563,9 @@ ok('бюджет сборки больше бюджета кадра', BODY_FUEL
   /*
    * Тело можно сгенерировать, проверить, положить в базу и отдавать по сети —
    * и всё равно не показать. Между «тело есть» и «тело видно» стоит одна
-   * колонка: `body_ref`. `gen:<id>` — зритель грузит своё, `octopus` — стоковое
-   * архетипа.
+   * колонка: `body_ref`. `gen:<id>` — зритель грузит своё, `octopus` — стоковое.
+   * `octopus` здесь ИМЯ ФАЙЛА `bodies/octopus.js`, а не сторона: стороны арены
+   * зовутся `blue` и `orange`.
    *
    * Ровно это и было сломано: конвейер оставлял `bodyRef: archetype` с
    * комментарием «`gen:` подставит слой хранения», а слой хранения не
@@ -598,7 +599,7 @@ ok('бюджет сборки больше бюджета кадра', BODY_FUEL
     const { create } = await import('../src/server/creatures.js');
     const db = openDb(join(dir, 't.db'));
     const base = {
-      name: 'ПРОБА', archetype: 'octopus', kit: [], brainSource: 'export function think(){}',
+      name: 'ПРОБА', kit: [], brainSource: 'export function think(){}',
       brainModel: 'проба', constantsVersion: 'c-0', tacticsCard: '', unfit: [],
     };
     const withBody = create(db, { ...base, bodySafe: 'export function build(){}', bodySource: 'x', bodyDraws: 1, bodyRef: 'octopus' });
@@ -606,7 +607,7 @@ ok('бюджет сборки больше бюджета кадра', BODY_FUEL
     db.close();
     ok('своё тело надевается на существо', withBody.body_ref === `gen:${withBody.id}`,
       `body_ref=${withBody.body_ref}`);
-    ok('без своего тела остаётся архетип', without.body_ref === 'octopus',
+    ok('без своего тела остаётся СТОКОВОЕ', without.body_ref === 'octopus',
       `body_ref=${without.body_ref}`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }

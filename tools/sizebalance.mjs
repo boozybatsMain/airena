@@ -221,12 +221,12 @@ function jobsFor(pairs) {
       for (const flip of [false, true]) {
         jobs.push({
           a: KIT, b: KIT, seed: 1000 + s, sym: true,
-          /* Стороны арены по-прежнему зовутся octopus/gorilla — это ИМЕНА
-             СТОРОН, а не виды и не архетипы: тело каждой приезжает вот этим
+          /* Стороны арены — это ЦВЕТА, blue и orange, и больше ничего: ни
+             вида, ни архетипа за ними нет. Тело каждой приезжает вот этим
              полем, наравне с набором и сидом. */
           builds: flip
-            ? { octopus: BUILDS[j].build, gorilla: BUILDS[i].build }
-            : { octopus: BUILDS[i].build, gorilla: BUILDS[j].build },
+            ? { blue: BUILDS[j].build, orange: BUILDS[i].build }
+            : { blue: BUILDS[i].build, orange: BUILDS[j].build },
         });
         meta.push({ i, j, flip });
       }
@@ -244,12 +244,13 @@ async function league(pairs, label) {
   for (let k = 0; k < out.length; k++) {
     const m = meta[k]; const r = out[k];
     if (r === 'error') continue;
-    /* Кто был «первым» в паре, зависит от flip: осьминог — это либо i, либо j. */
+    /* Кто был «первым» в паре, зависит от flip: синяя сторона — это либо i,
+       либо j. */
     const first = m.flip ? m.j : m.i;
     const second = m.flip ? m.i : m.j;
     score[first].n++; score[second].n++;
-    if (r === 'octopus') score[first].w++;
-    else if (r === 'gorilla') score[second].w++;
+    if (r === 'blue') score[first].w++;
+    else if (r === 'orange') score[second].w++;
     else { score[first].w += 0.5; score[second].w += 0.5; }
   }
   return score;
@@ -311,9 +312,9 @@ for (const b of BUILDS) {
     const r = out[k];
     if (r === 'error') continue;
     n++;
-    /* «Первый» — тот, кто стоит на слоте осьминога в этой перестановке. */
-    if (r === 'octopus') wins += meta[k].flip ? 0 : 1;
-    else if (r === 'gorilla') wins += meta[k].flip ? 1 : 0;
+    /* «Первый» — тот, кто стоит на синей стороне в этой перестановке. */
+    if (r === 'blue') wins += meta[k].flip ? 0 : 1;
+    else if (r === 'orange') wins += meta[k].flip ? 1 : 0;
     else wins += 0.5;
   }
   const rate = n ? wins / n : 0;

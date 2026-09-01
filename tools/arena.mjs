@@ -4,7 +4,7 @@
  * say whether the concept is working.
  *
  *   node tools/arena.mjs --rounds=100 --tag=v1
- *   node tools/arena.mjs --rounds=200 --octopus=v1 --gorilla=stub
+ *   node tools/arena.mjs --rounds=200 --blue=v1 --orange=stub
  *
  * ── why the metrics are what they are ───────────────────────────────────────
  *
@@ -48,17 +48,30 @@ const ROUNDS = Number(arg('rounds', 60));
 const TAG = String(arg('tag', 'v1'));
 const JSON_OUT = arg('json', false);
 
-function brainPath(id, tag) {
-  if (tag === 'stub') return resolve(ROOT, 'brains/stub', `${id}.js`);
-  return resolve(ROOT, 'brains', tag, `${id}.js`);
+/*
+ * СТОРОНА — ЭТО ЦВЕТ; ИМЯ ФАЙЛА МОЗГА — ЭТО ИМЯ ФАЙЛА.
+ *
+ * Стороны арены зовутся `blue` и `orange` и не значат ничего, кроме цвета:
+ * видов и архетипов нет, общего у двух существ — только то, что они существа.
+ * А эталонные мозги §1 лежат на диске под своими собственными именами
+ * (`brains/<tag>/octopus.js`, `.../gorilla.js`) — это ФИКСТУРА замера, её
+ * имена трогать нельзя, иначе поедут §1 и §16. Вот таблица, которая
+ * связывает одно с другим, и это единственное место, где они встречаются.
+ */
+const BRAIN_FILE = { blue: 'octopus', orange: 'gorilla' };
+
+function brainPath(side, tag) {
+  const file = BRAIN_FILE[side];
+  if (tag === 'stub') return resolve(ROOT, 'brains/stub', `${file}.js`);
+  return resolve(ROOT, 'brains', tag, `${file}.js`);
 }
 
-function load(id, tag) {
-  const p = brainPath(id, tag);
+function load(side, tag) {
+  const p = brainPath(side, tag);
   if (!existsSync(p)) {
     // A stack trace here tells a reader nothing they can act on. Say what is
     // missing and what to type.
-    console.error(`\nno ${id} brain for tag "${tag}" (looked in ${p})\n`);
+    console.error(`\nno ${side} brain for tag "${tag}" (looked in ${p})\n`);
     console.error('  available tags: ' + available().join(', '));
     console.error('  generate one:   node tools/brainforge.mjs --all --tag=' + tag + '\n');
     process.exit(1);
@@ -69,16 +82,16 @@ function load(id, tag) {
 /**
  * The same treatment `load` gives a missing file, for a file that is present
  * and does not parse. A brain is a generated program and a bad one is an
- * ordinary outcome; the raw V8 trace names `octopus.brain.js`, a file that
+ * ordinary outcome; the raw V8 trace names `blue.brain.js`, a file that
  * exists nowhere, and buries the one line that says what is wrong with it.
  */
-function compile(id, tag) {
+function compile(side, tag) {
   try {
-    return compileBrain(sources[id].source, id);
+    return compileBrain(sources[side].source, side);
   } catch (err) {
-    console.error(`\n${id} brain for tag "${tag}" does not compile (${sources[id].path})`);
+    console.error(`\n${side} brain for tag "${tag}" does not compile (${sources[side].path})`);
     console.error(`  ${err.message}`);
-    console.error(`  regenerate it:  node tools/brainforge.mjs --fighter=${id} --tag=${tag}\n`);
+    console.error(`  regenerate it:  node tools/brainforge.mjs --fighter=${BRAIN_FILE[side]} --tag=${tag}\n`);
     process.exit(1);
   }
 }
@@ -89,15 +102,21 @@ function available() {
   return readdirSync(dir).filter((d) => statSync(resolve(dir, d)).isDirectory()).sort();
 }
 
-const tags = { octopus: String(arg('octopus', TAG)), gorilla: String(arg('gorilla', TAG)) };
-const other = (id) => (id === 'octopus' ? 'gorilla' : 'octopus');
-const sources = { octopus: load('octopus', tags.octopus), gorilla: load('gorilla', tags.gorilla) };
+/* `--octopus=` / `--gorilla=` приняты как старые написания флагов: они уже
+   напечатаны в README и в §9.3, и ронять чужую строку из-за переименования
+   сторон незачем. Ключ стороны при этом ровно один — цвет. */
+const tags = {
+  blue: String(arg('blue', arg('octopus', TAG))),
+  orange: String(arg('orange', arg('gorilla', TAG))),
+};
+const other = (id) => (id === 'blue' ? 'orange' : 'blue');
+const sources = { blue: load('blue', tags.blue), orange: load('orange', tags.orange) };
 
 // ---------------------------------------------------------------------------
 
 const acc = {
-  octopus: blank('octopus'),
-  gorilla: blank('gorilla'),
+  blue: blank('blue'),
+  orange: blank('orange'),
 };
 const lengths = [];
 let draws = 0, timeouts = 0;
@@ -127,12 +146,12 @@ const t0 = Date.now();
 for (let round = 0; round < ROUNDS; round++) {
   const seed = 1000 + round;
   const brains = {
-    octopus: compile('octopus', tags.octopus),
-    gorilla: compile('gorilla', tags.gorilla),
+    blue: compile('blue', tags.blue),
+    orange: compile('orange', tags.orange),
   };
 
   /** Per-fighter rolling state the engagement metrics need. */
-  const watch = { octopus: { lastDir: null }, gorilla: { lastDir: null } };
+  const watch = { blue: { lastDir: null }, orange: { lastDir: null } };
   /**
    * "Changed its mind" has to mean a change of INTENT, not a change of
    * floating-point bits. Re-aiming a chase order at a moving target rewrites
@@ -219,7 +238,7 @@ for (let round = 0; round < ROUNDS; round++) {
   if (result.winner) acc[result.winner].wins++; else draws++;
   if (result.reason.startsWith('timeout')) timeouts++;
 
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const a = acc[id], s = result[id];
     a.hpLeft.push(s.hpFrac);
     a.damageDealt += s.damageDealt; a.damageTaken += s.damageTaken;
@@ -234,8 +253,8 @@ for (let round = 0; round < ROUNDS; round++) {
    * Three kinds of log line, because the simulation writes a miss three ways.
    *
    * Reading only `type:'miss'` made the breakdown silent about the skill it was
-   * most needed for: over the 200 seeds this tool uses, l1 vs l1, the gorilla
-   * charged 1137 times, hit 170, and the printed reason line named NONE of the
+   * most needed for: over the 200 seeds this tool uses, l1 vs l1, the orange
+   * side charged 1137 times, hit 170, and the printed reason line named NONE of the
    * 967 non-hits — the handful the simulation did count reached
    * `stats.misses.charge` and no line of output. That silence sat directly under
    * the charge hit rate, which is the number it exists to explain. `dashStep`
@@ -355,17 +374,17 @@ function report(id) {
 
 const out = {
   rounds: ROUNDS,
-  brains: { octopus: `${tags.octopus}`, gorilla: `${tags.gorilla}` },
+  brains: { blue: `${tags.blue}`, orange: `${tags.orange}` },
   wallSeconds: (Date.now() - t0) / 1000,
   balance: {
-    octopusWinRate: acc.octopus.wins / ROUNDS,
-    gorillaWinRate: acc.gorilla.wins / ROUNDS,
+    blueWinRate: acc.blue.wins / ROUNDS,
+    orangeWinRate: acc.orange.wins / ROUNDS,
     drawRate: draws / ROUNDS,
     timeoutRate: timeouts / ROUNDS,
     seconds: { mean: mean(lengths), p10: quant(lengths, 0.1), median: quant(lengths, 0.5), p90: quant(lengths, 0.9) },
   },
-  octopus: report('octopus'),
-  gorilla: report('gorilla'),
+  blue: report('blue'),
+  orange: report('orange'),
 };
 
 /**
@@ -387,18 +406,18 @@ const norm = (h) => {
   const tot = Object.values(h).reduce((x, y) => x + y, 0) || 1;
   return Object.fromEntries(Object.entries(h).map(([k, v]) => [k, v / tot]));
 };
-out.verbSimilarity = cosine(norm(acc.octopus.verbs), norm(acc.gorilla.verbs));
+out.verbSimilarity = cosine(norm(acc.blue.verbs), norm(acc.orange.verbs));
 
 if (JSON_OUT) {
   console.log(JSON.stringify(out, null, 2));
 } else {
   const b = out.balance;
-  console.log(`\n═══ ${ROUNDS} rounds — octopus:${tags.octopus} vs gorilla:${tags.gorilla} — ${out.wallSeconds.toFixed(1)}s\n`);
+  console.log(`\n═══ ${ROUNDS} rounds — blue:${tags.blue} vs orange:${tags.orange} — ${out.wallSeconds.toFixed(1)}s\n`);
   console.log('BALANCE');
-  console.log(`  octopus wins   ${pct(b.octopusWinRate)}      gorilla wins  ${pct(b.gorillaWinRate)}      draws ${pct(b.drawRate)}`);
+  console.log(`  blue wins      ${pct(b.blueWinRate)}      orange wins   ${pct(b.orangeWinRate)}      draws ${pct(b.drawRate)}`);
   console.log(`  match length   mean ${b.seconds.mean.toFixed(1)}s   p10 ${b.seconds.p10.toFixed(1)}s   median ${b.seconds.median.toFixed(1)}s   p90 ${b.seconds.p90.toFixed(1)}s`);
   console.log(`  decided on the clock  ${pct(b.timeoutRate)}`);
-  for (const id of ['octopus', 'gorilla']) {
+  for (const id of ['blue', 'orange']) {
     const r = out[id];
     console.log(`\n${id.toUpperCase()}`);
     console.log(`  EXECUTION  faults ${pct(r.faultRate)}   think ${r.avgThinkMicros.toFixed(0)}us   damage/match ${r.dmgPerMatch.toFixed(0)}   walked ${r.metresPerMatch.toFixed(0)}m`);

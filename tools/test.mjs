@@ -31,8 +31,17 @@ const ok = (name, cond, detail = '') => {
 };
 const group = (n) => console.log(`\n${n}`);
 
-const stub = (id) => compileBrain(readFileSync(new URL(`../brains/stub/${id}.js`, import.meta.url), 'utf8'), id);
-const stubs = () => ({ octopus: stub('octopus'), gorilla: stub('gorilla') });
+/*
+ * Слева — СТОРОНА арены, справа — ИМЯ ФАЙЛА болванки на диске.
+ *
+ * Стороны зовутся `blue` и `orange`: это цвета и ничего больше, видов нет.
+ * А `brains/stub/octopus.js` и `.../gorilla.js` — файлы эталонной фикстуры
+ * §1, у них свои имена, и переименование их поехало бы в §16.
+ */
+const STUB_FILE = { blue: 'octopus', orange: 'gorilla' };
+const stub = (side) => compileBrain(
+  readFileSync(new URL(`../brains/stub/${STUB_FILE[side]}.js`, import.meta.url), 'utf8'), side);
+const stubs = () => ({ blue: stub('blue'), orange: stub('orange') });
 
 // ---------------------------------------------------------------------------
 group('arena');
@@ -48,14 +57,14 @@ group('arena');
   let bad = 0;
   for (let s = 1; s <= 200; s++) {
     const w = createWorld(s);
-    for (const id of ['octopus', 'gorilla']) {
+    for (const id of ['blue', 'orange']) {
       const f = w.fighters[id], r = f.def.radius;
       if (Math.abs(f.x) > ARENA_HALF - r || Math.abs(f.z) > ARENA_HALF - r) bad++;
       for (const o of OBSTACLES) {
         if (Math.abs(f.x - o.x) < o.hx + r && Math.abs(f.z - o.z) < o.hz + r) bad++;
       }
     }
-    const a = w.fighters.octopus, b = w.fighters.gorilla;
+    const a = w.fighters.blue, b = w.fighters.orange;
     if (Math.abs(dist2(a.x, a.z, b.x, b.z) - SPAWN_RADIUS * 2) > 0.01) bad++;
     // and they must be looking at each other
     const toB = Math.atan2(b.x - a.x, b.z - a.z);
@@ -121,7 +130,7 @@ group('simulation');
   const think = (id, p, api) => brains[id].tick(p, api);
   while (!world.done && world.tick < 2400) {
     step(world, think);
-    const o = world.fighters.octopus, g = world.fighters.gorilla;
+    const o = world.fighters.blue, g = world.fighters.orange;
     if (dist2(o.x, o.z, g.x, g.z) < o.def.radius + g.def.radius - 0.02) overlaps++;
     for (const f of [o, g]) {
       if (Math.abs(f.x) > ARENA_HALF - f.def.radius + 0.02) outside++;
@@ -140,17 +149,17 @@ group('simulation');
 {
   // The dash must report the velocity it is actually travelling at. It used to
   // report zero, which made the viewer play a standing pose at 15 m/s and told
-  // the opposing brain a charging gorilla was stationary.
+  // the opposing brain a charging fighter was stationary.
   const world = createWorld(7);
   let sawDash = false, reportedZero = false, maxReported = 0;
   const think = (id, p, api) => {
-    if (id === 'gorilla') { api.faceAt(p.enemy.x, p.enemy.z); api.use('charge'); }
+    if (id === 'orange') { api.faceAt(p.enemy.x, p.enemy.z); api.use('charge'); }
     else api.move(0, 0);
     return null;
   };
   for (let i = 0; i < 300 && !world.done; i++) {
     step(world, think);
-    const g = world.fighters.gorilla;
+    const g = world.fighters.orange;
     if (g.act && g.act.phase === 'dash') {
       sawDash = true;
       const rv = Math.hypot(g.rvx, g.rvz);
@@ -190,10 +199,10 @@ group('simulation');
     Object.entries(BUILD_AXES).map(([k, a]) => [k, a.inverse ? a.min : a.max]),
   );
   const norm = normalizeBuild(greedy);
-  const world = createWorld(77, { builds: { octopus: greedy, gorilla: DEFAULT_BUILD } });
+  const world = createWorld(77, { builds: { blue: greedy, orange: DEFAULT_BUILD } });
   const axes = Object.keys(BUILD_AXES);
   const same = (a, b) => axes.every((k) => Math.abs(a[k] - b[k]) < 1e-9);
-  const served = world.fighters.octopus.def;
+  const served = world.fighters.blue.def;
   ok('a build over budget is squeezed, and the fight uses the squeezed numbers',
     buildCost(greedy) > BUILD_BUDGET
       && norm.squeezed > 0 && norm.cost <= BUILD_BUDGET + 1e-9
@@ -201,7 +210,7 @@ group('simulation');
       && same(served, statsOf(greedy))
       /* И вторая сторона держит СВОЁ телосложение: сжатие соседа её не
          касается, потому что числа больше не принадлежат стороне арены. */
-      && same(world.fighters.gorilla.def, statsOf(DEFAULT_BUILD)),
+      && same(world.fighters.orange.def, statsOf(DEFAULT_BUILD)),
     `cost ${buildCost(greedy)} -> ${norm.cost} at a budget of ${BUILD_BUDGET}; `
     + `hp asked ${greedy.hp}, served ${served.hp}`);
 }
@@ -211,7 +220,7 @@ group('simulation');
   ok('the burn rises after it', t1 > 0);
   // and a pair that refuses to fight must still be resolved
   const passive = { tick: () => null };
-  const { result } = runMatch({ octopus: passive, gorilla: passive }, { seed: 3 });
+  const { result } = runMatch({ blue: passive, orange: passive }, { seed: 3 });
   ok('two fighters who do nothing are still killed by the arena',
     result.reason === 'kill' || result.reason === 'double-ko', `reason was ${result.reason} at ${result.seconds}s`);
   ok('and it happens well before the backstop clock', result.seconds < 62, `${result.seconds}s`);
@@ -220,12 +229,12 @@ group('simulation');
   const world = createWorld(11);
   let bad = 0;
   const think = (id, p, api) => {
-    if (id === 'octopus') { api.use('blink', Math.cos(p.t * 3), Math.sin(p.t * 5)); api.move(1, 0); }
+    if (id === 'blue') { api.use('blink', Math.cos(p.t * 3), Math.sin(p.t * 5)); api.move(1, 0); }
     return null;
   };
   for (let i = 0; i < 900 && !world.done; i++) {
     step(world, think);
-    const f = world.fighters.octopus;
+    const f = world.fighters.blue;
     if (Math.abs(f.x) > ARENA_HALF - f.def.radius + 0.02) bad++;
     for (const b of OBSTACLES) {
       const qx = Math.max(b.x - b.hx, Math.min(f.x, b.x + b.hx));
@@ -242,7 +251,7 @@ group('sandbox');
 {
   const runaway = compileBrain('function think(p, api) { while (true) {} }', 'runaway');
   const t0 = Date.now();
-  const { result } = runMatch({ octopus: runaway, gorilla: stub('gorilla') }, { seed: 5 });
+  const { result } = runMatch({ blue: runaway, orange: stub('orange') }, { seed: 5 });
   const wall = Date.now() - t0;
   /*
    * Проверяется ПРИЧИНА остановки, а не секундомер.
@@ -260,24 +269,24 @@ group('sandbox');
   ok('a brain in an infinite loop does not hang the match',
     result.seconds > 0 && byFuel && wall < 240000,
     `${wall} ms, остановлен ${byFuel ? 'топливом' : 'чем-то другим'}`);
-  ok('and its faults are counted', result.octopus.faults > 0, `${result.octopus.faults} faults`);
-  ok('and the other fighter still wins', result.winner === 'gorilla', `winner ${result.winner}`);
+  ok('and its faults are counted', result.blue.faults > 0, `${result.blue.faults} faults`);
+  ok('and the other fighter still wins', result.winner === 'orange', `winner ${result.winner}`);
 }
 {
   const thrower = compileBrain('function think(p, api) { null.x; }', 'thrower');
-  const { result } = runMatch({ octopus: thrower, gorilla: stub('gorilla') }, { seed: 5 });
-  ok('a brain that throws is switched off, not crashed through', result.octopus.faults >= 1 && result.seconds > 0);
+  const { result } = runMatch({ blue: thrower, orange: stub('orange') }, { seed: 5 });
+  ok('a brain that throws is switched off, not crashed through', result.blue.faults >= 1 && result.seconds > 0);
 }
 {
   const greedy = compileBrain('function think(p, api) { for (let i = 0; i < 5000; i++) api.ray(1, 0, 5); }', 'greedy');
-  const { result } = runMatch({ octopus: greedy, gorilla: stub('gorilla') }, { seed: 5 });
-  const first = result.log.find((e) => e.type === 'fault' && e.who === 'octopus');
+  const { result } = runMatch({ blue: greedy, orange: stub('orange') }, { seed: 5 });
+  const first = result.log.find((e) => e.type === 'fault' && e.who === 'blue');
   ok('exhausting the perception budget raises rather than lying',
     !!first && /perception calls/.test(String(first.error)), first ? first.error : 'no fault raised');
 }
 {
   const w = createWorld(1);
-  const p = perceive(w, 'octopus');
+  const p = perceive(w, 'blue');
   const required = ['t', 'dt', 'tick', 'timeLeft', 'burn', 'burnStartsIn', 'self', 'enemy', 'arena', 'events', 'mem'];
   const missing = required.filter((k) => !(k in p));
   ok('perception carries every field the prompt documents', missing.length === 0, `missing: ${missing}`);
@@ -296,12 +305,12 @@ group('sandbox');
   const sg = readFileSync(new URL('../brains/stub/gorilla.js', import.meta.url), 'utf8');
   const fresh = [];
   for (let r = 0; r < 6; r++) {
-    fresh.push(JSON.stringify(runMatch({ octopus: compileBrain(so, 'o'), gorilla: compileBrain(sg, 'g') }, { seed: 3000 + r }).result.log));
+    fresh.push(JSON.stringify(runMatch({ blue: compileBrain(so, 'o'), orange: compileBrain(sg, 'g') }, { seed: 3000 + r }).result.log));
   }
-  const reused = { octopus: compileBrain(so, 'o'), gorilla: compileBrain(sg, 'g') };
+  const reused = { blue: compileBrain(so, 'o'), orange: compileBrain(sg, 'g') };
   const recycled = [];
   for (let r = 0; r < 6; r++) {
-    reused.octopus.reset(); reused.gorilla.reset();
+    reused.blue.reset(); reused.orange.reset();
     recycled.push(JSON.stringify(runMatch(reused, { seed: 3000 + r }).result.log));
   }
   ok('reset() is indistinguishable from a fresh compile',
@@ -311,8 +320,8 @@ group('sandbox');
 {
   // memory must not survive a fresh compile, or 200 seeded rounds stop being 200 samples
   const counter = compileBrain('let n = 0;\nfunction think(p, api) { n++; api.say(String(n)); }', 'counter');
-  const a = runMatch({ octopus: counter, gorilla: stub('gorilla') }, { seed: 8 });
-  const b = runMatch({ octopus: compileBrain('let n = 0;\nfunction think(p, api) { n++; api.say(String(n)); }', 'counter'), gorilla: stub('gorilla') }, { seed: 8 });
+  const a = runMatch({ blue: counter, orange: stub('orange') }, { seed: 8 });
+  const b = runMatch({ blue: compileBrain('let n = 0;\nfunction think(p, api) { n++; api.say(String(n)); }', 'counter'), orange: stub('orange') }, { seed: 8 });
   ok('a freshly compiled brain starts from a clean slate',
     JSON.stringify(a.result.log) === JSON.stringify(b.result.log));
 }
@@ -323,10 +332,10 @@ group('wire');
 {
   const w = createWorld(2);
   const s = snapshot(w);
-  const need = ['t', 'tick', 'over', 'winner', 'octopus', 'gorilla', 'fx'];
+  const need = ['t', 'tick', 'over', 'winner', 'blue', 'orange', 'fx'];
   ok('a snapshot carries what the viewer reads', need.every((k) => k in s), `missing: ${need.filter((k) => !(k in s))}`);
   const fn = ['x', 'y', 'z', 'vx', 'vz', 'h', 'hp', 'maxHp', 'alive', 'act', 'phase', 'actPhase', 'inv', 'stun', 'say', 'cd'];
-  ok('and every per-fighter field', fn.every((k) => k in s.octopus), `missing: ${fn.filter((k) => !(k in s.octopus))}`);
+  ok('and every per-fighter field', fn.every((k) => k in s.blue), `missing: ${fn.filter((k) => !(k in s.blue))}`);
   ok('and it is JSON-safe', JSON.parse(JSON.stringify(s)).tick === s.tick);
 }
 

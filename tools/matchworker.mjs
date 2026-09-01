@@ -41,13 +41,15 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * Кому нужны РАЗНЫЕ тела (лига телосложений, `tools/sizebalance.mjs`), тот
  * кладёт их в задачу полем `builds` — так же, как кладёт наборы и сид.
  */
-const OCT_SRC = readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8');
+/* `brains/kit-stub/octopus.js` и `.../gorilla.js` — ФАЙЛЫ эталонных пилотов,
+   их имена свои и к сторонам отношения не имеют. Стороны арены — цвета. */
+const BLUE_SRC = readFileSync(join(ROOT, 'brains/kit-stub/octopus.js'), 'utf8');
 const brains = {
-  octopus: compileBrain(OCT_SRC, 'octopus'),
-  gorilla: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'gorilla'),
+  blue: compileBrain(BLUE_SRC, 'blue'),
+  orange: compileBrain(readFileSync(join(ROOT, 'brains/kit-stub/gorilla.js'), 'utf8'), 'orange'),
 };
 /* Один пилот на обе стороны — вторая половина `sym`, см. шапку выше. */
-const twin = { octopus: brains.octopus, gorilla: compileBrain(OCT_SRC, 'gorilla') };
+const twin = { blue: brains.blue, orange: compileBrain(BLUE_SRC, 'orange') };
 
 const cache = new Map();
 /**
@@ -92,10 +94,10 @@ parentPort.on('message', (m) => {
   if (a && b) {
     try {
       const use = m.job.sym ? twin : brains;
-      use.octopus.reset?.(); use.gorilla.reset?.();
+      use.blue.reset?.(); use.orange.reset?.();
       winner = runMatch(use, {
         seed: m.job.seed,
-        kits: { octopus: a, gorilla: b },
+        kits: { blue: a, orange: b },
         /* Телосложение — часть ВХОДА матча (см. `statsOf`), наравне с сидом и
            наборами: лига телосложений задаёт его так же, как лига атомов
            задаёт наборы. Не передали — обе стороны выходят в `DEFAULT_BUILD`,
