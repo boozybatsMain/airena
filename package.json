@@ -13,7 +13,7 @@
     "balance": "node tools/balance.mjs",
     "report": "node tools/report.mjs",
     "forge": "node tools/brainforge.mjs",
-    "dev": "AIRENA_DEV=1 node --env-file-if-exists=.env src/server/app.js",
+    "dev": "AIRENA_DEV=1 AIRENA_SUB_MODELS=1 node --env-file-if-exists=.env src/server/app.js",
     "viewer": "node src/server/index.js",
     "seed": "node tools/seed.mjs"
   },

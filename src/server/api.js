@@ -31,6 +31,25 @@ import { viability } from './forge/viability.js';
 import { Router, cookies, fail, json, readJson, setCookie } from './http.js';
 import { ladderView, modelTable } from './ladder.js';
 import * as limits from './limits.js';
+
+/*
+ * Дев-режим ОБЪЯВЛЯЕТСЯ КЛИЕНТУ, а не угадывается им.
+ *
+ * Стена аккаунта берёт личность у платформы через postMessage. На локальном
+ * стенде платформы нет, и вместо неё сервер принимает base64url-токен — но
+ * знал об этом только адрес: клиент предлагал дев-токен, лишь увидев `?dev=1`
+ * в строке запроса. Открыв localhost без этого хвоста, разработчик упирался в
+ * «страница открыта не внутри платформы» — сообщение, которое на стенде
+ * называет неверную причину и не говорит, что делать. Замерено на живом
+ * сервере: `POST /api/session/claim` с дев-токеном отвечает 200 и заводит
+ * аккаунт — то есть сервер был готов всё это время, а мешал только адрес.
+ *
+ * Признак отдаёт сервер, потому что только он знает правду: в продакшене
+ * `AIRENA_DEV` не выставлен, поле приезжает `false`, и никакой хвост в адресе
+ * дев-вход не включит. Раньше `?dev=1` был не защитой, а лишь вторым условием
+ * поверх серверного — сервер и тогда решал сам.
+ */
+const DEV = process.env.AIRENA_DEV === '1';
 import { accountFromToken, claimAccount, ensureGuest } from './session.js';
 import { compileKit, readable } from '../skills/compile.js';
 
@@ -135,6 +154,8 @@ export function buildRouter(ctx) {
     json(res, {
       guest: !!acct.is_guest,
       accountId: acct.id,
+      /* Стенд без платформы: клиент вправе предложить дев-вход. См. шапку. */
+      dev: DEV,
       canCreate: !acct.is_guest && !acct.free_creature_used && (!limitState || limitState.ok),
       /* D1: гость не запускает генерацию. Причина отдаётся кодом, чтобы экран
          показал стену аккаунта, а не общую ошибку. */

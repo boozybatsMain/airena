@@ -699,7 +699,12 @@ export function parseVfx(text, names) {
    минус коды «ответа не было» — здесь речь о том, чей отказ роняет генерацию.
    Два списка в одной папке однажды уже разошлись и назвали один код
    противоположно. */
-const OUR_CODES = new Set(['no_key', 'network', 'wall', 'no_catalog', 'internal', 'rate', 'http']);
+/* Экспортируется РАДИ ГЕЙТА: `checkfaults.mjs` сверяет этот список с
+   `OUR_FAULT` в limits.js. Они уже расходились однажды — на `http`, и это
+   стоило игроку суточных попыток за наш кончившийся счёт. Комментарий
+   «два списка в одной папке однажды разошлись» стоял здесь и тогда: он
+   предупреждал, но ничего не проверял. */
+export const OUR_CODES = new Set(['no_key', 'network', 'wall', 'no_catalog', 'internal', 'rate', 'http']);
 const ourFault = (e) => (OUR_CODES.has(e?.code) ? e.code : 'brain_failed');
 
 export async function forgeCreature({
