@@ -37,11 +37,13 @@ const MIME = {
 /** Which directories a URL may reach, and where they live. */
 const MOUNTS = [
   ['/vendor/', join(ROOT, 'node_modules/three/build')],
+  ['/vendor-addons/', join(ROOT, 'node_modules/three/examples/jsm')],
   ['/bodies/', join(ROOT, 'bodies')],
   /* Реестр грамматики — чистые данные, ни одного node-импорта. Экран берёт
      палитры элементов и русские имена атомов ОТТУДА ЖЕ, откуда сервер берёт
      цены: две копии палитры разошлись бы в первый же день. */
   ['/skills/', join(ROOT, 'src/skills')],
+  ['/vfx/', join(ROOT, 'src/vfx')],
   ['/assets/', join(ROOT, 'preview/assets')],
   ['/', join(ROOT, 'src/viewer')],
 ];

@@ -66,31 +66,87 @@ export const clampRating = (r) => Math.max(FLOOR_RATING, round2(r));
  */
 export const WINDOWS = [60, 140, 300, 700, Infinity];
 
-export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random } = {}) {
+/**
+ * @param o.busy  Set идентификаторов, которые сейчас ЗАНЯТЫ своим боем.
+ *
+ * Появился вместе с D161 (бои по кулдауну). До него подбор не спрашивал про
+ * занятость вовсе: существо могло быть соперником в любом числе матчей
+ * одновременно, потому что зачётный прогон мгновенный, а трансляция длится
+ * пятьдесят секунд. Снаружи это читалось как телепортация — одно и то же
+ * существо шло двумя боями сразу, и зритель видел произвольный из них.
+ *
+ * Множество передаётся, а не читается из базы: занятость — состояние ПРОЦЕССА
+ * (сколько ещё идёт трансляция), и колонки под неё нет. Заводить колонку
+ * значило бы, что упавший процесс оставляет половину лестницы вечно занятой.
+ */
+export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random, busy = null } = {}) {
   const recent = db.prepare(`
     SELECT CASE WHEN a_id = ? THEN b_id ELSE a_id END AS other
     FROM match WHERE (a_id = ? OR b_id = ?) ORDER BY started_at DESC LIMIT 6
   `).all(creature.id, creature.id, creature.id).map((r) => r.other);
 
-  for (const w of WINDOWS) {
-    const lo = w === Infinity ? -1e9 : creature.rating - w;
-    const hi = w === Infinity ? 1e9 : creature.rating + w;
-    const rows = db.prepare(`
-      SELECT id, name, rating, fights, is_library, archetype
-      FROM creature
-      WHERE state = 'active' AND id != ? AND season = ?
-        AND rating BETWEEN ? AND ?
-      ORDER BY abs(rating - ?) ASC
-      LIMIT 24
-    `).all(creature.id, creature.season, lo, hi, creature.rating);
-    /* Свежих соперников предпочитаем повторным: одно и то же существо шесть
-       раз подряд читается как «игра сломалась», даже когда это честный подбор
-       на пустой лестнице. */
-    const fresh = rows.filter((r) => !recent.includes(r.id));
-    const pool = fresh.length ? fresh : rows;
-    if (pool.length) return pool[Math.floor(rng() * Math.min(pool.length, 8))];
-  }
-  return null;
+  /*
+   * ДВА ПРОХОДА: сперва ищем чужой архетип во ВСЕХ окнах, и только потом
+   * соглашаемся на своего.
+   *
+   * Предпочтение внутри одного окна эту работу не делает. Окна расширяются от
+   * узкого к широкому, и узкое часто содержит только своих: подбор возвращал
+   * своего немедленно, хотя чужой нашёлся бы окном шире. Замерено: 29%
+   * подборов давали одинаковый архетип, то есть почти треть рейтинговых боёв
+   * шла в чужом теле — осьминожий мозг в теле гориллы держит дистанцию, с
+   * которой его умения не достают, и не наносит ничего.
+   *
+   * Второй проход обязателен и не является поблажкой: на пустой лестнице или
+   * в маленьком сезоне чужого архетипа может не быть вовсе, а «нет боя» хуже,
+   * чем «бой в чужом теле».
+   */
+  const scan = (wantOpposite, freshOnly) => {
+    for (const w of WINDOWS) {
+      const lo = w === Infinity ? -1e9 : creature.rating - w;
+      const hi = w === Infinity ? 1e9 : creature.rating + w;
+      const rows = db.prepare(`
+        SELECT id, name, rating, fights, is_library, archetype
+        FROM creature
+        WHERE state = 'active' AND id != ? AND season = ?
+          AND rating BETWEEN ? AND ?
+          ${wantOpposite ? 'AND archetype != ?' : ''}
+        ORDER BY abs(rating - ?) ASC
+        LIMIT 24
+      `).all(...(wantOpposite
+        ? [creature.id, creature.season, lo, hi, creature.archetype, creature.rating]
+        : [creature.id, creature.season, lo, hi, creature.rating]));
+      /* Свежих соперников предпочитаем повторным: одно и то же существо шесть
+         раз подряд читается как «игра сломалась», даже когда это честный подбор
+         на пустой лестнице. */
+      /* Занятые отсеиваются ЖЁСТКО: драться с тем, кто уже дерётся, нельзя. */
+      const idle = busy ? rows.filter((r) => !busy.has(r.id)) : rows;
+      const pool = freshOnly ? idle.filter((r) => !recent.includes(r.id)) : idle;
+      if (pool.length) return pool[Math.floor(rng() * Math.min(pool.length, 8))];
+    }
+    return null;
+  };
+
+  /*
+   * ── ЧЕТЫРЕ ПРОХОДА, И ПОРЯДОК В НИХ — ЭТО ДВА ПРЕДПОЧТЕНИЯ ПОДРЯД ────────
+   *
+   * Было два: «чужой архетип во всех окнах», потом «любой». Свежесть при этом
+   * решалась ВНУТРИ окна — `fresh.length ? fresh : idle`, — то есть первое же
+   * окно, где нашёлся хоть кто-нибудь, соглашалось на недавнего соперника, не
+   * пробуя окно шире.
+   *
+   * Замерено на живой лестнице: у лидера (рейтинг 1566, дальше всех от
+   * остальных) последние ДЕСЯТЬ боёв прошли с ОДНИМ И ТЕМ ЖЕ соперником.
+   * Снаружи это читается как «игра сломалась», и основатель просил ровно
+   * обратного: «оппоненты разные».
+   *
+   * Свежесть теперь такое же сквозное предпочтение, как архетип, и стоит
+   * ВЫШЕ него: чужой архетип — это про качество боя, а десять боёв подряд с
+   * одним существом — про то, идёт ли игра вообще.
+   *
+   * Последний проход по-прежнему соглашается на всё: «нет боя» хуже, чем
+   * «бой с тем же самым», и на лестнице из двух существ выбора нет.
+   */
+  return scan(true, true) || scan(false, true) || scan(true, false) || scan(false, false);
 }
 
 /**
@@ -98,8 +154,40 @@ export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random
  * процентиль. Аркадный столбик на тысячу строк запрещён как форма.
  */
 export function ladderView(db, { creatureId = null, season = 1, windowSize = 4 } = {}) {
+  /*
+   * ПРОЦЕНТИЛЬ СЧИТАЕТСЯ ПО ИГРОКАМ, А НЕ ПО ВСЕЙ ТАБЛИЦЕ.
+   *
+   * Знаменатель включал библиотечные существа. Их рейтинг ПОСТАВЛЕН для
+   * калибровки и не двигается (см. `bump` в arena-loop.js), поэтому «сильнее
+   * 73% существ» на две трети означало «сильнее наших собственных заглушек».
+   * В базе сейчас 23 библиотечных из 30 активных — то есть цифра была почти
+   * целиком про них.
+   *
+   * Призовая доска ниже эту границу уже проводит; процентиль обязан проводить
+   * ту же. Одна и та же величина не может считаться по двум разным множествам
+   * на одном экране.
+   */
+  /*
+   * ДВА ЧИСЛА, ПОТОМУ ЧТО ДВА ВОПРОСА.
+   *
+   * `total` — сколько строк в таблице. Ровно по ним считается место, и в них
+   * входят библиотечные: они стоят в топе и в окне «рядом с тобой», и место
+   * обязано совпадать с тем, что игрок видит глазами.
+   *
+   * `players` — сколько существ ИГРОКОВ. По ним считается процентиль: рейтинг
+   * библиотечных ПОСТАВЛЕН для калибровки и не двигается, и «сильнее 73%
+   * существ» на две трети означало «сильнее наших заглушек».
+   *
+   * Сначала я просто сузил `total` — и получил экран, который сам себе
+   * противоречит: «в лестнице 7 существ» над таблицей с местами до 22-го.
+   * Одно число на два вопроса не отвечает; нужны оба, и каждое там, где оно
+   * значит то, что написано.
+   */
   const total = db.prepare(
     `SELECT count(*) AS n FROM creature WHERE state = 'active' AND season = ?`,
+  ).get(season).n;
+  const players = db.prepare(
+    `SELECT count(*) AS n FROM creature WHERE state = 'active' AND season = ? AND is_library = 0`,
   ).get(season).n;
 
   const top = db.prepare(`
@@ -108,30 +196,88 @@ export function ladderView(db, { creatureId = null, season = 1, windowSize = 4 }
     ORDER BY rating DESC, fights DESC, id ASC LIMIT 10
   `).all(season).map((r, i) => ({ ...row(r), rank: i + 1 }));
 
+  /*
+   * ПРИЗОВАЯ ДОСКА — ОТДЕЛЬНЫЙ СПИСОК, а не первые строки лестницы.
+   *
+   * Экран сезона брал `top[i]` и подписывал им i-е место в призовом фонде. В
+   * `top` при этом стоят и наши калибровочные существа, чей рейтинг поставлен
+   * при заселении и не двигается (D37): семь из десяти верхних строк — дом,
+   * и приз доставался дому. Игра не может выдавать призы сама себе, и
+   * показывать, что может, — тем более.
+   *
+   * Правило простое и живёт на сервере: в призах участвуют существа игроков.
+   */
+  const prizeBoard = db.prepare(`
+    SELECT id, name, rating, peak_rating, wins, losses, draws, fights, archetype, brain_model, owner_id, is_library
+    FROM creature WHERE state = 'active' AND season = ? AND is_library = 0
+    ORDER BY rating DESC, fights DESC, id ASC LIMIT 10
+  `).all(season).map((r, i) => ({ ...row(r), rank: i + 1 }));
+
   let me = null; let around = []; let percentile = null;
   if (creatureId) {
     const c = db.prepare(`SELECT * FROM creature WHERE id = ?`).get(creatureId);
     if (c) {
+      /*
+       * ПОРЯДОК ЗДЕСЬ ОБЯЗАН СОВПАДАТЬ С ПОРЯДКОМ В `top`.
+       *
+       * Топ сортировался по `rating DESC, fights DESC, id ASC`, а место
+       * существа считалось только по рейтингу и id. При равном рейтинге эти
+       * два ответа расходились, и на ОДНОМ экране одно и то же существо
+       * стояло на двух разных местах: седьмым в таблице и «восьмым из 26» в
+       * своей строке. «Где я» — единственная работа лестницы (§10.3), и два
+       * ответа на этот вопрос хуже, чем ни одного.
+       */
       const better = db.prepare(`
         SELECT count(*) AS n FROM creature
-        WHERE state = 'active' AND season = ? AND (rating > ? OR (rating = ? AND id < ?))
-      `).get(season, c.rating, c.rating, c.id).n;
+        WHERE state = 'active' AND season = ?
+          AND (rating > ?
+            OR (rating = ? AND fights > ?)
+            OR (rating = ? AND fights = ? AND id < ?))
+      `).get(season, c.rating, c.rating, c.fights, c.rating, c.fights, c.id).n;
       const rank = better + 1;
+      /*
+       * МЕСТО И ПРОЦЕНТИЛЬ ОТВЕЧАЮТ НА РАЗНЫЕ ВОПРОСЫ, И СЧИТАЮТСЯ ПО РАЗНОМУ.
+       *
+       * `rank` — строка в таблице, и он обязан совпадать с порядком `top`,
+       * включая библиотечные (иначе на одном экране два ответа на «где я», см.
+       * комментарий выше).
+       *
+       * `percentile` — «сильнее скольких существ», и это про ИГРОКОВ. Их
+       * рейтинг зарабатывается, а библиотечным он ПОСТАВЛЕН и не двигается;
+       * считать себя сильнее наших заглушек нечем гордиться, а в базе их
+       * сейчас 23 из 30 активных — то есть цифра была почти целиком про них.
+       *
+       * Поэтому у процентиля свой числитель, а не `rank`.
+       */
+      const betterPlayers = db.prepare(`
+        SELECT count(*) AS n FROM creature
+        WHERE state = 'active' AND season = ? AND is_library = 0
+          AND (rating > ?
+            OR (rating = ? AND fights > ?)
+            OR (rating = ? AND fights = ? AND id < ?))
+      `).get(season, c.rating, c.rating, c.fights, c.rating, c.fights, c.id).n;
       /* «Сильнее 73% существ» вместо номера места — §10.4. При total<=1
-         процент неопределён, и врать 100% нельзя. */
-      percentile = total > 1 ? Math.round(((total - rank) / (total - 1)) * 100) : null;
+         процент неопределён, и врать 100% нельзя. Библиотечное существо само
+         в знаменатель не входит, поэтому и процентиля у него нет. */
+      percentile = (!c.is_library && players > 1)
+        ? Math.round(((players - (betterPlayers + 1)) / (players - 1)) * 100)
+        : null;
       me = { ...row(c), rank };
 
       const above = db.prepare(`
         SELECT * FROM creature WHERE state = 'active' AND season = ?
-          AND (rating > ? OR (rating = ? AND id < ?))
-        ORDER BY rating ASC, id DESC LIMIT ?
-      `).all(season, c.rating, c.rating, c.id, windowSize).reverse();
+          AND (rating > ?
+            OR (rating = ? AND fights > ?)
+            OR (rating = ? AND fights = ? AND id < ?))
+        ORDER BY rating ASC, fights ASC, id DESC LIMIT ?
+      `).all(season, c.rating, c.rating, c.fights, c.rating, c.fights, c.id, windowSize).reverse();
       const below = db.prepare(`
         SELECT * FROM creature WHERE state = 'active' AND season = ?
-          AND (rating < ? OR (rating = ? AND id > ?))
-        ORDER BY rating DESC, id ASC LIMIT ?
-      `).all(season, c.rating, c.rating, c.id, windowSize);
+          AND (rating < ?
+            OR (rating = ? AND fights < ?)
+            OR (rating = ? AND fights = ? AND id > ?))
+        ORDER BY rating DESC, fights DESC, id ASC LIMIT ?
+      `).all(season, c.rating, c.rating, c.fights, c.rating, c.fights, c.id, windowSize);
       around = [
         ...above.map((r, i) => ({ ...row(r), rank: rank - above.length + i })),
         { ...me, isMe: true },
@@ -145,7 +291,7 @@ export function ladderView(db, { creatureId = null, season = 1, windowSize = 4 }
       }
     }
   }
-  return { total, top, me, around, percentile, season };
+  return { total, players, prizeBoard, top, me, around, percentile, season };
 }
 
 export function headToHead(db, aId, bId) {
@@ -170,6 +316,18 @@ const row = (r) => ({
   archetype: r.archetype,
   model: r.brain_model,
   isLibrary: !!r.is_library,
+  /*
+   * Рейтинг библиотечного существа НЕ ЗАРАБОТАН — он поставлен при заселении
+   * и не двигается (см. `bump` в arena-loop.js: эталон, который дрейфует,
+   * перестаёт быть эталоном). Рядом при этом стоит настоящий счёт боёв, и
+   * получается строка «1450 · 201 бой · 0% побед» — два числа, которые
+   * противоречат друг другу, и игрок читает первое как заработанное.
+   *
+   * Механику менять нельзя, она нужна ровно такой. Значит обязана меняться
+   * подпись: экран говорит, что это отметка калибровки, а не место в
+   * соревновании.
+   */
+  calibration: !!r.is_library,
   winrate: r.fights ? Math.round((r.wins / r.fights) * 100) : null,
 });
 

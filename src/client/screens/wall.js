@@ -28,7 +28,7 @@ export async function enter(root, args, ctx) {
     && ctx.state.over.winner
     && ctx.state.match?.ids?.[ctx.state.over.winner] !== ctx.state.session.creature.id;
 
-  mount(root, h('div.overlay-card',
+  mount(root, h('div.overlay-card.ask',
     h('div.panel.lift', { dataset: { frame: JSON.stringify({ seed: 89 }) } },
       h('div.bg'), h('div.fr'),
       h('div.in',
@@ -56,7 +56,7 @@ export async function enter(root, args, ctx) {
     const token = await platformToken();
     if (!token) {
       clear(status);
-      status.appendChild(h('div.t-body', { style: { marginTop: '14px', color: '#f0c08c' } },
+      status.appendChild(h('div.t-body', { style: { marginTop: '14px', color: 'var(--gor)' } },
         'Здесь войти не получится: страница открыта не внутри платформы. '
         + 'Открой Airena на платформе — существо ждёт по этой же ссылке.'));
       return;
@@ -72,7 +72,7 @@ export async function enter(root, args, ctx) {
       ctx.go(hasDraft ? '/new' : '/creature/me');
     } catch (e) {
       clear(status);
-      status.appendChild(h('div.t-body', { style: { marginTop: '14px', color: '#f0a99e' } },
+      status.appendChild(h('div.t-body', { style: { marginTop: '14px', color: 'var(--bad)' } },
         e.code === 'bad_token'
           ? 'Платформа не подтвердила личность. Это не твоя ошибка — попробуй ещё раз.'
           : (e.message || 'Не получилось сохранить.')));

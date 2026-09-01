@@ -15,8 +15,9 @@
  */
 
 import { get, post, track } from '../lib/api.js';
-import { $, h, mount, clear, num, signed, mmss, ago, badge, empty } from '../lib/dom.js';
+import { $, h, mount, clear, num, signed, waitLabel, ago, badge, empty } from '../lib/dom.js';
 import { paintFrames } from '../ui/frames.js';
+import { pickStarter } from './arena.js';
 import { glyphSvg } from '../ui/glyph.js';
 import { kitEditor, loadGrammar } from './kit.js';
 
@@ -36,7 +37,7 @@ export async function enter(root, args, ctx) {
   const mine = c.isMine;
 
   const head = h('div.row', { style: { alignItems: 'flex-start', gap: '18px' } },
-    h('div', { html: glyphSvg(c.id, { size: 64, color: c.archetype === 'gorilla' ? '#e8b077' : '#8fd4e4' }) }),
+    h('div', { html: glyphSvg(c.id, { size: 64, color: c.archetype === 'gorilla' ? 'var(--gor)' : 'var(--oct)' }) }),
     h('div.col.gap6',
       h('div.row',
         h(`div.t-name.big${c.archetype === 'gorilla' ? '.or' : ''}`, c.name),
@@ -53,13 +54,18 @@ export async function enter(root, args, ctx) {
     stat(num(c.fights), 'боёв'),
     stat(c.winrate === null ? '—' : `${c.winrate}%`, 'побед'),
     /* §10.4: везде, где хочется написать номер места, пишется процентиль. */
-    stat(d.percentile === null ? '—' : `${d.percentile}%`, 'сильнее существ'));
+    /* Процент без знаменателя — половина утверждения: «сильнее 33%» из семи и
+       из семисот выглядит одинаково. D83 назвал знаменатель на лестнице; сюда
+       та же починка не доехала, и одна величина на двух экранах жила по
+       разным правилам. */
+    stat(d.percentile === null ? '—' : `${d.percentile}%`,
+      d.players ? `сильнее существ · из ${d.players}` : 'сильнее существ'));
 
   const body = h('div.sheet', head, stats);
 
   /* Мало боёв — процентиль ещё ничего не значит, и молчать об этом нельзя. */
   if (c.fights < 20 && !c.isLibrary) {
-    body.appendChild(h('div.t-body', { style: { marginTop: '12px', color: '#ddd0ad' } },
+    body.appendChild(h('div.t-body', { style: { marginTop: '12px', color: 'var(--gor)' } },
       `Ещё мало боёв: ${c.fights} из 20. До двадцати рейтинг гуляет сильнее, чем существо меняется.`));
   }
   if (c.rating <= 620 && !c.isLibrary) {
@@ -70,13 +76,40 @@ export async function enter(root, args, ctx) {
   if (mine && c.prompt) {
     body.appendChild(h('div.section',
       h('div.hcut', 'ТВОИ СЛОВА'),
-      h('div.t-body', { style: { fontStyle: 'italic', color: '#a9bcc8' } }, `«${c.prompt}»`)));
+      h('div.t-body', { style: { fontStyle: 'italic', color: 'var(--oct)' } }, `«${c.prompt}»`)));
   }
 
   /* «Не вошло» — §8.1, правило 3. Живёт на странице ВСЕГДА, а не только при
      рождении: это единственное место, где игрок видит, что именно сделали
      его слова, и отсортированный по частоте список этих строк — очередь
      разработки контента по спросу живых игроков. */
+  /*
+   * §5.1: ПОДМЕНА НАЗЫВАЕТСЯ ВСЛУХ.
+   *
+   * Конвейер собирал эти строки — «Fable не справилась, существо сделала
+   * Gemini», «тело не собралось» — и они уезжали ровно в одно место: в поле
+   * `fallback: 1` события аналитики. Игрок, у которого упало тело, получал
+   * тело архетипа и ноль объяснений; игрок, выбравший модель, получал другую
+   * и узнавал об этом только по строке модели на карточке.
+   *
+   * Показывается ВСЕМ, а не только владельцу: «носит тело архетипа» — это про
+   * то, что зритель видит на арене, а не тайна владельца.
+   */
+  if (c.birthNote?.length) {
+    body.appendChild(h('div.section',
+      h('div.hcut', 'ПРИ РОЖДЕНИИ'),
+      h('div.unfit', c.birthNote.map((n) => h('div.ln',
+        n.kind === 'fallback'
+          ? `${n.from} не справилась — существо сделала ${n.to}. Денег за отказ не брали.`
+          : (n.kind === 'body_fallback'
+            ? `Тело ${n.from} не нарисовала — его сделала ${n.to}. Денег за отказ не брали.`
+            : (n.kind === 'body_failed'
+            ? 'Тело не нарисовалось: существо носит тело своего архетипа. Всё остальное — своё.'
+            : (n.kind === 'kit_unviable'
+              ? `Набор проверен боем: ${n.message}. Умения можно поменять — это мгновенно и бесплатно.`
+              : (n.message || 'что-то пошло не так')))))))));
+  }
+
   if (mine && c.unfit?.length) {
     body.appendChild(h('div.section',
       h('div.hcut', 'НЕ ВОШЛО'),
@@ -98,14 +131,40 @@ export async function enter(root, args, ctx) {
   body.appendChild(historyBlock(d, c));
 
   if (mine) {
-    const left = d.nextFightAt ? d.nextFightAt - Date.now() : null;
+    /*
+     * ОТСЧЁТ СЧИТАЕТСЯ ОТ ОТНОСИТЕЛЬНОГО ЧИСЛА, А НЕ ОТ ЧАСОВ СЕРВЕРА.
+     *
+     * Здесь стояло `d.nextFightAt - Date.now()` — разность двух РАЗНЫХ часов.
+     * Ровно тот перекос, ради которого сервер отдаёт `nextFightIn`; на
+     * `/api/session` его уже применяют, а этот экран остался на старом пути.
+     */
+    const left = d.nextFightIn != null ? d.nextFightIn
+      : (d.nextFightAt ? d.nextFightAt - Date.now() : null);
+    /*
+     * «ИДЁТ БОЙ» — ПРО ЭТО СУЩЕСТВО, А НЕ ПРО ЛЮБУЮ ТРАНСЛЯЦИЮ.
+     *
+     * Здесь стояло `ctx.state.match ? …`, то есть «идёт ли хоть какой-нибудь
+     * бой». На арене почти всегда идёт чужой — сокет по умолчанию отдаёт
+     * витринный, — и страница уверенно сообщала «существо на арене прямо
+     * сейчас», пока дрались двое других. Данные для честной проверки лежат в
+     * том же объекте (`match.ids`), и `result.js` эту проверку уже делает.
+     */
+    /* Сервер знает точнее клиента: `fightingNow` считается по резерву боя, а
+       не по тому, какую трансляцию сейчас показывает сокет. Признак с экрана
+       остаётся запасным для старых ответов. */
+    const ids = ctx.state.match?.ids;
+    const fighting = d.fightingNow ?? (!!ids && (ids.octopus === c.id || ids.gorilla === c.id));
     body.appendChild(h('div.section', { style: { marginTop: '40px' } },
       h('span.seeking', h('button.btn.primary', { onclick: () => ctx.go('/arena') },
-        ctx.state.match ? 'ИДЁТ БОЙ' : 'В БОЙ')),
+        fighting ? 'ИДЁТ БОЙ' : 'В БОЙ')),
       h('div.t-sub', { style: { marginTop: '12px' } },
-        ctx.state.match ? 'существо на арене прямо сейчас'
-          : (left !== null ? `существо ищет бой · следующий через ${mmss(left)}`
-            : 'существо ищет бой'))));
+        fighting ? 'существо на арене прямо сейчас'
+          : (d.noOpponent
+            /* Лестница мала или все соседи заняты. Молчать нельзя: экран
+               обещал бы бой через пять секунд и не дал бы его ни разу. */
+            ? 'свободного соперника пока нет — как только кто-то освободится, бой начнётся'
+            : (left !== null ? `существо отдыхает · следующий бой через ${waitLabel(left)}`
+              : 'существо ищет бой')))));
   } else if (!ctx.state.session?.creature) {
     body.appendChild(h('div.section', { style: { marginTop: '40px' } },
       h('div.t-body', { style: { maxWidth: '56ch', marginBottom: '14px' } },
@@ -128,19 +187,35 @@ const stat = (v, k) => h('div.stat', h('div.v', v), h('div.k', k));
  */
 function journal(c, d) {
   const accepted = (d.adaptations || []).filter((a) => a.accepted);
-  const checked = (d.adaptations || []).length;
   const sec = h('div.section',
     h('div.hcut', 'ЖУРНАЛ'),
     h('div.t-body', { style: { marginBottom: '4px' } },
       `${c.adaptations} ${plural(c.adaptations, 'улучшение принято', 'улучшения приняты', 'улучшений принято')}.`
-      + ' Каждое сначала дралось со старой версией сто раз.'),
+      /* Число боёв не выдумывается: строки ниже показывают настоящее «N из M»,
+         и «сто раз» им противоречило — там 96, 64, 48. Обещать круглое число
+         там, где рядом напечатано настоящее, — это подрыв доверия к обоим. */
+      + ' Каждое сначала проверялось десятками боёв против прежней версии.'),
     h('div.t-sub', { style: { marginBottom: '12px' } },
       'Адаптация не может сделать существо хуже: новый мозг принимается, только если выигрывает у старого.'));
 
   const obs = d.observations;
   if (obs) {
     sec.appendChild(h('div', { style: { margin: '0 0 16px', maxWidth: '360px' } },
-      h('div.t-sub', `наблюдений ${obs.have} из ${obs.need} — потом существо попробует себя улучшить`),
+      /* Очередь показывается отдельной фразой, а не подменяет числитель:
+         «587 из 10» — это не полная шкала, это сломанная шкала. */
+      /* Полная шкала не значит «сейчас станет лучше»: существо пробует и
+         оставляет только то, что выигрывает у старого. Обещать улучшение,
+         которого может не быть, — тот же обман, что «587 из 10». */
+      /*
+       * Подпись говорит про то же, что и шкала: сколько боёв до следующей
+       * ПОПЫТКИ. Раньше она обещала «материала хватает» почти всегда, потому
+       * что шкала считала не то (см. `observationsOf`), — и обещание
+       * «существо возьмётся за себя» звучало после каждого боя, а сбывалось
+       * раз в двести.
+       */
+      h('div.t-sub', obs.full
+        ? `следующий бой — попытка переписать себя${d.adaptTries ? ` · уже пробовало ${d.adaptTries} раз, оставило ${d.creature.adaptations}` : ''}`
+        : `${obs.have} из ${obs.need} боёв до следующей попытки${d.adaptTries ? ` · пробовало ${d.adaptTries}, оставило ${d.creature.adaptations}` : ''}`),
       h('div.prog', { style: { marginTop: '6px' } }, h('i', { style: { width: `${Math.round(obs.frac * 100)}%` } }))));
   }
 
@@ -155,10 +230,25 @@ function journal(c, d) {
       h('div.what', a.summary),
       h('div.score', `${a.score_after} : ${a.score_before}`)));
   }
-  const rejected = checked - accepted.length;
+  /*
+   * ОТКЛОНЁННЫЕ СЧИТАЮТСЯ ПО ПОЛНОЙ ТАБЛИЦЕ, А НЕ ПО ОКНУ.
+   *
+   * Здесь стояло «длина списка минус принятые в нём». Список приходит
+   * усечённым (последние 12), поэтому существо, отклонившее 53 кандидата,
+   * рапортовало о четырёх. Причём ошибка занижала ровно ту цифру, ради
+   * которой строка написана: отбор выглядит серьёзным при пятидесяти
+   * проверенных и случайным при четырёх.
+   */
+  const rejected = Math.max(0, (d.adaptTries ?? 0) - (c.adaptations ?? accepted.length));
   if (rejected > 0) {
     sec.appendChild(h('div.t-sub', { style: { marginTop: '12px' } },
       `Ещё ${rejected} ${plural(rejected, 'кандидат проверен', 'кандидата проверены', 'кандидатов проверены')} и отклонены — старый мозг оказался сильнее.`));
+  }
+  /* Список принятых тоже окно: сказать про это честнее, чем молча показать
+     восемь из двадцати и дать думать, что их всего восемь. */
+  if ((c.adaptations ?? 0) > accepted.slice(0, 8).length) {
+    sec.appendChild(h('div.t-sub', { style: { marginTop: '4px' } },
+      `Показаны последние ${accepted.slice(0, 8).length} из ${c.adaptations} принятых.`));
   }
   return sec;
 }
@@ -183,12 +273,34 @@ function historyBlock(d, c) {
 }
 
 function renderNoCreature(root, ctx) {
-  mount(root, h('div.sheet.narrow',
+  /*
+   * ── ВЫБОР СТАРТОВОГО СУЩЕСТВА ЖИВЁТ ЗДЕСЬ, А НЕ НА АРЕНЕ ────────────────
+   *
+   * D2 даёт гостю выбрать одно из трёх библиотечных существ и следить за ним.
+   * Карточки стояли в панели ожидания арены (`#idle`), а она показывается
+   * ТОЛЬКО когда боя нет — при этом бой на арене идёт практически всегда
+   * (D161 сократил паузу до пяти секунд, а витрина держится тёплой). То есть
+   * выбор был недостижим: `airena.starter` не записывался никогда, а `following`
+   * всегда оставался null.
+   *
+   * Вкладка «Существо» у гостя пуста по определению — это и есть её место.
+   * Она открыта в любой момент, не спорит с идущим боем и отвечает ровно на
+   * тот вопрос, с которым сюда приходят: «а что у меня есть».
+   */
+  const cards = h('div.row', { style: { flexWrap: 'wrap', gap: '10px', marginTop: '18px' } },
+    h('div.t-sub', 'подбираем троих…'));
+  const box = h('div.sheet.narrow',
     empty('У ТЕБЯ ПОКА НЕТ СВОЕГО',
       ctx.state.session?.guest
-        ? 'Библиотечное существо дерётся на арене прямо сейчас — оно общее для всех гостей. Своё создаётся на аккаунте.'
-        : 'Существо создаётся из одного предложения. Оно будет драться само, раз в минуту, даже когда вкладка закрыта.',
-      h('button.btn.primary', { onclick: () => ctx.go('/new') }, 'СДЕЛАТЬ СВОЁ'))));
+        ? 'Библиотечные существа дерутся на арене прямо сейчас — они общие для всех гостей. Выбери, за кем следить, или сделай своё на аккаунте.'
+        : 'Существо создаётся из одного предложения. Оно будет драться само, даже когда вкладка закрыта.',
+      h('button.btn.primary', { onclick: () => ctx.go('/new') }, 'СДЕЛАТЬ СВОЁ')));
+  if (ctx.state.session?.guest) {
+    box.appendChild(h('div.hcut', { style: { marginTop: '28px' } }, 'ЗА КЕМ СЛЕДИТЬ'));
+    box.appendChild(cards);
+  }
+  mount(root, box);
+  if (ctx.state.session?.guest) pickStarter(cards, ctx).catch(() => {});
 }
 
 function plural(n, one, few, many) {

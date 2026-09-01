@@ -45,7 +45,7 @@ export class IsolateError extends Error {
  * @param {object} brains  { octopus: source, gorilla: source } — уже допущенные
  * @param {object} opts    seed, record, curtainSeconds, timeoutMs
  */
-export function runIsolated(brains, { seed = 1, seeds = null, kits = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
+export function runIsolated(brains, { seed = 1, seeds = null, kits = null, sizes = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
   const prepared = {};
   for (const [slot, src] of Object.entries(brains)) {
     prepared[slot] = instrument(src).code;
@@ -53,7 +53,10 @@ export function runIsolated(brains, { seed = 1, seeds = null, kits = null, recor
 
   return new Promise((resolve, reject) => {
     const w = new Worker(WORKER, {
-      workerData: { seed, seeds, brains: prepared, kits, record, curtainSeconds },
+      /* `sizes` едет наравне с `kits` и `seed`: это вход матча, от него
+         зависят здоровье, радиус, скорость и масса. Забыть его — значит
+         показать бой, которого не было. */
+      workerData: { seed, seeds, brains: prepared, kits, sizes, record, curtainSeconds },
       resourceLimits: LIMITS,
       /* Ни аргументов, ни переменных окружения, ни stdin: изолят не должен
          уметь прочитать ни ключ (E4: ключ Anthropic живёт в env хоста), ни
@@ -102,7 +105,7 @@ export function runIsolated(brains, { seed = 1, seeds = null, kits = null, recor
  * Возвращает { ok, problems, probe } — `probe` это два пробных боя против
  * спарринг-партнёра, тот же смысл, что у `src/brain/validate.js`, но за стеной.
  */
-export async function admit(source, slot, { sparring, kit = null, seeds = [11, 22] } = {}) {
+export async function admit(source, slot, { sparring, kit = null, seeds = [11, 22, 33, 44] } = {}) {
   const stat = analyse(source);
   if (!stat.ok) return { ok: false, stage: 'analyse', problems: stat.problems };
 
@@ -122,9 +125,15 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
       const m = await runIsolated({ [slot]: source, [other]: sparring },
         { seed, kits: kit ? { [slot]: kit } : null });
       const fuel = m.fuel?.[slot];
+      const me = m.result[slot] || {};
+      const sum = (o) => (o && typeof o === 'object' ? Object.values(o).reduce((a, b) => a + (Number(b) || 0), 0) : Number(o) || 0);
       probe.push({
         seed, winner: m.result.winner, seconds: m.result.seconds,
-        faults: m.result[slot]?.faults ?? 0, thinks: m.result[slot]?.thinks ?? 0,
+        faults: me.faults ?? 0, thinks: me.thinks ?? 0,
+        orders: me.orders ?? 0,
+        /* `uses` и `hits` — словари по имени умения; нас интересует сумма. */
+        uses: sum(me.uses), hits: sum(me.hits),
+        damageDealt: me.damageDealt ?? 0,
         fuelSpent: fuel?.spent ?? 0, fuelExhausted: !!fuel?.exhausted,
       });
     } catch (e) {
@@ -149,6 +158,81 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
       message: 'мозг исчерпал бюджет шагов внутри одной мысли — вероятен неограниченный цикл',
     }] };
   }
+  /*
+   * ПЯТАЯ СТЕНА: МОЗГ ОБЯЗАН ЧТО-ТО ДЕЛАТЬ.
+   *
+   * Четыре предыдущие проверяют, что он не сбежит, не зациклится, не упадёт и
+   * не съест топливо. Ни одна не спрашивает, ИГРАЕТ ли он. Мозг, который
+   * стоит на месте, проходит их все: он не падает, не зацикливается, никуда
+   * не лезет — он просто ничего не делает.
+   *
+   * Замерено на трёх существах, собранных продуктовым путём и заселённых в
+   * библиотеку: **ноль побед из 1754 боёв**, и в контрольном прогоне ноль
+   * попаданий за четыре боя при 4–10 применениях умений. Те же наборы в руках
+   * эталонного мозга дают около двадцати попаданий за четыре боя — то есть
+   * наборы рабочие, а мозги нет.
+   *
+   * Видно это было и снаружи: 14% последних боёв кончались двойным КО БЕЗ
+   * ЕДИНОГО ПОПАДАНИЯ — две фигуры ходят пятьдесят секунд и умирают от арены.
+   * Показательный бой — первое, что видит человек.
+   *
+   * Порог — НОЛЬ, а не какой-то процент. Ставить планку по урону значило бы
+   * решать за игрока, какая тактика достаточно хороша; ноль попаданий за оба
+   * пробных боя — это не тактика, это неработающая программа.
+   */
+  const acted = probe.some((r) => r.orders > 0);
+  if (!acted) {
+    return { ok: false, stage: 'probe', probe, problems: [{
+      code: 'idle',
+      message: 'мозг не отдал ни одной команды за оба пробных боя — существо стояло бы на месте',
+    }] };
+  }
+  /*
+   * «Ни разу не попал» — отказ ТОЛЬКО если мозг стрелял.
+   *
+   * Первая версия отвергала за ноль попаданий безусловно, и выборка эталонов
+   * это сразу поймала: `kit-stub`, отданный в пробу БЕЗ набора из грамматики,
+   * не применяет ничего — он читает свои умения из перцепции, а их там нет.
+   * Мозг исправен, конфигурация пробы неполна, и отвергать за это значит
+   * наказывать за чужую ошибку.
+   *
+   * Различие простое и точное:
+   *   применений НОЛЬ  — мозг не пробовал; это про пробу, а не про него;
+   *   применений ЕСТЬ, попаданий ноль — мозг стреляет и не попадает НИ РАЗУ
+   *     за два боя. Это не тактика, это неработающий прицел.
+   *
+   * Три существа из библиотеки, давшие ноль побед из 1754 боёв, попадают
+   * ровно во второй случай: 4–10 применений, ноль попаданий.
+   */
+  const fired = probe.reduce((a, r) => a + r.uses, 0);
+  const connected = probe.some((r) => r.hits > 0 || r.damageDealt > 0);
+
+  /*
+   * Набор ВЫДАН, а мозг им не воспользовался ни разу — это тоже отказ.
+   *
+   * Правило «стрелял и не попал» щели не закрывает: `БРОНЕКРАБ` за четыре боя
+   * применил умения пять раз, и на паре сидов это ноль — то есть он проходил
+   * проверку, ни разу не попытавшись атаковать. Существо с собранным набором,
+   * которое за четыре боя не применило НИЧЕГО, не играет.
+   *
+   * Условие на выданный набор обязательно: `kit-stub` без набора не применяет
+   * ничего законно — он читает умения из перцепции, а их там нет. Это про
+   * пробу, а не про мозг.
+   */
+  if (kit && fired === 0) {
+    return { ok: false, stage: 'probe', probe, problems: [{
+      code: 'never_uses',
+      message: 'мозгу выдан набор, и он не применил из него ни одного умения за все пробные бои',
+    }] };
+  }
+
+  if (fired > 0 && !connected) {
+    return { ok: false, stage: 'probe', probe, problems: [{
+      code: 'never_hits',
+      message: `мозг применил умения ${fired} раз и ни разу не попал за оба пробных боя`,
+    }] };
+  }
+
   return { ok: true, stage: 'probe', problems: [], probe };
 }
 

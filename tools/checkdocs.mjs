@@ -54,6 +54,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { SKILLS, SUDDEN_DEATH_AT, THINK_HZ, TICK_HZ } from '../src/core/config.js';
+import { ASPECT_MAX, ASPECT_MIN } from '../src/server/forge/body.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -121,6 +122,11 @@ const servedWindup = (skill) => Math.ceil(SKILLS[skill].windup * TICK_HZ) / TICK
  *   failure mode this file exists for as much as a stale number is.
  */
 const CLAIMS = [
+  {
+    what: 'the body aspect thresholds, in the commands table',
+    re: /refused as a pancake below ([\d.]+) and as a needle above (\d+)/,
+    want: () => [String(ASPECT_MIN), String(ASPECT_MAX)],
+  },
   {
     what: 'the brain think rate',
     re: /run unmodified in a `node:vm` context at (\d+) Hz/,

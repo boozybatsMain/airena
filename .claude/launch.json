@@ -12,6 +12,16 @@
       "autoPort": true
     },
     {
+      "name": "viewer",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "PORT=${PORT:-8823} npm run viewer"
+      ],
+      "port": 8823,
+      "autoPort": true
+    },
+    {
       "name": "preview",
       "runtimeExecutable": "node",
       "runtimeArgs": [

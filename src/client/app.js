@@ -59,7 +59,34 @@ const shellEl = $('#shell');
 export async function refreshSession() {
   try {
     const before = state.session?.creature?.id ?? null;
+    const beforeAccount = state.session?.accountId ?? null;
     state.session = await get('/api/session');
+    /*
+     * Аккаунт сменился — сокет обязан переоткрыться (D162).
+     *
+     * Личность сокета фиксируется на рукопожатии. `claimAccount` всегда даёт
+     * НОВЫЙ id: гостевой удаляется, вместо него появляется настоящий. Сокет с
+     * прежней личностью считает только что созданное существо чужим, и на
+     * экране нет ни «ТВОЁ», ни «твой бой» — ровно там, где игрок впервые
+     * смотрит на СВОЁ существо.
+     */
+    if (beforeAccount && state.session?.accountId && beforeAccount !== state.session.accountId) {
+      try { window.__airenaReconnect?.(); } catch { /* сокета нет */ }
+    }
+    /*
+     * Отметка следующего боя переводится в ЛОКАЛЬНЫЕ часы (D161).
+     *
+     * Сервер шлёт и абсолютное `nextFightAt` (его часы), и относительное
+     * `nextFightIn` (миллисекунды от ответа). Считать по абсолютному значит
+     * считать разницу двух разных часов: расхождение телефона с сервером на
+     * минуту превращало «через 5 секунд» в «через минуту пять» или в ноль.
+     *
+     * Одно место на весь клиент: и экран ожидания, и карточка итога читают
+     * уже исправленное поле, и разойтись им негде.
+     */
+    if (state.session && state.session.nextFightIn != null) {
+      state.session.nextFightAt = Date.now() + state.session.nextFightIn;
+    }
     paintShell();
     state.bus.dispatchEvent(new CustomEvent('session'));
     /*
@@ -71,7 +98,18 @@ export async function refreshSession() {
      * это худший вид бага: он выглядит как «игра не заметила», потому что
      * игра действительно не заметила.
      */
-    const after = state.session?.creature?.id ?? null;
+    /*
+     * У кого нет своего существа, тот смотрит ВЫБРАННОЕ им из библиотеки.
+     *
+     * `airena.starter` писался при выборе и не читался нигде: выбор гостя из
+     * тройки (D2) был кликом в никуда, и при каждом возврате на арену ему
+     * снова предлагали выбрать. Теперь он подставляется вместо собственного
+     * существа, которого у гостя ещё нет, — и сервер показывает бой именно
+     * этого существа (`Live.wanted` → `showcase({ prefer })`).
+     */
+    let starter = null;
+    try { starter = localStorage.getItem('airena.starter'); } catch { /* приватный режим */ }
+    const after = state.session?.creature?.id ?? starter ?? null;
     if (before !== after) {
       arena.onSessionChanged();
       /* Сокет подписан на существо, которого тогда ещё не было. */
@@ -150,10 +188,45 @@ async function render() {
   if (current && current !== r.screen && state.screens[current]?.leave) {
     try { state.screens[current].leave(); } catch { /* уход не роняет вход */ }
   }
+  /*
+   * КАРТОЧКА ИТОГА СНИМАЕТСЯ ПРИ ЛЮБОЙ СМЕНЕ ЭКРАНА.
+   *
+   * Она `position: fixed` и живёт вне `#screen`, поэтому смена маршрута её не
+   * трогает. Снимал её только `arena.leave()` — а на посадочную с клипа
+   * карточку ставит другой экран, и при переходе `#/watch → #/new` панель
+   * «ИТОГ БОЯ» оставалась висеть поверх экрана создания.
+   *
+   * Правило простое: элемент, который живёт над всеми экранами, обязан
+   * убираться маршрутизатором, а не тем экраном, который его поставил.
+   */
+  try { result.hideInline(); } catch { /* карточки может не быть */ }
   current = r.screen;
 
   const mod = state.screens[r.screen];
   if (!mod) { go('/arena', { replace: true }); return; }
+
+  /*
+   * ИДЁТ ГЕНЕРАЦИЯ — ЗНАЧИТ ЭКРАН ОЖИДАНИЯ.
+   *
+   * Генерация занимает три–шесть минут: самый длинный и самый хрупкий отрезок
+   * первой сессии. Экран ожидания существовал и был доступен ровно по ссылке
+   * `#/new/<id>`, которую игрок получал один раз при отправке. Перезагрузил
+   * вкладку — и попал на арену, где ему как «существа ещё нет» предлагали
+   * взять библиотечное, хотя своё в этот момент собиралось. Ни строки о том,
+   * что происходит, и ни одного пути назад.
+   *
+   * Сессия про задание знает (`session.job`), знала и раньше — просто ей
+   * никто не пользовался. Вкладки «существо» и «бой» при этом остаются
+   * доступными: увести человека силой нельзя, можно только вернуть его туда,
+   * куда он шёл.
+   */
+  const job = state.session?.job;
+  if (job && (job.state === 'queued' || job.state === 'running')
+      && (r.screen === 'arena' || r.screen === 'create')
+      && r.screen !== 'wait') {
+    go(`/new/${job.id}`, { replace: true });
+    return;
+  }
 
   document.body.classList.remove('overlay');
   screenEl.className = '';
@@ -179,6 +252,34 @@ async function render() {
 // боевой слой: один сокет, одна правда
 // ───────────────────────────────────────────────────────────────────────────
 
+/*
+ * Подсказка «как читать бой» показывается на ПЕРВОМ бою, который человек
+ * увидел, а не при загрузке: до первого кадра объяснять нечего.
+ */
+(() => {
+  const el = document.getElementById('howto');
+  const close = document.getElementById('howto-close');
+  if (!el || !close) return;
+  /*
+   * Ключ версионирован (D162): булев `airena.howto` означал, что новую строку
+   * легенды не увидит никто из уже игравших — то есть ровно те, кто смотрит
+   * бои дольше всех. Версия поднимается ВМЕСТЕ с содержимым легенды.
+   */
+  const HOWTO_VERSION = '2';
+  let seen = true;
+  try { seen = localStorage.getItem('airena.howto') === HOWTO_VERSION; } catch { seen = true; }
+  if (seen) return;
+  const show = () => {
+    el.hidden = false;
+    removeEventListener('airena:match', show);
+  };
+  addEventListener('airena:match', show);
+  close.onclick = () => {
+    el.hidden = true;
+    try { localStorage.setItem('airena.howto', HOWTO_VERSION); } catch { /* приватный режим */ }
+  };
+})();
+
 addEventListener('airena:match', (e) => {
   if (!marks.firstMatch) mark('firstMatch');
   state.match = e.detail; state.over = null;
@@ -189,6 +290,27 @@ addEventListener('airena:match', (e) => {
 addEventListener('airena:frame', (e) => { if (!marks.firstFrame) mark('firstFrame'); state.frame = e.detail.frame; arena.onFrame(e.detail.frame); });
 addEventListener('airena:over', (e) => { state.over = e.detail; arena.onOver(e.detail); });
 addEventListener('airena:idle', () => { state.match = null; $('#boot')?.classList.add('off'); arena.onIdle(); });
+
+/**
+ * Тело не собралось в браузере — и об этом узнают.
+ *
+ * Вьювер об этом кричал (`airena:bodyfail`) с самого начала, а слушателя не
+ * было ни одного: событие уходило в пустоту, существо молча выходило в теле
+ * архетипа, игрок видел гориллу вместо своей медузы и ничего не понимал. Мы —
+ * тем более: в телеметрии этого не было.
+ *
+ * Это единственное место, где видно ПРАВДУ: приёмка на сервере может ошибиться,
+ * а здесь код уже исполнился в настоящем браузере на настоящем железе. Поэтому
+ * событие едет на сервер: доля отказов тела — наш показатель, а не игрока.
+ *
+ * Игроку — одна строка, без модалки: он смотрит бой, и прерывать бой ради
+ * плохой новости о картинке хуже, чем сама новость.
+ */
+addEventListener('airena:bodyfail', (e) => {
+  const { side, ref, message } = e.detail || {};
+  track('body_broken', { ref: String(ref || ''), side: String(side || ''), message: String(message || '').slice(0, 200) });
+  arena.onBodyFail?.({ side, ref, message });
+});
 
 /**
  * Загрузка тяжёлого рендерера отложена на кадр после первой отрисовки

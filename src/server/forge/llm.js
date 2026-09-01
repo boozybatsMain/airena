@@ -13,6 +13,9 @@
  */
 
 import { RETRY_THINK_BUDGET } from './models.js';
+/* Только предикат: сам транспорт подписки подгружается лениво, чтобы файл,
+   спавнящий процесс, не тянулся в каждый тест, который трогает `llm.js`. */
+import { isSubscription } from './subscription.js';
 
 const URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -35,8 +38,24 @@ export const FLOOR_THINK_BUDGET = 256;
 
 export const mandatesReasoning = (id) => MANDATORY_REASONING.has(id);
 
-/** Стена по времени — защищает не деньги, а терпение игрока (§5.1, правило 2). */
-export const WALL_MS = 180_000;
+/*
+ * СТЕНА ПО ВРЕМЕНИ СНЯТА.
+ *
+ * Здесь стояло 180 секунд с подписью «защищает терпение игрока». Такого
+ * решения основатель не принимал — число появилось из головы. И оно стоило
+ * дорого: замер показал, что дешёвая модель пишет тело за 41–94 секунды на
+ * попытку, а с двумя попытками и проверкой поз общий проход доходил до
+ * десяти минут — то есть отрезался ровно тот случай, ради которого всё и
+ * делается.
+ *
+ * Решение основателя: сколько генерируется, столько и генерируется; со
+ * временем разберёмся отдельно и тогда, когда будет что оптимизировать.
+ *
+ * Число оставлено переменной, а не выкинуто: обрыв всё же нужен, иначе
+ * повисший запрос держит задание навсегда. Час — это «провайдер умер», а не
+ * «модель думает».
+ */
+export const WALL_MS = Number(process.env.AIRENA_WALL_MS || 3_600_000);
 
 export class LlmError extends Error {
   constructor(code, message, extra = {}) {
@@ -59,7 +78,22 @@ export class LlmError extends Error {
 export async function callModel({
   modelId, messages, maxTokens, thinkBudget, wallMs = WALL_MS,
   apiKey = process.env.OPENROUTER_API_KEY, fetchImpl = fetch, signal = null,
+  effort = 'high',
 }) {
+  /*
+   * ── ВТОРАЯ ДВЕРЬ: ПОДПИСКА (D164) ───────────────────────────────────────
+   *
+   * Развилка стоит ЗДЕСЬ, а не у вызывающих, ровно по той причине, ради
+   * которой этот файл существует: «у продакшена ровно одна дверь». Дверей
+   * теперь две — платим ключом или платим подпиской, — но вход в них один.
+   *
+   * Проверка идёт ПЕРВОЙ строкой: ниже стоит требование ключа OpenRouter, и
+   * подписке он не нужен вовсе.
+   */
+  if (isSubscription(modelId)) {
+    const { callSubscription } = await import('./subscription.js');
+    return callSubscription({ modelId, messages, effort, signal });
+  }
   if (!apiKey) throw new LlmError('no_key', 'OPENROUTER_API_KEY не задан');
   if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
     throw new LlmError('bad_call', 'maxTokens обязателен и вычисляется из бюджета, а не выбирается');
@@ -164,28 +198,109 @@ export async function callModel({
 export async function callWithRepair({
   modelId, messages, maxTokens, thinkBudget,
   accept = (t) => t.trim().length > 0,
-  attempts = 2, onAttempt = null, ...rest
+  attempts = 2, onAttempt = null,
+  /*
+   * `repair` — ПРИЧИНА ОТКАЗА ВОЗВРАЩАЕТСЯ МОДЕЛИ.
+   *
+   * Повтор шёл тем же промптом, только с урезанным размышлением: модель
+   * получала второй шанс и ни слова о том, что было не так. При этом причина у
+   * нас в руках — «TSL.mix(...) is not a function», «неизвестное имя
+   * objectToControl» — и не использовалась.
+   *
+   * Функция получает то, что вернул `accept` через `reject()`, и отдаёт текст
+   * добавочного сообщения. Пустая строка — не повторять с подсказкой.
+   */
+  repair = null,
+  ...rest
 }) {
   const tries = [];
   let budget = thinkBudget;
+  /*
+   * Почему отказали в последний раз. Нужно двум разным вещам: подсказке для
+   * повтора и объяснению наружу, если попытки кончились.
+   */
+  let lastReject = null;
+  const reject = (why) => { lastReject = why; return false; };
+  let extra = null;
+  let lastError = null;
   for (let i = 0; i < attempts; i++) {
     let r; let error = null;
     try {
-      r = await callModel({ modelId, messages, maxTokens, thinkBudget: budget, ...rest });
+      r = await callModel({
+        modelId,
+        /* Подсказка приписывается ОТДЕЛЬНЫМ сообщением, а не правкой промпта:
+           системный промпт — контракт, и менять его между попытками значит
+           менять задачу, а не объяснять ошибку. */
+        messages: extra ? [...messages, { role: 'user', content: extra }] : messages,
+        maxTokens,
+        thinkBudget: budget,
+        ...rest,
+      });
     } catch (e) {
       error = e;
+      lastError = e;
       r = { text: '', costUsd: 0, elapsedMs: e.elapsedMs ?? 0, usage: { in: 0, out: 0, reasoning: 0, reasoningShare: 0 } };
     }
-    const ok = !error && accept(r.text);
+    /*
+     * `accept` ЖДЁТСЯ.
+     *
+     * Раньше стояло `!error && accept(r.text)`. Пока приёмка была синхронной,
+     * это работало; асинхронная возвращает промис, а промис истинен ВСЕГДА —
+     * то есть любая проверка, которой нужно время (собрать тело и подвигать
+     * его), молча превращалась бы в «принято». Отказ, который нельзя выразить,
+     * хуже отсутствия проверки: он выглядит как проверка.
+     */
+    /* `accept` получает `reject`: так причина отказа доезжает и до подсказки
+       для повтора, и наружу, если попытки кончились. */
+    /*
+     * ── ОБРЕЗАННЫЙ ОТВЕТ — НАША ВИНА, А НЕ МОДЕЛИ ──────────────────────────
+     *
+     * `finish_reason: "length"` значит, что модель НЕ ДОГОВОРИЛА: упёрлась в
+     * наш `maxTokens`. Дальше такой текст идёт в разбор, не разбирается —
+     * потому что оборван на середине функции, — и записывается как «модель
+     * написала синтаксически неверный код».
+     *
+     * `finishReason` возвращался отсюда с самого начала и не читался НИКЕМ.
+     * Замерено ревью: пять отказов подряд на длинных ответах, все «не
+     * разбирается» на 1272–1463 строке, все записаны как вина модели. По
+     * критерию основателя «ошибки не по нашей вине» это худший вид ошибки:
+     * наша, и записанная на чужой счёт.
+     *
+     * Отказ формулируется до разбора, и повтор получает не «почини синтаксис»,
+     * а «ты не уместился» — то есть просьбу быть короче.
+     */
+    if (!error && r.finishReason === 'length') {
+      reject({ code: 'truncated', message: `ответ оборван на нашем потолке в ${maxTokens} токенов, а не дописан` });
+      tries.push({ attempt: i, thinkBudget: budget, ok: false, error: 'truncated', costUsd: r.costUsd, elapsedMs: r.elapsedMs, chars: r.text.length });
+      if (onAttempt) onAttempt(tries[tries.length - 1]);
+      budget = budget > RETRY_THINK_BUDGET ? RETRY_THINK_BUDGET : 0;
+      extra = repair ? (repair(lastReject, error) || null) : null;
+      continue;
+    }
+    const ok = !error && await accept(r.text, reject);
     tries.push({ attempt: i, thinkBudget: budget, ok, error: error?.code ?? null, costUsd: r.costUsd, elapsedMs: r.elapsedMs, chars: r.text.length });
     if (onAttempt) onAttempt(tries[tries.length - 1]);
     if (ok) return { ...r, tries, costUsd: tries.reduce((s, t) => s + t.costUsd, 0) };
     /* Урезаем размышление, а не наращиваем: провал почти всегда — зацикливание
        в размышлении, и больше бюджета его только удлиняет. */
     budget = budget > RETRY_THINK_BUDGET ? RETRY_THINK_BUDGET : 0;
+    extra = repair ? (repair(lastReject, error) || null) : null;
   }
   const spent = tries.reduce((s, t) => s + t.costUsd, 0);
-  throw new LlmError('rejected', 'модель не вернула годного ответа', { tries, costUsd: spent });
+  /*
+   * ПРИЧИНА ЕДЕТ НАРУЖУ, а не стирается.
+   *
+   * Здесь бросалось голое «модель не вернула годного ответа», и вся разница
+   * между «наша стена отвергла законный код», «модель написала мусор» и
+   * «пустой ответ» пропадала. Вызывающий (`forgeBody`) свою ветку с разбором
+   * причин не получал никогда: до неё не доходило управление.
+   *
+   * Без этого нельзя ни доказать «ошибки не по нашей вине», ни починить те,
+   * что по нашей.
+   */
+  throw new LlmError('rejected', 'модель не вернула годного ответа', {
+    tries, costUsd: spent, reject: lastReject, cause: lastError ?? null,
+  });
 }
 
 /** Достать блок кода из ответа, чем бы модель его ни обернула. */

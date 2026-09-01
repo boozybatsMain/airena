@@ -4,7 +4,7 @@
  * Отдельный файл, потому что у него одно свойство, которое надо было
  * защитить: **эффект не знает, чем его доставили**. Луч, конус и зона
  * применяют `damage` одинаково, и добавить четырнадцатый атом означает
- * дописать сюда четырнадцать строк, а не тронуть восемь доставок.
+ * дописать сюда четырнадцать строк, а не тронуть девять доставок.
  *
  * Три атома специфичны для Airena и стоят дороже прочих, потому что бьют
  * по слою принятия решений — самому интересному, что может делать умение
@@ -79,6 +79,12 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       st.burn = {
         dps: Math.max(st.burn?.dps ?? 0, atom.mag),
         until: Math.max(st.burn?.until ?? 0, t + atom.duration),
+        /* КТО поджёг. Поле читалось при смерти от горения (`burnedOut.by`) и
+           не записывалось никогда, так что в логе всегда стояло null; а урон
+           горения не попадал в счёт поджигателя вовсе. Игрок при этом видит
+           на экране итога строку «урон» — и она была тем меньше, чем больше
+           существо жгло. Уверенная неверная цифра хуже отсутствующей. */
+        by: srcId,
         by: srcId,
       };
       fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'burn', element: def.element });
@@ -157,16 +163,46 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       const [ux, uz] = [Math.sin(src.heading), Math.cos(src.heading)];
       const at = { x: src.x + ux * 3.2, z: src.z + uz * 3.2 };
       const [w, d] = atom.size || [4, 1];
+      /*
+       * ПОЛУРАЗМЕРЫ, а не размеры. Арена описывает препятствия через `hx`/`hz`
+       * (см. `src/core/geom.js`: segBox, pushOutOfBox, circleHitsBox — все три
+       * читают именно их, и config.js со статическими блоками их и кладёт).
+       *
+       * Стена клала `w`/`d`, и это молча ломало ВСЮ геометрию арены на пять
+       * секунд. `clamp(v, undefined, undefined)` возвращает `v`, поэтому
+       * расстояние до коробки выходило нулевым для любого тела в любой точке:
+       * `pushOutOfBox` выталкивал обоих бойцов из середины арены к северной
+       * стене за один тик, а `segBox` объявлял луч перекрытым у самого дула,
+       * то есть линия взгляда была ложна по всей карте. Замерено: бойцы с
+       * (-6,0) и (6,0) оказывались на z=19 через 0.033 с после появления
+       * стены, и `hasLos` возвращал false до её исчезновения.
+       *
+       * Хуже того, в перцепцию мозга уезжала коробка БЕЗ размеров: sim.js
+       * отдаёт `{x, z, hx, hz}`, undefined выпадали при сериализации в изолят,
+       * и мозг видел препятствие нулевого размера — ровно та «ложь движка»,
+       * которую комментарий к `blind` в этом же файле называет недопустимой.
+       * Вьювер при этом рисовал стену правильно, из своих `w`/`d`, так что
+       * картинка и физика расходились.
+       *
+       * `w`/`d` остаются в записи для вьювера — ему нужны полные размеры.
+       */
+      const along = ux * ux > uz * uz;
+      const fullW = along ? d : w;
+      const fullD = along ? w : d;
       const box = {
         x: round3(at.x), z: round3(at.z),
-        w: ux * ux > uz * uz ? d : w,
-        d: ux * ux > uz * uz ? w : d,
+        hx: round3(fullW / 2),
+        hz: round3(fullD / 2),
         h: 2.2, temporary: true, until: t + atom.duration, by: srcId,
       };
       world.obstacles.push(box);
       world.solids.push(box);
       log.push({ t: round3(t), type: 'wall', who: srcId, x: box.x, z: box.z });
-      fx.push({ kind: 'wall', who: srcId, t: round3(t), x: box.x, z: box.z, w: box.w, d: box.d, element: def.element });
+      /* Длительность едет с событием: она зависит от числа эффектов в умении
+         (доля делит и её), а вьювер рисовал стену ровно пять секунд всегда —
+         то есть показывал стену, которой уже нет, или убирал ту, что стоит. */
+      fx.push({ kind: 'wall', who: srcId, t: round3(t), x: box.x, z: box.z,
+        w: fullW, d: fullD, duration: round3(atom.duration), element: def.element });
       return;
     }
 
@@ -220,6 +256,10 @@ export function tickStatus(world, id, dt, deps) {
       const before = f.hp;
       f.hp = Math.max(0, f.hp - amount);
       f.stats.damageTaken += amount;
+      /* Счёт поджигателя. Не через `damage()` — по причине выше, — но в
+         статистику урон обязан попасть: это тот же урон. */
+      const src = st.burn.by ? world.fighters[st.burn.by] : null;
+      if (src && src !== f) src.stats.damageDealt += amount;
       /* Одна строка на каждые 10 единиц здоровья — то же правило, по
          которому арена сообщает о своём выгорании. */
       if (Math.floor(before / 10) !== Math.floor(f.hp / 10)) {

@@ -8,11 +8,28 @@
 
 /** h('div#id.card.on', {onclick}, ...children) */
 export function h(spec, props = null, ...kids) {
-  const m = String(spec).match(/^([a-z][a-z0-9]*)?(#[\w-]+)?((?:\.[\w-]+)*)$/i);
+  /*
+   * Порядок «класс, потом id» тоже разбирается.
+   *
+   * Раньше регулярка требовала строго `tag#id.class`, и `div.t-body#author`
+   * не разбирался — `h()` бросал, и ПАДАЛ ВЕСЬ ЭКРАН. Так на несколько часов
+   * слёг разбор боя: тот самый экран, который F11 назначил заменой закрытому
+   * исходнику, то есть главным доказательством, что бой написала нейросеть.
+   *
+   * Требовать от вызывающего один порядок из двух одинаково осмысленных —
+   * это ловушка без выигрыша: CSS принимает оба, и рука пишет тот, что
+   * пришёл в голову. Разбираем оба; настоящий мусор (`div..a`, `#a#b`)
+   * по-прежнему бросает, и его ловит `tools/checkselectors.mjs`.
+   */
+  const spec2 = String(spec);
+  const m = spec2.match(/^([a-z][a-z0-9]*)?((?:[#.][\w-]+)*)$/i);
   if (!m) throw new Error(`не разбирается селектор: ${spec}`);
   const el = document.createElement(m[1] || 'div');
-  if (m[2]) el.id = m[2].slice(1);
-  const cls = m[3] ? m[3].slice(1).split('.') : [];
+  const cls = [];
+  for (const part of (m[2] || '').match(/[#.][\w-]+/g) || []) {
+    if (part[0] === '#') el.id = part.slice(1);
+    else cls.push(part.slice(1));
+  }
   if (cls.length) el.className = cls.join(' ');
   if (props && (props.nodeType || Array.isArray(props) || typeof props === 'string')) {
     kids.unshift(props); props = null;
@@ -24,6 +41,24 @@ export function h(spec, props = null, ...kids) {
     else if (k === 'html') el.innerHTML = v;
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
     else if (k === 'dataset') Object.assign(el.dataset, v);
+    /*
+     * ЗНАЧЕНИЕ ПОЛЯ СТАВИТСЯ СВОЙСТВОМ, А НЕ АТРИБУТОМ.
+     *
+     * У `<textarea>` атрибута `value` не существует вовсе: начальный текст —
+     * это его текстовый узел. `setAttribute('value', …)` молча создаёт
+     * несуществующий атрибут, и `field.value` остаётся пустым.
+     *
+     * Стоило это дорого. Черновик промпта сохранялся при вводе, переживал
+     * стену аккаунта, доезжал до `localStorage` — и не восстанавливался:
+     * игрок возвращался к ПУСТОМУ полю с отключённой кнопкой (она включается
+     * от трёх символов) и без объяснения. То есть вся работа по спасению
+     * черновика была сделана и не работала, а плейсхолдер совпадает с
+     * примером, поэтому поле ещё и выглядело заполненным.
+     *
+     * `checked` — тот же случай: атрибут задаёт значение ПО УМОЛЧАНИЮ, а не
+     * текущее состояние, и снять галочку через него нельзя.
+     */
+    else if (k === 'value' || k === 'checked') el[k] = v;
     else el.setAttribute(k, v === true ? '' : String(v));
   }
   add(el, kids);
@@ -55,6 +90,31 @@ export function mmss(ms) {
   if (ms === null || ms === undefined || ms < 0) return '—';
   const s = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** «1 секунду», «3 секунды», «10 секунд», «21 секунду». */
+export function secondsWord(n) {
+  const t = n % 100; const o = n % 10;
+  if (t >= 11 && t <= 14) return 'секунд';
+  if (o === 1) return 'секунду';
+  if (o >= 2 && o <= 4) return 'секунды';
+  return 'секунд';
+}
+
+/**
+ * Пауза до следующего боя, словами.
+ *
+ * Отдых между боями — пять секунд (D161), и `mmss` печатала на нём «00:05»,
+ * что читается как пять МИНУТ. Минуты остаются на случай долгого ожидания
+ * (соперники заняты, лестница мала) — там `mmss` права.
+ *
+ * Живёт здесь, а не в экране: строку показывают три места — арена, карточка
+ * итога и страница существа, — и три копии разошлись бы на первой правке.
+ */
+export function waitLabel(ms) {
+  const sec = Math.ceil(Math.max(0, ms) / 1000);
+  if (sec >= 60) return mmss(ms);
+  return `${sec} ${secondsWord(sec)}`;
 }
 
 /**

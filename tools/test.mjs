@@ -195,7 +195,22 @@ group('sandbox');
   const t0 = Date.now();
   const { result } = runMatch({ octopus: runaway, gorilla: stub('gorilla') }, { seed: 5 });
   const wall = Date.now() - t0;
-  ok('a brain in an infinite loop does not hang the match', result.seconds > 0 && wall < 30000, `${wall} ms`);
+  /*
+   * Проверяется ПРИЧИНА остановки, а не секундомер.
+   *
+   * Здесь стояло `wall < 30000`, и это делало тест зависящим от загрузки
+   * машины: на занятой он падал, хотя код вёл себя правильно — ровно та же
+   * болезнь, от которой мы лечили сам движок (A1: предел по инструкциям, а не
+   * по времени). Тест, который меряет часы, меряет соседей по машине.
+   *
+   * Настоящее свойство: цикл останавливает ТОПЛИВО, и бой доигрывается.
+   * Стена по времени остаётся вторым условием с запасом в четыре минуты —
+   * от настоящего зависания, а не от загрузки.
+   */
+  const byFuel = result.log.some((e) => e.type === 'fault' && /fuel|топлив/i.test(String(e.error)));
+  ok('a brain in an infinite loop does not hang the match',
+    result.seconds > 0 && byFuel && wall < 240000,
+    `${wall} ms, остановлен ${byFuel ? 'топливом' : 'чем-то другим'}`);
   ok('and its faults are counted', result.octopus.faults > 0, `${result.octopus.faults} faults`);
   ok('and the other fighter still wins', result.winner === 'gorilla', `winner ${result.winner}`);
 }

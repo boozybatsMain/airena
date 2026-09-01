@@ -46,6 +46,31 @@ export const MIN_CODE_TOKENS = 5000;
 export const BANNED = [/claude-haiku/i, /claude-3/i];
 
 /**
+ * КТО ВООБЩЕ ДОПУСКАЕТСЯ В КАТАЛОГ — решение основателя 30.08.
+ *
+ * Дословно: «клод модели юзай через подписку, а через опэнроутер гемини, глм
+ * флэш». То есть OpenRouter обслуживает две семьи, а Claude в продуктовом пути
+ * не участвует вовсе — он приходит подпиской, за периметром этого файла.
+ *
+ * Замер, который за этим стоит (цена одного существа, живой прайс 30.08):
+ *
+ *     z-ai/glm-5.3-flash        $0.010 — $0.020
+ *     google/gemini-3.7-flash   $0.069 — $0.152
+ *     anthropic/claude-sonnet-5 $0.404 — $0.869
+ *     anthropic/claude-opus-5   $1.010 — $2.258
+ *
+ * И это цена УДАЧНОЙ генерации. В ревью одно тело на `claude-opus-5-fast`
+ * стоило $5.35 за три попытки и не вернуло ничего: все пять отказов на
+ * платных связках были обрывами длинного ответа. При этом обе разрешённые
+ * семьи дали 100% успеха на живом замере.
+ *
+ * Список — БЕЛЫЙ, а не чёрный, и это осознанно: OpenRouter добавляет модели
+ * сам, и чёрный список пропустил бы каждую новую дорогую по умолчанию.
+ * Добавить семью — одна строка и решение основателя.
+ */
+export const ALLOWED = [/^google\/gemini-3\.7-flash$/, /^z-ai\/glm-5\.3-flash$/];
+
+/**
  * Маршрутные варианты одной и той же модели, а не отдельные авторы.
  *
  * OpenRouter публикует `:batch`, `:free`, `:nitro`, `:floor`, `:online`,
@@ -66,7 +91,21 @@ export const ROUTING_VARIANTS = /:(batch|free|nitro|floor|online|extended|thinki
  */
 export const MEASURED = {
   'z-ai/glm-5.3-flash:plain': { body: 0.013, brain: 0.007, estimated: true },
-  'google/gemini-3.7-flash:plain': { body: 0.051, brain: 0.018 },
+  /*
+   * `secs` — ЗАМЕР СЕРВЕРНОГО ПУТИ ТЕЛА 31.08, одно описание «Грозный армян».
+   * Не скорость ответа в чате: тело — это программа на three.js, и в неё
+   * уходят десятки тысяч токенов. Число нужно, чтобы умолчание выбиралось по
+   * времени, а не по цене (D157), и чтобы игрок видел ожидание до нажатия.
+   *
+   *   google/gemini-3.7-flash:plain   206 с, две попытки, $0.1236
+   *   z-ai/glm-5.3-flash:think        436 с, одна попытка, $0.0064
+   *
+   * Целиком существо (разбор + мозг + тело + проверка + карточка) на Gemini
+   * вышло за 94 с — то есть подпись «~3 мин» обещает с запасом, и это
+   * правильная сторона ошибки.
+   */
+  'google/gemini-3.7-flash:plain': { body: 0.051, brain: 0.018, secs: 206 },
+  'z-ai/glm-5.3-flash:think': { body: 0.0064, brain: 0.007, secs: 436, estimated: true },
   'z-ai/glm-5.3:think': { body: 0.096, brain: 0.011 },
   'qwen/qwen3.8-max:think': { body: 0.215, brain: 0.057 },
   'moonshotai/kimi-k3:think': { body: 0.321, brain: 0.031 },
@@ -95,6 +134,8 @@ export const THINK_MODES = {
 
 /** Урезанный бюджет для повтора — правило 4: спас все три сломанные модели. */
 export const RETRY_THINK_BUDGET = 2000;
+
+import { subscriptionBundles } from './subscription.js';
 
 const PRICE_URL = 'https://openrouter.ai/api/v1/models';
 
@@ -169,7 +210,7 @@ export async function buildCatalog({
      который знает только то, что кто-то замерил руками, устаревает молча. */
   for (const id of Object.keys(live)) {
     if (ROUTING_VARIANTS.test(id)) continue;
-    if (/gemini-3\.7-flash|glm-5\.3|claude-(sonnet|opus|fable)-5|kimi-k3|qwen3\.8-max/.test(id)) {
+    if (ALLOWED.some((re) => re.test(id))) {
       bundles.add(`${id}:plain`);
       bundles.add(`${id}:think`);
     }
@@ -181,6 +222,9 @@ export async function buildCatalog({
     const price = live[modelId];
     if (!price) { rejected.push({ bundle, why: 'нет в прайсе OpenRouter' }); continue; }
     if (BANNED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'исключена решением 28.08' }); continue; }
+    /* Белый список действует и на замеренные связки: `MEASURED` — это
+       калибровка цен, а не разрешение на работу. */
+    if (!ALLOWED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'не в списке разрешённых (решение 30.08)' }); continue; }
     if (ROUTING_VARIANTS.test(modelId)) { rejected.push({ bundle, why: 'вариант маршрутизации, а не отдельный автор' }); continue; }
     const think = THINK_MODES[mode];
     if (!think) { rejected.push({ bundle, why: `неизвестный режим ${mode}` }); continue; }
@@ -196,6 +240,18 @@ export async function buildCatalog({
 
     const m = MEASURED[bundle];
     const creatureUsd = m ? m.body + m.brain : estimateCreatureUsd(price, think.budget);
+    /*
+     * ВРЕМЯ — ОТДЕЛЬНАЯ ВЕЛИЧИНА, И ОНО ВАЖНЕЕ ЦЕНЫ НА ПЕРВОМ СУЩЕСТВЕ.
+     *
+     * Каталог сортируется по цене, клиент брал первый доступный — и умолчанием
+     * оказывалась самая дешёвая связка, она же самая долгая. Игрок нажимал
+     * «Создать» и уходил ждать десять минут, ни разу не выбрав это сам.
+     *
+     * Цена и время не связаны: дешевле — обычно медленнее, потому что дешёвые
+     * связки берут размышлением и переделками. Значит время надо возить рядом
+     * с ценой, а не выводить из неё.
+     */
+    const secs = m && m.secs != null ? m.secs : null;
     out.push({
       bundle,
       modelId,
@@ -207,14 +263,29 @@ export async function buildCatalog({
       creatureUsd: round4(creatureUsd),
       bodyUsd: m ? m.body : null,
       brainUsd: m ? m.brain : null,
+      secs,
       measured: Boolean(m) && !m.estimated,
       tier: creatureUsd <= freeThreshold ? 'free' : 'paid',
       brak: brak ?? null,
     });
   }
 
+  /*
+   * ── СВЯЗКИ ПОДПИСКИ ДОБАВЛЯЮТСЯ ПОСЛЕ, А НЕ ВНУТРИ ЦИКЛА (D164) ─────────
+   *
+   * Весь цикл выше строится ОТ ЖИВОГО ПРАЙСА OpenRouter: цена за токен,
+   * потолок из бюджета, тир по порогу. У подписки нет ни одного из этих
+   * чисел — она оплачена помесячно, — и провести её через тот же цикл значило
+   * бы выдумать ей цену за токен, чтобы получить потолок, который CLI всё
+   * равно не принимает.
+   *
+   * Поэтому они приходят готовым списком и своим тиром `sub`. Список пуст,
+   * пока на машине не выставлен `AIRENA_SUB_MODELS=1`: `claude` — локальный
+   * бинарник с локальной сессией OAuth, и на чужом сервере его нет.
+   */
+  const subs = subscriptionBundles();
   out.sort((a, b) => a.creatureUsd - b.creatureUsd);
-  return { bundles: out, rejected, freeThreshold, budgetUsd };
+  return { bundles: [...out, ...subs], rejected, freeThreshold, budgetUsd };
 }
 
 const round4 = (x) => Math.round(x * 1e4) / 1e4;

@@ -94,10 +94,49 @@ export const FORGE_PARTS = `Build it so it can be taken apart and worked on afte
 export const FORGE_SCOPE = `You are writing JavaScript that runs in a browser against three.js r185 (WebGPU build).
 
 Already imported and in scope — do not write import statements:
-  THREE  the three.js namespace: every geometry (Box, Sphere, Cylinder, Cone, Torus,
-         Lathe, Extrude, Shape, Tube, Capsule, Ring, Plane, Polyhedron,
-         BufferGeometry), every material, Mesh, Group, Points, Line, Object3D,
-         Vector3, Quaternion, Euler, Matrix4, Color, Curve, CatmullRomCurve3.
+  THREE  a fixed subset of the three.js namespace: every geometry (Box, Sphere,
+         Cylinder, Cone, Torus, Lathe, Extrude, Shape, Tube, Capsule, Ring,
+         Plane, Polyhedron, BufferGeometry), every mesh/line/points material,
+         Mesh, SkinnedMesh, Bone, Skeleton, Sprite, InstancedMesh, Group,
+         Points, Line, Object3D, Vector3, Quaternion, Euler, Matrix4, Color,
+         Curve, CatmullRomCurve3, Box3, Sphere, MathUtils.
+
+         Budget, because two of these are on screen at once and every mesh is a
+         draw call: keep it under about three thousand separate meshes and six
+         hundred thousand triangles. Our own hand-written octopus is two
+         thousand meshes, so this is generous — but a loop that makes a mesh per
+         scale or per hair will blow through it. Repeated parts belong in one
+         InstancedMesh, or merged into one geometry.
+
+         RULES OF THE LANGUAGE, because the code is checked before it is ever
+         run and a violation is a rejection, not a warning. These are the ones
+         models actually trip on, in the order they trip on them:
+
+         - Declare everything. const, let or var on every name you assign.
+           An implicit global (count = 0 with no declaration) is refused
+           outright — it is the single most common reason a body is rejected.
+         - No async, no await, no Promises. build returns the object and
+           pose runs sixty times a second inside the render loop; there is
+           nowhere for a promise to be awaited.
+         - No import, no require, no eval, no new Function, no with,
+           and never touch .constructor or .__proto__ on anything.
+         - No timers, no setTimeout, no requestAnimationFrame. Animate from
+           the t you are handed, nothing else.
+         - No Date, no Math.random. The same fight must look the same to
+           two people watching it. Derive variation from coordinates, indices,
+           or t.
+         - Nothing outside THREE and TSL exists: no window, no
+           document, no console beyond plain logging, no fetch.
+         - Do not write to THREE, to TSL, or to anything else handed to
+           you — only to your own variables.
+
+         NOT in it, and asking for them throws: lights of any kind (the arena
+         lights the scene — a body that lights itself blows out both fighters),
+         Texture and every image type, every *Loader, Clock and Date (the fight
+         must replay identically — use the t you are given), Scene, Camera,
+         and every renderer. Nothing you need for a creature is missing; if you
+         reach for a light or a texture, solve it with geometry, vertex colors,
+         or a TSL node instead.
   TSL    the three/tsl namespace, for node shaders: Fn, vec2, vec3, vec4, float,
          uv, positionLocal, positionWorld, normalLocal, normalWorld, cameraPosition,
          time, sin, cos, abs, pow, mix, smoothstep, step, fract, floor, dot, cross,

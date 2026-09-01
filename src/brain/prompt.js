@@ -57,11 +57,13 @@
  */
 
 import {
-  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, FIGHTERS, KNOCKBACK_DRAG, MATCH_SECONDS,
+  AIRBORNE_DODGE_MIN,
+  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, FIGHTERS, KNOCKBACK_DRAG, MATCH_SECONDS, statsFor,
   MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
   SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
   THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf,
 } from '../core/config.js';
+import { FUEL_PER_THINK } from '../server/sandbox/instrument.js';
 
 const n = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000));
 const deg = (rad) => String(Math.round((rad * 180) / Math.PI));
@@ -243,8 +245,33 @@ exactly equal fractions is a draw.`;
 // 3. bodies
 // ---------------------------------------------------------------------------
 
-function bodyBlock(id, mine) {
-  const f = FIGHTERS[id];
+function bodyBlock(id, mine, size = 1, kit = null) {
+  /*
+   * ХАРАКТЕРИСТИКИ БЕРУТСЯ ПРИ ЭТОМ РАЗМЕРЕ, а не базовые.
+   *
+   * Размер существа выбирает модель (D103), и он меняет здоровье, радиус,
+   * скорость, массу и силу удара. Промпт же читал `FIGHTERS[id]` напрямую —
+   * то есть существу размера 1.5 сообщалось 155 здоровья вместо 285 и радиус
+   * 1.0 вместо 1.5.
+   *
+   * Весь этот файл построен на «каждое число — факт из конфига», и мозг
+   * планирует дистанции по этим числам. Ошибиться в радиусе значит ошибиться
+   * в том, с какого расстояния существо достаёт.
+   */
+  const f = statsFor(id, size);
+  /*
+   * ИМЕНА УМЕНИЙ БЕРУТСЯ ИЗ НАБОРА ЭТОГО БОЙЦА, А НЕ ИЗ АРХЕТИПА (D160).
+   *
+   * Здесь безусловно печаталось `skillsOf(id)`, то есть `laser, blink, jump`
+   * или `smash, charge, jump`. Существу с набором из грамматики это называло
+   * ЧЕТЫРЕ глагола, ни одного из которых у него нет: настоящие зовутся
+   * `k1..k3` и стоят двумя блоками ниже, в YOUR SKILLS.
+   *
+   * Ровно та ошибка, ради которой в `skillsFor` уже стоит развилка по киту, —
+   * и ровно тот вред, который она предотвращает: модель, прочитавшая про
+   * `laser`, пишет `api.use('laser')`, получает молчаливый false и не
+   * понимает, почему её умения не работают.
+   */
   const who = mine ? 'YOUR BODY' : 'YOUR OPPONENT\'S BODY';
   const lbl = (field) => `fighters.${id}.${field}`;
   return `${who} — ${f.name}
@@ -255,7 +282,7 @@ function bodyBlock(id, mine) {
   acceleration        ${q(lbl('accel'), f.accel)} m/s^2   (so ${q(lbl('maxSpeed'), f.maxSpeed)} m/s is reached in ${q(lbl('timeToTopSpeed'), f.maxSpeed / f.accel)} s)
   turn rate           ${q(lbl('turnRate'), f.turnRate)} rad/s  (a half turn takes ${q(lbl('halfTurnSeconds'), Math.PI / f.turnRate)} s)
   mass                ${q(lbl('mass'), f.mass)}        (the heavier body yields less when they collide)
-  skills              ${skillsOf(id).join(', ')}
+  skills              ${kit ? Object.keys(kit).join(', ') : skillsOf(id).join(', ')}
 
 Movement direction and facing are independent: a body can walk in one direction
 while pointing in another. Facing turns toward what you asked for at the turn
@@ -398,13 +425,14 @@ function enemySkillsFor(id, enemyKit) {
  */
 const DELIVERY_LINE = {
   beam: 'a straight line from your muzzle. It stops at the first block, wall or body it meets',
-  cone: 'a wedge ahead of you, close in. It needs a clear line to the body it hits',
+  cone: 'a wedge ahead of you, close in. It needs a clear line to the body it hits, and it sweeps the FLOOR — a body that is off the ground when it lands takes nothing',
   bolt: 'a projectile that travels. It can be walked out of, and a block stops it',
   lob: 'a projectile on an arc. It flies OVER blocks and lands where it was aimed',
-  zone: 'a disc on the ground that keeps working for a few seconds after it lands',
-  dash: 'you travel forward and everything on the path is hit. A block stops the travel',
+  zone: 'a disc on the ground that keeps working for a few seconds after it lands. It sits ON the floor, so a body that is in the air skips the ticks it spends up there — one or two of them, not the whole cast',
+  dash: 'you travel forward and everything on the path is hit. A block stops the travel, and so does height: a body that is off the ground when you arrive takes nothing',
   blink: 'you are somewhere else immediately, untouchable while you move',
   self: 'it happens to you, where you stand',
+  jump: 'you leave the ground. Three deliveries travel along the floor — cone, zone and dash — and they pass underneath you while you are up there. Your horizontal velocity is frozen at take-off, and you can order nothing until you land',
 };
 
 const EFFECT_LINE = {
@@ -430,19 +458,20 @@ const CHANNEL_LINE = {
   range: 'the reach of deliveries', vision: 'how far perception reaches',
 };
 
-const TRIGGER_LINE = {
-  active: 'you start it yourself with api.use',
-  on_hit_taken: 'it starts itself the moment you take damage, if it is off cooldown',
-  on_hit_dealt: 'it starts itself the moment you deal damage, if it is off cooldown',
-  on_low_hp: 'it starts itself once per match, the first time you drop below a third of your hp',
-  on_enemy_cast: 'it starts itself the moment your opponent begins a cast',
-};
+/*
+ * Строк про триггер больше нет: оси «триггер» нет.
+ *
+ * Каждое умение теперь начинается по решению мозга — `api.use(name)`. Если
+ * нужно «в ответ на удар», мозг ловит `damaged` в `p.events` и зовёт умение
+ * сам. Раньше это делала симуляция за него, и промпт объяснял мозгу, какие
+ * из его умений он НЕ контролирует.
+ */
+
 
 function kitBlocks(kit) {
   return Object.entries(kit).map(([name, d]) => {
     const L = [];
     const push = (k, v) => L.push(`  ${k.padEnd(20)}${v}`);
-    push('trigger', TRIGGER_LINE[d.trigger] || d.trigger);
     push('cooldown', `${n(servedCountdown(d.cooldown))} s, counted from the moment it starts`);
     if (d.windup > 0) push('cast', `${n(servedCountdown(d.windup))} s of wind-up, then it lands, then ${n(servedCountdown(d.recover))} s of recovery`);
     else push('cast', `it lands immediately, then ${n(servedCountdown(d.recover))} s of recovery`);
@@ -452,6 +481,16 @@ function kitBlocks(kit) {
     if (d.distance !== undefined) push('distance', `${n(d.distance)} m`);
     if (d.speed !== undefined) push('speed', `${n(d.speed)} m/s`);
     if (d.duration !== undefined && d.kind === 'zone') push('lasts', `${n(d.duration)} s on the ground`);
+    /*
+     * D160: прыжок приезжает из грамматики, и его воздушная фаза — главное
+     * число умения. Без этой строки модель видела бы доставку `jump` с
+     * кулдауном и без единой цифры про то, СКОЛЬКО она будет в воздухе, —
+     * то есть не могла бы решить, окупается ли уклонение простоем.
+     */
+    if (d.kind === 'jump') {
+      push('airborne', `${n(servedCountdown(d.airborne))} s off the ground, above ${n(AIRBORNE_DODGE_MIN)} m for most of it`);
+      push('landing', 'you get { type: \'landed\' } in p.events on the tick you touch down');
+    }
     for (const e of d.effects) {
       const ch = e.channel ? ` (${CHANNEL_LINE[e.channel] || e.channel})` : '';
       const mag = e.id === 'damage' ? ` — ${n(e.mag)}` : '';
@@ -512,6 +551,13 @@ p.enemy
   announced — you get { type:'enemyStarted', skill } the moment they begin one.
 
 p.arena
+  .zones        discs on the ground that are still working: {x, z, r, mine, left}.
+                mine is true for the ones you put there; left is seconds until
+                it stops. Standing in one applies whatever it carries, again,
+                every half second
+  .projectiles  things in flight: {x, z, vx, vz, mine, arc, left}. An arc one
+                passes over blocks; the others are stopped by them. left is
+                seconds of flight remaining
   .half         ${q('arena.half', ARENA_HALF)}
   .obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents
 
@@ -653,7 +699,12 @@ function rules() {
    watching can read. Neither is better. Use whichever you want for whatever
    reason you want.
 
-3. A THOUGHT HAS ${q('think.timeoutMs', THINK_TIMEOUT_MS)} MILLISECONDS AND ${q('queries.perThink', MAX_QUERIES_PER_THINK)} PERCEPTION CALLS.
+3. A THOUGHT HAS ${q('think.fuel', FUEL_PER_THINK)} STEPS AND ${q('queries.perThink', MAX_QUERIES_PER_THINK)} PERCEPTION CALLS.
+   A step is a loop iteration, a function call, a branch. The limit is counted
+   in STEPS rather than in milliseconds on purpose: the same fight has to
+   produce the same log on a quiet machine and on a busy one, and a clock
+   cannot promise that. There is a wall clock behind it — ${q('think.timeoutMs', THINK_TIMEOUT_MS)} ms — but
+   it is a backstop for the pathological, not the rule you are living under.
    Overrunning either aborts that thought: no orders are issued, your standing
    orders keep running, and the fault is counted. Both sit far above what even
    a thought that reasons carefully about the whole arena spends — they are
@@ -706,16 +757,16 @@ is the first character of the program.`;
  *   than a rewrite: §1 rests on six brains sharing one prompt, and a prompt
  *   that quietly changed shape would rewrite that measurement backwards.
  */
-export function brainPrompt(id, kits = null) {
-  const f = FIGHTERS[id];
+export function brainPrompt(id, kits = null, sizes = null) {
+  const f = statsFor(id, sizes?.own ?? 1);
   const otherId = opponentOf(id);
   return [
     `You are the mind of the ${f.name}. Your opponent is the ${FIGHTERS[otherId].name}.`,
     shape(),
     world(),
-    bodyBlock(id, true),
+    bodyBlock(id, true, sizes?.own ?? 1, kits?.own),
     skillsFor(id, kits?.own),
-    bodyBlock(otherId, false),
+    bodyBlock(otherId, false, sizes?.enemy ?? 1, kits?.enemy),
     enemySkillsFor(id, kits?.enemy),
     perception(),
     verbs(),

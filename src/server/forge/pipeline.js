@@ -28,14 +28,17 @@ import { readFileSync } from 'node:fs';
 import { brainPrompt, SYSTEM_PROMPT } from '../../brain/prompt.js';
 import { extractSource } from '../../brain/host.js';
 import { admit } from '../sandbox/index.js';
+import { forgeBody } from './body.js';
+import { viability } from './viability.js';
 import { constantsVersion } from '../../core/version.js';
 import { EFFECTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
 import { compileKit } from '../../skills/compile.js';
+import { canonicalIr, vfxGrammar } from '../../vfx/ir.js';
 
 const EFFECT_RU = (id) => EFFECTS[id]?.ru || id;
 import { fallbackName, sanitizeName } from '../creatures.js';
 import { callWithRepair, extractJson, LlmError } from './llm.js';
-import { fallbackBundle } from './models.js';
+import { fallbackBundle, REQUEST_BUDGET_USD } from './models.js';
 
 /** Спарринг-партнёр допуска — рукописный эталон противоположной стороны. */
 const SPARRING = {
@@ -44,36 +47,133 @@ const SPARRING = {
 };
 const sparringFor = (archetype) => SPARRING[archetype === 'gorilla' ? 'gorilla' : 'octopus'];
 
-/** Три стартовых кита — пресеты §10.5, они же и запасной вариант разбора. */
-export const KIT_PRESETS = {
+/*
+ * Три стартовых кита — пресеты §10.5, они же и запасной вариант разбора.
+ *
+ * ЧТО ЗДЕСЬ ИСПРАВЛЕНО И ПОЧЕМУ. Первая тройка была написана по смыслу и ни
+ * разу не сыграна. Замер (`tools/kitbalance.mjs --presets`) показал строгую
+ * лестницу вместо выбора: keeper 100%, breaker 41%, saboteur 9% на
+ * симметричной арене и 81 / 69 / 0 на настоящих телах. То есть первый экран
+ * игры предлагал три двери, за одной из которых игра, а за другой поражение,
+ * и не сообщал об этом.
+ *
+ * Разбор был простой и неприятный: у «диверсанта» не было чем убивать.
+ * Ослепление и немота урона не наносят, `on_hit_taken` срабатывает редко, и
+ * единственным источником урона оставался конус — самая слабая форма в лиге
+ * доставок. Существо честно портило противнику чувства и ждало ничьей.
+ * У «дистанционщика», наоборот, было ДВА сильнейших источника сразу: луч и
+ * зона.
+ *
+ * Правило, по которому тройка переписана: у каждого набора обязан быть свой
+ * способ закончить бой, и ни у кого — двух сильнейших форм сразу. Характер
+ * при этом сохраняется: держит дистанцию, ломает вблизи, портит чувства.
+ */
+/*
+ * ЧЕРЕЗ `Object.create(null)`, и это не педантизм.
+ *
+ * На обычном литерале `KIT_PRESETS['constructor']` возвращает функцию `Object`
+ * — истинное значение. Значит `kitPreset: "constructor"`, присланный клиентом
+ * без единой проверки, проходил проверку на существование пресета, а потом
+ * обращение к его `.kit` бросало на `undefined`. Отказ уходил мимо всех
+ * ловушек в `pump().catch`, задание помечалось `internal`, и право на
+ * единственное за жизнь бесплатное существо (F7) НЕ возвращалось: возврат
+ * стоит на ветке `out.ok === false`, а сюда управление не доходило.
+ *
+ * Имя пресета с клиента больше не приходит вовсе (набор следует из описания),
+ * но `Object.create(null)` остаётся: ключи сюда по-прежнему приходят из
+ * ответа модели, а он такой же чужой вход, как тело запроса.
+ *
+ * Ровно этим же способом однажды пробивался бюджет умений — см. §8 и
+ * `src/skills/registry.js`. Одна и та же дыра во второй раз означает, что
+ * дело не в невнимательности, а в литерале как таковом.
+ */
+export const KIT_PRESETS = Object.assign(Object.create(null), {
   keeper: {
     ru: 'Держит дистанцию',
     why: 'бьёт издалека и уходит, когда подошли',
+    /*
+     * У пресета есть ТЕЛО, и это не украшение.
+     *
+     * Ближний набор на лёгком дальнобойном теле не может навязать ближний
+     * бой: противник с той же скоростью держит дистанцию вечно. Замер это и
+     * показал — «ломает вблизи» брал 50% на симметричной арене против 95% у
+     * дальнобойного, и разница была не в наборах, а в том, что одному из них
+     * не дали тела, в котором его замысел работает.
+     *
+     * Тела в игре различаются нарочно (горилла и быстрее, и толще — она и
+     * есть ближнее тело), так что материал был; его просто не связывали с
+     * выбором. Теперь выбор стартового набора — это выбор существа целиком.
+     */
+    archetype: 'octopus',
     kit: [
-      { trigger: 'active', delivery: 'beam', effects: ['damage'], element: 'arc' },
-      { trigger: 'on_enemy_cast', delivery: 'blink', effects: ['cleanse'], element: 'void' },
-      { trigger: 'active', delivery: 'zone', effects: ['burn'], element: 'ember' },
+      /* Снаряд, а не луч. Луч попадает мгновенно на двадцать четыре метра —
+         это вся арена и никакого ответа: держащий дистанцию просто не мог
+         проиграть (81% против 31% у обоих остальных). Снаряд летит, его
+         можно обойти, и «бьёт издалека» остаётся правдой, а «издалека
+         непобедим» перестаёт. */
+      { delivery: 'bolt', effects: ['damage'], element: 'arc' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' },
     ],
   },
   breaker: {
     ru: 'Ломает вблизи',
     why: 'входит в упор и не даёт разорвать дистанцию',
+    archetype: 'gorilla',
     kit: [
-      { trigger: 'active', delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
-      { trigger: 'active', delivery: 'dash', effects: ['damage'], element: 'kinetic' },
-      { trigger: 'on_low_hp', delivery: 'self', effects: ['shield'], element: 'frost' },
+      /* Обездвиживание висит на КОНУСЕ, а не на рывке, и это разница между
+         «не даёт уйти» и «не даёт жить». На рывке оно достаётся бесплатно:
+         рывок сам сокращает дистанцию, и связка «догнал и приковал» брала
+         87.5% против 69 и 6 у остальных. На конусе за него надо сперва
+         дойти на три с половиной метра — то есть заплатить тем самым, чего
+         ближнему набору не хватает.
+         Отброс из конуса убран: он ОТТАЛКИВАЕТ то, что набор весь бой
+         догоняет, — то есть работал против собственного замысла. */
+      { delivery: 'cone', effects: ['damage', 'root'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage'], element: 'kinetic' },
+      /* Щит, а не ускорение. Ускорение выглядело точнее по смыслу — ближнему
+         набору нужна возможность дойти, а не живучесть, — и было замерено:
+         с ним breaker упал с 28% до 6.3%. Дойти он и так успевает (горилла
+         быстрее), а вот пережить дорогу без щита не успевает. Замер тут
+         оказался умнее рассуждения, и остаётся щит. */
+      { delivery: 'self', effects: ['shield'], element: 'frost' },
     ],
   },
   saboteur: {
     ru: 'Портит чувства',
     why: 'бьёт по тому, чем противник принимает решения',
+    archetype: 'octopus',
+    /*
+     * ХРЕБЕТ, а потом уже характер.
+     *
+     * Первая версия состояла из ослепления, немоты и одного конуса, и это
+     * было существо, которое честно портит противнику чувства и ждёт ничьей:
+     * ноль побед из ста двенадцати боёв, три единицы урона за бой.
+     *
+     * Причина глубже, чем «мало урона», и её стоит записать: ценность
+     * ослепления и немоты равна тому, сколько решений они ломают. Наш
+     * эталонный мозг решений почти не принимает — он нарочно простой, — и на
+     * нём атаки по слою принятия решений меряются нулём. То есть замер
+     * занижает ровно те три атома, которые §8 называет самым интересным в
+     * игре. Отсюда правило прайса: цену таких атомов поднимаем по замеру и
+     * НЕ опускаем по нему.
+     *
+     * Но стартовый набор — не место для ставки на сообразительность
+     * соперника. Новичок обязан выигрывать им у тренировочного партнёра, а
+     * значит ему нужен обычный урон, к которому характер прилагается.
+     */
     kit: [
-      { trigger: 'active', delivery: 'bolt', effects: ['blind'], element: 'void' },
-      { trigger: 'on_hit_taken', delivery: 'lob', effects: ['silence'], element: 'arc' },
-      { trigger: 'active', delivery: 'cone', effects: ['damage'], element: 'frost' },
+      { delivery: 'bolt', effects: ['damage'], element: 'void' },
+      /* Ослепление ВМЕСТЕ с уроном, а не вместо него. Отдельным умением оно
+         занимало треть набора и не приближало победу ни на шаг: против
+         эталонного мозга, который решений почти не принимает, порча чувств
+         меряется нулём. Навесом с уроном оно и бьёт, и слепит, и стоит
+         честных семнадцать очков. */
+      { delivery: 'lob', effects: ['damage', 'blind'], element: 'arc' },
+      { delivery: 'bolt', effects: ['silence'], element: 'arc' },
     ],
   },
-};
+});
 
 const PARSE_SYSTEM = `Ты переводишь описание существа, написанное игроком, в закрытую грамматику.
 Отвечай ТОЛЬКО объектом JSON, без пояснений.
@@ -81,18 +181,30 @@ const PARSE_SYSTEM = `Ты переводишь описание существ�
 Поля:
   name       — короткое имя существа, 2-22 символа, заглавными. Русский или латиница.
   archetype  — "octopus" (лёгкий, быстрый, дальнобойный) или "gorilla" (тяжёлый, ближний бой).
-  kit        — РОВНО 3 скилла. Каждый: {trigger, delivery, effects:[1..3], channel?, element}.
+  size       — число 0.75…1.5. РАЗМЕР ТЕЛА, и у него есть цена в обе стороны:
+               мельче — меньше здоровья, но быстрее и труднее попасть;
+               крупнее — больше здоровья, но медленнее и попасть легче.
+               Комар, оса, стриж → 0.75-0.9. Человек, волк → 1.0.
+               Медведь, бык, кит → 1.3-1.5. Если в описании про размер ничего
+               нет — ставь 1.0, а не угадывай.
+  kit        — РОВНО 3 скилла. Каждый: {delivery, effects:[1..3], channel?, element}.
   unfit      — массив строк: понятия из описания игрока, которых в грамматике НЕТ.
                Пиши их словами игрока. Пустой массив, если вошло всё.
   why        — одно предложение по-русски: почему такой кит подходит описанию.
 
 ЖЁСТКИЕ ПРАВИЛА:
   • Бери значения только из перечисленных ниже. Придуманное значение — брак.
-  • Доставка "self" допускает только эффекты shield, heal, cleanse, boost, wall.
+  • Доставки, которые применяются К КАСТЕРУ — "self", "blink", "jump", — допускают
+    только эффекты shield, heal, cleanse, boost, wall. Ударить ими нельзя.
   • Эффекты boost и weaken ОБЯЗАНЫ назвать channel.
   • Элемент — только визуал. Он не даёт никакой механики.
   • НИКОГДА не подменяй просьбу игрока похожей. Не влезло — пиши в unfit.
-    Молчаливая подмена хуже отказа: существо выглядит нормальным и делает не то.`;
+    Молчаливая подмена хуже отказа: существо выглядит нормальным и делает не то.
+  • НАБОРОМ ДОЛЖНО БЫТЬ МОЖНО ЗАКОНЧИТЬ БОЙ. Ослепление, немота, притяжение и
+    щит здоровье не снимают. Минимум одно умение с эффектом "damage" или
+    "burn" обязательно, два — лучше: существо с одним источником урона
+    проигрывает почти всё. Характер это не отменяет — его несёт то же умение:
+    "навес: урон + ослепление" и слепит, и бьёт.`;
 
 /**
  * Словарь для модели — С ЦЕНАМИ.
@@ -106,11 +218,13 @@ const PARSE_SYSTEM = `Ты переводишь описание существ�
  */
 function parseUserPrompt(g) {
   const list = (o) => Object.values(o).map((x) => `${x.id} (${x.ru}, ${x.cost})`).join(', ');
-  return `Каждый атом стоит очки. Цена скилла = триггер + доставка + сумма эффектов
+  return `Каждый атом стоит очки. Цена скилла = доставка + сумма эффектов
 + канал, плюс надбавка за комбинацию: два эффекта +2, три эффекта +5.
 
-ТРИГГЕРЫ: ${list(g.triggers)}
-ДОСТАВКИ: ${list(g.deliveries)}
+Умение НЕ решает, когда ему сработать: его всегда вызывает мозг. Если по
+описанию существо должно отвечать на удар — это задача мозга, а не набора.
+
+ДОСТАВКИ: ${Object.values(g.deliveries).map((x) => `\n  ${x.id} (${x.ru}, ${x.cost}) — ${x.doc}`).join('')}
 ЭФФЕКТЫ: ${list(g.effects)}
 КАНАЛЫ: ${list(g.channels)}
 ЭЛЕМЕНТЫ (цена 0, только вид): ${Object.values(g.elements).map((x) => `${x.id} (${x.ru})`).join(', ')}
@@ -126,9 +240,29 @@ function parseUserPrompt(g) {
  * Существо не теряется, если модель ошиблась: невалидные скиллы заменяются
  * из пресета и попадают в `unfit` как «не удалось собрать», а не молча.
  */
-export async function parsePrompt({ prompt, bundle, kitPreset = null, call = callWithRepair }) {
+export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   const g = grammar();
-  const fallback = KIT_PRESETS[kitPreset] || KIT_PRESETS.keeper;
+  /* Стартовый набор для ветвей, где разбора ещё нет: модель не ответила или
+     ответила не-JSON. Там архетип неизвестен, и брать нечего, кроме дальнего. */
+  const start = KIT_PRESETS.keeper;
+
+  /*
+   * НАБОР СОБИРАЕТ МОДЕЛЬ ПО ОПИСАНИЮ. ВЫБОРА У ИГРОКА НЕТ.
+   *
+   * Раньше экран создания показывал три карточки «набор умений · три на
+   * выбор», и выбранный пресет ЗАТИРАЛ разбор: модель читала описание,
+   * собирала набор — и он выбрасывался целиком. Игрок писал «грозный армянин»
+   * и получал набор, к описанию не относящийся.
+   *
+   * Решение основателя 31.08: умения следуют из описания, и как получилось —
+   * так получилось. Выбора на создании нет. Пресет остался ровно одним —
+   * источником починки отдельного слота, когда модель вернула незаконное
+   * умение (§8.1, правило 2: существо не теряется из-за одной детали).
+   *
+   * Набор при этом не приговор: он меняется на странице существа мгновенно и
+   * бесплатно (D3). Разница в том, что теперь он меняется С ТОГО, что
+   * следует из описания, а не с того, что игрок ткнул до генерации.
+   */
 
   let raw;
   try {
@@ -148,9 +282,9 @@ export async function parsePrompt({ prompt, bundle, kitPreset = null, call = cal
     return {
       name: fallbackName(prompt),
       archetype: 'octopus',
-      kit: fallback.kit,
+      kit: start.kit,
       unfit: [{ phrase: prompt.slice(0, 80), why: 'разбор описания не удался, поставлен стартовый набор' }],
-      why: fallback.why,
+      why: start.why,
       costUsd: e.costUsd || 0,
       degraded: true,
     };
@@ -160,9 +294,9 @@ export async function parsePrompt({ prompt, bundle, kitPreset = null, call = cal
   try { obj = extractJson(raw.text); }
   catch {
     return {
-      name: fallbackName(prompt), archetype: 'octopus', kit: fallback.kit,
+      name: fallbackName(prompt), archetype: 'octopus', kit: start.kit,
       unfit: [{ phrase: prompt.slice(0, 80), why: 'модель вернула не-JSON, поставлен стартовый набор' }],
-      why: fallback.why, costUsd: raw.costUsd, degraded: true,
+      why: start.why, costUsd: raw.costUsd, degraded: true,
     };
   }
 
@@ -182,6 +316,12 @@ export async function parsePrompt({ prompt, bundle, kitPreset = null, call = cal
    * сломано, и записываем ровно это: «скилл 2 не собрался» читается, а
    * «весь набор не собрался» — это отказ, замаскированный под починку.
    */
+  const archetype = obj.archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  /* Починка идёт из пресета ТОГО ЖЕ ТЕЛА, что выбрала модель. D29: ближний
+     набор на лёгком дальнобойном теле не работает — значит и запасное умение
+     обязано быть от тела, иначе починка одного слота ломает связку целиком. */
+  const fallback = archetype === 'gorilla' ? KIT_PRESETS.breaker : KIT_PRESETS.keeper;
+
   let kit = Array.isArray(obj.kit) ? obj.kit.slice(0, KIT_SIZE) : [];
   kit = kit.map((s) => normalizeSkill(s));
   const repaired = [];
@@ -236,8 +376,11 @@ export async function parsePrompt({ prompt, bundle, kitPreset = null, call = cal
 
   return {
     name: sanitizeName(obj.name, prompt),
-    archetype: obj.archetype === 'gorilla' ? 'gorilla' : 'octopus',
+    archetype,
     kit,
+    /* Размер тела — ось существа, а не картинка (см. `statsFor`). Модель
+       выбирает его по описанию; вне диапазона приводится, отсутствует — 1. */
+    size: normalizeSize(obj.size),
     unfit,
     why: typeof obj.why === 'string' ? obj.why.slice(0, 200) : fallback.why,
     costUsd: raw.costUsd,
@@ -245,8 +388,15 @@ export async function parsePrompt({ prompt, bundle, kitPreset = null, call = cal
   };
 }
 
+/* `trigger` намеренно НЕ читается: оси нет. Модель, обученная на прошлой
+   версии промпта, может его прислать — он просто не попадает в набор. */
+/** Размер приводится к диапазону: модель может прислать что угодно. */
+const normalizeSize = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0.75, Math.min(1.5, n)) : 1;
+};
+
 const normalizeSkill = (s) => (s && typeof s === 'object' ? {
-  trigger: String(s.trigger || 'active'),
   delivery: String(s.delivery || 'beam'),
   effects: Array.isArray(s.effects) ? s.effects.map(String).slice(0, 3) : [],
   ...(s.channel ? { channel: String(s.channel) } : {}),
@@ -259,7 +409,11 @@ const normalizeSkill = (s) => (s && typeof s === 'object' ? {
  */
 const UNFIT_HINTS = [
   [/кров|раненн?|подранк/i, 'реакции на раненого противника пока не существует'],
-  [/лет|полёт|крыл|парит/i, 'полёта в арене нет — все дерутся по земле'],
+  /* «Прыгает» больше НЕ повод для отказа: с D160 прыжок — доставка грамматики,
+     и правило должно стоять раньше общего «летает», иначе игроку, написавшему
+     «прыгучий», ответят, что полёта нет. */
+  [/прыг|скач|отталкива/i, null],
+  [/лет|полёт|крыл|парит|планир/i, 'длительного полёта в арене нет — есть прыжок как умение, всё остальное по земле'],
   [/яд|отрав|токсин/i, 'яд машине ничто — словарь стихий проверяется на правдоподобие против робота'],
   [/невидим|маскир|прячет/i, 'невидимости нет: бой обязан читаться зрителем'],
   [/призыв|клон|копи[юя]|помощник/i, 'на арене всегда ровно двое'],
@@ -269,7 +423,14 @@ const UNFIT_HINTS = [
 ];
 
 export function whyUnfit(phrase) {
-  for (const [re, why] of UNFIT_HINTS) if (re.test(phrase)) return why;
+  for (const [re, why] of UNFIT_HINTS) {
+    if (!re.test(phrase)) continue;
+    /* `null` означает «это в грамматике ЕСТЬ, модель зря положила в unfit».
+       Возвращаем текст, который не врёт: понятие есть, но модель его не
+       взяла — и игрок вправе собрать умение руками на экране набора. */
+    if (why === null) return 'это в грамматике есть — доставка «прыжок»; модель просто не взяла её в набор, её можно добавить руками';
+    return why;
+  }
   return 'такого понятия в грамматике умений пока нет';
 }
 
@@ -294,7 +455,13 @@ const SAY_RU = `Одно дополнение к промпту выше, и о�
 оставляй как привык.`;
 
 /** Шаг 3 — мозг. Промпт описывает ЕГО кит, а не четыре умения из конфига. */
-export async function forgeBrain({ archetype, bundle, kit = null, call = callWithRepair, onAttempt = null }) {
+export async function forgeBrain({
+  archetype, bundle, kit = null, call = callWithRepair, onAttempt = null,
+  /* Размер существа: от него зависят здоровье, радиус, скорость и сила удара,
+     и мозг планирует дистанции по этим числам (D103). Обе стороны — своя и
+     чужая: соперник в бою может быть другого размера. */
+  sizes = null,
+}) {
   const r = await call({
     modelId: bundle.modelId,
     maxTokens: bundle.maxTokens,
@@ -307,7 +474,7 @@ export async function forgeBrain({ archetype, bundle, kit = null, call = callWit
        * рассказали про `laser` и `smash`, а выдали `k1..k3` из грамматики,
        * получил бы ровно такой промпт.
        */
-      { role: 'user', content: `${brainPrompt(archetype, kit ? { own: kit, enemy: kit } : null)}\n\n${SAY_RU}` },
+      { role: 'user', content: `${brainPrompt(archetype, kit ? { own: kit, enemy: kit } : null, sizes)}\n\n${SAY_RU}` },
     ],
     accept: (t) => {
       try { return extractSource(t).length > 200; } catch { return false; }
@@ -323,6 +490,19 @@ const CARD_SYSTEM = `Ты читаешь программу-мозг бойца 
 Если программа делает что-то странное или явно плохое — скажи это прямо, не выгораживай.`;
 
 /** Шаг 5 — карточка тактики. Один раз на мозг (D5), не на бой. */
+/** Обрезать текст по последней границе предложения в пределах лимита. */
+export function trimToSentence(text, limit) {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '),
+    cut.lastIndexOf('.\n'), cut.lastIndexOf('\n'));
+  /* Полпредела — нижняя граница разумного: обрезав «до первой точки» на
+     двадцатом символе, мы выбросим карточку и покажем огрызок. */
+  if (end > limit * 0.5) return cut.slice(0, end + 1).trim();
+  const word = cut.lastIndexOf(' ');
+  return `${(word > limit * 0.5 ? cut.slice(0, word) : cut).trim()}…`;
+}
+
 export async function tacticsCard({ source, archetype, bundle, call = callWithRepair }) {
   try {
     const r = await call({
@@ -336,7 +516,20 @@ export async function tacticsCard({ source, archetype, bundle, call = callWithRe
       accept: (t) => t.trim().length > 30,
       attempts: 1,
     });
-    return { text: r.text.trim().slice(0, 600), costUsd: r.costUsd };
+    /*
+     * ОБРЕЗАЕМ ПО ГРАНИЦЕ ПРЕДЛОЖЕНИЯ, А НЕ ПО СИМВОЛУ.
+     *
+     * `slice(0, 600)` рубил посреди слова: в базе лежат карточки,
+     * кончающиеся на «…спасает только случайно круговое движение, а н».
+     * Карточка — это ЗАМЕНА закрытому исходнику мозга (F11), то есть
+     * доказательство, что мозг написан осмысленно. Оборванное на полуслове
+     * доказательство доказывает обратное.
+     *
+     * Если границы предложения в пределах лимита нет вовсе (модель написала
+     * одно длинное), режем по слову и ставим многоточие — это честно говорит
+     * «дальше есть, но мы не показали».
+     */
+    return { text: trimToSentence(r.text.trim(), 600), costUsd: r.costUsd };
   } catch (e) {
     /* Карточка — доказательство, а не украшение (F11), но её отсутствие не
        повод потерять существо. Экран покажет реплики say() и разбор боя. */
@@ -345,23 +538,194 @@ export async function tacticsCard({ source, archetype, bundle, call = callWithRe
 }
 
 /**
+ * VFX уровня 1: декорация умений, написанная моделью (§9.2).
+ *
+ * ЧТО МОДЕЛЬ ЗДЕСЬ РЕШАЕТ И ЧТО НЕТ. Не решает ничего из read-kit: силуэт
+ * задан доставкой, палитра — элементом, импакт — эффектом, и всё это сервер
+ * инжектит и не отдаёт. Решает — как каст выглядит СВЕРХ этого: откуда летят
+ * искры, как они движутся, чем нарисованы, что остаётся на полу.
+ *
+ * ПОЧЕМУ ЭТО ОТДЕЛЬНЫЙ ВЫЗОВ, А НЕ ЧАСТЬ РАЗБОРА ПРОМПТА. Разбор промпта
+ * решает, каким существо БУДЕТ, — его ответ идёт в симуляцию, и провал там
+ * означает отказ в генерации. Декорация на симуляцию не влияет никогда, и её
+ * провал обязан стоить ровно ничего: существо рождается без IR и выглядит
+ * как выглядели все до этой функции. Смешать их в один вызов значило бы
+ * привязать судьбу существа к качеству украшения.
+ *
+ * ПОЧЕМУ БЕЗ РАЗМЫШЛЕНИЯ И НА МАЛОМ ЛИМИТЕ. Задача — выбрать по три имени из
+ * закрытых списков на каждое умение. Это не рассуждение, это вкус; думать
+ * тут дорого и не над чем.
+ */
+const VFX_SYSTEM = `Ты художник эффектов. На каждое умение существа сочини декорацию.
+
+ЧТО УЖЕ НАРИСОВАНО БЕЗ ТЕБЯ и что ты изменить не можешь:
+силуэт задан доставкой, цвета заданы элементом, удар в точке попадания задан эффектом.
+Ты ДОБАВЛЯЕШЬ поверх. Заменить нельзя ничего.
+
+Ответ — ТОЛЬКО JSON, без пояснений, вида:
+{"k1":{"layers":[{...}],"screen":"none"},"k2":{...},"k3":{...}}
+
+Слой:
+  emitter  откуда летит: ring | burst | cone | trail | spiral | rain
+  motion   как летит: linear | ease_out | gravity | rise | swirl
+  sprite   чем нарисовано: dot | streak | shard | spark
+  decal    след на полу: none | ring | scorch | cross
+  from,to  ступени палитры элемента, целые 0..2 (сам цвет менять нельзя)
+  count    частиц, целое
+  life     секунд жизни
+  delay    секунд от начала каста
+  speed    метров в секунду
+  size     метров
+
+screen: none | shake | flash, и при не-none добавь screenAmount.
+
+ПРЕДЕЛЫ — жёсткие, ответ вне них не принимается:
+  слоёв на умение не больше LAYERS
+  частиц на умение суммарно не больше PARTICLES
+  life не больше LIFE, delay не больше DELAY, screenAmount не больше SHAKE
+
+Делай РАЗНОЕ на разные умения: три одинаковые декорации — это отсутствие декорации.
+Пусть декорация говорит про то, что умение делает.`;
+
+export async function forgeVfx({ prompt, kit, kitDefs, bundle, call = callWithRepair }) {
+  if (!kitDefs) return { ir: null, costUsd: 0 };
+  const names = Object.keys(kitDefs);
+  const limits = vfxGrammar().limits;
+  const system = VFX_SYSTEM
+    .replace('LAYERS', String(limits.layers))
+    .replace('PARTICLES', String(limits.particles))
+    .replace('LIFE', String(limits.life))
+    .replace('DELAY', String(limits.delay))
+    .replace('SHAKE', String(limits.shake));
+  const listing = names
+    .map((n, i) => `${n}: ${describe(kit[i])}`)
+    .join('\n');
+  try {
+    const r = await call({
+      modelId: bundle.modelId,
+      maxTokens: Math.min(bundle.maxTokens, 1400),
+      thinkBudget: 0,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: `Существо: ${prompt.slice(0, 400)}\n\nУмения:\n${listing}` },
+      ],
+      /*
+       * `accept` — НАСТОЯЩАЯ ПРОВЕРКА, а не «есть ли фигурная скобка».
+       *
+       * Валидатор один и тот же на приём и на запись: если он тут мягче, то
+       * ответ примут и оплатят, а потом выбросят при сохранении — то есть
+       * заплатят за брак (E5 запрещает брать деньги за непринятую генерацию).
+       */
+      accept: (t) => {
+        const parsed = parseVfx(t, names);
+        return parsed && Object.keys(parsed).length > 0;
+      },
+      attempts: 2,
+    });
+    return { ir: parseVfx(r.text, names), costUsd: r.costUsd };
+  } catch (e) {
+    /* Декорация — украшение. Её отсутствие не повод потерять существо. */
+    return { ir: null, costUsd: e.costUsd || 0 };
+  }
+}
+
+/**
+ * Разобрать ответ модели в карту «имя умения → канонический IR».
+ *
+ * Возвращает null, если не разобралось вовсе. Умения, чей IR не прошёл
+ * проверку, ПРОСТО ВЫПАДАЮТ: одно кривое умение не должно лишать декорации
+ * два остальных, а read-kit нарисует его и без неё.
+ */
+export function parseVfx(text, names) {
+  let raw = null;
+  try {
+    const m = String(text).match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    raw = JSON.parse(m[0]);
+  } catch { return null; }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out = {};
+  for (const n of names) {
+    const one = canonicalIr(raw[n]);
+    if (one) out[n] = one;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
  * Весь конвейер. Возвращает описание существа ИЛИ причину отказа.
  *
  * `onStage` двигает экран ожидания: он занимает 60–180 с чужим боем (§10.3),
  * и «спиннер» там запрещён — значит стадии должны быть настоящими.
  */
+/**
+ * Весь конвейер. Возвращает описание существа ИЛИ причину отказа.
+ *
+ * `keepKit` — РЕФАКТОР, и это не оптимизация, а исправление шва.
+ *
+ * F3: рефактор меняет мозг существа, всё остальное живёт. Но конвейер один на
+ * оба пути, и на рефакторе он делал три лишние вещи, каждая вредная:
+ *
+ *   РИСОВАЛ ТЕЛО. Самая дорогая часть генерации ($0.05–$1.72 по §5.1)
+ *     оплачивалась и выбрасывалась: `finishRefactor` берёт из результата
+ *     только мозг и карточку.
+ *   СОЧИНЯЛ ДЕКОРАЦИЮ. То же самое, только дешевле.
+ *   ЗАНОВО РАЗБИРАЛ НАБОР ИЗ ПРОМПТА — и писал мозг под НЕГО. Существо по F3
+ *     остаётся со старым набором, имена `k1..k3` совпадут, а смысл нет:
+ *     новый мозг обучен другим умениям под теми же именами. Это худший вид
+ *     расхождения — всё работает и всё неправильно.
+ *
+ * `keepKit` передаётся рефактором и означает «набор уже есть, вот он»: разбор
+ * промпта не трогает умения, тело и декорация не генерируются.
+ */
+/**
+ * НАША ПОЛОМКА ИЛИ ОТКАЗ МОДЕЛИ — РАЗНЫЕ ВЕЩИ, И ЛИМИТ ЭТО РАЗЛИЧАЕТ.
+ *
+ * Оба исхода превращались в один код `brain_failed`. Он не входит в
+ * `OUR_FAULT`, значит попытка списывалась с суточного лимита игрока — включая
+ * случаи, когда до модели вообще не дошли: нет ключа, сеть легла, провайдер
+ * не ответил. Замерено: сервер без ключа, три запроса подряд, три задания с
+ * нулевой тратой — и четвёртый отказ `account_day` до следующих суток. Модель
+ * не вызывалась ни разу.
+ *
+ * Заодно врал экран ожидания: он выводит «попытка засчитана: модель ответила»
+ * из того же кода и утверждал это про поломку, в которой модели не было.
+ *
+ * `no_key`, `network`, `wall` — это МЫ: ключ наш, сеть наша, потолок раздумий
+ * наш. Всё остальное — модель ответила и ответ не годится, и это честная
+ * попытка.
+ */
+/* Тот же список, что классифицирует отказ тела (`SILENT_CODES` в `body.js`),
+   минус коды «ответа не было» — здесь речь о том, чей отказ роняет генерацию.
+   Два списка в одной папке однажды уже разошлись и назвали один код
+   противоположно. */
+const OUR_CODES = new Set(['no_key', 'network', 'wall', 'no_catalog', 'internal', 'rate', 'http']);
+const ourFault = (e) => (OUR_CODES.has(e?.code) ? e.code : 'brain_failed');
+
 export async function forgeCreature({
-  prompt, bundle, catalog, kitPreset = null, archetypeHint = null,
+  prompt, bundle, catalog, archetypeHint = null, keepKit = null,
   onStage = () => {}, call = callWithRepair,
+  /* Событие наружу. Конвейер не знает про базу и про аналитику — он сообщает,
+     что случилось, а записывает вызывающий (`jobs.js`). */
+  onEvent = null,
 }) {
   const spent = { usd: 0 };
   const note = [];
   let use = bundle;
 
   onStage('parse', 0.1);
-  const parsed = await parsePrompt({ prompt, bundle: use, kitPreset, call });
+  const parsed = await parsePrompt({ prompt, bundle: use, call });
   spent.usd += parsed.costUsd || 0;
   const archetype = archetypeHint || parsed.archetype;
+  /*
+   * НА РЕФАКТОРЕ НАБОР — СТАРЫЙ, и мозг пишется под него.
+   *
+   * Разбор промпта всё равно нужен: он даёт имя, архетип и «не вошло». Но
+   * умения он на рефакторе не решает — по F3 существо остаётся со своим
+   * набором, и мозг, написанный под НОВЫЙ разбор, знал бы `k1..k3` с другим
+   * смыслом под теми же именами.
+   */
+  if (keepKit) parsed.kit = keepKit;
 
   onStage('brain', 0.35);
   /* Кит компилируется ДО мозга: промпт обязан описывать те умения, которые
@@ -369,26 +733,130 @@ export async function forgeCreature({
   const compiled = compileKit(parsed.kit);
   const kitDefs = compiled.problems.length ? null : compiled.defs;
 
+  /*
+   * ТЕЛО И МОЗГ ИДУТ ПАРАЛЛЕЛЬНО.
+   *
+   * Они не зависят друг от друга: тело рисуется по промпту игрока, мозг
+   * пишется по архетипу и набору. Последовательно это минута плюс минута;
+   * параллельно — минута. Игрок ждёт вдвое меньше за те же деньги, и это
+   * единственное место во всей генерации, где такое вообще возможно.
+   *
+   * `catch` здесь обязателен и не декоративен: непойманный отказ одной из
+   * двух веток в `Promise.all` уронил бы вторую, за которую уже заплачено.
+   */
+  /* Модель, которой заказано ТЕЛО. `use` ниже может смениться на запасную из-за
+     мозга, а телу нужно знать, кто подвёл именно его. */
+  const bodyBundle = use;
+  const bodyPromise = keepKit
+    /* Рефактор меняет мозг (F3). Тело у существа уже есть, и платить за
+       второе — это платить за то, что будет выброшено. */
+    ? Promise.resolve({ ok: false, skipped: true, costUsd: 0 })
+    : forgeBody({ prompt, bundle: use, call })
+      .catch((e) => ({ ok: false, code: 'body_failed', message: e.message, costUsd: e.costUsd || 0 }));
+
   let brain;
   try {
-    brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call });
+    brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call, sizes: { own: parsed.size ?? 1, enemy: 1 } });
   } catch (e) {
     /* Молчаливая подмена запрещена (§5.1): «Fable не справилась, существо
        сделала Gemini» — обязательная строка, а не любезность. */
     const alt = fallbackBundle(catalog, use.bundle);
     spent.usd += e.costUsd || 0;
-    if (!alt) return { ok: false, code: 'brain_failed', message: 'мозг не собрался', costUsd: spent.usd };
+    if (!alt) return { ok: false, code: ourFault(e), message: 'мозг не собрался', costUsd: spent.usd };
     note.push({ kind: 'fallback', from: use.label, to: alt.label });
     use = alt;
     onStage('brain_retry', 0.45);
     try {
-      brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call });
+      brain = await forgeBrain({ archetype, bundle: use, kit: kitDefs, call, sizes: { own: parsed.size ?? 1, enemy: 1 } });
     } catch (e2) {
       spent.usd += e2.costUsd || 0;
-      return { ok: false, code: 'brain_failed', message: 'мозг не собрался даже на запасной модели', costUsd: spent.usd };
+      return { ok: false, code: ourFault(e2), message: 'мозг не собрался даже на запасной модели', costUsd: spent.usd };
     }
   }
   spent.usd += brain.costUsd || 0;
+
+  /*
+   * Тело догоняет здесь. Если оно не собралось — существо ВСЁ РАВНО
+   * создаётся и носит тело архетипа.
+   *
+   * Это выбор, а не упрощение. Мозг — то, за что игрок платил и во что он
+   * вложил замысел; тело — то, как этот замысел выглядит. Выбросить готовый
+   * мозг из-за неудачной картинки значит наказать игрока за нашу неудачу.
+   * Обратное — молча подсунуть чужое тело и промолчать — запрещено тем же
+   * правилом, что и молчаливая подмена модели (§5.1): в `note` уезжает
+   * строка, и игрок читает её на экране существа.
+   */
+  /*
+   * У ТЕЛА СВОЯ СТАДИЯ, и это самая длинная из всех.
+   *
+   * Тело и мозг идут параллельно, но тело дольше — замерено 259 и 1889 секунд
+   * против минуты у мозга. Пока оно рисуется, стадия оставалась «модель пишет
+   * мозг» с прогрессом 0.35: экран ожидания стоял неподвижно несколько минут
+   * на самом хрупком отрезке первой сессии, и человек, естественно, читал это
+   * как «зависло».
+   *
+   * Стадия ставится ПОСЛЕ мозга и только если тело ещё не готово: если оно
+   * успело раньше, ставить её значит показать шаг, которого не было.
+   */
+  let bodyDone = false;
+  bodyPromise.then(() => { bodyDone = true; }, () => { bodyDone = true; });
+  await Promise.resolve();
+  if (!bodyDone) onStage('body', 0.55);
+  let bodyOut = await bodyPromise;
+  spent.usd += bodyOut.costUsd || 0;
+
+  /*
+   * ВТОРАЯ ПОПЫТКА ТЕЛА НА ДРУГОЙ МОДЕЛИ.
+   *
+   * У мозга это есть с самого начала (выше), у тела не было: одна неудача — и
+   * существо навсегда надевало тело архетипа. Замерено на 27 существах в базе:
+   * 25 из них носят чужое тело. Игрок пишет «стеклянная медуза» и получает
+   * гориллу — ровно та беда, ради которой этот файл вообще написан.
+   *
+   * Отказ тела почти всегда конкретен: модель не выдержала правила песочницы,
+   * или её поза ничего не двигает, или геометрия не влезла в потолок памяти.
+   * Это свойство МОДЕЛИ, а не заказа, и другая модель по тому же промпту чаще
+   * всего справляется — так же, как справляется с мозгом.
+   *
+   * Молчания не будет: строка про подмену уезжает в `note` и читается на
+   * экране существа, как и подмена модели мозга (§5.1).
+   */
+  if (!bodyOut.ok && !bodyOut.skipped && spent.usd < REQUEST_BUDGET_USD) {
+    const altBody = fallbackBundle(catalog, bodyBundle.bundle);
+    if (altBody) {
+      onStage('body_retry', 0.62);
+      const second = await forgeBody({ prompt, bundle: altBody, call })
+        .catch((e) => ({ ok: false, code: 'body_failed', message: e.message, costUsd: e.costUsd || 0 }));
+      spent.usd += second.costUsd || 0;
+      if (second.ok) {
+        note.push({ kind: 'body_fallback', from: bodyBundle.label, to: altBody.label });
+        bodyOut = second;
+      } else {
+        /* Обе модели отказали — значит, дело, скорее всего, в заказе, и игроку
+           честнее показать причину второй попытки: она свежее. */
+        bodyOut = { ...second, tried: [bodyBundle.label, altBody.label] };
+      }
+    }
+  }
+
+  if (!bodyOut.ok && !bodyOut.skipped) {
+    note.push({ kind: 'body_failed', message: bodyOut.message || 'тело не собралось' });
+    /*
+     * И в телеметрию — с ПРИЧИНОЙ и с ответом на «чья вина».
+     *
+     * Без этого доля отказов тела считалась бы по жалобам, а не по замеру:
+     * существо всё равно рождается (D117), игрок часто не жалуется вовсе, и
+     * единственный след — эта строка. `whose` тут не украшение: требование
+     * основателя сформулировано как «ошибки не по нашей вине», а проверить это
+     * можно только считая отказы по причинам.
+     */
+    onEvent?.('body_rejected', {
+      code: bodyOut.problems?.[0]?.code || bodyOut.code || 'unknown',
+      whose: bodyOut.whose || 'unknown',
+      tries: bodyOut.tries ?? null,
+      model: bodyBundle.modelId,
+    });
+  }
 
   onStage('validate', 0.7);
   /*
@@ -418,13 +886,68 @@ export async function forgeCreature({
   const cardOut = await tacticsCard({ source: brain.source, archetype, bundle: use, call });
   spent.usd += cardOut.costUsd || 0;
 
+  /*
+   * Декорация умений — последним шагом и без права уронить генерацию.
+   *
+   * Идёт после мозга нарочно: к этому моменту существо уже существует по
+   * всем частям, от которых зависит бой, и любой исход здесь меняет только
+   * то, как каст выглядит. Это ровно тот порядок, который требует §9.2:
+   * «худший случай — скучный эффект, а не чёрный экран».
+   */
+  const vfxOut = keepKit
+    ? { ir: null, costUsd: 0 }
+    : await forgeVfx({ prompt, kit: parsed.kit, kitDefs, bundle: use, call });
+  spent.usd += vfxOut.costUsd || 0;
+
+  /*
+   * ГОДНОСТЬ НАБОРА — ЗАМЕР, А НЕ ДОГАДКА, и он наконец подключён.
+   *
+   * `forge/viability.js` был написан, задокументирован как применяемый — «для
+   * библиотеки запрет, для существа игрока предупреждение» — и не вызывался
+   * НИОТКУДА. Ровно тот класс, что и мёртвые оси VFX (D70): код есть, правило
+   * записано, эффекта нет.
+   *
+   * Цена бездействия видна в базе: пять существ с активным набором имеют ноль
+   * побед за сотни боёв каждое, и у трёх из них больше половины боёв — ничьи.
+   * Это не «слабый замысел», это набор, которым нельзя коснуться противника:
+   * «мотылёк, который слепит» получил ослепление, ускорение и один рывок с
+   * уроном, а рывок — удар в упор при лёгком дальнобойном теле.
+   *
+   * Отказывать игроку в его замысле мы не вправе (набор он меняет мгновенно и
+   * бесплатно, D3), поэтому здесь — ПРЕДУПРЕЖДЕНИЕ, которое доезжает до
+   * экрана существа через `note`. Запрет — только там, где существо
+   * показывают всем: `tools/seedlive.mjs` заселяет библиотеку и отказывает.
+   *
+   * Сорок боёв — четыре десятых секунды на генерацию длиной в
+   * минуты. За эту цену игрок узнаёт про своё существо главное.
+   */
+  if (kitDefs) {
+    try {
+      /* Размер — сюда тоже. Это ЕДИНСТВЕННОЕ место, где модель только что
+         выбрала размер, и мерить годность набора на теле размера 1 значит
+         мерить чужое существо. D123 требует размер на всех путях матча, и
+         этот путь был последним, где его не было. */
+      const v = await viability(parsed.kit, archetype, { size: parsed.size ?? 1 });
+      if (!v.ok) {
+        note.push({ kind: 'kit_unviable', message: v.why, hits: v.hits, rounds: v.rounds });
+      }
+    } catch { /* замер не удался — молчим: это наша проблема, не игрока */ }
+  }
+
   onStage('done', 1);
   return {
     ok: true,
     name: parsed.name,
     archetype,
+    /* `gen:` подставит слой хранения, когда у существа появится id:
+       ссылка на тело — это ссылка на существо (F2), и раньше id её не
+       существует. Здесь остаётся архетип как физика и как запасное тело. */
     bodyRef: archetype,
+    bodySource: bodyOut.ok ? bodyOut.source : null,
+    bodySafe: bodyOut.ok ? bodyOut.safe : null,
+    bodyDraws: bodyOut.ok ? (bodyOut.draws ?? null) : null,
     kit: parsed.kit,
+    size: parsed.size ?? 1,
     unfit: parsed.unfit,
     why: parsed.why,
     brainSource: brain.source,
@@ -435,5 +958,6 @@ export async function forgeCreature({
     note,
     kitReadable: parsed.kit.map(describe),
     kitCost: parsed.kit.map(costOf),
+    vfxIr: vfxOut.ir,
   };
 }

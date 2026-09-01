@@ -74,6 +74,8 @@ import { brainPrompt, tracePrompt, TRACE_MARKS } from '../src/brain/prompt.js';
 import { checkTactics } from './checktactics.mjs';
 import { checkDocs } from './checkdocs.mjs';
 
+import { FUEL_PER_THINK } from '../src/server/sandbox/instrument.js';
+
 /** The same two formatters the prompt uses; computed here, never imported. */
 const n = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000));
 const deg = (rad) => String(Math.round((rad * 180) / Math.PI));
@@ -224,6 +226,10 @@ function expected() {
   put('suddenDeath.killsAt', SUDDEN_DEATH_AT + Math.sqrt(2 / SUDDEN_DEATH_RAMP));
 
   put('think.timeoutMs', THINK_TIMEOUT_MS);
+  /* Настоящий предел мысли — топливо, а не часы: одинаковый бой обязан
+     давать одинаковый лог на загруженной машине (A1/A2). Промпт называет
+     именно его, значит и белый список обязан его знать. */
+  put('think.fuel', FUEL_PER_THINK);
   put('orders.perThink', MAX_ORDERS_PER_THINK);
   put('queries.perThink', MAX_QUERIES_PER_THINK);
   put('faultLimit', FAULT_LIMIT);
@@ -289,6 +295,57 @@ for (const id of ['octopus', 'gorilla']) {
 }
 
 if (bad === 0) console.log('prompt and config agree, in both directions.');
+
+/*
+ * ── ПРОМПТ СУЩЕСТВА С НАБОРОМ (D160) ──────────────────────────────────────
+ *
+ * Всё выше рендерит `brainPrompt(id)` БЕЗ второго аргумента, то есть промпт
+ * захардкоженного эталона. Промпт существа с набором грамматики — а это все
+ * существа игроков — не проверял ни один гейт, и в нём полгода жил дефект:
+ * `bodyBlock` печатал мозгу `skills laser, blink, jump`, то есть четыре
+ * имени, ни одного из которых у бойца нет. Модель писала `api.use('laser')`,
+ * получала молчаливый отказ и не понимала, почему её умения не работают.
+ *
+ * Проверяется ровно то, что нельзя проверить глазами: в промпте существа с
+ * набором не должно быть НИ ОДНОГО имени захардкоженного умения, и должны
+ * быть все три имени из набора.
+ */
+{
+  const { compileKit } = await import('../src/skills/compile.js');
+  const KITS = [
+    [{ delivery: 'jump', effects: ['shield'], element: 'frost' },
+      { delivery: 'beam', effects: ['damage'], element: 'arc' },
+      { delivery: 'zone', effects: ['burn'], element: 'ember' }],
+    [{ delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+      { delivery: 'bolt', effects: ['burn'], element: 'ember' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' }],
+  ];
+  const HARDCODED = ['laser', 'blink', 'smash', 'charge', 'jump'];
+  for (const id of ['octopus', 'gorilla']) {
+    for (const [i, kit] of KITS.entries()) {
+      const built = compileKit(kit);
+      if (built.problems.length) { fail(`kit ${i} does not compile: ${JSON.stringify(built.problems)}`); continue; }
+      const text = brainPrompt(id, { own: built.defs, enemy: built.defs }, { own: 1, enemy: 1 });
+      /* Строка `skills` — единственное место, где имена перечисляются списком;
+         в остальном тексте слова вроде "blink" законно встречаются как проза. */
+      for (const line of text.split('\n')) {
+        if (!/^ {2}skills {2,}/.test(line)) continue;
+        for (const name of HARDCODED) {
+          if (new RegExp(`(^|[ ,])${name}([ ,]|$)`).test(line)) {
+            fail(`${id}/kit${i}: строка «${line.trim()}» называет захардкоженное умение ${name}`);
+          }
+        }
+        for (const k of Object.keys(built.defs)) {
+          if (!line.includes(k)) fail(`${id}/kit${i}: строка «${line.trim()}» не называет ${k}`);
+        }
+      }
+      for (const k of Object.keys(built.defs)) {
+        if (!text.includes(`\n${k}\n`)) fail(`${id}/kit${i}: в промпте нет блока умения ${k}`);
+      }
+    }
+  }
+  if (bad === 0) console.log('a kit creature is told about its own three verbs and no others.');
+}
 
 // ── and the one thing that must NOT be there ───────────────────────────────
 const tactics = await checkTactics({ log: (m) => console.log(m) });

@@ -32,14 +32,11 @@ export async function enter(root, args, ctx) {
   return ladder(body, ctx);
 }
 
-const sub = (text, on, onclick) => h('button.btn', {
+/* Состояние — классом, а не инлайновым стилем: инлайн перебивает таблицу
+   стилей, и переключатель раздела оставался коробкой при любом правиле. */
+const sub = (text, on, onclick) => h(`button.btn.sub${on ? '.on' : ''}`, {
   onclick,
-  style: {
-    background: on ? 'rgba(79,200,220,.12)' : 'transparent',
-    borderColor: on ? 'rgba(79,200,220,.5)' : 'rgba(120,180,205,.18)',
-    color: on ? '#9fe3f0' : '#8194a3',
-    letterSpacing: '.12em', textTransform: 'uppercase',
-  },
+  style: { textTransform: 'uppercase' },
 }, text);
 
 async function ladder(body, ctx) {
@@ -47,10 +44,29 @@ async function ladder(body, ctx) {
   track('ladder_viewed', { rank: d.me?.rank ?? null });
 
   /* Заголовок — процентиль, а не место. Ровно то, что §10.4 требует. */
+  /*
+   * ПРОЦЕНТ ЧЕСТЕН ТОЛЬКО ВМЕСТЕ С РАЗМЕРОМ.
+   *
+   * «Сильнее 100% существ» среди семи игроков и среди семисот — разные
+   * утверждения, а выглядят одинаково. Знаменатель едет с сервера и
+   * называется вслух: это та же честность, что у бейджа «топ-100», который
+   * появляется только при сотне существ.
+   */
   if (d.me && d.percentile !== null && d.me.fights >= 20) {
     body.appendChild(h('div.t-name.big', `СИЛЬНЕЕ ${d.percentile}% СУЩЕСТВ`));
+    /*
+     * ПОДПИСЬ НАЗЫВАЕТ ОБА ЧИСЛА, потому что на экране видны оба.
+     *
+     * Процент считается по существам игроков, а таблица ниже показывает и
+     * эталоны — с местами до двадцать второго. Написать одно число значит
+     * противоречить самому себе через два блока: «в лестнице 7» над строкой
+     * «#18». Называем оба и говорим, какое к чему.
+     */
     body.appendChild(h('div.t-sub', { style: { marginTop: '4px' } },
-      `в лестнице ${num(d.total)} ${plural(d.total, 'существо', 'существа', 'существ')}`));
+      d.players
+        ? `процент считается по ${num(d.players)} ${plural(d.players, 'существу игроков', 'существам игроков', 'существам игроков')}`
+          + (d.total > d.players ? `; в таблице ещё ${num(d.total - d.players)} наших эталонов` : '')
+        : `в лестнице ${num(d.total)} ${plural(d.total, 'существо', 'существа', 'существ')}`));
   } else if (d.me) {
     body.appendChild(h('div.t-name.big', 'ЕЩЁ МАЛО БОЁВ'));
     body.appendChild(h('div.t-body', { style: { marginTop: '6px', maxWidth: '52ch' } },
@@ -64,8 +80,22 @@ async function ladder(body, ctx) {
   }
 
   if (d.total < 40) {
-    body.appendChild(h('div.t-sub', { style: { marginTop: '10px', color: '#ddd0ad' } },
-      `В лестнице ${num(d.total)} ${plural(d.total, 'существо', 'существа', 'существ')}. Проценты станут честными, когда их станет больше.`));
+    body.appendChild(h('div.t-sub', { style: { marginTop: '10px', color: 'var(--gor)' } },
+      /* Число то же, что и выше: существа ИГРОКОВ. Иначе экран называет
+         размер лестницы двумя разными числами в двух блоках. */
+      `Существ игроков — ${num(d.players ?? d.total)}. Проценты станут честными, когда их станет больше.`));
+  }
+
+  /*
+   * Объяснение к «ЭТАЛОН» стоит ОДИН РАЗ и рядом с таблицей, а не в подсказке
+   * на наведение: строка «1450 · 201 бой · 0% побед» вызывает вопрос сразу, и
+   * ответ на него не должен требовать мыши.
+   */
+  if ((d.top || []).some((r) => r.calibration)) {
+    body.appendChild(h('div.t-sub', { style: { marginTop: '6px' } },
+      'Существа с меткой ЭТАЛОН — наши, для калибровки. Их рейтинг поставлен '
+      + 'при заселении и не меняется от боёв: они должны всё время стоить одного '
+      + 'и того же. Счёт побед у них настоящий.'));
   }
 
   body.appendChild(h('div.section',
@@ -93,13 +123,29 @@ function row(r, me, ctx, h2h = false) {
   },
   h('span.rank', String(r.rank ?? '—')),
   h('span.nm', { style: { display: 'flex', alignItems: 'center', gap: '9px' } },
-    h('span', { html: glyphSvg(r.id, { size: 20, color: r.archetype === 'gorilla' ? '#e8b077' : '#8fd4e4' }) }),
+    h('span', { html: glyphSvg(r.id, { size: 20, color: r.archetype === 'gorilla' ? 'var(--gor)' : 'var(--oct)' }) }),
     r.name,
-    r.isLibrary ? badge('БИБЛ.', 'warn') : null),
-  h('span.num', num(r.rating)),
+    /* «Библиотечное» — не про происхождение, а про то, что его рейтинг
+       поставлен для калибровки и не двигается. Иначе строка «1450 · 201 бой ·
+       0% побед» читается как заработанное место. */
+    r.isLibrary ? badge('ЭТАЛОН', 'warn') : null),
+  h('span.num', { title: r.calibration ? 'отметка калибровки: не меняется от боёв' : null },
+    r.calibration ? h('span', { style: { opacity: '.62' } }, num(r.rating)) : num(r.rating)),
   h('span.num', num(r.fights)),
-  h('span.num', h2h && r.head2head
-    ? (r.head2head.n ? `${r.head2head.w}–${r.head2head.l}` : '—')
+  /*
+   * ПОД ОДНИМ ЗАГОЛОВКОМ — ОДНА ВЕЛИЧИНА.
+   *
+   * В окне «рядом с тобой» колонка называется «счёт с тобой», и у соседей там
+   * личный счёт («90–0»). А у собственной строки игрока `head2head` пуст —
+   * сам с собой он не дрался, — и она падала в запасную ветку и печатала
+   * «49%» под тем же заголовком. Две разные величины в одном столбце
+   * читаются как одна: «49» рядом с «90–0» выглядит как разгромный счёт.
+   *
+   * Своя строка теперь ставит прочерк: у неё этой величины нет, и это
+   * честнее, чем подставить другую.
+   */
+  h('span.num', h2h
+    ? (r.head2head?.n ? `${r.head2head.w}–${r.head2head.l}` : '—')
     : (r.winrate === null ? '—' : `${r.winrate}%`)));
 }
 
@@ -146,12 +192,16 @@ async function season(body, ctx) {
   body.appendChild(h('div.section',
     h('div.hcut', 'ПРИЗОВОЙ ФОНД'),
     h('div.trow.head', h('span', '#'), h('span', 'место'), h('span.num', 'коинов'), h('span.num', ''), h('span.num', '')),
+    /* Места берутся из `prizeBoard`, а не из общей лестницы: в ней стоят и
+       наши калибровочные существа, и приз доставался дому. */
     (s.prizes || []).map((p, i) => h('div.trow',
       h('span.rank', String(i + 1)),
-      h('span.nm', d.top[i] ? d.top[i].name : '—'),
+      h('span.nm', (d.prizeBoard || [])[i] ? d.prizeBoard[i].name : '—'),
       h('span.num', num(p)), h('span.num', ''), h('span.num', ''))),
     h('div.t-body', { style: { marginTop: '14px', maxWidth: '56ch' } },
-      'Коины приходят только отсюда: за победы игра их не начисляет. Это не скупость, а устройство платформы — геймплей не эмитирует валюту.')));
+      'Коины приходят только отсюда: за победы игра их не начисляет. Это не скупость, а устройство платформы — геймплей не эмитирует валюту.'),
+    h('div.t-sub', { style: { marginTop: '8px' } },
+      'В призах участвуют существа игроков. Наши калибровочные — те, что с меткой ЭТАЛОН, — стоят в лестнице, но призов не берут.')));
 }
 
 function plural(n, one, few, many) {

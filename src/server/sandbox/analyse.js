@@ -20,6 +20,22 @@
 
 import { parse } from 'acorn';
 
+/*
+ * Этот файл проверяет НЕ ТОЛЬКО мозги.
+ *
+ * Тело существа — тоже код, написанный моделью по свободному тексту игрока,
+ * и оно исполняется в браузере ЧУЖОГО человека, который просто смотрит бой.
+ * Правила у тела другие (ему нужны THREE и TSL, не нужна память), но
+ * рассуждение то же самое, и держать два экземпляра одной проверки — это
+ * гарантированно получить два разных её поведения через месяц. Поэтому
+ * список глобалей, список именованных отказов и имя входной функции —
+ * параметры, а не константы. Значения по умолчанию — мозговые, так что все
+ * старые вызовы `analyse(src)` работают как работали; это проверяет
+ * `tools/checkisolate.mjs` своими двадцатью одной попыткой побега.
+ *
+ * Тело настраивает `src/server/sandbox/bodyrules.js`.
+ */
+
 /** Что мозгу доступно снаружи. Всё остальное — не существует. */
 export const ALLOWED_GLOBALS = new Set([
   'Math', 'JSON', 'Number', 'String', 'Boolean', 'Array', 'Object',
@@ -30,8 +46,9 @@ export const ALLOWED_GLOBALS = new Set([
      отвергает эталонные мозги, а это признак не строгости, а рассинхрона.
      Проверяет `tools/checkisolate.mjs`. */
   'V', 'console',
-  /* Служебное: счётчик топлива, который вставляет инструментатор. */
-  '__fuel',
+  /* Служебное: счётчик топлива и проверка доступа по вычисляемому ключу —
+     оба вставляет инструментатор. */
+  '__fuel', '__idx',
 ]);
 
 /**
@@ -39,7 +56,20 @@ export const ALLOWED_GLOBALS = new Set([
  * Список короткий намеренно: он для СООБЩЕНИЯ, а не для защиты — защиту
  * даёт правило «неизвестная глобаль запрещена».
  */
-const NAMED = {
+/*
+ * ЧЕРЕЗ `Object.create(null)`, и это ТРЕТИЙ раз, когда та же дыра.
+ *
+ * На обычном литерале `NAMED['constructor']` возвращает `Object` — истинное
+ * значение, — и отказ печатался игроку как `forbidden: function Object() {
+ * [native code] }`. То есть любое имя из прототипа превращалось в запрет с
+ * бессмысленным текстом, а слово `constructor` встречается в каждом классе.
+ *
+ * До этого так же пробивался бюджет умений (§8) и так же проходил пресет
+ * набора (`KIT_PRESETS`). Одна и та же ошибка трижды означает, что дело не в
+ * невнимательности, а в литерале как таковом: таблица, по которой что-то
+ * ПРОВЕРЯЮТ, не имеет права наследовать чужие ключи.
+ */
+const NAMED = Object.assign(Object.create(null), {
   eval: 'eval запрещён (N11)',
   Function: 'конструктор Function запрещён (N11)',
   require: 'модули мозгу недоступны',
@@ -59,14 +89,24 @@ const NAMED = {
   Promise: 'асинхронность мозгу недоступна: мысль занимает один тик',
   Date: 'часы мозгу недоступны — бой обязан быть повторяемым',
   performance: 'часы мозгу недоступны — бой обязан быть повторяемым',
-};
+});
 
 /**
  * Разобрать и проверить. Возвращает { ok, problems[], ast } —
  * список, а не первую ошибку: чинить по одному сообщению за раз мучительно,
  * а мозг чинит модель, которой список видно целиком.
  */
-export function analyse(source, { maxChars = 60000 } = {}) {
+export function analyse(source, {
+  maxChars = 60000,
+  globals = ALLOWED_GLOBALS,
+  named = NAMED,
+  entry = 'think',
+  /* Как называть в сообщениях то, что пришло снаружи. Мозгу приходят
+     перцепция и api, телу — THREE и TSL, и текст отказа обязан говорить про
+     то, что читатель действительно написал. */
+  outsideRu = 'перцепция или api',
+  vocabularyRu = 'api, p, mem и стандартная математика',
+} = {}) {
   const problems = [];
   if (typeof source !== 'string' || !source.trim()) {
     return { ok: false, problems: [{ code: 'empty', message: 'пустой исходник' }] };
@@ -75,17 +115,122 @@ export function analyse(source, { maxChars = 60000 } = {}) {
     return { ok: false, problems: [{ code: 'too_big', message: `исходник ${source.length} символов, потолок ${maxChars}` }] };
   }
 
+  /*
+   * ОБЁРТКА МОДУЛЯ СНИМАЕТСЯ, А НЕ ОТВЕРГАЕТСЯ.
+   *
+   * Разбор идёт в режиме СКРИПТА, потому что `import` — это дверь наружу, и
+   * её здесь быть не должно. Но модели пишут `import * as THREE from 'three'`
+   * наверху и `export function build` внизу просто по привычке: так выглядит
+   * любой файл three.js, который они видели. Системный промпт запрещает это
+   * прямым текстом — дешёвая модель написала импорт ЧЕТЫРЕ РАЗА ИЗ ЧЕТЫРЁХ.
+   *
+   * И отвергалось оно с сообщением «не разбирается: 'import' and 'export' may
+   * appear only with sourceType module» — то есть тело, в котором всё
+   * остальное правильно, не доезжало до игрока из-за двух строк обёртки.
+   * Именно это, а не качество кода, объясняет, почему сгенерированных тел в
+   * базе почти нет.
+   *
+   * Человек-приёмщик в такой ситуации снимает обёртку и читает дальше.
+   * Снимаем и мы — но именно снимаем, а не разрешаем:
+   *
+   *   объявления `import` ВЫРЕЗАЮТСЯ целиком. Если код на них опирался, имя
+   *     станет неизвестным, и он честно упадёт на `unknown_global` — то есть
+   *     доступ наружу по-прежнему невозможен, просто отказ теперь по делу;
+   *   у `export` снимается только само слово, объявление остаётся;
+   *   `import(...)` как ВЫРАЖЕНИЕ не трогается ничем: это динамическая
+   *     загрузка, она запрещена по имени и останется запрещённой.
+   *
+   * Вырезанное заменяется пробелами той же длины: смещения всех остальных
+   * узлов обязаны остаться прежними, потому что по ним же идёт разметка
+   * топливом и указываются позиции в отказах.
+   */
+  /*
+   * ОБЁРТКА CommonJS СНИМАЕТСЯ ТАК ЖЕ, КАК ОБЁРТКА МОДУЛЯ.
+   *
+   * Модели пишут `module.exports = build` по той же привычке, что и
+   * `export function build`: так выглядит половина примеров, на которых они
+   * учились. Отвергалось это как «запись в необъявленное имя» — то есть тело,
+   * где всё остальное правильно, не доезжало из-за одной последней строки.
+   *
+   * Снимается ТОЛЬКО хвостовое присваивание экспорта и только целиком строкой.
+   * `module` и `exports` остаются неизвестными именами везде, где встретятся
+   * ещё раз: дверь наружу не открывается, убирается ровно бантик.
+   */
+  source = source.replace(
+    /^[\t ]*(?:module\.exports|exports\.\w+)\s*=\s*[\w$]+\s*;?[\t ]*$/gm,
+    (m) => ' '.repeat(m.length),
+  );
+
   let ast;
+  let unwrapped = false;
   try {
     ast = parse(source, { ecmaVersion: 2022, sourceType: 'script', locations: true });
   } catch (e) {
-    return { ok: false, problems: [{ code: 'syntax', message: `не разбирается: ${e.message}` }] };
+    const looksModule = /'import' and 'export' may appear only with|import|export/.test(e.message);
+    let asModule = null;
+    if (looksModule) {
+      try { asModule = parse(source, { ecmaVersion: 2022, sourceType: 'module', locations: true }); }
+      catch { asModule = null; }
+    }
+    if (!asModule) {
+      return { ok: false, problems: [{ code: 'syntax', message: `не разбирается: ${e.message}` }] };
+    }
+    const blanks = [];
+    for (const node of asModule.body) {
+      if (node.type === 'ImportDeclaration') blanks.push([node.start, node.end]);
+      else if (node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration') {
+        /* `export function build(){}` → снимаем слово; `export { build }` →
+           снимаем всю строку, объявления в ней нет. */
+        if (node.declaration) blanks.push([node.start, node.declaration.start]);
+        else blanks.push([node.start, node.end]);
+      }
+    }
+    if (!blanks.length) {
+      return { ok: false, problems: [{ code: 'syntax', message: `не разбирается: ${e.message}` }] };
+    }
+    const chars = [...source];
+    for (const [a, b] of blanks) for (let i = a; i < b; i++) if (chars[i] !== '\n') chars[i] = ' ';
+    source = chars.join('');
+    unwrapped = true;
+    try {
+      ast = parse(source, { ecmaVersion: 2022, sourceType: 'script', locations: true });
+    } catch (e2) {
+      return { ok: false, problems: [{ code: 'syntax', message: `не разбирается и без обёртки модуля: ${e2.message}` }] };
+    }
   }
 
   /* Область видимости — чтобы отличить свою локальную `x` от глобальной. */
-  const scopes = [new Set(ALLOWED_GLOBALS)];
+  const scopes = [new Set(globals)];
+  /*
+   * ВТОРАЯ ПОЛКА КАЖДОЙ ОБЛАСТИ: имена, объявленные НИЖЕ по тексту.
+   *
+   * `let`, `const` и `class` язык поднимает, но до строки объявления держит во
+   * временной мёртвой зоне. Из-за этого два совершенно разных случая выглядят
+   * в разборе одинаково:
+   *
+   *     g.rotation.x = nope; let nope = 1;              // настоящая ошибка
+   *     g.userData.pose = (s) => { g.y = BASE + s.t; }; const BASE = 0.5;   // законно
+   *
+   * Второе — самая обычная форма `pose`: функция СОЗДАЁТСЯ раньше, а ЗОВЁТСЯ
+   * позже, когда `BASE` уже есть. Один раз я разменял первое на второе —
+   * поднял всё подряд, — и гейт `checkbody` немедленно это поймал: разбор
+   * перестал отличать ошибку от законного кода.
+   *
+   * Отличает их не порядок строк, а граница функции. Имя с этой полки видно
+   * только оттуда, где между обращением и объявлением есть хотя бы одна
+   * функция: `depth` глубже той, на которой полка заведена.
+   */
+  const deferred = [new Set()];
+  const scopeDepth = [0];
   const declare = (name) => { if (name) scopes[scopes.length - 1].add(name); };
-  const known = (name) => scopes.some((s) => s.has(name));
+  const defer = (name) => { if (name) deferred[deferred.length - 1].add(name); };
+  const known = (name) => {
+    for (let i = scopes.length - 1; i >= 0; i--) {
+      if (scopes[i].has(name)) return true;
+      if (deferred[i].has(name) && depth > scopeDepth[i]) return true;
+    }
+    return false;
+  };
 
   /*
    * Параметры — ЧУЖИЕ объекты, а не свои переменные.
@@ -126,14 +271,14 @@ export function analyse(source, { maxChars = 60000 } = {}) {
   }
 
   /* Имена, объявленные паттерном: const {a, b:[c]} = ... */
-  function declarePattern(p) {
+  function declarePattern(p, sink = declare) {
     if (!p) return;
     switch (p.type) {
-      case 'Identifier': declare(p.name); break;
-      case 'ObjectPattern': for (const q of p.properties) declarePattern(q.value || q.argument); break;
-      case 'ArrayPattern': for (const q of p.elements) declarePattern(q); break;
-      case 'AssignmentPattern': declarePattern(p.left); break;
-      case 'RestElement': declarePattern(p.argument); break;
+      case 'Identifier': sink(p.name); break;
+      case 'ObjectPattern': for (const q of p.properties) declarePattern(q.value || q.argument, sink); break;
+      case 'ArrayPattern': for (const q of p.elements) declarePattern(q, sink); break;
+      case 'AssignmentPattern': declarePattern(p.left, sink); break;
+      case 'RestElement': declarePattern(p.argument, sink); break;
       default: break;
     }
   }
@@ -173,7 +318,7 @@ export function analyse(source, { maxChars = 60000 } = {}) {
     if (target.type === 'Identifier') {
       /* Локальная переменная — да; неизвестное имя — это неявная глобаль. */
       if (!known(target.name)) { return 'unknown'; }
-      if (ALLOWED_GLOBALS.has(target.name)) return 'global';
+      if (globals.has(target.name)) return 'global';
       if (params.has(target.name)) return 'param';
       return true;
     }
@@ -181,7 +326,7 @@ export function analyse(source, { maxChars = 60000 } = {}) {
       const root = rootOf(target);
       if (root === 'mem') return true;
       if (root && !known(root)) return 'unknown';
-      if (root && ALLOWED_GLOBALS.has(root)) return 'global';
+      if (root && globals.has(root)) return 'global';
       if (root && params.has(root)) {
         /* `p.mem.foo = 1` — можно: это память. `p.enemy.hp = 0` — нельзя. */
         return firstProp(target) === 'mem' ? true : 'param';
@@ -193,21 +338,107 @@ export function analyse(source, { maxChars = 60000 } = {}) {
     return true;
   }
 
+  /*
+   * ПОДЪЁМ ОБЪЯВЛЕНИЙ — ЧАСТЬ ЯЗЫКА, А НЕ ВОЛЬНОСТЬ АВТОРА.
+   *
+   * Обход шёл строго по тексту и объявлял имя функции в тот момент, когда до
+   * него доходил. Значит любой вызов РАНЬШЕ текстового объявления —
+   * совершенно законный JavaScript — получал «неизвестное имя»:
+   *
+   *     function build(T) {
+   *       const m = new T.Mesh(makeGeo(T));   // ← отказ здесь
+   *       function makeGeo(X) { ... }
+   *     }
+   *
+   * Это не гипотетика: так написано пять тел из сорока двух в лабораторном
+   * корпусе, и все пять валидны. Отказ выглядел как «модель написала плохой
+   * код», хотя код был хороший, а плохой была стена. И бил он молча: тело не
+   * собралось — существо получает тело архетипа.
+   *
+   * Поднимаются РОВНО ДВЕ вещи, потому что ровно они и поднимаются в языке:
+   * имена `function`-объявлений и имена `var`. `let`, `const` и `class` живут
+   * во временной мёртвой зоне — обращение к ним до объявления это настоящая
+   * ошибка, и отказ на ней правильный.
+   *
+   * Внутрь вложенных функций подъём не идёт: у них своя область, и их имена
+   * поднимутся, когда обход войдёт в них.
+   */
+  function hoistInto(node) {
+    const seen = new Set();
+    const scan = (n) => {
+      if (!n || typeof n.type !== 'string' || seen.has(n)) return;
+      seen.add(n);
+      if (n.type === 'FunctionDeclaration') { declare(n.id?.name); return; }
+      if (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression') return;
+      /* Класс — на вторую полку: `new Later()` до `class Later{}` это TDZ. */
+      if (n.type === 'ClassDeclaration') { defer(n.id?.name); return; }
+      if (n.type === 'ClassExpression') return;
+      if (n.type === 'VariableDeclaration') {
+        /*
+         * `var` ПОДНИМАЕТСЯ НАСОВСЕМ, `let` И `const` — ТОЛЬКО ДЛЯ ЗАМЫКАНИЙ.
+         *
+         * Разница между ними — не придирка, а разница между законным кодом и
+         * настоящей ошибкой; она разобрана у `deferred` выше. `var` виден с
+         * начала функции по правилам языка, поэтому едет на обычную полку;
+         * `let`, `const` и `class` — на вторую, откуда их достаёт только код
+         * за границей функции.
+         */
+        for (const d of n.declarations) declarePattern(d.id, n.kind === 'var' ? declare : defer);
+        return;
+      }
+      for (const k of Object.keys(n)) {
+        if (k === 'loc' || k === 'start' || k === 'end' || k === 'type') continue;
+        const v = n[k];
+        if (Array.isArray(v)) { for (const c of v) if (c && typeof c.type === 'string') scan(c); }
+        else if (v && typeof v.type === 'string') scan(v);
+      }
+    };
+    scan(node);
+  }
+
   const walk = (node, parent) => {
     if (!node || typeof node.type !== 'string') return;
 
     switch (node.type) {
+      case 'AwaitExpression':
+        /*
+         * ТЕЛО СИНХРОННО, И ЭТО НЕ ПРИДИРКА.
+         *
+         * `build` обязан вернуть группу, а не обещание: вьювер кладёт
+         * результат в сцену сразу. `pose` зовётся шестьдесят раз в секунду из
+         * кадрового цикла — асинхронность там означает, что поза применится
+         * когда-нибудь потом, то есть не применится.
+         *
+         * Хуже: `await` уводит исполнение за пределы учёта топлива. Тело,
+         * которое ждёт, не тратит шагов — и предел, считающий шаги, его не
+         * останавливает.
+         *
+         * Раньше это ПРОХОДИЛО: ни статический разбор, ни проверка поз не
+         * смотрели на асинхронность, и тело с `async` принималось, чтобы
+         * сломаться в браузере зрителя.
+         */
+        bad('async', 'тело обязано быть синхронным: `await` недопустим', node);
+        break;
+
       case 'FunctionDeclaration':
       case 'FunctionExpression':
       case 'ArrowFunctionExpression': {
+        if (node.async) bad('async', 'тело обязано быть синхронным: `async` недопустим', node);
         declare(node.id?.name);
         scopes.push(new Set());
-        const fromOutside = node.type === 'FunctionDeclaration' && node.id?.name === 'think' && depth === 0;
+        deferred.push(new Set());
+        const fromOutside = node.type === 'FunctionDeclaration' && node.id?.name === entry && depth === 0;
         depth++;
+        scopeDepth.push(depth);
         for (const p of node.params) { declarePattern(p); if (fromOutside) markParams(p); }
+        /* Сначала поднимаем, потом читаем: иначе вызов функции, объявленной
+           ниже по тексту, читается как обращение к неизвестному имени. */
+        hoistInto(node.body);
         walkChildren(node);
         depth--;
         scopes.pop();
+        deferred.pop();
+        scopeDepth.pop();
         return;
       }
       case 'VariableDeclarator':
@@ -220,15 +451,40 @@ export function analyse(source, { maxChars = 60000 } = {}) {
       case 'CatchClause':
         declarePattern(node.param);
         break;
+      case 'MetaProperty':
+        /* `new.target` и `import.meta` — мета-свойства: их `meta` и `property`
+           это НЕ имена переменных. Разбирать их как обращения к глобалям
+           значит отвергать законный JavaScript. `import.meta` при этом
+           остаётся запрещённым отдельно — по имени, ниже. */
+        if (node.meta?.name === 'import') {
+          bad('forbidden', 'import.meta телу недоступен', node);
+        }
+        return;
+
       case 'Identifier': {
         /* Ссылка на неизвестную глобаль — отказ с объяснением, если имя
            знакомое, и общий отказ, если нет. */
+        /*
+         * ИМЯ ЧЛЕНА — НЕ ИМЯ ПЕРЕМЕННОЙ, И ЭТО КАСАЕТСЯ КЛАССОВ ТОЖЕ.
+         *
+         * Выводились из-под проверки только `obj.prop` и ключ литерала. Ключи
+         * членов класса — `MethodDefinition` и `PropertyDefinition` — не
+         * выводились, и любой класс с методом получал «неизвестное имя m».
+         * То есть стена отвергала совершенно законный JavaScript, а тело
+         * молча заменялось телом архетипа: выглядело это как «модель написала
+         * плохой код».
+         *
+         * Проверять надо было не «отказало ли», а «отказало ли по делу», —
+         * ровно то правило, которое D70 уже вывела и которое здесь опять не
+         * применили: положительного случая с классом в гейте не было вовсе.
+         */
         const isProp = parent && parent.type === 'MemberExpression' && parent.property === node && !parent.computed;
-        const isKey = parent && parent.type === 'Property' && parent.key === node && !parent.computed;
+        const isKey = parent && (parent.type === 'Property' || parent.type === 'MethodDefinition'
+          || parent.type === 'PropertyDefinition') && parent.key === node && !parent.computed;
         if (isProp || isKey) break;
         if (!known(node.name)) {
-          if (NAMED[node.name]) bad('forbidden', NAMED[node.name], node);
-          else bad('unknown_global', `неизвестное имя «${node.name}» — мозгу доступны только api, p, mem и стандартная математика`, node);
+          if (named[node.name]) bad('forbidden', named[node.name], node);
+          else bad('unknown_global', `неизвестное имя «${node.name}» — доступны только ${vocabularyRu}`, node);
         }
         break;
       }
@@ -236,14 +492,14 @@ export function analyse(source, { maxChars = 60000 } = {}) {
         const verdict = assignable(node.left);
         if (verdict === 'global') bad('write_global', 'запись в глобальный объект запрещена (A1)', node);
         if (verdict === 'unknown') bad('write_unknown', 'запись в необъявленное имя — неявная глобаль запрещена (A1)', node);
-        if (verdict === 'param') bad('write_param', 'запись в то, что пришло снаружи (перцепция или api), запрещена — писать можно только в mem и в свои переменные (A1)', node);
+        if (verdict === 'param') bad('write_param', `запись в то, что пришло снаружи (${outsideRu}), запрещена — писать можно только в свои переменные (A1)`, node);
         break;
       }
       case 'UpdateExpression': {
         const verdict = assignable(node.argument);
         if (verdict === 'global') bad('write_global', 'изменение глобального объекта запрещено (A1)', node);
         if (verdict === 'unknown') bad('write_unknown', 'изменение необъявленного имени запрещено (A1)', node);
-        if (verdict === 'param') bad('write_param', 'изменение того, что пришло снаружи (перцепция или api), запрещено — писать можно только в mem и в свои переменные (A1)', node);
+        if (verdict === 'param') bad('write_param', `изменение того, что пришло снаружи (${outsideRu}), запрещено — писать можно только в свои переменные (A1)`, node);
         break;
       }
       case 'WithStatement':
@@ -285,7 +541,10 @@ export function analyse(source, { maxChars = 60000 } = {}) {
   hoist(ast, declare);
   walk(ast, null);
 
-  return { ok: problems.length === 0, problems, ast };
+  /* `source` наружу — это исходник ПОСЛЕ снятия обёртки модуля: дальше по
+     цепочке идёт разметка топливом, и она обязана размечать ровно то, что
+     разбиралось здесь, иначе она наткнётся на тот же `import`. */
+  return { ok: problems.length === 0, problems, ast, source, unwrapped };
 }
 
 function hoist(node, declare) {

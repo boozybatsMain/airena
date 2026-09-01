@@ -22,7 +22,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { MATCH_SECONDS, TICK_HZ } from '../core/config.js';
+import { MATCH_SECONDS, SIZE_MAX, SIZE_MIN, TICK_HZ } from '../core/config.js';
 import { compileKit } from '../skills/compile.js';
 import { runIsolated } from './sandbox/index.js';
 
@@ -47,9 +47,88 @@ export function kitOf(c) {
   const out = compileKit(kit);
   return out.problems.length ? null : out.defs;
 }
+
+/**
+ * Размер существа — ОДНО место, где строка базы превращается в число матча.
+ *
+ * Ровно та же причина, по которой рядом живёт `kitOf`: размер меняет
+ * здоровье, скорость, урон и коллайдер (`statsFor`), то есть это вход матча, а
+ * не украшение карточки. Пока `?? 1` стоял по месту вызова, он стоял в двух
+ * местах из шести: боевой цикл и трансляция размер передавали, а проверка
+ * набора, адаптация и дуэль рефактора — нет, и мозг отбирался для существа
+ * другого телосложения.
+ *
+ * @param {{size?: number}} c строка существа
+ */
+export function sizeOf(c) {
+  const v = Number(c?.size);
+  return Number.isFinite(v) && v > 0 ? Math.max(SIZE_MIN, Math.min(SIZE_MAX, v)) : 1;
+}
 import { FLOOR_RATING as FLOOR, clampRating, pickOpponent, rate } from './ladder.js';
 
-/** Как часто существо выходит в бой. §6.2: «примерно раз в минуту». */
+/**
+ * ── D161 (01.09, основатель): БОИ ИДУТ ПО КУЛДАУНУ ─────────────────────────
+ *
+ * Дословно: «Я хочу, чтобы бои шли практически по кулдауну. То есть, грубо
+ * говоря, твоё существо подралось, 5 секунд отдыхает — показывается таймер
+ * "5 секунд до следующего боя" — и затем начинается бой с другим противником.
+ * Желательно, чтобы этот другой противник действительно освободился к тому
+ * времени.»
+ *
+ * ЧТО ЗДЕСЬ БЫЛО И ПОЧЕМУ ЭТОГО МАЛО. Стоял один период — раз в 60 секунд,
+ * отсчитываемый от МОМЕНТА ЗАПУСКА боя, а не от его конца. Из этого следовали
+ * три вещи, каждая видна на экране:
+ *
+ *   1. Пауза между боями плавала от 0 до 60 секунд и никак не называлась.
+ *      Бой длится до 52.6 с (MATCH_SECONDS + CURTAIN), значит следующий мог
+ *      начаться и через семь секунд, и почти сразу, и через минуту.
+ *   2. Занятости не существовало. Зачётный прогон мгновенный (~70 мс),
+ *      трансляция — пятьдесят секунд реального времени, и планировщик про
+ *      это не знал: существо ставилось соперником в любое число боёв разом.
+ *   3. Игрок мог пропустить СВОЙ бой целиком: сокет не переключался с чужой
+ *      трансляции, пока та не доиграет.
+ *
+ * ЧТО СТАЛО. Две величины вместо одной, и обе отсчитываются от КОНЦА боя:
+ *
+ *   busyUntil  пока идёт трансляция этого боя — существо занято. Соперником
+ *              его не возьмут, своего боя оно не начнёт.
+ *   due        busyUntil + REST_MS. Это и есть «следующий бой через N»;
+ *              ровно это число уезжает в сессию и на экран итога.
+ *
+ * ПАРАДОКСА «СОПЕРНИК ЕЩЁ ДЕРЁТСЯ» БОЛЬШЕ НЕТ, и решён он не блокировкой в
+ * базе, а тем, что занятость — это состояние ПРОЦЕССА, живущее ровно столько,
+ * сколько живёт трансляция. Колонка в базе пережила бы падение процесса и
+ * оставила бы половину лестницы вечно занятой; карта в памяти при рестарте
+ * просто пуста, и это верное состояние: трансляций тоже нет.
+ */
+
+/** Отдых между боями. §6.2 «примерно раз в минуту» заменено D161. */
+export const REST_MS = Number(process.env.AIRENA_REST_MS || 5_000);
+
+/**
+ * Верхняя граница длительности боя, в миллисекундах.
+ *
+ * Нужна ДО того, как бой сыгран: занятость резервируется на входе в
+ * `fightOnce`, иначе между выбором соперника и записью результата есть окно,
+ * в которое тот же соперник достанется второму бою. После прогона резерв
+ * уточняется настоящей длительностью — бой, окончившийся убийством на
+ * двенадцатой секунде, не должен держать обоих полные пятьдесят.
+ */
+export const MAX_MATCH_MS = (MATCH_SECONDS + 2.6 + 1) * 1000;
+
+/**
+ * НИЖНЯЯ ГРАНИЦА разброса первого боя. Не «разброс новичка».
+ *
+ * Здесь стоял `hash(id) % FIGHT_EVERY_MS`, то есть до минуты ожидания на
+ * пустом экране сразу после создания существа. Сейчас правило другое и живёт
+ * в `tick`: существо с нулём боёв ждёт до полутора секунд (это игрок, он
+ * смотрит на экран), всем остальным разброс считается ОТ ПОПУЛЯЦИИ, а эта
+ * константа — его нижняя граница. Имя оставлено прежним, потому что на него
+ * ссылаются инструменты; объяснение исправлено.
+ */
+export const FIRST_SPREAD_MS = 2_000;
+
+/** Оставлено для инструментов и тестов, которые задают темп явно. */
 export const FIGHT_EVERY_MS = Number(process.env.AIRENA_FIGHT_EVERY_MS || 60_000);
 /** Занавес перед боем — те же 2.6 с, что открывает живой сервер. */
 export const CURTAIN = 2.6;
@@ -72,7 +151,7 @@ export const ADAPT_EVERY = Number(process.env.AIRENA_ADAPT_EVERY || 10);
  * этом БЫСТРЕЕ пути через `node:vm`, который он заменил, — контекст vm
  * создаётся дороже, чем стоит переход через границу потока раз в матч.
  */
-export async function playMatch(db, a, b, deps) {
+export async function playMatch(db, a, b, deps, { training = null } = {}) {
   const { now = Date.now, rng = Math.random, constantsVersion } = deps;
   const seed = Math.floor(rng() * 1e9);
   const id = `m_${randomUUID().slice(0, 12)}`;
@@ -90,7 +169,14 @@ export async function playMatch(db, a, b, deps) {
   try {
     const out = await runIsolated(
       { [aSlot]: a.brain_source, [bSlot]: b.brain_source },
-      { seed, curtainSeconds: CURTAIN, kits: { [aSlot]: kitOf(a), [bSlot]: kitOf(b) } },
+      {
+        seed,
+        curtainSeconds: CURTAIN,
+        kits: { [aSlot]: kitOf(a), [bSlot]: kitOf(b) },
+        /* Размер — такой же вход матча, как набор и сид: от него зависят
+           здоровье, радиус, скорость и масса (`statsFor`). */
+        sizes: { [aSlot]: sizeOf(a), [bSlot]: sizeOf(b) },
+      },
     );
     result = out.result;
     /* Мозг, съевший бюджет шагов, — это тот же брак, что и падающий: он не
@@ -117,20 +203,46 @@ export async function playMatch(db, a, b, deps) {
 
   const winnerSlot = result.winner;
   const score = winnerSlot === null ? 0.5 : (winnerSlot === aSlot ? 1 : 0);
-  const d = faulted.length ? { a: 0, b: 0 } : rate(a.rating, b.rating, score, a.fights, b.fights);
-  const aAfter = clampRating(a.rating + d.a);
-  const bAfter = clampRating(b.rating + d.b);
+  const raw = faulted.length ? { a: 0, b: 0 } : rate(a.rating, b.rating, score, a.fights, b.fights);
+  /*
+   * У ЭТАЛОНА ДЕЛЬТА НУЛЕВАЯ — ПОТОМУ ЧТО ЕГО РЕЙТИНГ НЕ ДВИГАЕТСЯ.
+   *
+   * `bump` библиотечному существу рейтинг не меняет нарочно: эталон, который
+   * дрейфует, перестаёт быть эталоном (§7.3). Но в строку матча всё равно
+   * писалась дельта и «рейтинг после», посчитанные так, как если бы он
+   * двигался. Журнал боёв печатал игроку `+12 → 1462` у существа, чей рейтинг
+   * все двести боёв стоял на 1450: числа, которых не было.
+   *
+   * Считается по-прежнему для обоих — арифметика Эло симметрична и нужна
+   * второй стороне, — но в запись идёт то, что действительно произошло.
+   */
+  const d = {
+    a: a.is_library ? 0 : raw.a,
+    b: b.is_library ? 0 : raw.b,
+  };
+  const aAfter = a.is_library ? a.rating : clampRating(a.rating + d.a);
+  const bAfter = b.is_library ? b.rating : clampRating(b.rating + d.b);
 
   db.prepare(`INSERT INTO match
     (id, seed, a_id, b_id, a_slot, b_slot, winner, reason, seconds, constants_version,
-     a_delta, b_delta, a_rating_after, b_rating_after, result_json, verified, started_at, ended_at, kind)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)`).run(
+     a_delta, b_delta, a_rating_after, b_rating_after, result_json, verified, started_at, ended_at, kind,
+     kits_json, sizes_json)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?,?)`).run(
     id, seed, a.id, b.id, aSlot, bSlot,
     winnerSlot === null ? null : (winnerSlot === aSlot ? a.id : b.id),
     result.reason, result.seconds, constantsVersion,
     d.a, d.b, aAfter, bAfter,
     JSON.stringify({ octopus: result.octopus, gorilla: result.gorilla, log: keepLog(result.log) }),
-    startedAt, now(), faulted.length ? 'brain_fault' : (b.is_library ? 'training' : 'ladder'),
+    /* `training` приходит от вызывающего: он один знает, был ли соперник
+       ИЗМЕРЕННЫМ спарринг-партнёром или просто библиотечным. Пока не знает —
+       старое поведение, чтобы не переписывать историю задним числом. */
+    startedAt, now(),
+    faulted.length ? 'brain_fault'
+      : ((training === null ? b.is_library : training) ? 'training' : 'ladder'),
+    /* Наборы обоих на момент боя — чтобы повтор показывал ТОТ бой. */
+    JSON.stringify({ [aSlot]: kitOf(a), [bSlot]: kitOf(b) }),
+    /* И размеры: они меняют характеристики, значит без них повтор — другой бой. */
+    JSON.stringify({ [aSlot]: sizeOf(a), [bSlot]: sizeOf(b) }),
   );
 
   bump(db, a, score, aAfter, now(), faulted.length > 0);
@@ -144,7 +256,9 @@ export async function playMatch(db, a, b, deps) {
     ratings: { [a.id]: aAfter, [b.id]: bAfter },
     faulted,
     ranked: faulted.length === 0,
-    training: !!b.is_library || !!a.is_library,
+    training: (training === null ? (!!b.is_library || !!a.is_library) : training),
+    /* Винрейт, по которому партнёр отобран — для честной подписи на экране. */
+    trainingRate: (deps.trainingRates && deps.trainingRates[bSlot]) ?? null,
     result,
   };
 }
@@ -220,7 +334,13 @@ export class ArenaLoop {
     this.db = db;
     this.deps = deps;
     this.timer = null;
-    this.due = new Map();       // creatureId -> следующий бой, мс
+    this.due = new Map();       // creatureId -> когда МОЖНО начать следующий бой, мс
+    this.busyUntil = new Map(); // creatureId -> когда доиграет его текущий бой, мс
+    this.held = new Map();      // инициатор -> соперник, которого он занял под текущий бой
+    this.sweptAt = 0;           // когда карты чистились в последний раз
+    /* Когда для существа в последний раз не нашлось СВОБОДНОГО соперника.
+       Экран обязан отличать «ждёт своей очереди» от «драться не с кем». */
+    this.starved = new Map();
     this.listeners = new Set();
     this.lastByCreature = new Map();
     this.stats = { matches: 0, errors: 0, adaptations: 0 };
@@ -237,9 +357,92 @@ export class ArenaLoop {
 
   stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
 
-  /** Когда у этого существа следующий бой. Экран меню показывает этот таймер. */
+  /** Когда у этого существа следующий бой. Экран меню и экран итога показывают этот таймер. */
   nextFightAt(creatureId) {
     return this.due.get(creatureId) ?? null;
+  }
+
+  /** Пока это время не прошло — существо на арене, и вторым боем его не занять. */
+  busyAt(creatureId) {
+    return this.busyUntil.get(creatureId) ?? null;
+  }
+
+  /**
+   * Не нашлось ли свободного соперника на последней попытке.
+   *
+   * Свежесть — два отдыха: если за это время бой так и не начался, дело не в
+   * очереди. Лестница из одного существа даёт это состояние навсегда, и
+   * тогда таймер «через 5 секунд» крутится по кругу, не приводя ни к чему.
+   */
+  starvedAt(creatureId, now = (this.deps.now || Date.now)()) {
+    const at = this.starved.get(creatureId);
+    return !!at && now - at < REST_MS * 2;
+  }
+
+  /**
+   * Кого нельзя ставить в бой прямо сейчас — И ТЕХ, КТО ОТДЫХАЕТ, ТОЖЕ.
+   *
+   * Считалось по `busyUntil`, то есть «в бою». Но пять секунд отдыха после боя
+   * существо проводит уже НЕ в бою, а в `due`, — и подбор брал его немедленно.
+   * Замерено по таблице матчей: зазоры 0.0–1.8 с у четырёх существ, при том
+   * что карточка итога в этот момент честно обещала «следующий бой через 5
+   * секунд». Если пять секунд — обещание, отсеивать надо по `due`.
+   */
+  busySet(now = (this.deps.now || Date.now)()) {
+    const out = new Set();
+    for (const [id, at] of this.due) if (at > now) out.add(id);
+    for (const [id, at] of this.busyUntil) if (at > now) out.add(id);
+    return out;
+  }
+
+  /**
+   * Уточнить конец занятости по НАСТОЯЩЕЙ длине трансляции.
+   *
+   * Резерв ставится от момента запуска зачётного прогона, а трансляция
+   * открывается позже — после изолята и после второго прогона с записью
+   * кадров. Из-за этой разницы `busyUntil` истекал раньше конца показа, и
+   * существо уходило в следующий бой, пока предыдущий ещё был на экране
+   * (замерено: до −2.5 с). Зовёт `app.js`, когда трансляция открыта и её
+   * длина известна точно.
+   */
+  holdUntil(ids, endsAt) {
+    for (const id of ids) if (id) this.hold(id, endsAt);
+  }
+
+  /**
+   * Занять существо боем.
+   *
+   * Зовётся ДВАЖДЫ на один бой, и это не дублирование: первый раз на входе,
+   * с верхней оценкой длительности (окно между выбором соперника и записью
+   * результата иначе пускает в тот же бой второго), второй — с настоящей
+   * длительностью, когда она известна.
+   */
+  hold(id, until) {
+    this.busyUntil.set(id, until);
+    this.due.set(id, until + REST_MS);
+  }
+
+  /**
+   * Убрать из карт то, что уже неактуально.
+   *
+   * Карты растут по одной записи на существо и живут вечно; на длинном
+   * сезоне это утечка, пусть и медленная. Чистится по `due`, а не по
+   * `busyUntil`: `due` больше и держит запись дольше.
+   */
+  sweep(now) {
+    /*
+     * Раз в час, а не каждый тик после порога.
+     *
+     * Порог по размеру верен по сути — карта ограничена популяцией сезона, и
+     * настоящая (медленная) течь это записи ушедших на покой существ. Но с
+     * одним лишь порогом после его достижения полный обход шёл КАЖДУЮ
+     * секунду и, если все записи свежее часа, не освобождал ничего. Это не
+     * чистка, а постоянный налог.
+     */
+    if (!this.sweptAt) { this.sweptAt = now; return; }
+    if (now - this.sweptAt < 3_600_000) return;
+    this.sweptAt = now;
+    for (const [id, at] of this.due) if (at + 3_600_000 < now) { this.due.delete(id); this.busyUntil.delete(id); }
   }
 
   tick(now = (this.deps.now || Date.now)()) {
@@ -248,44 +451,194 @@ export class ArenaLoop {
       ORDER BY updated_at ASC LIMIT 64
     `).all();
 
+    this.sweep(now);
+    /* Занятые считаются ОДИН РАЗ на тик, а не на каждого кандидата: подбор
+       соперника зовётся до 64 раз, и пересобирать множество каждый раз —
+       это 64 обхода одной и той же карты. */
+    const busy = this.busySet(now);
+
     for (const c of rows) {
       let at = this.due.get(c.id);
       if (at == null) {
-        /* Разводим первые бои по фазе, иначе вся популяция дерётся в одну
-           секунду каждую минуту — и профиль нагрузки становится пилой. */
-        at = now + Math.floor(this.hash(c.id) % FIGHT_EVERY_MS);
+        /*
+         * РАЗБРОС ЗАВИСИТ ОТ ТОГО, КТО ЖДЁТ.
+         *
+         * Существо с нулём боёв — это игрок, который только что нажал
+         * «Создать» и смотрит на экран. Ему разброс почти не нужен, и
+         * минуты ожидания он точно не заслужил.
+         *
+         * Всем остальным разброс нужен по-настоящему: после рестарта
+         * процесса карта `due` пуста, и вся популяция стартует в один тик.
+         * Замерено — шесть матчей за сорок миллисекунд; при этом
+         * `MAX_OPENING` держит только четыре одновременных расчёта кадров, и
+         * лишние бои уходили в очередь (а до неё — терялись).
+         *
+         * Ширина считается ОТ ПОПУЛЯЦИИ: чем больше существ, тем длиннее
+         * фронт, который надо размазать.
+         */
+        const spread = c.fights === 0
+          ? 1_500
+          : Math.min(30_000, Math.max(FIRST_SPREAD_MS, rows.length * 400));
+        at = now + Math.floor(this.hash(c.id) % spread);
         this.due.set(c.id, at);
         continue;
       }
       if (at > now) continue;
-      this.due.set(c.id, now + FIGHT_EVERY_MS);
+      /*
+       * РЕЗЕРВ СТАВИТСЯ ДО ПРОГОНА, а не после.
+       *
+       * `fightOnce` асинхронна (изолят), и до её возврата успевает пройти
+       * следующий тик. Без резерва он увидит то же самое `due` в прошлом и
+       * запустит второй бой тому же существу — ровно та гонка, о которой
+       * говорит комментарий в `bump`, только теперь она закрыта здесь, а не
+       * смягчена атомарным `rating + ?`.
+       */
+      this.hold(c.id, now + MAX_MATCH_MS);
+      busy.add(c.id);
       /* Бои идут параллельно и не ждут друг друга: один медленный матч не
          должен задерживать всю популяцию. Ошибку глотать нельзя — она
          уезжает в счётчик и в событие. */
-      this.fightOnce(c, now).catch((e) => {
+      this.fightOnce(c, now, busy).catch((e) => {
         this.stats.errors++;
+        /*
+         * Резерв снимается С ОБОИХ, а не только с инициатора.
+         *
+         * `playMatch` ловит ошибки изолята, но `INSERT INTO match` и `bump`
+         * бросают наружу (SQLITE_BUSY, диск, ограничение). Тогда сюда
+         * прилетало исключение, инициатор освобождался, а СОПЕРНИК оставался
+         * занятым на полные MAX_MATCH_MS — то есть на минуту выпадал из
+         * подбора, а его экран честно печатал «следующий бой через 59 секунд».
+         * `fightOnce` запоминает, кого успел зарезервировать.
+         */
+        this.hold(c.id, now);
+        const partner = this.held.get(c.id);
+        if (partner) { this.hold(partner, now); this.held.delete(c.id); }
         this.emit({ type: 'match_error', creatureId: c.id, error: 'throw', message: e.message });
       });
     }
   }
 
-  async fightOnce(c, now) {
-    const opp = pickOpponent(this.db, c, { now, rng: this.deps.rng || Math.random })
-      || this.library(c);
-    if (!opp) return null;
+  async fightOnce(c, now, busy = null) {
+    /*
+     * ТРЕНИРОВОЧНЫЙ БОЙ — ЭТО ИЗМЕРЕННЫЙ СОПЕРНИК, А НЕ ЛЮБОЙ БИБЛИОТЕЧНЫЙ.
+     *
+     * Флаг ставился как `!!b.is_library`, и экран итога говорил игроку:
+     * «соперник измеренно слабее среднего». Половина библиотеки при этом
+     * сильнее большей части лестницы — МЕТКА-92 выигрывает 89% боёв. То есть
+     * проигравшему сообщали, что он уступил заведомо слабому, и это было
+     * неправдой ровно тогда, когда обиднее всего.
+     *
+     * Настоящий тренировочный партнёр существует и измерен: `seed.mjs`
+     * отбирает пары (мозг, сторона) с винрейтом в полосе TRAINING_BAND и
+     * кладёт их в `kv.training.ids`. Ставится он только на ПЕРВЫЙ бой (§7.3).
+     * Флаг теперь означает ровно это.
+     */
+    /*
+     * ПЕРВЫЙ БОЙ — С ИЗМЕРЕННЫМ ПАРТНЁРОМ, И СПРАШИВАЕМ ЕГО ПЕРВЫМ.
+     *
+     * §7.3 обещает новичку соперника, на котором он выиграет и поймёт почему,
+     * а `seed.mjs` этого партнёра отбирает замером. Порядок, однако, был
+     * обратный: сперва подбор по рейтингу, и только если он НИЧЕГО не вернул —
+     * партнёр. Подбор по рейтингу возвращает кого-нибудь почти всегда, значит
+     * измеренный партнёр не доставался никому ни разу, а экран ожидания
+     * обещал его словами.
+     *
+     * Спрашиваем в правильном порядке: у кого ноль боёв — партнёр, у всех
+     * остальных — лестница.
+     */
+    /*
+     * ЗАНЯТЫЕ НЕ БЕРУТСЯ В СОПЕРНИКИ (D161) — ни лестницей, ни библиотекой.
+     *
+     * Множество приходит от тика, чтобы два боя, запущенные в одну секунду,
+     * видели резерв друг друга. Без параметра — считаем сами: `fightOnce`
+     * зовут и инструменты, и тесты, и им незачем знать про внутреннюю карту.
+     */
+    const held = busy || this.busySet(now);
+    const first = c.fights === 0 ? this.library(c, held) : null;
+    const matched = first ? null : pickOpponent(this.db, c, { now, rng: this.deps.rng || Math.random, busy: held });
+    const opp = first || matched || this.library(c, held);
+    if (!opp) {
+      /*
+       * Свободного соперника нет — это не ошибка, а нормальное состояние
+       * маленькой лестницы: все дерутся. Снимаем резерв и пробуем через
+       * отдых, иначе существо простоит полные пятьдесят секунд занятым, ни
+       * с кем не подравшись.
+       */
+      this.hold(c.id, now);
+      this.starved.set(c.id, now);
+      return null;
+    }
+    this.starved.delete(c.id);
+    const isTraining = !matched;
     const b = this.db.prepare('SELECT * FROM creature WHERE id = ?').get(opp.id);
-    if (!b || !b.brain_source) return null;
+    if (!b || !b.brain_source) { this.hold(c.id, now); return null; }
 
-    const r = await playMatch(this.db, c, b, this.deps);
+    /* Соперник занят с этой секунды и до конца боя — включая ту же секунду,
+       в которую тик мог бы поставить его в третий матч. */
+    this.hold(b.id, now + MAX_MATCH_MS);
+    held.add(b.id);
+    /* Кого мы заняли под ЭТОТ бой — чтобы обработчик исключения снаружи мог
+       освободить обоих, а не одного. */
+    this.held.set(c.id, b.id);
+
+    const r = await playMatch(this.db, c, b, this.deps, { training: isTraining });
     if (r.error) {
       this.stats.errors++;
+      this.hold(c.id, now); this.hold(b.id, now);
+      this.held.delete(c.id);
       this.emit({ type: 'match_error', creatureId: c.id, error: r.error, message: r.message });
       return null;
     }
     this.stats.matches++;
+    /* Пара снимается на УСПЕХЕ тоже, а не только в аварийных ветках: иначе
+       следующий провал того же инициатора возьмёт партнёра от ПРОШЛОГО боя и
+       срежет резерв постороннему существу, чья трансляция ещё идёт. */
+    this.held.delete(c.id);
+
+    /*
+     * РЕЗЕРВ УТОЧНЯЕТСЯ НАСТОЯЩЕЙ ДЛИТЕЛЬНОСТЬЮ.
+     *
+     * Трансляция играет ровно `result.seconds` плюс занавес, и это ЕДИНСТВЕННОЕ
+     * место, где известно, сколько бой на самом деле шёл. Оставить верхнюю
+     * оценку значило бы держать обоих занятыми полминуты после боя, который
+     * кончился убийством на двенадцатой секунде, — и таймер на экране итога
+     * обещал бы игроку не то, что произойдёт.
+     *
+     * Отсчёт ведётся от `now` — момента, когда бой был ЗАПУЩЕН, а не от
+     * текущих часов: трансляция открывается тем же событием и играет с
+     * нулевой секунды.
+     */
+    /*
+     * ЗАНАВЕС УЖЕ ВНУТРИ `r.seconds`, И ПРИБАВЛЯТЬ ЕГО НЕЛЬЗЯ.
+     *
+     * `summarise` берёт `world.t`, а мир крутится и во время занавеса —
+     * `createWorld` получает `curtainSeconds` и считает его частью матча.
+     * Сложение `seconds + CURTAIN` держало обоих занятыми в среднем на 1.6 с
+     * дольше настоящего конца трансляции, и обещанные основателем пять секунд
+     * отдыха превращались в семь. Карточка итога честно печатала «через 7 с» —
+     * то есть врал не экран, а это число.
+     */
+    /*
+     * РЕЗЕРВ НЕ УТОЧНЯЕТСЯ ЗДЕСЬ — ЕГО УТОЧНЯЕТ КОНЕЦ ПОКАЗА.
+     *
+     * Здесь стояло `now + r.seconds`, и это число МЕНЬШЕ настоящего конца
+     * трансляции: показ открывается на 1.4–2.5 с позже запуска зачётного
+     * прогона (изолят плюс второй прогон с записью кадров). Занятость
+     * истекала раньше времени, экран решал, что бой кончился, начинал
+     * отсчёт — а приход `onFinish` отбрасывал его назад. Замер: скачки
+     * вверх на 1.4–2.0 с в КАЖДОМ из четырёх циклов.
+     *
+     * Верхняя оценка (`MAX_MATCH_MS`, поставлена при резерве) держится до
+     * события «показ доиграл». Пока она держится, `fightingNow` истинно и
+     * числа на экране нет вовсе — вместо неверного числа игрок читает
+     * «существо на арене прямо сейчас».
+     *
+     * Если трансляция не откроется вовсе, её подстрахует `app.js`: он
+     * освободит бойцов по длительности матча.
+     */
     this.lastByCreature.set(c.id, r);
     this.lastByCreature.set(b.id, r);
-    this.emit({ type: 'match', match: r, a: c.id, b: b.id, training: !!b.is_library });
+    this.emit({ type: 'match', match: r, a: c.id, b: b.id, training: isTraining });
 
     const fights = c.fights + 1;
     if (this.deps.adapt && fights % ADAPT_EVERY === 0) {
@@ -312,20 +665,24 @@ export class ArenaLoop {
    * N4 не нарушен: соперник играет в полную силу, его винрейт напечатан, и
    * экран называет бой тренировочным. Запрещена постановка, а не слабость.
    */
-  library(c) {
+  library(c, busy = null) {
     if (c.fights === 0 && this.deps.trainingIds) {
       const want = c.archetype === 'gorilla' ? 'octopus' : 'gorilla';
       const id = this.deps.trainingIds[want];
-      if (id) {
+      if (id && !(busy && busy.has(id))) {
         const row = this.db.prepare(`SELECT id FROM creature WHERE id = ? AND state = 'active'`).get(id);
         if (row) return row;
       }
     }
-    return this.db.prepare(`
+    /* Берём НЕСКОЛЬКО ближайших и отсеиваем занятых здесь, а не в SQL:
+       занятость живёт в процессе, колонки под неё нет и быть не должно
+       (см. шапку D161). */
+    const rows = this.db.prepare(`
       SELECT id FROM creature WHERE is_library = 1 AND state = 'active' AND id != ?
         AND archetype != ?
-      ORDER BY abs(rating - ?) ASC LIMIT 1
-    `).get(c.id, c.archetype, c.rating) || null;
+      ORDER BY abs(rating - ?) ASC LIMIT 8
+    `).all(c.id, c.archetype, c.rating);
+    return rows.find((r) => !(busy && busy.has(r.id))) || null;
   }
 
   /**
@@ -340,29 +697,90 @@ export class ArenaLoop {
    * Он просто никому не двигает рейтинг — библиотечные существа его и так
    * не двигают (иначе эталон дрейфует и перестаёт быть эталоном).
    */
-  async showcase(now = (this.deps.now || Date.now)()) {
+  async showcase(now = (this.deps.now || Date.now)(), { prefer = null } = {}) {
     const rnd = this.deps.rng || Math.random;
     /*
      * Витрина предпочитает существ, дерущихся ГРАММАТИКОЙ.
      *
      * Посетитель с клипа видит ровно один бой, и этот бой — всё, что он
      * узнает об игре. Показать ему четыре захардкоженных умения значит не
-     * показать §8 вообще: ни одной доставки из восьми, ни одного из
+     * показать §8 вообще: ни одной доставки из девяти, ни одного из
      * четырнадцати эффектов, ни одной палитры. Существа на эталонном наборе
      * остаются на лестнице и дерутся с игроками — они просто не первые в
      * очереди на витрину.
      */
+    /*
+     * Порядок предпочтений, от лучшего к запасному.
+     *
+     * Витрина — первое, что видит человек, и она обязана быть правдой про
+     * продукт. Тезис продукта: бои пишет нейросеть. Существа с рукописным
+     * эталонным мозгом этот тезис не показывают, а на витрине они оказывались
+     * ЧАЩЕ ВСЕГО — именно у них собран набор из грамматики, и фильтр по
+     * `kit_active` выводил вперёд ровно их.
+     *
+     * Поэтому предпочтений теперь два, и в таком порядке:
+     *   1) набор из грамматики И мозг от модели — показывает и §8, и тезис;
+     *   2) мозг от модели — тезис важнее демонстрации грамматики;
+     *   3) что осталось — лучше показать эталонный бой, чем пустую арену,
+     *      и подпись под ним честно скажет, чьи это мозги.
+     */
+    /* Витрина тоже уважает занятость (D161): библиотечное существо, которое
+       прямо сейчас дерётся с игроком, не может одновременно идти витриной —
+       зритель увидел бы одно имя в двух боях. */
+    const held = this.busySet(now);
     const pick = (arch) => {
       const all = this.db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state='active'
-        AND archetype = ? AND brain_source IS NOT NULL`).all(arch);
-      const rows = all.filter((r) => r.kit_active).length ? all.filter((r) => r.kit_active) : all;
+        AND archetype = ? AND brain_source IS NOT NULL`).all(arch)
+        .filter((r) => !held.has(r.id));
+      const model = (r) => r.brain_model && !/рукописн/i.test(r.brain_model);
+      const tiers = [
+        all.filter((r) => r.kit_active && model(r)),
+        all.filter((r) => model(r)),
+        all.filter((r) => r.kit_active),
+        all,
+      ];
+      const rows = tiers.find((t) => t.length) || [];
       return rows.length ? rows[Math.floor(rnd() * rows.length)] : null;
     };
-    const a = pick('octopus'); const b = pick('gorilla');
+    /*
+     * ВЫБОР ГОСТЯ ДОЛЖЕН ЧТО-ТО ЗНАЧИТЬ.
+     *
+     * Гость выбирает существо из тройки (D2), клиент просит сокет показать
+     * именно его — и не получал ничего: библиотечные существа в расписание
+     * боёв не ставятся вовсе (`schedule` фильтрует `is_library = 0`), а
+     * `pick()` в сокете молча падал на витринный бой. То есть выбор был
+     * кликом в никуда, и при каждом возврате на арену гостю снова предлагали
+     * выбрать.
+     *
+     * `prefer` берёт выбранное существо на его сторону, а вторую подбирает
+     * как обычно. Если выбранного нет или оно не библиотечное — обычная
+     * витрина: подменять чужое существо своим предпочтением нельзя.
+     */
+    let a = null; let b = null;
+    if (prefer) {
+      const want = this.db.prepare(`SELECT * FROM creature WHERE id = ? AND is_library = 1
+        AND state='active' AND brain_source IS NOT NULL`).get(prefer);
+      if (want && !held.has(want.id)) {
+        if (want.archetype === 'gorilla') { b = want; a = pick('octopus'); }
+        else { a = want; b = pick('gorilla'); }
+      }
+    }
+    if (!a) a = pick('octopus');
+    if (!b) b = pick('gorilla');
     if (!a || !b) return null;
+    this.hold(a.id, now + MAX_MATCH_MS);
+    this.hold(b.id, now + MAX_MATCH_MS);
     const r = await playMatch(this.db, a, b, this.deps);
-    if (r.error) { this.stats.errors++; return null; }
+    if (r.error) {
+      this.stats.errors++;
+      this.hold(a.id, now); this.hold(b.id, now);
+      return null;
+    }
     this.stats.matches++;
+    /* Занавес уже внутри `r.seconds` — см. тот же расчёт в `fightOnce`. */
+    const endsAt = now + Math.round((Number(r.seconds) || MATCH_SECONDS) * 1000);
+    this.hold(a.id, endsAt);
+    this.hold(b.id, endsAt);
     this.emit({ type: 'match', match: r, a: a.id, b: b.id, showcase: true, training: false });
     return r;
   }

@@ -12,7 +12,6 @@
 import { get, post, track } from '../lib/api.js';
 import { h, mount, clear, empty } from '../lib/dom.js';
 import { paintFrames } from '../ui/frames.js';
-import { loadGrammar, describe } from './kit.js';
 
 const MAX = 280;
 
@@ -30,7 +29,6 @@ const DENY_TEXT = {
   short_prompt: 'Напиши одно предложение — этого достаточно.',
 };
 
-let chosenPreset = 'keeper';
 let chosenBundle = null;
 
 export async function enter(root, args, ctx) {
@@ -53,50 +51,87 @@ export async function enter(root, args, ctx) {
    */
   const guest = s?.createBlocked === 'guest';
 
-  const [catalog] = await Promise.all([get('/api/catalog'), loadGrammar()]);
+  const catalog = await get('/api/catalog');
+  /*
+   * УМОЛЧАНИЕ — САМЫЙ БЫСТРЫЙ АВТОР, А НЕ ПЕРВЫЙ В СПИСКЕ.
+   *
+   * Здесь стояло `find((b) => b.available)`, то есть первый доступный. Список
+   * приходит отсортированным ПО ЦЕНЕ, и первым оказывается самый дешёвый —
+   * он же самый долгий, потому что дешевизна берётся размышлением и
+   * переделками. Игрок нажимал «Создать» и уходил ждать, ни разу не выбрав
+   * это сам; ровно это и выглядело как «создание не работает».
+   *
+   * Порядок списка не трогаем — цена в нём осмысленна. Меняется только то,
+   * что выбрано заранее.
+   */
   chosenBundle = chosenBundle
-    || catalog.bundles.find((b) => b.available)?.id
+    || pickFastest(catalog.bundles)?.id
     || null;
 
   /* Черновик, переживший стену аккаунта. */
   let draft = {};
   try { draft = JSON.parse(localStorage.getItem('airena.draft') || '{}'); } catch { draft = {}; }
-  if (draft.preset && PRESETS[draft.preset]) chosenPreset = draft.preset;
   if (draft.bundle) chosenBundle = draft.bundle;
 
   const field = h('textarea.field', {
     rows: 3, maxlength: MAX,
     value: draft.prompt || '',
     placeholder: 'акула с острыми зубами, которая чует кровь',
-    oninput: () => paintCount(),
+    oninput: () => { paintCount(); keepDraft(); },
     onfocus: () => { document.body.dataset.typing = '1'; },
     onblur: () => { document.body.dataset.typing = '0'; },
   });
+
+  /*
+   * ЧЕРНОВИК СОХРАНЯЕТСЯ ПО ВВОДУ, А НЕ ПО НАЖАТИЮ КНОПКИ.
+   *
+   * Раньше текст уезжал в localStorage только внутри `submit`. То есть
+   * переживал он ровно один сценарий — «написал, нажал, упёрся в стену».
+   * А человек, который написал две строки и перешёл на вкладку арены
+   * посмотреть, что тут вообще происходит, возвращался к пустому полю. Это
+   * самая дорогая строка, которую игрок печатает за всю сессию, и терять её
+   * за переключение вкладки нельзя.
+   *
+   * Пишем не чаще раза в полсекунды: поле маленькое, но дёргать хранилище на
+   * каждый символ незачем.
+   */
+  let draftTimer = null;
+  function keepDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      try {
+        const prompt = field.value.trim();
+        if (prompt) {
+          localStorage.setItem('airena.draft', JSON.stringify({ prompt, bundle: chosenBundle }));
+        }
+      } catch { /* приватный режим — черновик просто не сохранится */ }
+    }, 500);
+  }
 
   const counter = h('div.t-sub');
   const errBox = h('div');
   const goBtn = h('button.btn.primary', { onclick: submit }, guest ? 'СОЗДАТЬ СВОЁ' : 'СОЗДАТЬ');
 
-  const presets = h('div.cards',
-    Object.entries(PRESETS).map(([id, p]) => h(`div.card${id === chosenPreset ? '.on' : ''}`, {
-      dataset: { preset: id },
-      onclick: () => { chosenPreset = id; repaintPresets(); },
-    },
-    h('div.hd', p.ru),
-    h('div.why', p.why),
-    h('div.atoms', p.kit.map((k) => h('span.atom.deliv', axis(k)))),
-    h('div.say', p.kit.map((k) => describe(k)).join(' ')))));
-
-  const models = h('div.row', catalog.bundles.slice(0, 6).map((b) => h('button.btn', {
+  /*
+   * ВСЕ СВЯЗКИ, А НЕ ПЕРВЫЕ ШЕСТЬ.
+   *
+   * `slice(0, 6)` держался, пока каталог был из четырёх строк. С появлением
+   * канала подписки (D164) их стало восемь, и обрезка съедала ровно то, что
+   * основатель просил добавить: Fable не показывался вовсе, потому что стоял
+   * седьмым. Обрезка списка, длина которого зависит от каталога, — это
+   * молчаливая потеря; каталог короткий по построению (белый список семей),
+   * и обрезать его незачем.
+   */
+  const models = h('div.row', catalog.bundles.map((b) => h('button.btn', {
     disabled: !b.available,
-    onclick: () => { if (b.available) { chosenBundle = b.id; repaintModels(); } },
+    onclick: () => { if (b.available) { chosenBundle = b.id; repaintModels(); keepDraft(); } },
     dataset: { bundle: b.id },
     title: b.unavailableReason || '',
     style: {
       borderColor: b.id === chosenBundle ? 'rgba(79,200,220,.55)' : 'rgba(120,180,205,.2)',
-      color: b.available ? (b.id === chosenBundle ? '#9fe3f0' : '#c4d8e2') : '#5d6b7a',
+      color: b.available ? (b.id === chosenBundle ? 'var(--oct)' : 'var(--ink)') : 'var(--dim)',
     },
-  }, b.available ? `${b.label} · ${b.think}` : `${b.label} — ${b.unavailableReason}`)));
+  }, b.available ? `${b.label} · ${b.think}${waitLabel(b)}` : `${b.label} — ${b.unavailableReason}`)));
 
   mount(root, h('div.overlay-card',
     h('div.panel.lift', { dataset: { frame: JSON.stringify({ seed: 33 }) } },
@@ -104,9 +139,9 @@ export async function enter(root, args, ctx) {
       h('div.in',
         h('div.hcut', 'СОЗДАНИЕ СУЩЕСТВА'),
         h('div.t-body', { style: { margin: '10px 0 12px', maxWidth: '52ch' } },
-          'Одно предложение. Из него получатся тело, имя и характер боя.'),
+          'Одно предложение. Из него получатся тело, имя, размер и три умения — '
+          + 'всё следует из описания, выбирать ничего не надо.'),
         field, counter, errBox,
-        h('div.section', h('div.hcut', 'НАБОР УМЕНИЙ · ТРИ НА ВЫБОР'), presets),
         h('div.section', h('div.hcut', 'АВТОР МОЗГА'), models,
           catalog.note ? h('div.t-sub', { style: { marginTop: '8px' } }, catalog.note) : null),
         h('div.row', { style: { marginTop: '26px' } },
@@ -129,24 +164,21 @@ export async function enter(root, args, ctx) {
       ? 'Напиши одно предложение — этого достаточно'
       : (n >= MAX ? 'До 280 знаков. Длиннее не станет точнее: в механику превращается смысл, а не объём.'
         : `${n} из ${MAX}`);
-    counter.style.color = n >= MAX ? '#e0b34c' : '';
+    counter.style.color = n >= MAX ? 'var(--warn)' : '';
   }
 
-  function repaintPresets() {
-    for (const el of presets.children) el.classList.toggle('on', el.dataset.preset === chosenPreset);
-  }
   function repaintModels() {
     for (const el of models.children) {
       const on = el.dataset.bundle === chosenBundle;
       el.style.borderColor = on ? 'rgba(79,200,220,.55)' : 'rgba(120,180,205,.2)';
-      el.style.color = el.disabled ? '#5d6b7a' : (on ? '#9fe3f0' : '#c4d8e2');
+      el.style.color = el.disabled ? 'var(--dim)' : (on ? 'var(--oct)' : 'var(--ink)');
     }
   }
 
   function showDeny(code, extra = '') {
     clear(errBox);
     errBox.appendChild(h('div.t-body', {
-      style: { marginTop: '10px', color: '#f0c08c', borderLeft: '2px solid rgba(224,179,76,.5)', paddingLeft: '12px' },
+      style: { marginTop: '10px', color: 'var(--gor)', borderLeft: '2px solid rgba(224,179,76,.5)', paddingLeft: '12px' },
     }, `${DENY_TEXT[code] || extra || 'Не получилось.'}`));
     goBtn.disabled = code !== 'concurrent';
   }
@@ -156,8 +188,9 @@ export async function enter(root, args, ctx) {
     if (guest) {
       /* То, что игрок уже написал и выбрал, переживает стену: возвращаться
          и печатать заново — худший способ отпраздновать регистрацию. */
+      clearTimeout(draftTimer);
       try {
-        localStorage.setItem('airena.draft', JSON.stringify({ prompt, preset: chosenPreset, bundle: chosenBundle }));
+        localStorage.setItem('airena.draft', JSON.stringify({ prompt, bundle: chosenBundle }));
       } catch { /* приватный режим — черновик просто не сохранится */ }
       ctx.go('/save');
       return;
@@ -166,12 +199,23 @@ export async function enter(root, args, ctx) {
     clear(errBox);
     track('create_submitted', { bundle: chosenBundle, promptChars: prompt.length });
     try {
-      const job = await post('/api/creature', { prompt, bundle: chosenBundle, kitPreset: chosenPreset });
+      const job = await post('/api/creature', { prompt, bundle: chosenBundle });
       /* Ключ в localStorage: вкладку можно закрыть, и генерацию надо будет
          найти снова — это самое длинное окно первой сессии и окно
          наибольшего отвала. */
-      try { localStorage.setItem('airena.job', job.id); localStorage.removeItem('airena.draft'); }
-      catch { /* приватный режим */ }
+      /*
+       * ЧЕРНОВИК СТИРАЕТСЯ ПРИ РОЖДЕНИИ СУЩЕСТВА, А НЕ ПРИ СОЗДАНИИ ЗАДАНИЯ.
+       *
+       * Здесь он стирался сразу. Дальше генерация могла упасть — «мозг не
+       * собрался даже на запасной модели», — игрок жал «попробовать ещё» и
+       * получал ПУСТОЕ поле с выключенной кнопкой. Самая дорогая строка
+       * сессии терялась ровно в тот момент, когда её надо было предложить
+       * заново, а плейсхолдер совпадает с примером, так что поле ещё и
+       * выглядело заполненным.
+       *
+       * Теперь черновик снимает экран ожидания, когда существо родилось.
+       */
+      try { localStorage.setItem('airena.job', job.id); } catch { /* приватный режим */ }
       ctx.go(`/new/${job.id}`);
     } catch (e) {
       showDeny(e.code, e.message);
@@ -185,32 +229,38 @@ export function leave() {
   document.body.dataset.typing = '0';
 }
 
-const axis = (k) => k.delivery;
+/*
+ * Здесь стояли три карточки набора, их русские подписи и копия серверных
+ * пресетов. Всё снято 31.08: умения следуют из описания, выбирать нечего.
+ * Копия пресетов была долгом (она уже расходилась с сервером однажды, D30) —
+ * долг закрыт удалением, а не ещё одной сверкой. `tools/checkgrammar.mjs`
+ * теперь следит, чтобы копия не вернулась.
+ */
 
-/** Те же три пресета, что знает сервер. Держатся здесь ради первого кадра. */
-const PRESETS = {
-  keeper: {
-    ru: 'Держит дистанцию', why: 'бьёт издалека и уходит, когда подошли',
-    kit: [
-      { trigger: 'active', delivery: 'beam', effects: ['damage'], element: 'arc' },
-      { trigger: 'on_enemy_cast', delivery: 'blink', effects: ['cleanse'], element: 'void' },
-      { trigger: 'active', delivery: 'zone', effects: ['burn'], element: 'ember' },
-    ],
-  },
-  breaker: {
-    ru: 'Ломает вблизи', why: 'входит в упор и не даёт разорвать дистанцию',
-    kit: [
-      { trigger: 'active', delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
-      { trigger: 'active', delivery: 'dash', effects: ['damage'], element: 'kinetic' },
-      { trigger: 'on_low_hp', delivery: 'self', effects: ['shield'], element: 'frost' },
-    ],
-  },
-  saboteur: {
-    ru: 'Портит чувства', why: 'бьёт по тому, чем противник принимает решения',
-    kit: [
-      { trigger: 'active', delivery: 'bolt', effects: ['blind'], element: 'void' },
-      { trigger: 'on_hit_taken', delivery: 'lob', effects: ['silence'], element: 'arc' },
-      { trigger: 'active', delivery: 'cone', effects: ['damage'], element: 'frost' },
-    ],
-  },
-};
+/**
+ * Самый быстрый из доступных.
+ *
+ * Замеренное время (`secs`) приходит с сервера и есть не у всех связок.
+ * Незамеренные не выигрывают по умолчанию — про них ничего не известно, и
+ * ставить игроку неизвестное вперёд известного нечестно. Если замеренных нет
+ * вовсе, поведение прежнее: первый доступный.
+ */
+function pickFastest(bundles) {
+  const free = bundles.filter((b) => b.available);
+  const timed = free.filter((b) => typeof b.secs === 'number');
+  if (!timed.length) return free[0] || null;
+  return timed.reduce((a, b) => (b.secs < a.secs ? b : a));
+}
+
+/**
+ * Сколько ждать — словами, рядом с автором.
+ *
+ * Игрок не обязан догадываться, что «дешевле» значит «дольше в пять раз».
+ * Число замерено; у незамеренной связки подписи нет, потому что выдумывать
+ * ожидание хуже, чем промолчать.
+ */
+function waitLabel(b) {
+  if (typeof b.secs !== 'number') return '';
+  const m = Math.round(b.secs / 60);
+  return m <= 1 ? ' · около минуты' : ` · ~${m} мин`;
+}

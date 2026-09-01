@@ -24,12 +24,15 @@ import {
 } from '../core/config.js';
 import { constantsVersion } from '../core/version.js';
 import { grammar, validateKit, costOf } from '../skills/registry.js';
-import { record as trackEvent, metrics } from './analytics.js';
+import { EVENTS, record as trackEvent, metrics } from './analytics.js';
+import { REST_MS, sizeOf } from './arena-loop.js';
 import { card, history, refactor as applyRefactor, sinceSummary } from './creatures.js';
+import { viability } from './forge/viability.js';
 import { Router, cookies, fail, json, readJson, setCookie } from './http.js';
 import { ladderView, modelTable } from './ladder.js';
 import * as limits from './limits.js';
 import { accountFromToken, claimAccount, ensureGuest } from './session.js';
+import { compileKit, readable } from '../skills/compile.js';
 
 /** Мозги, чей исходник читаем: научный артефакт §1 (F11, единственное исключение). */
 const OPEN_BRAIN_TAGS = /^(u[1-6]|stub)$/;
@@ -45,13 +48,36 @@ export const SIM_CONFIG = {
   suddenDeathRamp: SUDDEN_DEATH_RAMP,
 };
 
+/** Идёт ли бой этого существа прямо сейчас (D161). Одна дверь на два ответа. */
+const fightingNow = (loop, id) => (loop.busyAt?.(id) ?? 0) > Date.now();
+
 export function buildRouter(ctx) {
   const { db, loop, jobs, catalog, root } = ctx;
   const r = new Router();
 
   // ── кто это ────────────────────────────────────────────────────────────
   /** Сессия заводится молча: гость — не помеха, а первая половина воронки. */
-  function who(req, res) {
+  /*
+   * АККАУНТ ЗАВОДИТСЯ, КОГДА ОН НУЖЕН, А НЕ НА КАЖДЫЙ ЗАПРОС.
+   *
+   * `who` вставлял строку в `account` и событие `visit` на любой запрос без
+   * куки. Его зовут `/api/ladder`, `/api/catalog`, `/api/creature/:id`,
+   * `/api/config` — то есть сорок обращений `curl` давали сорок «посетителей».
+   * Замерено: `/api/metrics` показывала `visitorToCreature` 0.0184 до и
+   * 0.0166 после сорока curl-ов, при том что не приходило ни одного человека.
+   *
+   * Это ломало сразу две вещи. Метрику §14 «посетитель → создал существо»,
+   * знаменатель которой оказался числом HTTP-запросов без куки. И запись в
+   * базу без единой проверки — любой может лить строки в `account`.
+   *
+   * Теперь читающие ручки узнают, кто пришёл, и НЕ заводят никого, если
+   * пришли без сессии: им возвращается гость-однодневка, живущий один запрос.
+   * Заводят настоящий аккаунт только те, кому нужна память между запросами:
+   * `/api/session` (с неё начинается любая сессия клиента) и всё, что пишет.
+   */
+  const EPHEMERAL = { id: null, is_guest: 1, free_creature_used: 0, ephemeral: true };
+
+  function who(req, res, { create = true } = {}) {
     const c = cookies(req);
     /* D22: заголовок авторитетнее куки. Кука — запасной путь для собственного
        домена; внутри iframe GENEX её может не быть вовсе. */
@@ -59,6 +85,7 @@ export function buildRouter(ctx) {
     const bearer = h && h.startsWith('Bearer ') ? h.slice(7) : null;
     let acct = accountFromToken(db, bearer || c.a);
     if (!acct) {
+      if (!create) return EPHEMERAL;
       const g = ensureGuest(db, bearer || c.a);
       acct = g.account;
       setCookie(res, 'a', g.token);
@@ -68,7 +95,20 @@ export function buildRouter(ctx) {
     }
     return acct;
   }
+  /** Читающая ручка: узнать, кто пришёл, но никого не заводить. */
+  const seen = (req, res) => who(req, res, { create: false });
   ctx.who = who;
+
+  /**
+   * Какие тиры игроку доступны.
+   *
+   * `free` — дешёвые связки на нашем ключе. `sub` — подписка (D164): она тоже
+   * не берёт с игрока денег и вообще не ходит через OpenRouter, значит запрет
+   * §2.2 «реальные деньги в платформу пока не заходят» к ней не относится.
+   * Включается только на машине, где есть локальная сессия `claude`, — без
+   * `AIRENA_SUB_MODELS=1` таких связок нет в каталоге вовсе.
+   */
+  const OPEN_TIERS = new Set(['free', 'sub']);
 
   r.get('/api/config', (req, res) => json(res, SIM_CONFIG));
   r.get('/api/grammar', (req, res) => json(res, grammar()));
@@ -81,22 +121,77 @@ export function buildRouter(ctx) {
                                   ORDER BY created_at DESC LIMIT 1`).get(acct.id);
     const season = ctx.kv.get('season', { n: 1, endsAt: null, prizeCoins: 4500 });
     const away = acct.last_seen_at ? Date.now() - acct.last_seen_at : 0;
+    /*
+     * Состояние лимитов спрашивается ТЕМ ЖЕ вопросом, что и при создании, —
+     * иначе кнопка на экране и решение сервера расходятся. Связка берётся
+     * самая дешёвая бесплатная: именно ей игрок и создаёт, если ничего не
+     * выбрал, и по ней же считается дневной бюджет.
+     */
+    const cheap = catalog.cheapestFree?.() ?? null;
+    const limitState = (!acct.is_guest && !acct.free_creature_used && cheap)
+      ? limits.check(db, { account: acct, bundle: cheap, kind: 'create' })
+      : null;
 
     json(res, {
       guest: !!acct.is_guest,
       accountId: acct.id,
-      canCreate: !acct.is_guest && !acct.free_creature_used,
+      canCreate: !acct.is_guest && !acct.free_creature_used && (!limitState || limitState.ok),
       /* D1: гость не запускает генерацию. Причина отдаётся кодом, чтобы экран
          показал стену аккаунта, а не общую ошибку. */
-      createBlocked: acct.is_guest ? 'guest' : (acct.free_creature_used ? 'free_used' : null),
+      /*
+       * `canCreate` ОТВЕЧАЕТ НА ВОПРОС КНОПКИ, а не на половину вопроса.
+       *
+       * Он смотрел только на гостя и на израсходованное бесплатное существо —
+       * и оставался `true`, когда дневной бюджет игры исчерпан или суточный
+       * лимит аккаунта выбран. Кнопка горела, сервер её глушил: игрок писал
+       * строку, жал «создать» и получал отказ, который можно было показать
+       * заранее.
+       */
+      createBlocked: acct.is_guest ? 'guest'
+        : (acct.free_creature_used ? 'free_used'
+          : (limitState && !limitState.ok ? limitState.code : null)),
       creature: mine ? card(mine, { viewerId: acct.id }) : null,
       job: activeJob ? jobView(activeJob) : null,
       nextFightAt: mine ? loop.nextFightAt(mine.id) : null,
+      /*
+       * ОТСЧЁТ ОТДАЁТСЯ И ОТНОСИТЕЛЬНЫМ ЧИСЛОМ (D161).
+       *
+       * `nextFightAt` — это часы СЕРВЕРА. Клиент вычитал из него свой
+       * `Date.now()`, то есть показывал разницу двух разных часов: телефон,
+       * убежавший на минуту, печатал «следующий бой через 01:03» там, где
+       * до боя пять секунд. Пока таймер висел на экране ожидания, это было
+       * незаметно; на экране итога он стал главной строкой, и врать ему нельзя.
+       *
+       * `nextFightIn` — миллисекунды ОТ ЭТОГО ОТВЕТА. Клиент превращает их в
+       * свою локальную отметку в момент получения, и дальше считает по
+       * собственным часам, которые сами с собой согласованы всегда.
+       */
+      /*
+       * ПОКА БОЙ ИДЁТ, ОТСЧЁТА НЕТ — есть `fightingNow`.
+       *
+       * Резерв ставится по ВЕРХНЕЙ оценке длительности и уточняется настоящей
+       * только после прогона. В это окно `nextFightAt` равен «сейчас плюс
+       * пятьдесят с лишним секунд», и сессия, попавшая в него, печатала
+       * «следующий бой через 58 секунд» — а арена перечитывает сессию раз в
+       * двадцать секунд, так что число висело на экране до двадцати секунд.
+       *
+       * Пока существо на арене, правильный ответ не число, а «оно дерётся».
+       */
+      nextFightIn: mine && !fightingNow(loop, mine.id) && loop.nextFightAt(mine.id)
+        ? Math.max(0, loop.nextFightAt(mine.id) - Date.now()) : null,
+      /* Идёт ли бой этого существа прямо сейчас — отличает «дерётся» от «отдыхает». */
+      fightingNow: mine ? fightingNow(loop, mine.id) : false,
+      /* Свободного соперника не нашлось: экран обязан сказать это словами. */
+      noOpponent: mine ? (loop.starvedAt?.(mine.id) ?? false) : false,
+      /* Длина отдыха — знаменатель шкалы на клиенте. Число живёт на сервере
+         (REST_MS), и клиент, который держал бы собственную копию, разошёлся
+         бы с ним при первой же правке темпа. */
+      restMs: REST_MS,
       liveMatch: ctx.live.describe(),
       season,
       constantsVersion: constantsVersion(),
       since: mine && away > 30 * 60e3 ? sinceSummary(db, mine.id, acct.last_seen_at) : null,
-      limits: limits.status(db),
+      limits: limits.publicStatus(db),
     });
   });
 
@@ -116,15 +211,87 @@ export function buildRouter(ctx) {
   });
 
   // ── стартовые существа: гость ВЫБИРАЕТ, а не получает (D2) ─────────────
+  /**
+   * Три существа, из которых выбирает гость (D2).
+   *
+   * Сортировка по рейтингу здесь была неверной по той же причине, по которой
+   * она неверна в лестнице: у библиотечных существ рейтинг ПОСТАВЛЕН при
+   * заселении и не двигается, так что «первые три по рейтингу» — это первые
+   * три по случайному числу, записанному когда-то. Гостю выдавались существа
+   * с нулём побед из двух сотен боёв — и это первое, что он получал в игре.
+   *
+   * Правильный порядок для СТАРТЁРА — не сила, а показательность:
+   *   1) собран набор из грамматики — иначе гость не увидит §8 вообще;
+   *   2) мозг написан моделью — иначе он не увидит и тезиса продукта;
+   *   3) настоящий счёт побед, а не поставленное число.
+   * Разные архетипы среди троих — чтобы выбор был выбором, а не оттенком.
+   */
   r.get('/api/starters', (req, res) => {
-    const rows = db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state = 'active'
-                             ORDER BY rating DESC LIMIT 3`).all();
-    json(res, rows.map((x) => card(x)));
+    const all = db.prepare(`SELECT * FROM creature WHERE is_library = 1 AND state = 'active'
+                            AND brain_source IS NOT NULL`).all();
+    const winrate = (c) => (c.fights ? c.wins / c.fights : 0);
+    const score = (c) => (c.kit_active ? 4 : 0)
+      + (c.brain_model && !/рукописн/i.test(c.brain_model) ? 2 : 0)
+      + winrate(c);
+    /*
+     * Существо, которое не выигрывает, не может быть стартовым.
+     *
+     * Первая версия этого порядка выдала гостю набор из трёх, где у одного
+     * ноль побед из двухсот боёв. Гость не знает, что это калибровочный
+     * эталон, специально стоящий слабым (§7.3), — он видит существо, которое
+     * ему предлагают, и оно не выигрывает никогда.
+     *
+     * Порог мягкий: если подходящих меньше трёх, добираем из остальных —
+     * пустой экран хуже неудачного третьего.
+     */
+    const decent = all.filter((c) => !c.fights || winrate(c) >= 0.25);
+    const ranked = (decent.length >= 3 ? decent : all).sort((a, b) => score(b) - score(a));
+    /*
+     * ТРЕТЬЯ КАРТОЧКА ВЫБИРАЕТСЯ ПО НЕПОХОЖЕСТИ, А НЕ ПО РЕЙТИНГУ.
+     *
+     * Архетипа всего два, поэтому «по одному на архетип, потом лучший из
+     * оставшихся» гарантированно давало третью карточку того же архетипа, что
+     * одна из первых двух. А карточка показывает архетип и набор — и гость
+     * видел два прямоугольника, отличающихся только именем. Выбор из трёх, где
+     * два неотличимы, это выбор из двух с лишним кликом.
+     *
+     * Поэтому третьей берётся та, чей набор дальше всего от уже выбранных:
+     * похожесть считается по долям общих пар «доставка+эффекты». Рейтинг
+     * решает только при равной непохожести — среди неотличимых он всё равно
+     * ничего не решает для гостя.
+     */
+    const sig = (c) => {
+      let kit = [];
+      try { kit = JSON.parse(c.kit_json || '[]'); } catch { kit = []; }
+      return new Set(kit.map((k) => `${k.delivery}:${(k.effects || []).join('+')}`));
+    };
+    const overlap = (a, b) => {
+      if (!a.size || !b.size) return 0;
+      let n = 0;
+      for (const x of a) if (b.has(x)) n++;
+      return n / Math.max(a.size, b.size);
+    };
+    const out = []; const seen = new Set();
+    for (const c of ranked) {
+      if (out.length >= 2 || seen.has(c.archetype)) continue;
+      seen.add(c.archetype); out.push(c);
+    }
+    if (out.length < 3) {
+      const rest = ranked.filter((c) => !out.includes(c));
+      const chosen = out.map(sig);
+      rest.sort((a, b) => {
+        const da = Math.max(0, ...chosen.map((x) => overlap(sig(a), x)));
+        const dbb = Math.max(0, ...chosen.map((x) => overlap(sig(b), x)));
+        return da === dbb ? score(b) - score(a) : da - dbb;
+      });
+      for (const c of rest) { if (out.length >= 3) break; out.push(c); }
+    }
+    json(res, out.map((x) => card(x)));
   });
 
   // ── каталог моделей: тир, но НИКОГДА не сумма (D11) ────────────────────
   r.get('/api/catalog', (req, res) => {
-    const acct = who(req, res);
+    const acct = seen(req, res);
     const cat = catalog.current();
     json(res, {
       /* Здесь нет ни одного числа в долларах. Тир, ярлык и причина блокировки —
@@ -135,9 +302,14 @@ export function buildRouter(ctx) {
         think: b.thinkLabel,
         tier: b.tier,
         measured: b.measured,
-        available: b.tier === 'free',
-        /* §2.2: реальные деньги в платформу пока не заходят вообще. */
-        unavailableReason: b.tier === 'free' ? null : 'платежи платформы ещё не включены',
+        /* Сколько ждать. Секунды — не деньги, их игроку знать и нужно, и
+           полезно: именно ожидание он принимает за поломку. `null` — связка
+           не замерена, и экран честно молчит вместо выдумки. */
+        secs: b.secs ?? null,
+        available: OPEN_TIERS.has(b.tier),
+        /* §2.2: реальные деньги в платформу пока не заходят вообще. Подписка
+           денег игрока не трогает и потому доступна (D164). */
+        unavailableReason: OPEN_TIERS.has(b.tier) ? null : 'платежи платформы ещё не включены',
       })),
       canCreate: !acct.is_guest && !acct.free_creature_used,
       note: cat.bundles.some((b) => b.tier === 'paid')
@@ -145,34 +317,192 @@ export function buildRouter(ctx) {
     });
   });
 
+  /**
+   * Тело существа — код, который рисует зритель.
+   *
+   * Отдаётся `body_safe`, а НЕ `body_source`: наружу уезжает только то, что
+   * прошло разбор и разметку топливом (`sandbox/bodyrules.js`). Разница
+   * между двумя колонками здесь и есть вся защита, поэтому колонка названа
+   * так, чтобы перепутать их было трудно.
+   *
+   * Открыто без сессии и без проверки владельца — намеренно. Тело видно
+   * всем, кто смотрит бой, то есть по определению посторонним; прятать его
+   * бессмысленно, а требовать сессию — значит сломать зрителя. Это ровно
+   * обратный случай мозгу: исходник мозга не покидает сервер никогда (N19),
+   * потому что в нём тактика, за которую игрок платил. В теле — картинка.
+   *
+   * Без расширения `.js` в пути: роутер сопоставляет сегменты целиком, и
+   * `:id.js` связал бы параметр с именем «id.js». Тип содержимого задаётся
+   * заголовком, и браузеру этого достаточно.
+   */
+  r.get('/api/body/:id', (req, res) => {
+    const row = db.prepare('SELECT body_safe, body_draws FROM creature WHERE id = ?').get(req.params.id);
+    if (!row || !row.body_safe) return fail(res, 404, 'no_body', 'у этого существа нет своего тела');
+
+    /*
+     * ── ПОТОЛОК ЦЕНЫ ПОКАЗА — ПРАВИЛО ПРИЁМКИ, А НЕ ВЫДАЧИ ────────────────
+     *
+     * Цена считается на приёмке (`forgeBody` уже строит тело, чтобы проверить
+     * позу) и лежит в `body_draws`. Здесь она НЕ проверяется, и это решение, а
+     * не забывчивость.
+     *
+     * Я поставил тут отказ 404 (по `DRAW_MAX`) и замерил, чего он стоит: 13 из 24 живых
+     * существ — включая первое, четвёртое и восьмое места лестницы — перестали
+     * показывать своё тело и вышли в теле архетипа. Это половина населения,
+     * потерявшая внешность.
+     *
+     * А ради чего — неизвестно. `DRAW_MAX` выведен от нашего эталона
+     * («полтора осьминога»), и связь с кадрами в секунду НЕ ЗАМЕРЕНА: в этой
+     * среде браузерная панель скрыта и рендерер не работает (D127). То есть
+     * достоверный вред менялся на предполагаемую пользу.
+     *
+     * Правильное место потолка — приёмка, где отказ ничего не стоит: модель
+     * получает причину и пробует снова, а игрок узнаёт об этом только если не
+     * вышло совсем. Так он и стоит. Тела, принятые до появления правила,
+     * отдаются; их цена известна, записана и печатается `tools/bodysize.mjs`.
+     *
+     * Когда появится замер кадров, это решение надо пересмотреть — но с
+     * числом, а не с догадкой.
+     */
+    res.writeHead(200, {
+      'content-type': 'application/javascript; charset=utf-8',
+      /* Тело неизменяемо по F2: новое существо — новый id. Значит его можно
+         кэшировать навсегда, и зритель платит за тысячу строк один раз. */
+      'cache-control': 'public, max-age=31536000, immutable',
+    });
+    res.end(row.body_safe);
+  });
+
   // ── существо ───────────────────────────────────────────────────────────
   r.get('/api/creature/:id', (req, res) => {
-    const acct = who(req, res);
+    const acct = seen(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
     if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
     const c = card(row, { viewerId: acct.id });
     const view = ladderView(db, { creatureId: row.id, season: row.season });
+    /* Сколько раз существо пробовало себя переписать. Нужно и шкале
+       наблюдений, и журналу — считается один раз. */
+    const adaptTries = db.prepare('SELECT count(*) AS n FROM adaptation WHERE creature_id = ?').get(row.id).n;
     trackEvent(db, { name: 'creature_viewed', accountId: acct.id, props: { creatureId: row.id, mine: c.isMine } });
     json(res, {
       creature: c,
       rank: view.me?.rank ?? null,
       percentile: view.percentile,
+      /* Знаменатель процентиля — экран обязан его назвать (D83). */
+      players: view.players,
       total: view.total,
       top100: view.me ? view.me.rank <= 100 : false,
       history: history(db, row.id, 20),
-      adaptations: db.prepare(`SELECT id, at, kind, summary, score_before, score_after, accepted
-                               FROM adaptation WHERE creature_id = ? ORDER BY at DESC LIMIT 12`).all(row.id),
+      /*
+       * ОКНО ОТДАЁТ ТОЛЬКО ПРИНЯТЫЕ, а числа приходят отдельно.
+       *
+       * Запрос брал последние 12 попыток подряд, а экран рисовал из них
+       * только принятые и по остатку считал «сколько отклонено». На существе
+       * с 53 отклонёнными это давало «ещё 4 кандидата проверены»: окно
+       * усечено, а вычитание об этом не знало. Заодно окно тратилось на
+       * строки, которые всё равно выбрасываются.
+       *
+       * Теперь окно — это ровно то, что рисуется, а счёт берётся из
+       * `adaptTries` и `creature.adaptations`, то есть из полной таблицы.
+       */
+      /*
+       * ЖУРНАЛ — ТОЛЬКО ВЛАДЕЛЬЦУ.
+       *
+       * Экран и так рисует его только своему (`creature.js`), но ручка
+       * отдавала журнал любому, кто знает id, — а id виден в лестнице и в
+       * ссылке на бой. Строки журнала описывают, КАК устроен чужой мозг:
+       * даже без абсолютных чисел это направление и величина каждой правки.
+       * Проверка на клиенте — не проверка.
+       */
+      adaptations: c.isMine
+        ? db.prepare(`SELECT id, at, kind, summary, score_before, score_after, accepted
+                      FROM adaptation WHERE creature_id = ? AND accepted = 1
+                      ORDER BY at DESC LIMIT 12`).all(row.id)
+        : [],
       kitCost: c.kit.map(costOf),
       nextFightAt: loop.nextFightAt(row.id),
+      /*
+       * Те же три поля, что и в `/api/session`, и по той же причине.
+       *
+       * Экран существа считал остаток по СЫРОМУ `nextFightAt` — то есть по
+       * часам сервера — и печатал его в формате mm:ss. Оба дефекта тут те же:
+       * расхождение часов телефона превращало «через 5 секунд» в минуту, а
+       * «00:05» на пятисекундной паузе читается как пять минут.
+       */
+      nextFightIn: !fightingNow(loop, row.id) && loop.nextFightAt(row.id)
+        ? Math.max(0, loop.nextFightAt(row.id) - Date.now()) : null,
+      fightingNow: fightingNow(loop, row.id),
+      /* Свободного соперника не нашлось на прошлой попытке. Это не ошибка, а
+         состояние маленькой лестницы, и молчать о нём нельзя: экран обещает
+         бой через пять секунд и не даёт его. */
+      noOpponent: loop.starvedAt?.(row.id) ?? false,
+      restMs: REST_MS,
       /* D17: наблюдения — шкала до следующей адаптации, не валюта (N3). */
-      observations: observationsOf(row),
+      observations: observationsOf(row, adaptTries),
+      /* Сколько раз существо пробовало себя переписать и сколько оставило.
+         Ноль принятых — это отбор, а не поломка, и без второй цифры это
+         не читается. */
+      adaptTries,
     });
   });
 
   r.get('/api/creature/:id/history', (req, res) => {
     const row = db.prepare('SELECT id FROM creature WHERE id = ?').get(req.params.id);
     if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
-    json(res, history(db, row.id, Number(req.query?.limit) || 40));
+    json(res, history(db, row.id, /* Потолок обязателен: отрицательное значение SQLite читает как «без лимита»,
+       и один анонимный запрос отдавал 436 КБ с базы в 12 тысяч матчей. */
+      Math.max(1, Math.min(100, Number(req.query?.limit) || 40))));
+  });
+
+  /**
+   * ПРОВЕРИТЬ НАБОР БОЕМ — до того, как применить.
+   *
+   * §7.2·3 запрещает «продавать непроверенный жребий» и объясняет, чем:
+   * симуляция в 327× делает верификацию бесплатной, поэтому показывать
+   * результат ДО решения не роскошь, а обязанность. Для мозга это уже
+   * работает (дуэль кандидата с действующим), для набора — не работало: игрок
+   * менял умения вслепую и узнавал результат из лестницы через час.
+   *
+   * Считается тем же `viability`, что и на рождении: сорок боёв эталонным
+   * мозгом против эталонного набора. Это НИЖНЯЯ ГРАНИЦА и она такой и
+   * называется на экране — «может ли этот набор вообще попадать», а не «силён
+   * ли он». Силу меряет лига, и она стоит минуты.
+   *
+   * Только владельцу и не чаще раза в три секунды: двадцать боёв это около двух секунд
+   * процессорного времени, и открывать их анониму без ограничений — значит
+   * подарить способ занять сервер.
+   */
+  const kitChecks = new Map();
+  r.post('/api/creature/:id/kit/check', async (req, res) => {
+    const acct = who(req, res);
+    const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
+    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
+    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоё существо');
+
+    const last = kitChecks.get(acct.id) || 0;
+    if (Date.now() - last < 3000) return fail(res, 429, 'too_often', 'проверка идёт, подожди секунду');
+    kitChecks.set(acct.id, Date.now());
+    if (kitChecks.size > 512) kitChecks.clear();
+
+    let body;
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    const bad = validateKit(body.kit);
+    if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
+
+    try {
+      const v = await viability(body.kit, row.archetype, { size: sizeOf(row) });
+      json(res, {
+        ok: v.ok, hits: v.hits, wins: v.wins, rounds: v.rounds, why: v.why,
+        /* Форма важнее среднего: «бьёт всех» и «бьёт одних» — разные ответы,
+           и игрок имеет право знать, который из них про его набор. */
+        verdict: v.shape?.verdict ?? null,
+        verdictRu: v.shape?.ru ?? null,
+        rates: v.rates ?? null,
+      });
+    } catch (e) {
+      /* Проверка — удобство, а не право: её отказ ничего не ломает. */
+      fail(res, 503, 'check_failed', 'проверка не запустилась — можно применить и так');
+    }
   });
 
   /** Смена кита — бесплатна, мгновенна, детерминирована (D3, §7.2·2, F10). */
@@ -189,7 +519,22 @@ export function buildRouter(ctx) {
     const bad = validateKit(body.kit);
     if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
 
-    db.prepare('UPDATE creature SET kit_json = ?, updated_at = ? WHERE id = ?')
+    /*
+     * СМЕНА НАБОРА СНИМАЕТ ДЕКОРАЦИЮ.
+     *
+     * VFX-IR ключуется по имени умения (`k1`/`k2`/`k3`), а набор меняется
+     * мгновенно и бесплатно (F10, D3). Значит декорация, сочинённая моделью
+     * под «снаряд: урон, пустота», после смены играла над «конус:
+     * урон+обездвиживание, кинетика»: read-kit честно переключался на новый
+     * силуэт и палитру, а декорация продолжала рассказывать про прежнее
+     * умение. Две половины одного эффекта говорили про разные вещи.
+     *
+     * Снимается ЦЕЛИКОМ, а не по изменившимся ключам: промпт декорации просит
+     * «пусть она говорит про то, что умение делает», и связь между тремя
+     * умениями там тоже есть. Существо возвращается к read-kit — это законное
+     * состояние, так выглядели все существа до появления уровня 1.
+     */
+    db.prepare('UPDATE creature SET kit_json = ?, vfx_json = NULL, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(body.kit), Date.now(), row.id);
     json(res, { ok: true, kit: body.kit, cost: body.kit.map(costOf) });
   });
@@ -202,11 +547,10 @@ export function buildRouter(ctx) {
 
     const bundle = catalog.find(body.bundle);
     if (!bundle) return fail(res, 400, 'no_bundle', 'такой модели нет в каталоге');
-    if (bundle.tier !== 'free') {
-      /* E6: покупок в v1 нет ни в каком виде, включая заглушку. Отказ честный
-         и объясняет причину, а не предлагает несуществующую кнопку. */
-      return fail(res, 402, 'not_free', 'платежи платформы ещё не включены', { bundle: bundle.bundle });
-    }
+    /* E6: покупок в v1 нет ни в каком виде, включая заглушку. Отказ честный
+       и объясняет причину, а не предлагает несуществующую кнопку. Правило —
+       общее, см. `paidRefused` ниже. */
+    if (paidRefused(res, bundle)) return;
     const gate = limits.check(db, { account: acct, bundle, kind: 'create' });
     if (!gate.ok) {
       trackEvent(db, { name: 'limit_denied', accountId: acct.id, props: { code: gate.code } });
@@ -236,16 +580,68 @@ export function buildRouter(ctx) {
       return fail(res, 429, 'free_used', limits.DENY.free_used);
     }
 
+    /*
+     * ВСЁ, ЧТО ПРИШЛО ОТ КЛИЕНТА, ПРИВОДИТСЯ К ИЗВЕСТНОМУ ВИДУ.
+     *
+     * `body.archetype` уезжал в задание как есть — объектом, массивом, чем
+     * угодно. Дальше он доходил до `INSERT` и SQLite бросал; отказ уходил
+     * мимо всех ловушек, задание помечалось `internal`, а право на
+     * единственное за жизнь бесплатное существо (F7) уже было списано строкой
+     * выше и не возвращалось.
+     *
+     * Возврат теперь стоит на любом провале (`jobs.pump`), но это лечение
+     * последствия. Причина — доверие к форме входа: `kitPreset` уже однажды
+     * пробили именем из прототипа, и урок был ровно про это. Само поле с
+     * клиента больше не принимается — набор следует из описания, — но урок
+     * остаётся: `archetype` ниже сверяется со списком, а не с истинностью.
+     */
+    const ARCHETYPES = ['octopus', 'gorilla'];
     const job = jobs.enqueue({
       accountId: acct.id, kind: 'create', bundle,
-      payload: { prompt, archetype: body.archetype || null, kitPreset: body.kitPreset || null },
+      payload: {
+        prompt,
+        archetype: ARCHETYPES.includes(body.archetype) ? body.archetype : null,
+      },
     });
     trackEvent(db, { name: 'create_submitted', accountId: acct.id,
-      props: { bundle: bundle.bundle, archetype: body.archetype, promptChars: prompt.length } });
+      props: { bundle: bundle.bundle, archetype: job.payload?.archetype ?? null, promptChars: prompt.length } });
     json(res, jobView(job), 202);
   });
 
+  /**
+   * Платные связки недоступны, и проверка — ОДНА на все входы.
+   *
+   * E6: в v1 выручка нулевая, платежей нет, каталог платных связок существует
+   * только как витрина будущего. Отказ стоял в `POST /api/creature` и не стоял
+   * в `POST /api/creature/:id/refactor`: бесплатный аккаунт спокойно ставил в
+   * очередь рефактор на Opus по $2.26 за вызов, просто назвав связку в теле
+   * запроса. Деньги настоящие, счёт наш.
+   *
+   * Дело не в том, что забыли строчку, а в том, что правило жило в обработчике.
+   * Обработчиков становится больше; правило одно.
+   */
+  function paidRefused(res, bundle) {
+    if (!bundle || OPEN_TIERS.has(bundle.tier)) return false;
+    fail(res, 402, 'not_free', 'платежи платформы ещё не включены', { bundle: bundle.bundle });
+    return true;
+  }
+
+  /*
+   * ФЛАГ `AIRENA_REFACTOR`, ПО УМОЛЧАНИЮ ВЫКЛЮЧЕН — D19 и §15 Q1.
+   *
+   * Q1 закрыт дословно: «LLM-рефакторы не строятся и не продаются в v1».
+   * D19 записал, что серверный шов построен и ЗАКРЫТ флагом. Флага не
+   * существовало ни в одной строке кода: ручка принимала запросы от любого
+   * аккаунта и ставила в очередь платную генерацию. Решение, записанное и не
+   * реализованное, — это не решение, а намерение, и отличить одно от другого
+   * можно было только запросом.
+   */
+  const REFACTOR_ON = process.env.AIRENA_REFACTOR === '1';
+
   r.post('/api/creature/:id/refactor', async (req, res) => {
+    if (!REFACTOR_ON) {
+      return fail(res, 404, 'no_refactor', 'улучшение существа моделью в этой версии не включено');
+    }
     const acct = who(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
     if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
@@ -254,6 +650,7 @@ export function buildRouter(ctx) {
     try { body = await readJson(req); } catch { body = {}; }
     const bundle = catalog.find(body.bundle) || catalog.cheapestFree();
     if (!bundle) return fail(res, 503, 'no_catalog', 'каталог моделей недоступен');
+    if (paidRefused(res, bundle)) return;
     const gate = limits.check(db, { account: acct, bundle, kind: 'refactor' });
     if (!gate.ok) {
       trackEvent(db, { name: 'limit_denied', accountId: acct.id, props: { code: gate.code } });
@@ -265,7 +662,7 @@ export function buildRouter(ctx) {
   });
 
   r.get('/api/job/:id', (req, res) => {
-    const acct = who(req, res);
+    const acct = seen(req, res);
     const j = db.prepare('SELECT * FROM job WHERE id = ?').get(req.params.id);
     if (!j) return fail(res, 404, 'no_job', 'такой генерации нет');
     if (j.account_id && j.account_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоя генерация');
@@ -274,7 +671,7 @@ export function buildRouter(ctx) {
 
   // ── лестница и таблицы ─────────────────────────────────────────────────
   r.get('/api/ladder', (req, res) => {
-    const acct = who(req, res);
+    const acct = seen(req, res);
     const mine = db.prepare(`SELECT id, season FROM creature WHERE owner_id = ? AND state='active'
                              ORDER BY created_at DESC LIMIT 1`).get(acct.id);
     const season = ctx.kv.get('season', { n: 1 });
@@ -307,28 +704,99 @@ export function buildRouter(ctx) {
       a: side(m, 'a'), b: side(m, 'b'),
       /* D5: разбор боя собирается детерминированно из лога, без вызова LLM. */
       beats: result ? beatsFrom(result.log || [], m) : [],
+      /*
+       * ЧЕЛОВЕЧЕСКИЕ ИМЕНА УМЕНИЙ.
+       *
+       * Внутри умения из грамматики зовутся `k1`, `k2`, `k3` — короткие
+       * стабильные имена, которые мозг вызывает в бою. Разбор боя брал их
+       * из лога и печатал как есть, и игрок читал «ОБЖИГ — k1 закрыт
+       * укрытием». F11 закрыл исходник мозга и назвал карточку разбора его
+       * заменой — доказательством, что бой написала нейросеть; служебный
+       * идентификатор в этом доказательстве — как машинный код в титрах.
+       *
+       * Клиент сам подставить не может: имя зависит от НАБОРА конкретного
+       * существа в конкретном бою, а набор живёт на сервере.
+       */
+      skills: skillNames(db, m),
       stats: result ? { octopus: result.octopus, gorilla: result.gorilla } : null,
     });
   });
 
   // ── аналитика (A7) ─────────────────────────────────────────────────────
+  /*
+   * АНАЛИТИКА ПРИНИМАЕТ ТОЛЬКО ТО, ЧТО МОЖЕТ ЗНАТЬ КЛИЕНТ.
+   *
+   * Две дыры разом, и обе били в §14.
+   *
+   * ЗНАМЕНАТЕЛЬ. Ручка звала `who()` с заведением аккаунта, хотя аккаунт ей не
+   * нужен: двадцать безымянных POST давали двадцать «посетителей». D77 закрыл
+   * это на читающих ручках и пропустил пишущую.
+   *
+   * ЧИСЛИТЕЛЬ. Словарь событий закрыт по ИМЕНАМ, но не по источнику, и
+   * `create_done` — событие, которое пишет сервер по факту рождения
+   * существа, — принималось от кого угодно. Пять curl-ов сдвинули
+   * «посетитель → создал существо» с 0.0165 до 0.0280.
+   *
+   * A7 запрещает утверждения об удержании без аналитики. Аналитика, которую
+   * может писать посторонний, — это не аналитика, а поле для ввода.
+   */
+  /* Список выводится из словаря, а не пишется рядом: второй список
+     разошёлся бы с первым в тот день, когда добавят событие. */
+  const CLIENT_EVENTS = new Set(
+    Object.entries(EVENTS).filter(([, def]) => !def.server).map(([name]) => name),
+  );
   r.post('/api/events', async (req, res) => {
-    const acct = who(req, res);
+    const acct = seen(req, res);
     let body;
     try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
     const list = Array.isArray(body.events) ? body.events.slice(0, 32) : [];
     let ok = 0;
-    for (const e of list) if (trackEvent(db, { name: e.name, accountId: acct.id, props: e.props || {} }).ok) ok++;
-    json(res, { accepted: ok, of: list.length });
+    let refused = 0;
+    for (const e of list) {
+      if (!CLIENT_EVENTS.has(e?.name)) { refused++; continue; }
+      if (trackEvent(db, { name: e.name, accountId: acct.id, props: e.props || {} }).ok) ok++;
+    }
+    json(res, { accepted: ok, of: list.length, refused });
   });
 
   r.get('/api/metrics', (req, res) => json(res, metrics(db)));
-  r.get('/api/limits', (req, res) => json(res, limits.status(db)));
+  /*
+   * ПРЕДОХРАНИТЕЛИ: наружу — состояние, операторам — суммы.
+   *
+   * Эта ручка отдавала полную сводку любому: дневной бюджет, потрачено,
+   * остаток. Кроме того что это чужое дело, это ещё и подсказка тому, кто
+   * хочет выжечь бюджет — видно, сколько осталось. Суммы теперь только под
+   * `AIRENA_OPS=1`, и это не «скрыли», а «разделили»: экрану нужен один флаг.
+   */
+  r.get('/api/limits', (req, res) => json(res,
+    process.env.AIRENA_OPS === '1' ? limits.status(db) : limits.publicStatus(db)));
+  /*
+   * ЗДОРОВЬЕ — ЭТО «ЖИВ ЛИ», А НЕ «СКОЛЬКО НАС».
+   *
+   * Ручка отдавала любому число существ, число матчей за всю историю и
+   * статистику цикла. D63 ровно эти величины закрыл на `/api/metrics` —
+   * абсолютные счётчики говорят про НАС: сколько нас, растём мы или падаем,
+   * сколько стоит нас догнать. И собственный аргумент D63 звучал так:
+   * «закрытая ручка бессмысленна, пока соседняя открыта». Соседняя была
+   * открыта.
+   *
+   * Наружу остаётся то, ради чего проверку здоровья и зовут: поднят ли
+   * сервер и на каких константах — второе нужно клиенту, чтобы понять, что
+   * бой по старой ссылке точно не повторится (A2).
+   */
   r.get('/api/health', (req, res) => json(res, {
-    ok: true, constantsVersion: constantsVersion(),
-    creatures: db.prepare(`SELECT count(*) AS n FROM creature WHERE state='active'`).get().n,
-    matches: db.prepare('SELECT count(*) AS n FROM match').get().n,
-    loop: loop.stats,
+    ok: true,
+    constantsVersion: constantsVersion(),
+    ...(process.env.AIRENA_OPS === '1' ? {
+      creatures: db.prepare(`SELECT count(*) AS n FROM creature WHERE state='active'`).get().n,
+      matches: db.prepare('SELECT count(*) AS n FROM match').get().n,
+      loop: loop.stats,
+      /* Потерянные трансляции — единственный отказ, который иначе не оставляет
+         следа нигде: бой сыгран, рейтинг сдвинут, показать его некому. Раньше
+         `open()` возвращал `null`, вызывающий глотал, и «зачётный бой никто не
+         увидел» было невидимо изнутри (замер ревью: 44 из 56 под нагрузкой). */
+      broadcastsDropped: ctx.live?.dropped ?? null,
+    } : {}),
   }));
 
   /* Дев-режим: список тегов для выпадающих списков вьювера. В продакшене
@@ -372,7 +840,7 @@ const safe = (s) => { try { return JSON.parse(s); } catch { return []; } };
 
 export function jobView(j) {
   return {
-    id: j.id, kind: j.kind, state: j.state, stage: j.stage,
+    id: j.id, kind: j.kind, state: j.state, stage: j.stage, stageCode: j.stage_code || null,
     progress: j.progress, creatureId: j.creature_id,
     error: j.error_code, errorMessage: j.error_msg,
     attempts: j.attempts, createdAt: j.created_at,
@@ -380,14 +848,106 @@ export function jobView(j) {
 }
 
 /** Шкала наблюдений: сколько до следующей адаптации (D17, §7.2а). */
-export function observationsOf(row) {
-  const OBS_PER_ADAPT = 10;
-  /* Поражение даёт вдвое больше материала — §7.2а буквально: «Существо с
-     десятью поражениями адаптируется лучше, чем с десятью победами». */
-  const earned = row.wins + row.draws + row.losses * 2;
-  const spent = row.adaptations * OBS_PER_ADAPT;
-  const have = Math.max(0, earned - spent);
-  return { have, need: OBS_PER_ADAPT, frac: Math.min(1, have / OBS_PER_ADAPT) };
+/**
+ * Имена умений обоих бойцов этого боя: `k1` -> «снаряд: урон».
+ *
+ * Четыре захардкоженных умения тоже здесь, чтобы у клиента был ОДИН источник
+ * и он не держал собственный словарь, который разойдётся с реестром.
+ */
+export function skillNames(db, m) {
+  /*
+   * ИМЕНА РАЗДЕЛЕНЫ ПО СТОРОНАМ, А НЕ СВАЛЕНЫ В ОДИН СЛОВАРЬ.
+   *
+   * У обоих бойцов умения зовутся `k1..k3`, и плоская таблица означала, что
+   * цикл по сторонам ПЕРЕЗАПИСЫВАЕТ имена первой стороны именами второй.
+   * Разбор боя печатал игроку человеческое название умения ПРОТИВНИКА под
+   * его собственным `k1` — ровно тот дефект, ради которого функция и заведена,
+   * этажом выше.
+   *
+   * Общий словарь остаётся под ключом `all` для старых читателей и для
+   * четырёх захардкоженных имён, которые у обеих сторон значат одно и то же.
+   */
+  const base = { laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок' };
+  const out = { ...base, bySide: {} };
+  for (const slot of ['a', 'b']) {
+    const id = m[`${slot}_id`] ?? m[`${slot}Id`];
+    if (!id) continue;
+    const side = m[`${slot}_slot`] ?? m[`${slot}Slot`] ?? slot;
+    out.bySide[side] = { ...base };
+    const row = db.prepare('SELECT kit_json, kit_active FROM creature WHERE id = ?').get(id);
+    if (!row || !row.kit_active) continue;
+    let kit;
+    try { kit = JSON.parse(row.kit_json); } catch { continue; }
+    const built = compileKit(Array.isArray(kit) ? kit : []);
+    if (built.problems.length) continue;
+    for (const [name, def] of Object.entries(built.defs)) {
+      out.bySide[side][name] = readable(def);
+      /* Плоская запись остаётся только для имён, которых нет у второй
+         стороны; совпавшие `k1..k3` в ней больше не значат ничего, и клиент
+         обязан читать `bySide`. */
+      if (out[name] === undefined) out[name] = readable(def);
+    }
+  }
+  return out;
+}
+
+export function observationsOf(row, tries = null) {
+  /*
+   * ШКАЛА ПОКАЗЫВАЕТ ТО, ЧТО НА САМОМ ДЕЛЕ РЕШАЕТ, — БОИ ДО СЛЕДУЮЩЕЙ ПОПЫТКИ.
+   *
+   * ── чем она была и почему это не работало ─────────────────────────────────
+   *
+   * Она моделировала БЮДЖЕТ НАБЛЮДЕНИЙ: «заработано минус потрачено», где
+   * заработок — бои (поражение вдвое), а трата — принятые адаптации по десять.
+   * Красивая модель, которой в коде нет: `arena-loop.js` запускает адаптацию
+   * ПО СЧЁТЧИКУ БОЁВ (`fights % ADAPT_EVERY === 0`) и ни на какие наблюдения
+   * не смотрит.
+   *
+   * Расхождение модели с механикой давало ровно то, что даёт всякое такое
+   * расхождение, — вечную единицу. Заработок рос примерно полторы единицы за
+   * бой, трата — по десять за ПРИНЯТУЮ адаптацию, а принимается одна из
+   * двадцати. Замерено на живом существе: 1236 боёв, 73 попытки, 3 принято —
+   * шкала показывала «полно» с седьмого боя и до конца жизни, а панель итога
+   * после каждого поражения обещала «сейчас существо перепишет себя».
+   * Обещание, которое сбывается раз в двести боёв.
+   *
+   * Списывать по попыткам, а не по принятым, — половина правды: расхождение
+   * уменьшается, но остаётся, потому что модель всё равно не та.
+   *
+   * ── что она показывает теперь ─────────────────────────────────────────────
+   *
+   * Ровно условие запуска: сколько боёв прошло с последней попытки из
+   * `ADAPT_EVERY`. Это настоящий механизм, поэтому шкала не может разойтись с
+   * ним — она и есть он.
+   *
+   * Что при этом ЧЕСТНО ТЕРЯЕТСЯ: «поражение даёт вдвое больше материала»
+   * (§7.2а) шкалой больше не показывается, потому что механика этого не
+   * делает. Показывать неработающее правило хуже, чем не показывать
+   * работающее: первое — обещание, второе — умолчание.
+   *
+   * Библиотечные существа не адаптируются никогда: у них нет владельца, и
+   * переписывать им тактику не для кого. Для них шкала не «полная», а
+   * ОТСУТСТВУЮЩАЯ, и честный ответ — null.
+   */
+  if (row.is_library) return null;
+
+  const every = Number(process.env.AIRENA_ADAPT_EVERY || 10);
+  const done = Math.floor((row.fights || 0) / every) * every;
+  const have = Math.max(0, (row.fights || 0) - done);
+
+  return {
+    have,
+    need: every,
+    frac: every ? Math.min(1, have / every) : 0,
+    /* «Полно» = СЛЕДУЮЩИЙ бой запускает попытку. Не «вот-вот станет лучше»:
+       попытка принимается, только если выигрывает у старого, а это одна из
+       двадцати. Порог на единицу раньше кратного, а не ровно в нём: ровно в
+       кратном шкала стоит один тик и игрок её не видит. */
+    full: every > 0 && have >= every - 1,
+    /* Сколько раз уже пробовало — чтобы «ноль принятых» читалось как отбор,
+       а не как поломка. Считает вызывающий: это count(*) по таблице. */
+    tries: Number.isFinite(tries) ? tries : null,
+  };
 }
 
 /**
@@ -406,13 +966,27 @@ export function beatsFrom(log, m) {
    */
   const out = [];
   const name = (slot) => (slot === m.a_slot ? m.a_name : m.b_name);
-  const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned']);
+  const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned', 'landed']);
   for (const e of log) {
     if (!e || typeof e !== 'object' || !KEEP.has(e.type)) continue;
     const base = { t: e.t, who: name(e.who), type: e.type };
     if (e.type === 'say') out.push({ ...base, text: e.text });
     else if (e.type === 'damage') out.push({ ...base, type: 'hit', skill: e.skill, amount: e.amount });
-    else if (e.type === 'miss') out.push({ ...base, type: e.reason === 'cover' ? 'blocked' : 'miss', skill: e.skill });
+    /*
+     * Причина промаха НЕ ВЫБРАСЫВАЕТСЯ. Раньше в тип переводилось только
+     * укрытие, а всё остальное схлопывалось в «мимо» — включая `airborne`,
+     * то есть единственное свидетельство, что прыжок сработал. Экран «что оно
+     * думало» — место, куда игрок приходит именно за объяснением, и там
+     * места сколько угодно.
+     */
+    else if (e.type === 'miss') {
+      out.push({
+        ...base,
+        type: e.reason === 'cover' ? 'blocked' : (e.reason === 'airborne' ? 'dodged' : 'miss'),
+        skill: e.skill,
+        reason: e.reason ?? null,
+      });
+    }
     else out.push({ ...base, skill: e.skill ?? null, reason: e.reason ?? null });
   }
   /* Реплики держатся всегда: их мало, и они — то, ради чего экран есть.

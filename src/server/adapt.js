@@ -21,8 +21,8 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { constantsVersion } from '../core/version.js';
 import { runIsolated } from './sandbox/index.js';
+import { kitOf, sizeOf } from './arena-loop.js';
 
 /** Сколько боёв на сторону в проверке. 100 × 70 мс ≈ 7 с — по цене ноль. */
 export const DUEL_ROUNDS = 100;
@@ -96,8 +96,10 @@ export function twist(source, knob, factor) {
 
 /** Панель соперников: одни и те же мозги, одни и те же сиды, для обоих. */
 export function panel(db, creature, size = 6) {
+  /* kit_json и kit_active — чтобы соперник на панели дрался СВОИМ набором,
+     как в настоящем бою, а не четырьмя захардкоженными умениями. */
   const rows = db.prepare(`
-    SELECT id, brain_source, archetype FROM creature
+    SELECT id, brain_source, archetype, kit_json, kit_active, size FROM creature
     WHERE state='active' AND brain_source IS NOT NULL AND id != ?
     ORDER BY abs(rating - ?) ASC LIMIT ?
   `).all(creature.id, creature.rating, size);
@@ -107,8 +109,34 @@ export function panel(db, creature, size = 6) {
 /**
  * Счёт мозга на панели. Один и тот же набор (соперник, сид) для всех
  * кандидатов — иначе меряется удача расписания, а не мозг.
+ *
+ * ── НАБОРЫ ОБЯЗАТЕЛЬНЫ, И ВОТ ПОЧЕМУ ──────────────────────────────────────
+ *
+ * `runIsolated` без `kits` ставит бойцам ЧЕТЫРЕ ЗАХАРДКОЖЕННЫХ умения —
+ * `laser`, `smash`, `blink`, `charge`, — а не набор существа. То есть
+ * адаптация переписывала мозг по боям, которые существо не дерётся: мозг,
+ * написанный под `k1..k3` из грамматики, в этих прогонах своих умений не
+ * видел вовсе и не мог их применить.
+ *
+ * Это не мелочь. Отбор кандидатов, дуэль со старым мозгом и решение «принять
+ * или нет» — всё считалось в другой игре. Замерено: единственное существо
+ * игрока с набором из грамматики имело 74 попытки адаптации и 3 принятых,
+ * и весь этот отбор мерен не тем.
+ *
+ * Наборы приходят снаружи, а не собираются здесь: собрать их — значит
+ * прочитать `kit_json` и скомпилировать, то есть повторить `kitOf` из
+ * `arena-loop.js`. Второе место, где набор превращается в умения, однажды
+ * разойдётся с первым.
  */
-export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS) {
+/**
+ * @param {{[slot: string]: number|((o: object) => number)}|null} sizes размеры
+ *   бойцов. Размер меняет здоровье, скорость, урон и КОЛЛАЙДЕР (`statsFor`),
+ *   то есть это такая же часть входа матча, как набор. Без него адаптация
+ *   отбирает мозг для существа другого телосложения: замерено, что один и тот
+ *   же набор против гантлета даёт 100/100/0/100/100 при размере 1.0 и
+ *   50/50/25/100/25 при 0.75 — это разные игры, а не шум.
+ */
+export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS, kits = null, sizes = null) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
   const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
   const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
@@ -122,7 +150,17 @@ export async function score(source, archetype, opponents, rounds = DUEL_ROUNDS) 
     const seeds = Array.from({ length: perOpponent }, (_, i) => 1000 + (oi * perOpponent + i) * 7919);
     let out;
     try {
-      out = await runIsolated({ [mySlot]: source, [oppSlot]: o.brain_source }, { seeds });
+      const pair = kits && (kits[mySlot] || kits[oppSlot])
+        ? { [mySlot]: kits[mySlot] || null, [oppSlot]: kits[oppSlot] ? kits[oppSlot](o) : null }
+        : null;
+      const sz = sizes
+        ? {
+          [mySlot]: typeof sizes[mySlot] === 'function' ? sizes[mySlot](o) : sizes[mySlot],
+          [oppSlot]: typeof sizes[oppSlot] === 'function' ? sizes[oppSlot](o) : sizes[oppSlot],
+        }
+        : null;
+      out = await runIsolated({ [mySlot]: source, [oppSlot]: o.brain_source },
+        { seeds, ...(pair ? { kits: pair } : {}), ...(sz ? { sizes: sz } : {}) });
     } catch (e) {
       /* Кандидат, который не запускается, — не «ноль побед», а брак: вернуть
          ноль значило бы сравнить его с действующим по силе, а сравнивать
@@ -158,7 +196,22 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   const opponents = panel(db, c);
   if (!opponents.length) return null;
 
-  const base = await score(c.brain_source, c.archetype, opponents, rounds);
+  /*
+   * НАБОРЫ — ТЕ ЖЕ, ЧТО В НАСТОЯЩЕМ БОЮ.
+   *
+   * Без них адаптация переписывала мозг по боям с четырьмя захардкоженными
+   * умениями вместо его собственных: то есть отбирала лучший мозг для другой
+   * игры. `kitOf` — та же функция, которой набор превращается в умения перед
+   * настоящим матчем, поэтому второго места, где это делается, не появляется.
+   */
+  const mySlot = c.archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+  const kits = { [mySlot]: kitOf(c), [oppSlot]: (o) => kitOf(o) };
+  /* Размер — по той же причине, что и набор, и той же формой: своё число и
+     функция от соперника. */
+  const sizes = { [mySlot]: sizeOf(c), [oppSlot]: (o) => sizeOf(o) };
+
+  const base = await score(c.brain_source, c.archetype, opponents, rounds, kits, sizes);
   if (base.broken) return null;
 
   /* Три кандидата за заход: один порог, три множителя. Больше — дороже по CPU
@@ -170,7 +223,7 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   for (const f of factors) {
     const cand = twist(c.brain_source, knob, f);
     if (!cand) continue;
-    const s = await score(cand, c.archetype, opponents, rounds);
+    const s = await score(cand, c.archetype, opponents, rounds, kits, sizes);
     if (s.broken) continue;
     if (!best || s.wins > best.s.wins) best = { source: cand, s, f };
   }
@@ -178,9 +231,36 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
 
   const accepted = best.s.wins >= base.wins + MARGIN;
   const id = `a_${randomUUID().slice(0, 12)}`;
+  /*
+   * СВОДКА НЕ НАЗЫВАЕТ КОНСТАНТ МОЗГА.
+   *
+   * Здесь стояло «Порог 20 → 16.4: 34 из 96 против 24 у прежнего». Число 20 —
+   * это ЛИТЕРАЛ ИЗ ИСХОДНИКА МОЗГА, а `GET /api/creature/:id` отдаёт журнал.
+   * F11 и N19 требуют, чтобы исходник мозга не покидал сервер, и формально он
+   * не покидал — по одной константе за адаптацию. В мозге их полтора-два
+   * десятка (§7.2а), адаптаций до двенадцати в сутки: за несколько дней
+   * снимается почти вся числовая часть чужого мозга, причём руками самой игры.
+   *
+   * Ценность строки при этом не в числе, а в СВИДЕТЕЛЬСТВЕ: сколько побед из
+   * скольких против прежнего. Оно остаётся полностью. Уходит абсолютная
+   * величина, остаётся направление и то, насколько сдвинули, — этого хватает,
+   * чтобы понять, что существо стало осторожнее или решительнее, и не хватает,
+   * чтобы восстановить мозг.
+   */
+  const was = Number(knob.value);
+  const now2 = Number(readBack(best.source, knob));
+  const pct = Number.isFinite(was) && Number.isFinite(now2) && was !== 0
+    ? Math.round(Math.abs(now2 - was) / Math.abs(was) * 100)
+    : null;
+  const dir = now2 > was ? 'сдержаннее' : 'решительнее';
+  const счёт = `${best.s.wins} из ${best.s.rounds} против ${base.wins}`;
   const summary = accepted
-    ? `Порог ${knob.value} → ${readBack(best.source, knob)}: ${best.s.wins} из ${best.s.rounds} против ${base.wins} у прежнего. Принято.`
-    : `Пробовала порог ${knob.value} → ${readBack(best.source, knob)}: ${best.s.wins} из ${best.s.rounds} против ${base.wins}. Не лучше — оставила как было.`;
+    ? (pct === null
+      ? `Подправила порог: ${счёт} у прежнего. Принято.`
+      : `Сдвинула порог на ${pct}%, стала ${dir}: ${счёт} у прежнего. Принято.`)
+    : (pct === null
+      ? `Пробовала подправить порог: ${счёт}. Не лучше — оставила как было.`
+      : `Пробовала сдвинуть порог на ${pct}% и стать ${dir}: ${счёт}. Не лучше — оставила как было.`);
 
   db.prepare(`INSERT INTO adaptation (id, creature_id, at, kind, summary, before_json, after_json,
               score_before, score_after, accepted) VALUES (?,?,?,?,?,?,?,?,?,?)`).run(
@@ -190,9 +270,24 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   );
 
   if (accepted) {
+    /*
+     * `constants_version` НЕ ТРОГАЕТСЯ — D10 п.3 буквально.
+     *
+     * Здесь стояло `constants_version = constantsVersion()`, то есть каждая
+     * принятая адаптация объявляла мозг написанным против ТЕКУЩИХ констант.
+     * Но адаптация не пишет мозг заново — она двигает один порог. Мозг
+     * по-прежнему написан против тех чисел, против которых его писала модель,
+     * и поле существует ровно для того, чтобы это сказать.
+     *
+     * Цена ошибки видна через границу сезона: адаптация идёт раз в десять
+     * боёв, то есть через час-другой после смены констант ВСЕ существа
+     * игроков молча заявляли «текущая версия». `checkstale` смотрит только
+     * каталог `brains/` на диске и в базу не заглядывает — то есть дрейф не
+     * увидел бы и релизный гейт.
+     */
     db.prepare(`UPDATE creature SET brain_source = ?, adaptations = adaptations + 1,
-                constants_version = ?, updated_at = ? WHERE id = ?`)
-      .run(best.source, constantsVersion(), now(), creatureId);
+                updated_at = ? WHERE id = ?`)
+      .run(best.source, now(), creatureId);
   }
   return { id, accepted, summary, before: base.wins, after: best.s.wins, rounds: best.s.rounds };
 }
@@ -200,13 +295,19 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
 const readBack = (src, knob) => src.slice(knob.at).match(/^\d+(?:\.\d+)?/)?.[0] ?? '?';
 
 /** A/B двух мозгов на одной панели — используется рефактором (D4). */
-export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS } = {}) {
-  const any = db.prepare(`SELECT id, brain_source, rating FROM creature
+export async function duelBrains(db, candidateSource, incumbentSource, archetype, { rounds = DUEL_ROUNDS, kit = null, size = 1 } = {}) {
+  const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, size FROM creature
     WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
   const opponents = any.filter((r) => r.brain_source);
+  /* Дуэль идёт теми же наборами, что настоящий бой: иначе рефактор
+     сравнивает два мозга в игре, в которую ни один из них не играет. */
+  const mySlot = archetype === 'gorilla' ? 'gorilla' : 'octopus';
+  const oppSlot = mySlot === 'octopus' ? 'gorilla' : 'octopus';
+  const kits = { [mySlot]: kit, [oppSlot]: (o) => kitOf(o) };
+  const sizes = { [mySlot]: size, [oppSlot]: (o) => sizeOf(o) };
   const [a, b] = await Promise.all([
-    score(candidateSource, archetype, opponents, rounds),
-    score(incumbentSource, archetype, opponents, rounds),
+    score(candidateSource, archetype, opponents, rounds, kits, sizes),
+    score(incumbentSource, archetype, opponents, rounds, kits, sizes),
   ]);
   return { candidate: a.wins, incumbent: b.wins, rounds: Math.min(a.rounds, b.rounds) || rounds };
 }

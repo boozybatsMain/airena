@@ -56,6 +56,60 @@ export class Router {
   }
 }
 
+/**
+ * Защита от запроса, отправленного чужой страницей (CSRF).
+ *
+ * ── почему она нужна именно здесь и именно такая ───────────────────────────
+ *
+ * Кука сессии обязана быть `SameSite=None; Secure` — игра живёт внутри iframe
+ * GENEX (F8), и без этого её просто не пришлют. Но `SameSite=None` означает
+ * буквально: браузер приложит эту куку к запросу С ЛЮБОЙ страницы. Значит
+ * любая страница, которую откроет игрок, может от его имени переписать набор
+ * умений или сжечь единственное за жизнь бесплатное существо (F7) — оно
+ * невосстановимо.
+ *
+ * Ни Origin, ни Referer, ни токена не проверялось нигде: замерено запросом с
+ * чужим `Origin` и куки игрока — набор переписывался, ответ `{"ok":true}`.
+ *
+ * Два предохранителя, и оба нужны:
+ *
+ *   ORIGIN обязан совпасть с хостом запроса. Внутри iframe запросы идут
+ *     от документа игры к её же серверу, поэтому Origin — наш. Чужая
+ *     страница не может его подделать: заголовок ставит браузер.
+ *
+ *   ТЕЛО обязано быть `application/json`. Это не про разбор, а про то, что
+ *     такой Content-Type нельзя послать «простым» запросом: браузер сначала
+ *     спросит разрешения preflight-ом, а его мы не дадим. Форма, отправленная
+ *     с чужой страницы, умеет только три типа, и json среди них нет.
+ *
+ * Отдельно от куки: заголовок `origin` браузер шлёт на все POST. Его
+ * ОТСУТСТВИЕ значит «запрос не из браузера» — curl, тест, наш же инструмент.
+ * Такие пропускаем: они не носят чужую куку, потому что её ставит браузер.
+ * Пропускаем ровно тогда, когда куки в запросе нет; с кукой и без Origin —
+ * отказ, потому что это уже похоже на попытку обойти проверку.
+ */
+export function crossSiteRefused(req) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return null;
+
+  const origin = req.headers.origin;
+  const host = req.headers.host;
+  const hasCookie = !!req.headers.cookie;
+
+  if (origin) {
+    let sameHost = false;
+    try { sameHost = new URL(origin).host === host; } catch { sameHost = false; }
+    if (!sameHost) return { code: 'cross_site', message: 'запрос пришёл с чужой страницы' };
+  } else if (hasCookie) {
+    return { code: 'no_origin', message: 'запрос без источника, но с сессией' };
+  }
+
+  const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (type && type !== 'application/json') {
+    return { code: 'bad_type', message: 'тело должно быть application/json' };
+  }
+  return null;
+}
+
 export function json(res, value, status = 200, headers = {}) {
   const body = JSON.stringify(value);
   res.writeHead(status, {

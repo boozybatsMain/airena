@@ -23,14 +23,49 @@ import { analyse } from '../src/server/sandbox/analyse.js';
 import { instrument } from '../src/server/sandbox/instrument.js';
 import { admit, runIsolated } from '../src/server/sandbox/index.js';
 import { PRELUDE } from '../src/brain/prelude.js';
+import { compileKit } from '../src/skills/compile.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VERBOSE = process.argv.includes('--verbose');
 
 /** Стены, каждая из которых обязана держать одна. */
-const WALL = { ANALYSE: 'анализ', ISOLATE: 'изолят', FUEL: 'топливо', TIMEOUT: 'таймаут' };
+/*
+ * Стен теперь пять, и пятая появилась не от избытка усердия.
+ *
+ * GUARD — это переписывание доступа по вычисляемому ключу. Отдаётся она как
+ * `sim`, и это точное слово: проверка живёт ВНУТРИ мозга, вставленная в его
+ * же код, и её отказ приходит наружу обычным падением мысли — тем же путём,
+ * что и любая ошибка самого мозга. Отдельной стены снаружи у неё нет, и в
+ * этом её сила: обойти её можно только не исполняя собственный код.
+ * (`instrument.js`). Она нужна там, где АНАЛИЗ бессилен по своей природе:
+ * имени `constructor` в исходнике может не быть вовсе, оно собирается на
+ * исполнении из двух половинок. Обход дерева не видит того, чего в дереве
+ * нет, и никакое усиление списка имён это не чинит.
+ */
+const WALL = { ANALYSE: 'анализ', GUARD: 'sim', ISOLATE: 'изолят', FUEL: 'топливо', TIMEOUT: 'таймаут' };
 
 const ATTACKS = [
+  /* Собранное имя: `constructor` в исходнике не встречается ни разу, поэтому
+     разбор имён его не видит и увидеть не может. Ловит переписывание доступа
+     по вычисляемому ключу (`instrument.js`). Если этот тест когда-нибудь
+     покажет «прошло», это значит, что мозг получил конструктор Function, то
+     есть выполнение произвольного кода прямо в воркере. */
+  { wall: WALL.GUARD, name: 'конструктор через собранное имя',
+    src: `function think(p,api){ const k='const'+'ructor'; const F=({})[k][k]; F('return process')().exit(0); }` },
+  { wall: WALL.GUARD, name: 'конструктор через строковый литерал',
+    src: `function think(p,api){ const F=({})['constructor']['constructor']; F('return process')().exit(0); }` },
+  /* Отражение: 'constructor' здесь АРГУМЕНТ вызова, а не имя свойства, и
+     обе предыдущие стены его не видят. Держит подмена самого `Object` шимом
+     без отражения — в обёртке воркера. Если это когда-нибудь покажет
+     «прошла», значит мозг получил настоящий `process` на нашем сервере. */
+  { wall: WALL.GUARD, name: 'конструктор через отражение',
+    src: `function think(p,api){ const D=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Object),'constructor'); D.value('return process')().exit(0); }` },
+  /* Этот вариант ловится РАНЬШЕ — статическим разбором: имя `constructor`
+     здесь написано как свойство, и список имён его видит. Держат обе стены,
+     ожидаем первую. */
+  { wall: WALL.ANALYSE, name: 'прототип функции через отражение',
+    src: `function think(p,api){ const F=Object.getPrototypeOf(function(){}).constructor; F('return process')().exit(0); }` },
+
   { wall: WALL.ANALYSE, name: 'прямой eval',
     src: `function think(p,api){ eval('1+1'); }` },
   { wall: WALL.ANALYSE, name: 'Function через constructor',
@@ -113,7 +148,20 @@ for (const a of ATTACKS) {
   } else {
     /* Анализ пропустил — значит держать обязана следующая стена. */
     try {
-      const r = await runIsolated({ octopus: a.src, gorilla: sparring }, { seed: 5, timeoutMs: 8000 });
+      const r = await runIsolated({ octopus: a.src, gorilla: sparring }, {
+        seed: 5,
+        /*
+         * Щедро — потому что здесь важно НЕ «за сколько», а «какой стеной».
+         *
+         * При 8 секундах на загруженной машине первым срабатывал таймаут, и
+         * девять атак из двадцати пяти отчитывались как «поймана другой
+         * стеной»: гейт мерил соседей по процессору, а не устройство защиты.
+         * Таймаут остаётся последним рубежом — от атаки, которую не держит
+         * ничто, — и его порог должен быть заведомо недостижим для тех, у
+         * кого есть своя стена.
+         */
+        timeoutMs: 60000,
+      });
       const fuel = r.fuel?.octopus;
       const faults = r.result?.octopus?.faults ?? 0;
       if (fuel?.exhausted) { verdict = 'топливо'; detail = `потрачено ${fuel.spent} шагов`; }
@@ -125,7 +173,13 @@ for (const a of ATTACKS) {
     }
   }
 
-  const wanted = a.expect || ({ [WALL.ANALYSE]: 'анализ', [WALL.FUEL]: 'топливо', [WALL.ISOLATE]: 'изолят', [WALL.TIMEOUT]: 'таймаут' })[a.wall];
+  const wanted = a.expect || ({
+    [WALL.ANALYSE]: 'анализ', [WALL.FUEL]: 'топливо', [WALL.ISOLATE]: 'изолят',
+    [WALL.TIMEOUT]: 'таймаут',
+    /* Проверка доступа по ключу отдаётся падением мысли — она живёт внутри
+       мозга, и другого пути наружу у неё нет. */
+    [WALL.GUARD]: 'sim',
+  })[a.wall];
   const ok = verdict !== 'ПРОШЛА';
   const exact = verdict === wanted;
   if (!ok) escaped++;
@@ -143,7 +197,7 @@ console.log(`  контроль (честный мозг)              —      
 if (!ctl.ok) console.log(`      ${JSON.stringify(ctl.problems).slice(0, 200)}`);
 
 /* И все эталонные мозги репозитория — тоже контроль, только большой. */
-let refOk = 0; let refBad = 0;
+let refOk = 0; let refBad = 0; const refFiles = [];
 for (const tag of readdirSync(join(ROOT, 'brains'))) {
   const dir = join(ROOT, 'brains', tag);
   if (!statSync(dir).isDirectory()) continue;
@@ -151,11 +205,87 @@ for (const tag of readdirSync(join(ROOT, 'brains'))) {
     const f = join(dir, `${slot}.js`);
     if (!existsSync(f)) continue;
     const r = analyse(readFileSync(f, 'utf8'));
-    if (r.ok) refOk++;
+    if (r.ok) { refOk++; refFiles.push([`${tag}/${slot}`, slot, f]); }
     else { refBad++; console.log(`  ✗ эталон ${tag}/${slot} отвергнут: ${r.problems[0].message.slice(0, 90)}`); }
   }
 }
-console.log(`  эталонные мозги репозитория          —          ${refBad === 0 ? `✓ ${refOk} из ${refOk}` : `✗ ${refBad} отвергнуто`}`);
+console.log(`  эталонные мозги репозитория          —          ${refBad === 0 ? `✓ ${refOk} из ${refOk} (разбор)` : `✗ ${refBad} отвергнуто`}`);
+
+/*
+ * ПОЛНЫЙ ДОПУСК НА ВЫБОРКЕ ЭТАЛОНОВ.
+ *
+ * Строка выше проверяет только РАЗБОР — то есть первую стену из пяти. Пока
+ * стен было четыре и все статические, этого хватало. Пятая («мозг обязан
+ * что-то делать») работает боем, и её ложное срабатывание отвергало бы
+ * честный мозг молча: он бы просто перестал создаваться.
+ *
+ * Гонять боями все шестьдесят один — минуты; берём выборку, но берём её
+ * ДЕТЕРМИНИРОВАННО (каждый восьмой), чтобы гейт не гулял от прогона к
+ * прогону.
+ */
+/* `probe-*` — нарочно плохие мозги: они существуют, чтобы мерить ими, а не
+   чтобы жить в игре. Отказ допуска для них — правильный ответ, но не повод
+   ронять гейт. */
+const sample = refFiles.filter(([n]) => !n.startsWith('probe-')).filter((_, i) => i % 8 === 0);
+let admitOk = 0; const admitNew = []; const admitOld = [];
+/*
+ * Проверяются НОВЫЕ стены отдельно от старых, и это не поблажка.
+ *
+ * Стены «мозг бездействует» появились последними, и вопрос к выборке ровно
+ * один: не отвергают ли они честный мозг. Отказ по старым стенам — например
+ * `faults` у мозга, который падает на четверти мыслей, — это они делают свою
+ * работу, и мозг такой в репозитории действительно есть. Смешивать два ответа
+ * значит либо ослабить новую проверку, либо объявить регрессией то, что было
+ * верно годом раньше.
+ */
+const NEW_WALLS = new Set(['idle', 'never_uses', 'never_hits']);
+for (const [name, slot, f] of sample) {
+  const other = slot === 'octopus' ? 'gorilla' : 'octopus';
+  const spar = readFileSync(join(ROOT, `brains/kit-stub/${other}.js`), 'utf8');
+  const r = await admit(readFileSync(f, 'utf8'), slot, { sparring: spar });
+  if (r.ok) admitOk++;
+  else if (NEW_WALLS.has(r.problems[0].code)) admitNew.push(`${name}: ${r.problems[0].code}`);
+  else admitOld.push(`${name}: ${r.problems[0].code}`);
+}
+console.log(`  выборка эталонов: новые стены        —          ${admitNew.length === 0
+  ? `✓ ни один из ${sample.length} не отвергнут ими` : `✗ ${admitNew.join(', ')}`}`);
+if (admitOld.length) {
+  console.log(`      (старыми стенами отвергнуты, это их работа: ${admitOld.join(', ')})`);
+}
+if (admitNew.length) process.exitCode = 1;
+
+/*
+ * И обратный контроль: мозг, который НИЧЕГО не делает, обязан быть отвергнут.
+ *
+ * Он проходит все четыре старые стены — не падает, не зациклен, никуда не
+ * лезет. Именно так три существа, собранные продуктовым путём, доехали до
+ * библиотеки и дали ноль побед из 1754 боёв.
+ */
+const idleBrains = [
+  ['мозг, который ничего не делает', 'function think(p, api) { }'],
+  ['мозг, который только смотрит', 'function think(p, api) { if (p.enemy) api.faceAt(p.enemy.x, p.enemy.z); }'],
+  ['мозг, который ходит и не бьёт', 'function think(p, api) { if (p.enemy) { api.faceAt(p.enemy.x, p.enemy.z); api.moveTo(p.enemy.x, p.enemy.z); } }'],
+];
+/*
+ * Набор ВЫДАЁТСЯ — как в проде.
+ *
+ * Без набора «ничего не применил» законно: `kit-stub` читает умения из
+ * перцепции, и без них ему нечего применять. Стена `never_uses` намеренно
+ * срабатывает только когда набор выдан, поэтому и проверять её надо так же.
+ */
+const idleKit = compileKit([
+  { delivery: 'bolt', effects: ['damage'], element: 'kinetic' },
+  { delivery: 'cone', effects: ['damage'], element: 'kinetic' },
+  { delivery: 'self', effects: ['heal'], element: 'frost' },
+]).defs;
+const slipped = [];
+for (const [name, src] of idleBrains) {
+  const r = await admit(src, 'octopus', { sparring, kit: idleKit });
+  if (r.ok) slipped.push(name);
+}
+console.log(`  бездействующий мозг отвергается      —          ${slipped.length === 0
+  ? `✓ ${idleBrains.length} из ${idleBrains.length}` : `✗ ПРОШЛИ: ${slipped.join(', ')}`}`);
+if (slipped.length) process.exitCode = 1;
 
 /* Прелюдия и список разрешённых имён обязаны совпадать. */
 const preludeNames = [...PRELUDE.matchAll(/^const ([A-Za-z_$][\w$]*)\s*=/gm)].map((m) => m[1]);

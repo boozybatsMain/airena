@@ -47,6 +47,10 @@ export function card(row, { viewerId = null } = {}) {
     state: row.state,
     isLibrary: !!row.is_library,
     isMine: viewerId != null && row.owner_id === viewerId,
+    size: row.size ?? 1,
+    /* Что пошло не так при рождении. Наружу едет всем: «носит тело архетипа»
+       — это про то, что зритель видит на арене, а не тайна владельца. */
+    birthNote: (() => { try { return JSON.parse(row.birth_note || 'null'); } catch { return null; } })(),
     hasBrain: !!row.brain_source,
     /* Дерётся ли существо своим набором или эталонным. Экран обязан это
        сказать: набор, которым существо не пользуется, — это ложь в самом
@@ -90,17 +94,53 @@ export function create(db, {
   ownerId, name, archetype, bodyRef, kit, brainSource, brainModel,
   constantsVersion, prompt, unfit = [], isLibrary = false, season = 1,
   rating = 1200, tacticsCard = null, kitActive = false, now = Date.now(),
+  /* Тело: исходник модели и его обезвреженный вариант. Оба или ни одного —
+     `body_safe` без `body_source` означало бы, что показать игроку его
+     собственное тело мы уже не можем. */
+  bodySource = null, bodySafe = null, bodyDraws = null,
+  /* VFX-IR: декорация умений, написанная моделью (§9.2). Пишется только
+     проверенной — `canonicalIr` уже отсеяла всё, что не прошло грамматику
+     частей, — и null здесь законен: read-kit рисуется в любом случае. */
+  vfxIr = null,
+  /* Что пошло не так при рождении (§5.1): подмена модели, несобравшееся тело.
+     Пустой массив и null — одно и то же: «всё как заказано». */
+  birthNote = null,
+  /* Размер: 0.75…1.5, единица — как раньше. Влияет на hp, радиус, скорость и
+     массу (`statsFor`), поэтому это вход матча, а не украшение. */
+  size = null,
 }) {
   const id = `c_${randomUUID().slice(0, 12)}`;
+  /*
+   * ССЫЛКА НА СВОЁ ТЕЛО СТАВИТСЯ ЗДЕСЬ — И ТОЛЬКО ЗДЕСЬ.
+   *
+   * Конвейер возвращает `bodyRef: archetype` и оставляет комментарий, что
+   * «`gen:` подставит слой хранения, когда у существа появится id». Слой
+   * хранения этого не делал: он писал `bodyRef` как пришёл. В результате
+   * существо со своим телом на 37 КБ, которое сервер исправно отдавал по
+   * `/api/body/:id`, зритель рисовал СТОКОВЫМ телом архетипа — потому что
+   * `body_ref` говорил `octopus`.
+   *
+   * Снаружи это выглядело так: игрок сделал существо, а на арене оно
+   * неотличимо от библиотечных. Ровно это и было первым, что он сказал.
+   *
+   * Условие — наличие `bodySafe`, а не `bodySource`: зритель получает
+   * проверенную колонку, и если её нет, показывать нечего и ссылка обязана
+   * остаться архетипом (он же и запасное тело).
+   */
+  const refToStore = bodySafe ? `gen:${id}` : bodyRef;
   db.prepare(`INSERT INTO creature
     (id, owner_id, name, body_ref, archetype, kit_json, brain_source, brain_model,
      constants_version, prompt, unfit_json, rating, peak_rating, tactics_card,
-     is_library, created_at, updated_at, season, kit_active)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-    id, ownerId ?? null, name, bodyRef, archetype, JSON.stringify(kit),
+     is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    id, ownerId ?? null, name, refToStore, archetype, JSON.stringify(kit),
     brainSource ?? null, brainModel ?? null, constantsVersion, prompt ?? null,
     JSON.stringify(unfit), rating, rating, tacticsCard,
     isLibrary ? 1 : 0, now, now, season, kitActive ? 1 : 0,
+    bodySafe ? bodySource : null, bodySafe || null, bodySafe ? bodyDraws : null,
+    vfxIr ? JSON.stringify(vfxIr) : null,
+    birthNote && birthNote.length ? JSON.stringify(birthNote) : null,
+    Number.isFinite(size) ? size : null,
   );
   return db.prepare('SELECT * FROM creature WHERE id = ?').get(id);
 }

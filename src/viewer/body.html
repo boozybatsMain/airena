@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>тело существа — осмотр</title>
+<!--
+  ОСМОТР ТЕЛА, дев-страница.
+
+  Зачем она есть. Тело — единственная часть существа, которую нельзя проверить
+  ни гейтом, ни числом: `checkbody` доказывает, что оно безопасно и умещается
+  в бюджет, `body.js` — что оно шевелится во всех одиннадцати позах, и ни один
+  из них не отвечает на вопрос «а получился ли коршун». Ответить на него может
+  только глаз, а до этой страницы посмотреть на тело можно было единственным
+  способом: дождаться, пока существо выйдет на арену.
+
+  В продуктовый бандл не входит: `tools/checkscope.mjs` обходит бандл от
+  страницы игрока, а сюда ведёт только дев-сервер.
+
+    /body.html?id=<creature id>       тело существа из базы
+    /body.html?ref=octopus            стоковое тело архетипа
+    /body.html?turn=1                 медленный оборот вместо статики
+    /body.html?pose=jump&phase=0.5    поза из контракта анимации
+-->
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.webgpu.js",
+  "three/webgpu": "/vendor/three.webgpu.js",
+  "three/tsl": "/vendor/three.tsl.js",
+  "three/addons/": "/vendor-addons/"
+} }
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #3a4350; color: #f2f5f9;
+    font: 12px/1.5 ui-monospace, monospace; }
+  #hud { position: fixed; left: 12px; top: 10px; z-index: 5; white-space: pre;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+  #err { position: fixed; left: 12px; bottom: 10px; color: #ff8a7a; max-width: 70vw; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="hud">загрузка…</div>
+<div id="err"></div>
+<script type="module">
+import * as THREE from 'three';
+import * as TSL from 'three/tsl';
+import { buildBody } from './loadbody.js';
+
+const p = new URLSearchParams(location.search);
+const hud = document.getElementById('hud');
+const errEl = document.getElementById('err');
+const say = (s) => { hud.textContent = s; };
+const oops = (s) => { errEl.textContent = s; };
+
+const renderer = new THREE.WebGPURenderer({ antialias: true });
+await renderer.init();
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+/* Фон СРЕДНЕ-СЕРЫЙ, а не тёмный. Дом-стиль тел — «костяная скорлупа, тёмная
+   набитая машинерия» (`DEFAULT_STYLE`), и на чёрном тёмная половина тела
+   пропадает так же, как светлая пропадала бы на белой арене. Серый показывает
+   обе. */
+scene.background = new THREE.Color(0x3a4350);
+scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x4a5462, 2.0));
+const key = new THREE.DirectionalLight(0xfff4e0, 2.8);
+key.position.set(6, 9, 5);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fa8ff, 1.1);
+rim.position.set(-7, 4, -6);
+scene.add(rim);
+
+/* Пол — тёмная сетка, а не белая арена: здесь смотрят силуэт, и белый фон
+   съедает тёмные части тела ровно так же, как в бою съедал бы светлые. */
+const grid = new THREE.GridHelper(20, 20, 0x59647a, 0x49535f);
+scene.add(grid);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 200);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const id = p.get('id');
+const ref = p.get('ref') || 'octopus';
+let source = null;
+try {
+  const url = id ? `/api/body/${id}` : `/bodies/${ref}.js`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} → ${res.status}`);
+  source = await res.text();
+} catch (e) { oops(`исходник не забрать: ${e.message}`); }
+
+let root = null;
+if (source) {
+  try {
+    root = buildBody(THREE, TSL, source, { trusted: false });
+    scene.add(root);
+  } catch (e) { oops(`тело не собралось: ${e.message}`); }
+}
+
+const box = root ? new THREE.Box3().setFromObject(root) : null;
+const size = box ? box.getSize(new THREE.Vector3()) : new THREE.Vector3(2, 2, 2);
+const mid = box ? box.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+/*
+ * РАМКА СЧИТАЕТСЯ ПО ОБОИМ ПОЛЯМ ЗРЕНИЯ, а не по одному.
+ *
+ * Первая версия делила радиус описанной сферы на тангенс ВЕРТИКАЛЬНОГО поля.
+ * У крылатого тела размах девять метров при росте два: по вертикали оно
+ * маленькое, по горизонтали огромное — и камера, отставленная по вертикали,
+ * оставляла существо четвертью кадра. Ограничивает та ось, которой не
+ * хватает раньше, и посчитать надо обе.
+ */
+function framingDistance(cam) {
+  const vHalf = (cam.fov * Math.PI) / 360;
+  const hHalf = Math.atan(Math.tan(vHalf) * cam.aspect);
+  const byHeight = (size.y / 2) / Math.tan(vHalf);
+  const byWidth = (Math.max(size.x, size.z) / 2) / Math.tan(hHalf);
+  return Math.max(byHeight, byWidth) * 1.35 + 0.5;
+}
+let reach = framingDistance(camera);
+addEventListener('resize', () => { reach = framingDistance(camera); });
+
+/*
+ * ЧЕТЫРЕ РАКУРСА, А НЕ ОДИН.
+ *
+ * Основатель просил «несколько кадров с разных ракурсов», и это не каприз:
+ * сгенерированное тело бывает убедительным ровно с одной стороны — модель
+ * лепит фасад. Три четверти спереди, профиль, вид сзади и сверху ловят это
+ * за один проход. Номер ракурса берётся из `?view=`, чтобы снимок можно было
+ * повторить, а не ловить.
+ */
+const VIEWS = [
+  ['три четверти', 0.9, 0.55],
+  ['профиль', Math.PI / 2, 0.15],
+  ['сзади', Math.PI, 0.4],
+  ['сверху', 0.9, 1.15],
+];
+let view = Number(p.get('view') || 0) % VIEWS.length;
+const turn = p.get('turn') === '1';
+
+const pose = p.get('pose');
+const phase = Number(p.get('phase') || 0);
+
+let t = 0;
+renderer.setAnimationLoop(() => {
+  t += 1 / 60;
+  const [label, baseAngle, height] = VIEWS[view];
+  const a = turn ? t * 0.35 : baseAngle;
+  camera.position.set(
+    mid.x + Math.sin(a) * reach,
+    mid.y + size.y * height + 0.4,
+    mid.z + Math.cos(a) * reach,
+  );
+  camera.lookAt(mid);
+
+  if (root && typeof root.userData.pose === 'function') {
+    try {
+      root.userData.pose({
+        t, speed: 0, grounded: true,
+        action: pose || null, phase: pose ? phase : 0,
+      });
+    } catch (e) { oops(`поза бросила: ${e.message}`); }
+  }
+  renderer.render(scene, camera);
+  say([
+    id ? `существо ${id}` : `стоковое тело ${ref}`,
+    `ракурс ${view + 1}/4 — ${label}${turn ? ' (оборот)' : ''}`,
+    box ? `габарит ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)} м` : 'габарита нет',
+    pose ? `поза ${pose} @ ${phase}` : 'поза покоя',
+    'клик — следующий ракурс',
+  ].join('\n'));
+});
+
+addEventListener('click', () => { view = (view + 1) % VIEWS.length; });
+</script>
+</body>
+</html>

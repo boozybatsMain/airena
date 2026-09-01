@@ -20,11 +20,12 @@
  */
 
 import {
+  AIRBORNE_DODGE_MIN,
   ARENA_HALF, BEAM_RADIUS, BRAKE_ACCEL, DT, FAULT_LIMIT, FIGHTERS,
   KNOCKBACK_DRAG, KNOCKBACK_MIN, MATCH_SECONDS, MAX_ORDERS_PER_THINK,
   MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, MEM_MAX_VALUE_BYTES, OBSTACLES,
   SAY_MAX_CHARS, SAY_SECONDS, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
-  SUDDEN_DEATH_RAMP, THINK_EVERY, skillsOf,
+  SUDDEN_DEATH_RAMP, THINK_EVERY, skillsOf, statsFor,
 } from './config.js';
 import {
   clamp, dirOf, dist2, hasLos, headingOf, inCone, len2, norm2,
@@ -75,6 +76,21 @@ export function defOf(f, name) {
 }
 
 function phasesOfDef(def) {
+  /*
+   * Прыжок из грамматики (D160): присед — воздух — приземление.
+   *
+   * Удар стоит в конце ПРИСЕДА, а не приземления, и это механика, а не
+   * порядок строк. Прыжок класса SELF, его атомы применяются к кастеру
+   * (`shield`, `heal`, `boost`); применить их на приземлении значило бы, что
+   * «прыжок со щитом» держит щит ровно после того, как опасность прошла.
+   * Щит нужен в воздухе — там, где за него заплачено.
+   *
+   * Скрипт совпадает с `phasesOf('jump')` для захардкоженных эталонов по
+   * форме, но НЕ по флагу удара: у тех прыжок пустой и бить ему нечем.
+   */
+  if (def.kind === 'jump') {
+    return [['windup', def.windup, true], ['air', def.airborne, false], ['recover', def.recover, false]];
+  }
   /* Умение из грамматики: замах, удар в конце замаха, восстановление.
      Мгновенная доставка (blink) бьёт сразу — иначе телеграф был бы длиннее
      самого умения. */
@@ -124,8 +140,10 @@ function spawnPair(seed) {
   };
 }
 
-function makeFighter(id, sp, seed) {
-  const def = FIGHTERS[id];
+function makeFighter(id, sp, seed, size = 1) {
+  /* Размер — ось существа (см. `statsFor` в config.js): он меняет здоровье,
+     радиус коллайдера, скорость и массу. Единица — прежнее поведение. */
+  const def = statsFor(id, size);
   const cooldowns = {};
   for (const k of skillsOf(id)) cooldowns[k] = 0;
   return {
@@ -188,11 +206,14 @@ function makeFighter(id, sp, seed) {
  *   with a fighter standing bolt upright at 0 hp. The animation IS the ending.
  */
 /**
+ * @param {object} sizes { octopus: 0.75..1.5, gorilla: ... } — размер существа.
+ *   Часть входа матча наравне с сидом: от него зависят здоровье, радиус,
+ *   скорость и масса, значит без него повтор не побитовый (A2).
  * @param {object} kits  { octopus: {k1,k2,k3}, gorilla: {...} } — скомпилированные
  *   киты грамматики §8. Без них мир собирается на четырёх захардкоженных
  *   умениях, и это по-прежнему тот мир, в котором измерены §1 и §16.
  */
-export function createWorld(seed = 1, { curtainSeconds = 0, kits = null } = {}) {
+export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, sizes = null } = {}) {
   const spawns = spawnPair(seed);
   const world = {
     seed,
@@ -204,8 +225,10 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null } = {}) 
     half: ARENA_HALF,
     spawns,
     fighters: {
-      octopus: makeFighter('octopus', spawns.octopus, seed),
-      gorilla: makeFighter('gorilla', spawns.gorilla, seed),
+      /* `sizes` — часть ВХОДА матча, как сид и наборы: повтор обязан быть
+         побитовым (A2), значит размер нельзя брать ниоткуда, кроме входа. */
+      octopus: makeFighter('octopus', spawns.octopus, seed, sizes?.octopus),
+      gorilla: makeFighter('gorilla', spawns.gorilla, seed, sizes?.gorilla),
     },
     /** Transient things the viewer draws for one tick: beams, cones, flashes. */
     fx: [],
@@ -231,8 +254,19 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null } = {}) 
     for (const side of ['octopus', 'gorilla']) {
       if (!kits[side]) continue;
       world.fighters[side].kit = kits[side];
-      /* Кулдауны заводятся под имена кита: `ready()` спрашивает по имени, и
-         отсутствующий ключ читается мозгом как «никогда не готово». */
+      /*
+       * Кулдауны ПЕРЕЗАВОДЯТСЯ под имена кита, а не дописываются к ним.
+       *
+       * `makeFighter` сеет ключи архетипа (`laser`, `blink`, `jump`) до того,
+       * как станет известен кит, а `perceive` копирует ВСЕ ключи
+       * `me.cooldowns` в `p.self.cooldowns`. Дописывание оставляло существу
+       * с китом живые счётчики умений, которых у него нет: `api.use` и
+       * `api.ready` их честно отвергали, а `api.cooldown('laser')` возвращал
+       * число — то есть перцепция обещала глагол, которого в `p.self.skills`
+       * никогда не было. С D160 это стало заметнее: `jump` тоже уехал в кит,
+       * и лишний ключ читался бы как «прыжок всё-таки есть».
+       */
+      world.fighters[side].cooldowns = {};
       for (const name of Object.keys(kits[side])) world.fighters[side].cooldowns[name] = 0;
     }
   }
@@ -242,9 +276,16 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null } = {}) 
    * One navigation graph per body radius, built once. See `nav.js` for why a
    * navigator is part of the body rather than part of the brain's homework.
    */
+  /*
+   * Граф строится под НАСТОЯЩИЙ радиус бойца, а не под базовый радиус
+   * архетипа. С появлением размера (`statsFor`) радиус стал переменным:
+   * существо на 0.75 ходило по графу, размеченному под 1.0, — то есть
+   * обходило проходы, в которые пролезает, — а на 1.5 срезало углы, в
+   * которые не помещается.
+   */
   world.nav = {
-    octopus: createNav(SOLIDS, ARENA_HALF, FIGHTERS.octopus.radius),
-    gorilla: createNav(SOLIDS, ARENA_HALF, FIGHTERS.gorilla.radius),
+    octopus: createNav(SOLIDS, ARENA_HALF, world.fighters.octopus.def.radius),
+    gorilla: createNav(SOLIDS, ARENA_HALF, world.fighters.gorilla.def.radius),
   };
   return world;
 }
@@ -283,9 +324,20 @@ function castView(f) {
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
 
-/** Имена умений, которые боец может назвать. Прыжок есть всегда. */
+/**
+ * Имена умений, которые боец может назвать.
+ *
+ * D160: у существа с китом их РОВНО ТРИ. Прыжок сюда больше не дописывается —
+ * он стал девятой доставкой грамматики, и если существо его взяло, он уже
+ * лежит в ките под именем `k1..k3`. Дописывать его сверху значило бы вернуть
+ * четвёртый глагол, которого основатель просил не давать.
+ *
+ * Двум захардкоженным эталонам (кита нет) `skillsOf` по-прежнему отдаёт
+ * `laser/blink/jump` и `smash/charge/jump`: на этом входе написаны шесть
+ * эталонных мозгов и сыграны 2450 матчей §1.
+ */
 function namesOf(f) {
-  return f.kit ? [...Object.keys(f.kit), 'jump'] : skillsOf(f.id);
+  return f.kit ? Object.keys(f.kit) : skillsOf(f.id);
 }
 
 /**
@@ -302,7 +354,6 @@ function kitView(f) {
   for (const [name, d] of Object.entries(f.kit)) {
     out[name] = {
       kind: d.kind,
-      trigger: d.trigger,
       element: d.element,
       effects: d.effects.map((e) => e.id),
       channel: d.channel,
@@ -315,6 +366,17 @@ function kitView(f) {
       ...(d.halfAngle !== undefined ? { halfAngle: round3(d.halfAngle) } : {}),
       ...(d.speed !== undefined ? { speed: round3(d.speed) } : {}),
       ...(d.damage !== undefined ? { damage: d.damage } : {}),
+      /* Сколько раз зона срабатывает за каст. Без этого числа `damage: 7`
+         читается как «слабое умение», хотя это 7 × 6 по тому, кто остался
+         стоять. F10 обещает живые параметры — вот второй из них. */
+      ...(d.zoneTicks !== undefined ? { ticks: d.zoneTicks } : {}),
+      /* Воздушная фаза прыжка. Единственное число, ради которого умение с
+         доставкой `jump` вообще берут: сколько секунд оно проводит выше
+         порога, под которым проходят наземные доставки. Без него F10 отдаёт
+         прыжок без его собственной механики. */
+      ...(d.airborne !== undefined ? { airborne: round3(d.airborne) } : {}),
+      /* Длительность зоны на полу — та же логика: у зоны это её механика. */
+      ...(d.duration !== undefined ? { duration: round3(d.duration) } : {}),
     };
   }
   return out;
@@ -336,14 +398,58 @@ function kitView(f) {
 function rememberEnemy(world, id, view) {
   const me = world.fighters[id];
   if (!me.enemyLog) me.enemyLog = [];
+  /*
+   * БУФЕР СЧИТАЕТСЯ В МЫСЛЯХ, А ЗАДЕРЖКА ЗАДАНА В ТИКАХ.
+   *
+   * `perceive` зовётся раз в МЫСЛЬ, а мысль — раз в `THINK_EVERY` тиков. То
+   * есть одна запись буфера это два тика, и «отступить на 30 записей» даёт
+   * 60 тиков, ровно вдвое больше того, что обещает §8 и что записано в
+   * `BLIND_LAG_TICKS`. Ослепление работало вдвое дольше своей цены всё это
+   * время, и цифра в реестре описывала не то, что происходит.
+   *
+   * Константа остаётся в ТИКАХ — она обращена наружу, в спеку и в промпт, —
+   * а здесь переводится в мысли ровно один раз.
+   */
+  const lagThinks = Math.max(1, Math.round(BLIND_LAG_TICKS / THINK_EVERY));
   me.enemyLog.push(view);
-  if (me.enemyLog.length > BLIND_LAG_TICKS + 2) me.enemyLog.shift();
+  if (me.enemyLog.length > lagThinks + 2) me.enemyLog.shift();
+
+  /*
+   * КАНАЛ `vision` — здесь, и больше ему быть негде.
+   *
+   * Он стоил четыре очка, дороже любого другого канала, и не читался
+   * симуляцией ни разу. Игрок платил за то, чего не происходит; это хуже
+   * слабого умения, потому что слабое умение хотя бы честно.
+   *
+   * Смысла у него ровно один, и он рядом с ослеплением: `vision` — это
+   * КАЧЕСТВО ОБЪЕКТА ПЕРЦЕПТИИ. Ослепление — крайний случай («видишь
+   * прошлое»); ослабление обзора — тот же механизм, но мягче, пропорционально
+   * множителю; усиление обзора — способность видеть противника сквозь укрытие,
+   * то есть отменить единственную ложь, которую перцепция говорит честно.
+   *
+   * Задержка считается от того же буфера, что и у ослепления: одна механика —
+   * одна реализация, иначе через месяц у них разойдётся поведение.
+   */
+  const vis = channelMul(me, 'vision', world.t);
   const blinded = me.status && me.status.blind > world.t;
-  if (!blinded) return view;
-  const past = me.enemyLog[0];
+
+  if (vis > 1 && !blinded) {
+    /* Обострённый обзор: укрытие перестаёт скрывать. Позиция и без того
+       честная — врала только видимость. */
+    return view.visible ? view : { ...view, visible: true };
+  }
+
+  let lag = 0;
+  if (blinded) lag = lagThinks;
+  else if (vis < 1) lag = Math.round(lagThinks * (1 - vis));
+  if (lag <= 0) return view;
+
+  /* Индекс от конца: буфер растёт, и «на lag мыслей назад» — это не нулевой
+     элемент, а lag-й с хвоста. */
+  const past = me.enemyLog[Math.max(0, me.enemyLog.length - 1 - lag)];
   /* Пока буфер не наполнился, отдаём самое старое, что есть: врать «не
      вижу» нельзя, а показывать настоящее — значит не применять эффект. */
-  return past || view;
+  return past || me.enemyLog[0] || view;
 }
 
 export function perceive(world, id) {
@@ -371,7 +477,9 @@ export function perceive(world, id) {
       hp: round3(me.hp), maxHp: me.def.hp,
       radius: me.def.radius,
       maxSpeed: me.def.maxSpeed,
-      turnRate: me.def.turnRate,
+      /* Живое значение, а не паспортное: по F10 мозг видит то, что у него
+         действительно есть, и усиление поворота обязано быть в нём видно. */
+      turnRate: round3(me.def.turnRate * channelMul(me, 'turn', world.t)),
       alive: me.alive,
       airborne: me.y > 0.01,
       stunned: me.stun > 0,
@@ -425,6 +533,30 @@ export function perceive(world, id) {
     arena: {
       half: ARENA_HALF,
       obstacles: world.obstacles.map((o) => ({ x: o.x, z: o.z, hx: o.hx, hz: o.hz })),
+      /*
+       * Зоны и снаряды — В ПЕРЦЕПЦИИ, а не только в мире.
+       *
+       * Мозг не может уклониться от того, чего не видит. Пока зона была
+       * невидима, замер баланса показывал у неё 100% побед — и это измеряло
+       * не силу зоны, а слепоту: любой соперник просто стоял в огне до
+       * конца. Умение, чья сила держится на том, что противник о нём не
+       * знает, не сбалансировано, а спрятано.
+       *
+       * Снаряд отдаётся с оставшимся временем полёта: «через сколько
+       * прилетит» — это и есть то, ради чего болт обходим, а луч нет.
+       */
+      zones: (world.zones || []).map((z) => ({
+        x: round3(z.x), z: round3(z.z), r: round3(z.r),
+        mine: z.who === id,
+        left: round3(Math.max(0, z.until - world.t)),
+      })),
+      projectiles: (world.projectiles || []).map((pr) => ({
+        x: round3(pr.x), z: round3(pr.z),
+        vx: round3(pr.vx), vz: round3(pr.vz),
+        mine: pr.who === id,
+        arc: !!pr.arc,
+        left: round3(Math.max(0, pr.life)),
+      })),
     },
     events,
     mem: me.mem,
@@ -496,7 +628,24 @@ export function makeApi(world, id) {
     },
     use(name, a, b) {
       if (!budget() || typeof name !== 'string') return false;
-      if (!namesOf(me).includes(name)) return false;
+      /*
+       * ИМЯ НЕ ИЗ НАБОРА — ЭТО ОТКАЗ С ПРИЧИНОЙ, А НЕ МОЛЧАНИЕ.
+       *
+       * `startSkill` ниже объясняет это дословно: молчаливый no-op читается
+       * моделью как сломанный движок, и она жмёт кнопку снова и снова, на
+       * камеру, до конца боя. Но сам `startSkill` до этой строки не доходил —
+       * фильтр стоял здесь и возвращал `false` без единой записи.
+       *
+       * До D160 это почти не встречалось: `jump` был у всех, а остальные имена
+       * мозг брал из перцепции. Теперь прыжок раздаётся не всем, и сорок
+       * с лишним закоммиченных мозгов зовут `api.use('jump')` у существа, у
+       * которого его нет. Они обязаны узнать об этом из события, а не гадать.
+       */
+      if (!namesOf(me).includes(name)) {
+        emit(world, id, { type: 'refused', skill: name, reason: 'unknown' });
+        world.log.push({ t: round3(world.t), type: 'refused', who: id, skill: name, reason: 'unknown' });
+        return false;
+      }
       q.use = { name, a: fin(a) ? a : null, b: fin(b) ? b : null };
       return true;
     },
@@ -708,6 +857,23 @@ function startSkill(world, id, name, a, b) {
     spent: name === 'jump',
     startedAt: world.t,
   };
+  /*
+   * ЗАХАРДКОЖЕННЫЙ ПРЫЖОК ТОЖЕ РИСУЕТСЯ.
+   *
+   * Его скрипт фаз (`phasesOf('jump')`) не помечает ни одну фазу ударом, а
+   * `spent` он получает при рождении, — значит `resolveStrike` для него
+   * возвращается сразу и запись в `world.fx` не кладёт НИКТО. Двум эталонам,
+   * то есть тренировочному сопернику и всему, что гость видит на витрине,
+   * прыжок рисовался хуже всех: одна дуга тела и ни кольца отрыва, ни тени.
+   *
+   * Кладём запись здесь, на старте: у пустого прыжка нет момента удара, к
+   * которому её можно было бы привязать, а отрыв — это и есть его событие.
+   */
+  if (name === 'jump' && !s.generic) {
+    world.fx.push({ kind: 'jump', who: id, t: round3(world.t), skill: name, element: 'kinetic',
+      x: round3(me.x), z: round3(me.z), h: round3(me.heading),
+      height: me.def.jumpHeight, duration: s.airborne });
+  }
   me.stats.uses[name] = (me.stats.uses[name] || 0) + 1;
   world.log.push({ t: round3(world.t), type: 'use', who: id, skill: name });
   emit(world, other(id), { type: 'enemyStarted', skill: name, windup: round3(s.windup || 0) });
@@ -716,54 +882,21 @@ function startSkill(world, id, name, a, b) {
   return true;
 }
 
-/**
- * Пассивные триггеры грамматики.
+/*
+ * АВТОСРАБАТЫВАНИЕ УБРАНО ВМЕСТЕ С ОСЬЮ «ТРИГГЕР».
  *
- * Четыре из пяти триггеров §8 срабатывают сами: `on_hit_taken`,
- * `on_hit_dealt`, `on_low_hp`, `on_enemy_cast`. Мозг их не вызывает — и это
- * их смысл: они дают существу поведение, которого мозг не выбирал, то есть
- * ту часть характера, которую задал игрок набором, а не модель кодом.
+ * Здесь жила `firePassives`: четыре триггера из пяти срабатывали сами, мимо
+ * мозга. Комментарий на этом месте объяснял это так — «они дают существу
+ * поведение, которого мозг не выбирал». Ровно в этом и была ошибка: в игре,
+ * чей тезис «решения принимает нейросеть», кусок боя проходил без её участия.
  *
- * Условие читается из СОБЫТИЙ этого тика, а не из состояния: «меня ударили»
- * это факт с меткой времени, а не «у меня мало здоровья». Событие в кадре
- * ровно одно, поэтому и срабатывание одно — цепочки не бывает.
+ * Мозг получает те же события в `p.events` (`damaged`, `dealt`,
+ * `enemyStarted`) и своё здоровье в перцепции — то есть может сделать всё то
+ * же самое, но как РЕШЕНИЕ, которое видно в разборе боя.
  *
- * `on_low_hp` — исключение: он про состояние, и потому одноразовый за бой.
- * Иначе он срабатывал бы каждый тик ниже трети здоровья, то есть был бы не
- * триггером, а пассивной аурой с кулдауном.
+ * Вместе с функцией ушли: одноразовый флаг `firedLowHp`, запись `passive` в
+ * логе и правило «одно срабатывание на тик».
  */
-function firePassives(world, id) {
-  const me = world.fighters[id];
-  if (!me.kit || !me.alive || me.act || me.stun > 0) return;
-  const ev = me.events;
-  const hasEvent = (type) => ev.some((e) => e.type === type);
-
-  for (const [name, def] of Object.entries(me.kit)) {
-    if (def.trigger === 'active') continue;
-    if (me.cooldowns[name] > 0) continue;
-    let fire = false;
-    switch (def.trigger) {
-      case 'on_hit_taken': fire = hasEvent('damaged'); break;
-      case 'on_hit_dealt': fire = hasEvent('dealt'); break;
-      case 'on_enemy_cast': fire = hasEvent('enemyStarted'); break;
-      case 'on_low_hp':
-        fire = !me.firedLowHp && me.hp / me.def.hp < 0.34;
-        if (fire) me.firedLowHp = true;
-        break;
-      default: fire = false;
-    }
-    if (!fire) continue;
-    /* Пассивное умение целится в противника само: выбора направления у него
-       нет, потому что нет и решения — оно сработало, а не было применено. */
-    const you = world.fighters[other(id)];
-    const [ux, uz] = norm2(you.x - me.x, you.z - me.z);
-    startSkill(world, id, name, ux, uz);
-    world.log.push({ t: round3(world.t), type: 'passive', who: id, skill: name, trigger: def.trigger });
-    /* Одно срабатывание на тик: два пассивных умения, выстрелившие вместе,
-       читаются как сбой, а слот действия всё равно один. */
-    return;
-  }
-}
 
 /** Push an event onto a fighter's feed. */
 function emit(world, id, ev) {
@@ -892,7 +1025,7 @@ function resolveStrike(world, id) {
 
   if (act.id === 'smash') {
     const clear = !strikeNeedsLos('smash') || hasLos(me.x, me.z, you.x, you.z, world.solids);
-    const inReach = you.alive && you.y <= 0.35
+    const inReach = you.alive && you.y <= AIRBORNE_DODGE_MIN
       && inCone(me.x, me.z, me.heading, s.halfAngle, s.range + me.def.radius, you.x, you.z, you.def.radius);
     const hit = inReach && clear;
     /*
@@ -921,7 +1054,7 @@ function resolveStrike(world, id) {
       }
     } else {
       me.stats.misses.smash = (me.stats.misses.smash || 0) + 1;
-      const why = you.y > 0.35 ? 'airborne' : !clear ? 'cover' : 'range';
+      const why = you.y > AIRBORNE_DODGE_MIN ? 'airborne' : !clear ? 'cover' : 'range';
       emit(world, id, { type: 'missed', skill: 'smash', reason: why });
       world.log.push({ t: round3(world.t), type: 'miss', who: id, skill: 'smash', reason: why });
     }
@@ -999,6 +1132,19 @@ function damage(world, fromId, toId, amount, skill) {
   const src = world.fighters[fromId];
   const dst = world.fighters[toId];
   if (!dst.alive) return;
+  /*
+   * РАЗМЕР БЬЮЩЕГО МЕНЯЕТ СИЛУ УДАРА.
+   *
+   * Мелкому проще не получить удар (площадь цели падает как квадрат), и без
+   * встречной платы это доминирующая стратегия — замерено, выравнивать
+   * пришлось бы показателем здоровья 4.5, то есть двадцатисемикратной
+   * разницей на двукратной разнице размера.
+   *
+   * Плата берётся уроном: комар кусает не как медведь. Здесь, а не в атомах,
+   * потому что иначе множитель пришлось бы дублировать в каждом из
+   * четырнадцати эффектов и не забыть в пятнадцатом.
+   */
+  amount *= src.def.dmgScale ?? 1;
   if (dst.iframes > 0) {
     src.stats.misses[skill] = (src.stats.misses[skill] || 0) + 1;
     dst.stats.evaded++;
@@ -1033,13 +1179,31 @@ function damage(world, fromId, toId, amount, skill) {
   src.stats.damageDealt += amount;
   dst.stats.damageTaken += amount;
   src.stats.hits[skill] = (src.stats.hits[skill] || 0) + 1;
-  emit(world, fromId, { type: 'dealt', skill, amount, enemyHp: round3(dst.hp) });
+  /*
+   * НАРУЖУ УРОН УЕЗЖАЕТ ОКРУГЛЁННЫМ, А ВНУТРИ ОСТАЁТСЯ ТОЧНЫМ.
+   *
+   * `amount` проходит через масштаб размера, каналы урона и брони и деление
+   * между эффектами — четыре умножения на дроби подряд. Здоровье считается по
+   * точному числу (иначе округление копилось бы в исход боя), а на экран, в
+   * лог и в перцепцию едет округлённое.
+   *
+   * Замер по сорока последним матчам: 44 события урона из 365 — 12% — имели
+   * больше двух знаков после запятой, и вьювер печатал их дословно.
+   * «-16.370370370370367» над головой бойца и та же строка в ленте боя — это
+   * ровно тот экран, который принимается основателем.
+   *
+   * Мозгу округление тоже адресовано: разница в тысячную не меняет ни одного
+   * его решения, а шестнадцать знаков в перцепции — это шум, за который он
+   * платит вниманием.
+   */
+  const shown = Math.round(amount * 100) / 100;
+  emit(world, fromId, { type: 'dealt', skill, amount: shown, enemyHp: round3(dst.hp) });
   emit(world, toId, {
-    type: 'damaged', skill, amount, hp: round3(dst.hp),
+    type: 'damaged', skill, amount: shown, hp: round3(dst.hp),
     from: { x: round3(src.x), z: round3(src.z) },
   });
-  world.fx.push({ kind: 'hit', who: toId, t: world.t, x: dst.x, z: dst.z, amount, skill });
-  world.log.push({ t: round3(world.t), type: 'damage', who: fromId, target: toId, skill, amount, hp: round3(dst.hp) });
+  world.fx.push({ kind: 'hit', who: toId, t: world.t, x: dst.x, z: dst.z, amount: shown, skill });
+  world.log.push({ t: round3(world.t), type: 'damage', who: fromId, target: toId, skill, amount: shown, hp: round3(dst.hp) });
   if (dst.hp <= 0) killFighter(world, toId);
 }
 
@@ -1131,10 +1295,21 @@ function stepAct(world, id) {
       act.spent = true;
       chargeMissed(world, id, 'range');
     }
+    /*
+     * `landed` — НА КОНЦЕ ВОЗДУШНОЙ ФАЗЫ, а не в конце всего умения.
+     *
+     * Событие шлётся здесь, потому что промпт обещает модели дословно «on the
+     * tick you touch down», а конец умения наступает на 0.16 с позже — после
+     * фазы приземления. Мозг, строящий связку «приземлился — сразу ударил», по
+     * старому событию опаздывал ровно на эту фазу и не понимал почему.
+     *
+     * Проверка по ДОСТАВКЕ, а не по имени: с D160 прыжок приезжает из
+     * грамматики под именем `k1..k3`, и по имени его не узнать.
+     */
+    if (name === 'air') emit(world, id, { type: 'landed' });
     const carry = act.tPhase - dur;
     act.step++;
     if (act.step >= act.script.length) {
-      if (act.id === 'jump') emit(world, id, { type: 'landed' });
       me.act = null;
       return;
     }
@@ -1316,6 +1491,21 @@ function speedMul(world, f) {
   return channelMul(f, 'speed', world.t);
 }
 
+/**
+ * Множитель скорости ПОВОРОТА — канал `turn`.
+ *
+ * Канал существовал в грамматике, стоил два очка и не читался симуляцией
+ * ни разу: игрок платил за то, чего не происходило. Это хуже слабого
+ * умения — слабое умение хотя бы честно.
+ *
+ * Обездвиживание поворот не отнимает: прикованное существо всё ещё смотрит
+ * по сторонам, и отнять у него ещё и это значило бы сделать `root`
+ * оглушением, у которого своя цена.
+ */
+function turnMul(world, f) {
+  return channelMul(f, 'turn', world.t);
+}
+
 function moveStep(world, id) {
   const me = world.fighters[id];
   const s = me.act ? defOf(me, me.act.id) : null;
@@ -1338,7 +1528,7 @@ function moveStep(world, id) {
     me.wantHeading = me.heading;
   } else if (me.alive && me.stun <= 0) {
     const scale = s ? (s.turnScale === undefined ? 1 : s.turnScale) : 1;
-    me.heading = turnToward(me.heading, me.wantHeading, me.def.turnRate * scale * DT);
+    me.heading = turnToward(me.heading, me.wantHeading, me.def.turnRate * scale * turnMul(world, me) * DT);
   }
 
   const dashing = me.act && me.act.phase === 'dash';
@@ -1346,7 +1536,16 @@ function moveStep(world, id) {
 
   if (airborne) {
     // Horizontal velocity is frozen at take-off; only the arc advances.
-    const u = clamp(me.act.tPhase / SKILLS.jump.airborne, 0, 1);
+    /*
+     * Длительность воздуха берётся у ТОГО умения, которое сейчас исполняется,
+     * а не у глобальной записи `SKILLS.jump`. До D160 разницы не было —
+     * воздушная фаза существовала ровно у одного умения; теперь `jump` — это
+     * доставка грамматики, и её длительность живёт в `DELIVERIES.jump`,
+     * скомпилированная в `def.airborne`. Чтение мимо `defOf` растянуло бы дугу
+     * кита по чужому числу и рассинхронизировало картинку с фазой.
+     */
+    const air = defOf(me, me.act.id)?.airborne || SKILLS.jump.airborne;
+    const u = clamp(me.act.tPhase / air, 0, 1);
     me.y = 4 * me.def.jumpHeight * u * (1 - u);
   } else {
     // Every phase that is not the hop itself is on the ground, the jump's own
@@ -1587,6 +1786,20 @@ export function step(world, think) {
     if (f.stun > 0) f.stun = Math.max(0, f.stun - DT);
     if (f.iframes > 0) f.iframes = Math.max(0, f.iframes - DT);
     if (f.say && world.t > f.say.until) f.say = null;
+    /*
+     * ВЫСОТА НА НАЧАЛО ТИКА — ОДИН СНИМОК НА ВСЕ НАЗЕМНЫЕ ПРОВЕРКИ.
+     *
+     * Правило D160 «наземная доставка проходит под тем, кто в воздухе»
+     * проверяется в трёх местах, и до этой строки они читали `y` в РАЗНЫЕ
+     * моменты: конус и рывок резолвятся в `stepAct`, то есть до `moveStep`,
+     * который дугу и двигает, а зона тикает после него. Замерено: зона
+     * пропускала тики 4–18 прыжка, а конус и рывок — 5–19, и на последнем
+     * тике рывок промахивался «в воздух» по телу, которое было на 0.107 м.
+     *
+     * Одно значение на весь тик закрывает это без переупорядочивания шагов:
+     * все три проверки отвечают на вопрос про один и тот же момент времени.
+     */
+    f.yTick = f.y;
   }
 
   if (!world.over && world.tick % THINK_EVERY === 0 && think) {
@@ -1674,7 +1887,6 @@ export function step(world, think) {
   if (!world.over) {
     tickWalls(world);
     for (const id of world.order) tickStatus(world, id, DT, RESOLVE_DEPS);
-    for (const id of world.order) firePassives(world, id);
   }
   for (const id of world.order) stepAct(world, id);
   for (const id of world.order) moveStep(world, id);

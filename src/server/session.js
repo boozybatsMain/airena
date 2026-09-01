@@ -76,10 +76,19 @@ export function normalizeEmail(email) {
   const s = email.trim().toLowerCase();
   const at = s.lastIndexOf('@');
   if (at <= 0) return null;
-  let user = s.slice(0, at); const host = s.slice(at + 1);
+  let user = s.slice(0, at); let host = s.slice(at + 1);
   const plus = user.indexOf('+');
   if (plus > 0) user = user.slice(0, plus);
-  if (host === 'gmail.com' || host === 'googlemail.com') user = user.replace(/\./g, '');
+  if (host === 'gmail.com' || host === 'googlemail.com') {
+    user = user.replace(/\./g, '');
+    /*
+     * И САМ ДОМЕН ТОЖЕ. Точки убирались у обоих, а домен оставался как есть,
+     * так что `a@gmail.com` и `a@googlemail.com` — один и тот же ящик — давали
+     * две разные нормализованные строки и, значит, два бесплатных существа на
+     * один почтовый ящик. F7 обещает одно.
+     */
+    host = 'gmail.com';
+  }
   return `${user}@${host}`;
 }
 

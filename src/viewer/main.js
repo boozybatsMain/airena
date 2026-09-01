@@ -36,7 +36,10 @@ import * as TSL from 'three/tsl';
 /* Относительный путь, не абсолютный: дев-вьювер монтирует эту папку в
    корень (`/main.js`), продукт — в `/viewer/`. Абсолютный работал бы ровно
    в одном из двух, и в дев-режиме сцена просто не собиралась. */
-import { Vfx } from './vfx.js';
+import { buildBody } from './loadbody.js';
+import { bakeStatic } from './bake.js';
+import { Vfx, markGlow, setGlowEnabled, telegraphMat, setFade } from './vfx.js';
+import { playIr } from './vfxir.js';
 
 const $ = (s) => document.querySelector(s);
 const boot = $('#boot');
@@ -51,6 +54,19 @@ const cfg = await (await fetch('/api/config')).json();
 const HALF = cfg.arena.half;
 
 const scene = new THREE.Scene();
+/*
+ * Тёмный фон сцены ВОЗВРАЩЁН решением основателя (30.08).
+ *
+ * Светлую сцену завели по его же просьбе «бэкграунд пусть будет белым, как
+ * арена» (D125), и на живом бою он сказал: стало хуже. Это его игра и его
+ * глаз; спорить не с чем, и §10.1 в этой части снова читается буквально —
+ * белая платформа, тёмный градиент фона.
+ *
+ * Что из светлой темы уцелело и почему: цвета сторон снова светящиеся
+ * (`--oct`/`--gor` в `kit.css`), потому что на тёмном они и задуманы такими,
+ * а разделение на «интерфейсный» и «сценический» набор было нужно только
+ * белому фону.
+ */
 scene.background = new THREE.Color(0x0d0f14);
 scene.fog = new THREE.Fog(0x0d0f14, 55, 110);
 
@@ -83,10 +99,89 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+  /*
+   * ВЫРОЖДЕННЫЙ РАЗМЕР ОКНА НЕ ИМЕЕТ ПРАВА УБИТЬ КАМЕРУ.
+   *
+   * `innerHeight` бывает нулём — свёрнутая панель, момент между сменой
+   * ориентации, окно, схлопнутое до заголовка. Тогда `aspect` становится
+   * Infinity, матрица проекции — NaN, и NaN расходится по всему состоянию
+   * камеры (`camState.look/dist/height`, `camera.position`) НАВСЕГДА: он
+   * переживает возврат нормального размера, потому что дальше всё считается
+   * от него самого. Арена перестаёт рисоваться до перезагрузки страницы.
+   *
+   * Один кадр с плохими числами стоит дешевле мёртвой сцены.
+   */
+  const w = Math.max(1, innerWidth);
+  const h = Math.max(1, innerHeight);
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(w, h);
 });
+
+/*
+ * ── ИЗБИРАТЕЛЬНЫЙ BLOOM (D163) ────────────────────────────────────────────
+ *
+ * ЗАЧЕМ. Аддитивное свечение без bloom — это просто более яркие пиксели.
+ * `vfx.js` держит ДВА пула частиц вместо одного ровно поэтому: аддитивный на
+ * белом полу выбеливался, и половину эффекта приходилось рисовать обычным
+ * блендингом. Свет, который не растекается, читается как наклейка.
+ *
+ * ПОЧЕМУ ИЗБИРАТЕЛЬНЫЙ, А НЕ ПО ПОРОГУ ЯРКОСТИ. Арена белая (§10.1) —
+ * `0xe9e6de` под ключевым светом 2.6. Пороговый bloom засветил бы ПОЛ,
+ * то есть самую большую и самую неподвижную поверхность кадра, и картинка
+ * поплыла бы вся сразу. Здесь порог не по яркости, а по ПРИНАДЛЕЖНОСТИ:
+ * второй выход растрового прохода (`bloomIntensity`) пишут только материалы,
+ * которым §10.1 разрешает светиться, — скиллы, телеграфы и импакты. Тело не
+ * светится никогда, и теперь это не соглашение в комментарии, а свойство
+ * конвейера: материал без метки физически не может попасть в bloom.
+ *
+ * ЗАПАСНОЙ ПУТЬ ОБЯЗАТЕЛЕН. MRT и постобработка — это две вещи, которые
+ * могут не собраться на чужом железе, а бой обязан идти. Если конвейер не
+ * построился, `post` остаётся null и кадр рисуется напрямую, как раньше.
+ */
+let post = null;
+/* `?bloom=0` — выключить постобработку намеренно. Тот же приём, что `?webgl=1`:
+   путь, который нельзя пройти по своей воле, — это путь, который никто не
+   проверял. Заодно это единственный способ сравнить «со свечением» и «без»
+   на одном и том же кадре. */
+const wantBloom = new URLSearchParams(location.search).get('bloom') !== '0';
+try {
+  if (!wantBloom) throw new Error('выключено параметром ?bloom=0');
+  const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
+  const scenePass = TSL.pass(scene, camera);
+  scenePass.setMRT(TSL.mrt({ output: TSL.output, bloomIntensity: TSL.float(0) }));
+  const colour = scenePass.getTextureNode('output');
+  const glow = scenePass.getTextureNode('bloomIntensity');
+  /*
+   * ЧИСЛА ВЫБРАНЫ ЗАМЕРОМ НА СТЕНДЕ, И ГЛАВНОЕ ИЗ НИХ — СИЛА.
+   *
+   * Тонемаппинг (`ACESFilmic`) применяется В растровом проходе, то есть в
+   * bloom приходит уже LDR-цвет в диапазоне 0..1. Складывать его с самим
+   * собой в полторы силы значит гарантированно уехать в единицу по всем трём
+   * каналам — то есть в белое.
+   *
+   * Именно это и вышло на первом заходе: при strength 1.15 луч `kinetic`,
+   * `ember` и `void` дали три ОДИНАКОВЫХ белых шнура. Проверено выключателем
+   * `?bloom=0` — без свечения тот же самый луч честно оранжевый. То есть
+   * свечение съедало единственную ось грамматики, которая существует ради
+   * вида (§8: элемент — только визуал).
+   *
+   *   strength 0.38 — ореол вокруг силуэта, а не вторая копия силуэта;
+   *   radius   0.75 — растекание шире, чем сам эффект, иначе это не свет;
+   *   threshold 0   — порог не нужен: в этот проход и так попадает только то,
+   *                   что помечено, и отсекать внутри него нечего.
+   */
+  const bloomPass = bloom(colour.mul(glow), 0.38, 0.75, 0);
+  post = new THREE.PostProcessing(renderer);
+  post.outputNode = colour.add(bloomPass);
+  /* Метку разрешаем ТОЛЬКО теперь: материал с `mrtNode` при проходе без MRT
+     компилируется в пустую структуру выхода и не рисуется вовсе. */
+  setGlowEnabled(true);
+  window.__airenaBloom = true;
+} catch (e) {
+  window.__airenaBloom = false;
+  if (wantBloom) fail(`bloom unavailable (${e.message}) — рисуем без постобработки`);
+}
 
 scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x2a2f38, 1.5));
 const key = new THREE.DirectionalLight(0xfff4e0, 2.6);
@@ -157,7 +252,7 @@ for (const [x, z, sx, sz] of [
   [0, HALF + 0.4, HALF * 2 + 1.6, 0.8], [0, -HALF - 0.4, HALF * 2 + 1.6, 0.8],
   [HALF + 0.4, 0, 0.8, HALF * 2 + 1.6], [-HALF - 0.4, 0, 0.8, HALF * 2 + 1.6],
 ]) {
-  const mat = new THREE.MeshStandardMaterial({ color: 0x3a4150, roughness: 0.8, metalness: 0.05, transparent: true });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3a4150, roughness: 0.8, metalness: 0.05, transparent: true });
   const m = new THREE.Mesh(new THREE.BoxGeometry(sx, cfg.arena.wallHeight, sz), mat);
   m.position.set(x, cfg.arena.wallHeight / 2, z);
   m.castShadow = true; m.receiveShadow = true;
@@ -265,15 +360,36 @@ function hiddenCount(eye, f, height, mark) {
 /**
  * Load one art asset.
  *
- * `build(THREE, TSL)` is evaluated as-is: these files are two of ours and there
- * is nothing here to defend against. What matters is measuring the result — the
+ * This used to say "these files are two of ours and there is nothing here to
+ * defend against". That stopped being true the day a body could be WRITTEN BY
+ * A MODEL from a player's free text: the code then runs in the browser of a
+ * stranger who only opened a broadcast, and "nothing to defend against" turns
+ * into a player-authored path to that stranger's session token.
+ *
+ * So there are two doors now. Ours are still evaluated as-is. A generated body
+ * comes from the server already parsed, restricted to a known vocabulary and
+ * fuel-metered (`src/server/sandbox/bodyrules.js`), and is built here inside a
+ * scope where every dangerous name is shadowed to `undefined`
+ * (`src/viewer/loadbody.js`).
+ *
+ * What matters after that is the same as before — measuring the result. The
  * pose function wants speed in body lengths, and the only place that number
  * exists is the geometry.
+ *
+ * @param {string} ref  'octopus' | 'gorilla' | 'gen:<creature id>'
+ * @param {string} kind which set of physics the art is dressed on
+ * @param {number} size the creature's own size (0.75…1.5). The collider grows
+ *   with it, so the mesh has to grow with it too — a body normalised to the
+ *   archetype's base radius would make a whale and a mosquito the same width
+ *   and put the picture back at odds with the physics.
  */
-async function loadBody(name) {
-  const src = await (await fetch(`/bodies/${name}.js`)).text();
-  const make = new Function('THREE', 'TSL', `${src}\n;return build(THREE, TSL);`);
-  const root = make(THREE, TSL);
+async function loadBody(ref, kind = ref, bodySize = 1) {
+  const generated = ref.startsWith('gen:');
+  const url = generated ? `/api/body/${encodeURIComponent(ref.slice(4))}` : `/bodies/${ref}.js`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`тело ${ref}: ${res.status}`);
+  const src = await res.text();
+  const root = buildBody(THREE, TSL, src, { trusted: !generated });
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   /**
    * Measure, then make the picture agree with the physics.
@@ -290,7 +406,8 @@ async function loadBody(name) {
   const rawSize = new THREE.Vector3();
   raw.getSize(rawSize);
   const footprint = Math.max(rawSize.x, rawSize.z) || 1;
-  const scale = (cfg.fighters[name].radius * 2) / footprint;
+  const k = Number.isFinite(bodySize) ? Math.max(0.75, Math.min(1.5, bodySize)) : 1;
+  const scale = (cfg.fighters[kind].radius * k * 2) / footprint;
   root.scale.setScalar(scale);
   root.updateMatrixWorld(true);
 
@@ -309,6 +426,24 @@ async function loadBody(name) {
    * scalar question. The flat list plus a min-Y-only scan answers it in 0.049
    * and 0.039 ms: 0.088 ms a frame, 13x cheaper, and it is the same number.
    */
+  /*
+   * СКЛЕЙКА НЕПОДВИЖНЫХ ЧАСТЕЙ — до того, как считается список мешей.
+   *
+   * Замерено в Chrome: кадр стоит примерно 6 мкс на вызов отрисовки, а наши
+   * эталонные тела дают их по две тысячи каждое. При этом поза шевелит четыре
+   * процента узлов. Подробности и отмена по `?bake=0` — в `bake.js`.
+   */
+  if (bakeStatic && (typeof location === 'undefined' || new URLSearchParams(location.search).get('bake') !== '0')) {
+    try {
+      const r = bakeStatic(THREE, root);
+      if (r.reverted) console.warn(`склейка тела ${ref} отменена: ${r.why}`);
+      else if (r.groups) console.info(`тело ${ref}: ${r.before} → ${r.after} мешей (${r.groups} склеек)`);
+      root.updateMatrixWorld(true);
+    } catch (e) {
+      console.warn(`склейка тела ${ref} не удалась: ${e.message}`);
+    }
+  }
+
   const meshes = [];
   root.traverse((o) => {
     if (!o.isMesh || !o.geometry) return;
@@ -341,11 +476,29 @@ const _span = { min: 0, max: 0 };
 function spanY(body) {
   let lo = Infinity, hi = -Infinity;
   for (const o of body.meshes) {
-    const bb = o.geometry.boundingBox;
     const e = o.matrixWorld.elements;
+    const ax = e[1]; const ay = e[5]; const az = e[9];
+    /*
+     * У склеенного меша части запомнены ориентированными (см. `bake.js`):
+     * центр и три полуоси. Размах вдоль вертикали мировой матрицы считается по
+     * ним точно, а одна общая коробка разрасталась бы при повороте и поднимала
+     * бы тело над полом.
+     */
+    if (o.userData.subParts) {
+      for (const p of o.userData.subParts) {
+        const c = ax * p.c.x + ay * p.c.y + az * p.c.z + e[13];
+        const r = Math.abs(ax * p.u.x + ay * p.u.y + az * p.u.z)
+          + Math.abs(ax * p.v.x + ay * p.v.y + az * p.v.z)
+          + Math.abs(ax * p.w.x + ay * p.w.y + az * p.w.z);
+        if (c - r < lo) lo = c - r;
+        if (c + r > hi) hi = c + r;
+      }
+      continue;
+    }
+    {
+    const bb = o.geometry.boundingBox;
     // row 1 of the world matrix is all that contributes to Y: the box's centre
     // projects onto it, and its half-extents project onto the absolute values
-    const ax = e[1], ay = e[5], az = e[9];
     const c = ax * (bb.min.x + bb.max.x) * 0.5 + ay * (bb.min.y + bb.max.y) * 0.5
       + az * (bb.min.z + bb.max.z) * 0.5 + e[13];
     const r = Math.abs(ax) * (bb.max.x - bb.min.x) * 0.5
@@ -353,6 +506,7 @@ function spanY(body) {
       + Math.abs(az) * (bb.max.z - bb.min.z) * 0.5;
     if (c - r < lo) lo = c - r;
     if (c + r > hi) hi = c + r;
+    }
   }
   _span.min = lo; _span.max = hi;
   return _span;
@@ -439,11 +593,170 @@ function fallOrientation(body) {
 }
 
 const bodies = {};
+
+/**
+ * Поставить на сторону другое тело.
+ *
+ * Тела грузились один раз при старте и держались весь сеанс — правильно,
+ * пока их два. Как только тело генерируется, «кто дерётся» меняется от боя
+ * к бою, и картинка обязана меняться вместе с ним.
+ *
+ * Три вещи здесь важнее краткости.
+ *
+ *   Старое тело снимается со сцены и его геометрия освобождается. Зритель
+ *   смотрит трансляцию часами; тело, оставленное в памяти на каждый бой, —
+ *   это утечка, которая проявится как «через сорок минут вкладка умирает».
+ *
+ *   Загрузка асинхронная, а боёв может прийти несколько подряд. Поэтому у
+ *   каждой загрузки свой номер, и опоздавшая не затирает актуальную.
+ *
+ *   Падение НЕ фатально: при любой ошибке на стороне остаётся тело
+ *   архетипа. Существо будет выглядеть не собой — но бой будет виден, и
+ *   это несравнимо лучше пустой сцены. Причина уходит в консоль и в
+ *   `airena:bodyfail`, чтобы отказ был заметен, а не проглочен.
+ */
+let bodyEpoch = 0;
+const bodyRefOf = {};
+
+/**
+ * Построенные тела, по ссылке.
+ *
+ * Без кэша каждый бой — это заново скачать сто тридцать килобайт, заново их
+ * скомпилировать и заново собрать шесть тысяч мешей. Замерено: сборка
+ * сгенерированного тела — 552 мс на главном потоке, и она не одна, а по одной
+ * на сторону, каждую минуту. Зритель, оставивший вкладку открытой, получал бы
+ * заикание ровно в момент начала боя — то есть ровно тогда, когда смотрит.
+ *
+ * Кэш возможен именно потому, что тело неизменяемо (F2: новое существо —
+ * новый id), и потому ключ — ссылка, а не содержимое.
+ *
+ * Потолок нужен: боёв за сеанс много, тел столько же, и шесть тысяч мешей на
+ * каждое — это память, которая иначе не вернётся. Выбрасывается самое
+ * давнее; те два, что стоят на сторонах прямо сейчас, не выбрасываются
+ * никогда, иначе кэш убивал бы то, что рисует.
+ */
+const BODY_CACHE_MAX = 6;
+const bodyCache = new Map();
+/* Все корни тел, что когда-либо строились: по нему `syncBodies` отличает
+   тело от арены, не полагаясь на имя, которое задаёт чужая модель. */
+const bodyRoots = new WeakSet();
+
+async function bodyFor(ref, kind, size = 1) {
+  /* Ключ кэша включает РАЗМЕР: одно и то же тело на 0.75 и на 1.5 — это два
+     разных меша, и отдать из кэша чужой масштаб значило бы нарисовать
+     существо не того размера, что дерётся. */
+  const key = `${ref}@${size}`;
+  const hit = bodyCache.get(key);
+  if (hit) { bodyCache.delete(key); bodyCache.set(key, hit); return hit; }
+  const made = await loadBody(ref, kind, size);
+  made.fall = fallOrientation(made);
+  made.root.visible = false;
+  /*
+   * ── КЭШ ДЕРЖИТ ТЕЛО В ПАМЯТИ, А НЕ В СЦЕНЕ ────────────────────────────────
+   *
+   * Здесь стояло `scene.add(made.root)` — то есть каждое загруженное тело
+   * оставалось в графе сцены навсегда, просто с `visible = false`. Кэш на шесть
+   * тел означал до шести графов в сцене одновременно.
+   *
+   * Невидимое тело не рисуется: сборка списка отрисовки обрывается на первом
+   * же `visible === false`. Но `updateMatrixWorld` обходит граф ЦЕЛИКОМ,
+   * независимо от видимости, — и вот это стоит кадров.
+   *
+   * Замерено в настоящем Chrome (профайлер, дев-сервер, живой бой): в сцене
+   * было 17 032 меша при двух видимых телах на 4 154. Удаление невидимых
+   * подняло кадры с 17.5 до 40.8 в секунду — то есть больше чем вдвое, и это
+   * при том, что разрешение на кадры не влияет вовсе (проверено уменьшением
+   * канваса вчетверо: 33.9 → 34.0).
+   *
+   * Тело добавляется в сцену, когда его показывают, и убирается, когда
+   * прячут (`swapBody`). Кэш при этом продолжает держать ссылку — ради него
+   * он и заведён: вернувшееся тело не грузится заново.
+   */
+  bodyCache.set(key, made);
+  bodyRoots.add(made.root);
+  while (bodyCache.size > BODY_CACHE_MAX) {
+    const oldest = bodyCache.keys().next().value;
+    if (Object.values(bodyRefOf).includes(oldest)) break;
+    const dead = bodyCache.get(oldest);
+    bodyCache.delete(oldest);
+    scene.remove(dead.root);
+    disposeBody(dead);
+  }
+  return made;
+}
+
+async function swapBody(id, ref, size = 1) {
+  /* Ключ сравнения — ссылка И размер: смена только размера обязана
+     пересобрать тело, иначе картинка отстанет от коллайдера. */
+  const want = `${ref}@${size}`;
+  if (bodyRefOf[id] === want) return;
+  const mine = ++bodyEpoch;
+  bodyRefOf[id] = want;
+  try {
+    const next = await bodyFor(ref, id, size);
+    if (mine !== bodyEpoch) return;
+    /* Одно и то же тело на обеих сторонах — законный случай: два существа,
+       рождённые одним промптом, выглядят одинаково. Клонировать граф ради
+       этого нельзя (материалы и шейдеры общие), поэтому вторая сторона
+       честно строит свой экземпляр под своим ключом. */
+    const prev = bodies[id];
+    if (prev && prev !== next) prev.root.visible = false;
+    bodies[id] = next;
+    next.root.visible = true;
+    if (!next.root.parent) scene.add(next.root);
+    syncBodies();
+  } catch (e) {
+    bodyRefOf[id] = null;
+    console.warn(`тело ${ref} не собралось:`, e.message);
+    dispatchEvent(new CustomEvent('airena:bodyfail', { detail: { side: id, ref, message: e.message } }));
+  }
+}
+
+/**
+ * Сцена приводится в соответствие со сторонами — одной сверкой, а не цепочкой
+ * побочных эффектов.
+ *
+ * Сначала я расставил `scene.add` и `scene.remove` по путям подмены, и это
+ * сломалось дважды подряд: сперва тело оставалось в сцене после подмены
+ * (лишние 4078 вызовов отрисовки, кадры с 35 до 17), потом наоборот — боец
+ * стоял `visible = true`, но без родителя, то есть был невидим на арене.
+ * Путей больше, чем кажется: одно тело на обеих сторонах, попадание в кэш,
+ * вытеснение из кэша, гонка двух загрузок (`bodyEpoch`).
+ *
+ * Сверка не зависит от пути. Она говорит, каким сцена ОБЯЗАНА быть: ровно два
+ * корня, те, что лежат в `bodies`. Всё лишнее убирается, всё недостающее
+ * добавляется, и порядок вызовов перестаёт иметь значение.
+ *
+ * Стоит это обходом детей сцены (несколько десятков) и только при подмене.
+ */
+function syncBodies() {
+  const live = new Set(Object.values(bodies).filter(Boolean).map((b) => b.root));
+  for (const child of scene.children.slice()) {
+    if (bodyRoots.has(child) && !live.has(child)) {
+      child.visible = false;
+      scene.remove(child);
+    }
+  }
+  for (const root of live) if (root.parent !== scene) scene.add(root);
+}
+
+function disposeBody(b) {
+  b?.root?.traverse?.((o) => {
+    o.geometry?.dispose?.();
+    const m = o.material;
+    if (Array.isArray(m)) m.forEach((x) => x?.dispose?.());
+    else m?.dispose?.();
+  });
+}
+
 for (const id of ['octopus', 'gorilla']) {
   try {
-    bodies[id] = await loadBody(id);
-    bodies[id].fall = fallOrientation(bodies[id]);
-    scene.add(bodies[id].root);
+    bodies[id] = await bodyFor(id, id);
+    bodies[id].root.visible = true;
+    /* Сцену приводит в соответствие `syncBodies`, а не этот цикл: одно место,
+       которое знает, что в сцене должно лежать. */
+    syncBodies();
+    bodyRefOf[id] = id;
   } catch (e) {
     fail(`body "${id}" failed to build: ${e.message}`);
   }
@@ -459,7 +772,90 @@ const anim = {
 // effects
 // ---------------------------------------------------------------------------
 
+/*
+ * Цвета сторон В СЦЕНЕ — светящиеся, потому что там за ними белая платформа,
+ * тень и объём: свет читается как свет.
+ */
 const COLOR = { octopus: 0x39c6d8, gorilla: 0xe0762b };
+
+/*
+ * ── КАКОГО ЦВЕТА ОПАСНАЯ ЗОНА (D162, решение основателя 01.09) ────────────
+ *
+ * Дословно: «глянь ещё на визуальное различие зон ударов. Сейчас они все
+ * помечаются красным — нужно сделать так, чтобы было понятно, где твоя зона,
+ * а где врага. Например, синим и оранжевым, как это сделано везде.»
+ *
+ * Было: и конус, и полоса рисовались литералом `0xff4d3d` у ОБЕИХ сторон.
+ * Зона, которая сейчас ударит тебя, была пиксель в пиксель как та, которую
+ * кастует твоё существо. Красный при этом не значил «опасно» — он значил
+ * «замах», потому что другого замаха на экране не было.
+ *
+ * Стало: цвет фигуры на полу — ЦВЕТ ТОГО, КТО ЕЁ КАСТУЕТ, тот же циан и тот
+ * же оранж, что у плиты с именем, у кольца под ногами, у линии прицела и у
+ * всплывающей цифры урона. Это и есть «как это сделано везде»: одна палитра
+ * на всю сторону, а не вторая палитра только для зон.
+ *
+ * ПОЧЕМУ НЕ «моё синее, чужое оранжевое» БУКВАЛЬНО. Потому что существо
+ * игрока занимает сторону по своему архетипу и в половине боёв оно и есть
+ * оранжевая сторона. Красить его зоны синими значило бы завести ВТОРУЮ
+ * систему цветов, противоречащую первой: плита оранжевая, кольцо оранжевое,
+ * урон оранжевый — а зона синяя. Человек читает экран целиком, и такой
+ * разнобой хуже одинакового красного.
+ *
+ * ЧТО ОТВЕЧАЕТ НА ВОПРОС «ГДЕ МОЯ». Две вещи, и обе явные:
+ *   1. Плита своего существа помечена словом (см. `mineSide` ниже) — цвет
+ *      привязывается к стороне один раз и дальше читается сам.
+ *   2. ЯРКОСТЬ несёт угрозу отдельно от цвета: зона противника рисуется
+ *      плотнее собственной. Оттенок говорит «чьё», плотность — «в кого».
+ *      Две независимые оси на две независимые вещи.
+ */
+
+/**
+ * Какая сторона принадлежит зрителю: 'octopus', 'gorilla' или null.
+ *
+ * Приходит с сервера в сообщении `match` полем `mine` — считается ТАМ, потому
+ * что там уже лежит id существа этого сокета. Клиент второй раз этого не
+ * решает: два источника принадлежности разошлись бы ровно в тот момент, когда
+ * игрок сменил существо посреди боя.
+ */
+let mineSide = null;
+
+/**
+ * Множитель плотности телеграфа: своя фигура тише, чужая громче.
+ *
+ * 1.0 для обоих, когда своего существа в бою нет (гость, чужой бой): врать
+ * зрителю, что одна из сторон его, нельзя, а без принадлежности «громче»
+ * значило бы просто «оранжевее».
+ */
+function threatGain(id) {
+  if (!mineSide) return 1;
+  /*
+   * 0.85, а не 0.62.
+   *
+   * Первое число отняло у СОБСТВЕННОГО замаха ровно то, ради чего замах
+   * существует: замер дал 1.06–1.19:1 против пола, тогда как прежний красный
+   * держал 1.23–1.68. Плотность обязана различать «чьё», а не прятать одно из
+   * двух: в автобатлере игрок читает по замаху собственного существа, что оно
+   * сейчас сделает, не меньше, чем по чужому.
+   *
+   * Разница 0.85 против 1.25 — это полтора раза, и её видно; при этом нижняя
+   * граница остаётся выше старой базовой, потому что контур фигуры теперь
+   * несёт читаемость сам (`telegraphMat`).
+   */
+  return id === mineSide ? 0.85 : 1.25;
+}
+/*
+ * `INK_COLOR` здесь БЫЛ и убран вместе со светлой темой (30.08).
+ *
+ * Он существовал ради одной задачи: на белой арене светящийся циан давал
+ * 1.74:1, и плоский текст поверх сцены — лента боя, реплика, всплывающий урон,
+ * подпись победителя — переставал читаться. На тёмном фоне ровно эти
+ * светящиеся цвета читаются лучше всего, и второй набор не нужен.
+ *
+ * Если светлая тема вернётся, вернётся и он: разделение на «цвет материала» и
+ * «цвет плоского текста» — не украшение, а следствие того, что у текста нет ни
+ * объёма, ни тени, ни свечения, только цвет.
+ */
 
 /**
  * Lay a flat geometry on the ground so that its local +Y becomes world +Z.
@@ -543,15 +939,105 @@ const vfx = new Vfx(scene, {
 if (new URLSearchParams(location.search).get('vfx')) {
   window.__airenaScene = scene;
   window.__airenaVfx = vfx;
+  /* Камера — чтобы стенд можно было облететь. Визуальная проверка с одного
+     ракурса проверяет ракурс, а не эффект: половина того, что видно сверху,
+     сбоку не читается вовсе. */
+  window.__airenaCamera = camera;
 }
 
 addEventListener('airena:demofx', (ev) => {
   try { playFx(ev.detail); } catch (err) { console.error('demofx', err); }
 });
 
+/*
+ * Вспышка кадра — единственный экранный эффект, который может дать автор
+ * помимо толчка камеры, и он же самый опасный: полноэкранная засветка на
+ * каждом касте делает бой нечитаемым. Поэтому она короткая, слабая и
+ * складывается сама с собой затуханием, а не яркостью.
+ */
+let flashUntil = 0; let flashAmount = 0; let flashRaf = 0;
+/*
+ * Вспышка живёт СВОИМ циклом, а не кадровым.
+ *
+ * Это не вкус: `tools/checkframing.mjs` вырезает из этого файла настоящий
+ * кадровый цикл и гоняет камеру головой без браузера. Всё, что стоит в
+ * `frame()`, обязано быть про камеру, иначе гейт падает на функции, которой в
+ * его вырезке нет. И это правильное давление — вспышка это DOM, а не сцена:
+ * она не читает мир, не двигает камеру и не участвует в кадрировании.
+ *
+ * Цикл заводится только на время затухания и сам себя останавливает: держать
+ * rAF ради прозрачного элемента незачем.
+ */
+function flashFrame(a) {
+  flashAmount = Math.min(0.25, flashAmount + a);
+  flashUntil = performance.now() + 140;
+  if (!flashRaf) flashRaf = requestAnimationFrame(paintFlash);
+}
+function paintFlash() {
+  flashRaf = 0;
+  const el = document.getElementById('vfxflash');
+  if (!el) return;
+  const left = flashUntil - performance.now();
+  if (left <= 0) { flashAmount = 0; el.style.opacity = '0'; return; }
+  el.style.opacity = String(flashAmount * (left / 140));
+  flashRaf = requestAnimationFrame(paintFlash);
+}
+
 function playFx(e) {
   if (e.element) {
     vfx.play(e, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
+    /*
+     * ДЕКОРАЦИЯ ИГРАЕТСЯ ПОСЛЕ READ-KIT И НЕ ВМЕСТО НЕГО.
+     *
+     * Порядок здесь — это и есть правило §9.2 «модель может добавлять, но не
+     * заменять», выраженное кодом: read-kit уже нарисован к моменту, когда
+     * интерпретатор получает управление, и отменить нарисованное ему нечем.
+     *
+     * Своя `try` не потому, что мы не доверяем валидатору, а потому что этот
+     * IR приехал из базы: он мог быть записан прошлой версией пределов.
+     * Упавшая декорация не имеет права уносить бой — она вообще не имеет
+     * права ни на что влиять.
+     */
+    try {
+      /*
+       * `__demoVfx` — ТОЛЬКО СТЕНД, и симуляция его не пишет никогда.
+       *
+       * Запись `world.fx` собирается в `src/core/deliver.js`, и поля с таким
+       * именем там нет: VFX не влияет на симуляцию и не ездит в ней (§9.2).
+       * Стенд же рисует эффекты вне боя, у него нет ни набора, ни сторон, —
+       * и без этой двери декорацию нельзя посмотреть иначе как дождавшись
+       * настоящего существа с настоящим IR. Проверять то, что видно раз в
+       * час, — это не проверка.
+       *
+       * `tools/checkscope.mjs` обходит бандл игрока: стенда там нет.
+       */
+      const k = kitLabels[e.who] && kitLabels[e.who][e.skill];
+      const ir = e.__demoVfx || (k && k.vfx);
+      if (ir) {
+        playIr(vfx, ir, e, {
+          shake: (a) => { try { camState.shake = Math.min(0.55, camState.shake + a); } catch { /* ещё не готова */ } },
+          flash: (a) => flashFrame(a),
+        });
+      }
+    } catch (err) { console.warn('vfx-ir', err); }
+    /*
+     * ПРОМАХ УМЕНИЯ ГРАММАТИКИ ПОПАДАЕТ В ЛЕНТУ.
+     *
+     * Ветки `beamFx`/`coneFx` ниже, которые единственные писали в ленту «мимо»
+     * и «закрыт укрытием», для существа с набором НЕДОСТИЖИМЫ: у любого
+     * умения грамматики есть `element`, и функция выходит по `return` выше.
+     * То есть у всех существ игроков промах не объяснялся ни разу.
+     *
+     * После D160 это стало дороже: причина `airborne` — единственное
+     * свидетельство, что прыжок сработал. Без строки в ленте механика, ради
+     * которой прыжок сделали доставкой, для зрителя не существует.
+     */
+    if (e.miss) {
+      const c2 = COLOR[e.who];
+      pushFeed(`<span style="color:#${c2.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu(e.skill, e.who))}`
+        + ` · <span style="opacity:.65">${MISS_RU[e.miss] || 'мимо'}</span>`,
+      `${e.who}|${e.skill}|${e.miss}`);
+    }
     if (e.kind === 'impact' || (e.hit && (e.kind === 'beam' || e.kind === 'cone' || e.kind === 'dash'))) {
       /* `camState` объявлена ниже по файлу через `let`, а `playFx` может быть
          вызвана до конца evaluation — стендом VFX или сокетом, пришедшим во
@@ -571,7 +1057,7 @@ function playFx(e) {
     camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
     floatDamage(e.x, e.z, e.amount, e.who);
     const src = e.who === 'octopus' ? 'gorilla' : 'octopus';
-    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${sideName[src]}</span> · ${skillRu(e.skill, src)} · <b>${e.amount}</b>`, `${src}|${e.skill}|${e.amount}`);
+    pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${esc(sideName[src])}</span> · ${esc(skillRu(e.skill, src))} · <b>${Math.round(Number(e.amount) * 100) / 100}</b>`, `${src}|${e.skill}|${e.amount}`);
   }
 }
 
@@ -586,7 +1072,34 @@ function updateFx(now) {
   for (let i = fxPool.length - 1; i >= 0; i--) {
     const f = fxPool[i];
     const u = (now - f.born) / f.life;
-    if (u >= 1) { scene.remove(f.obj); f.obj.traverse?.((o) => o.geometry?.dispose?.()); fxPool.splice(i, 1); continue; }
+    if (u >= 1) {
+      scene.remove(f.obj);
+      /*
+       * УТИЛИЗИРУЕТСЯ И МАТЕРИАЛ, А НЕ ТОЛЬКО ГЕОМЕТРИЯ.
+       *
+       * В три.js освобождение конвейера держит МАТЕРИАЛ: `RenderObject`
+       * подписан на его событие `dispose`, и только оттуда идут
+       * `pipelines.delete` и `bindings.delete`. Замерено: после утилизации
+       * одной геометрии кэш узловых состояний не отдаёт ни одной записи
+       * (3 → 83 на сорока материалах, после геометрии 85, после материалов 5).
+       * То есть каждый эффект боя оставлял запись на всё время жизни
+       * страницы.
+       *
+       * Общие материалы из пула (`userData.pooled`) не трогаются: их берут
+       * следующие эффекты, и утилизировать их значит вернуть ту самую
+       * пересборку графа, ради устранения которой пул и заведён.
+       */
+      f.obj.traverse?.((o) => {
+        o.geometry?.dispose?.();
+        const m = o.material;
+        if (!m) return;
+        for (const one of Array.isArray(m) ? m : [m]) {
+          if (one && !one.userData?.pooled) one.dispose?.();
+        }
+      });
+      fxPool.splice(i, 1);
+      continue;
+    }
     f.update(f.obj, u);
   }
 }
@@ -598,13 +1111,13 @@ function beamFx(e) {
   const len = a.distanceTo(b);
   const g = new THREE.CylinderGeometry(0.11, 0.11, len, 8, 1, true);
   g.translate(0, len / 2, 0);
-  const m = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
+  const m = markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
   const mesh = new THREE.Mesh(g, m);
   mesh.position.copy(a);
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
   const glowG = new THREE.CylinderGeometry(0.34, 0.34, len, 8, 1, true);
   glowG.translate(0, len / 2, 0);
-  const glow = new THREE.Mesh(glowG, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+  const glow = new THREE.Mesh(glowG, markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
   mesh.add(glow);
   spawnFx(mesh, 0.22, (o, u) => {
     o.material.opacity = 0.95 * (1 - u);
@@ -622,7 +1135,7 @@ function beamFx(e) {
      * whole tactical story of this arena.
      */
     const cover = len < cfg.skills.laser.range - 0.05;
-    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('laser', e.who)} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
+    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('laser', e.who))} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
       `${e.who}|laser|${cover ? 'cover' : 'aim'}`);
   }
 }
@@ -630,7 +1143,7 @@ function beamFx(e) {
 function impactFlash(x, z, c) {
   const s = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 12, 8),
-    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false }),
+    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false })),
   );
   s.position.set(x, 1.15, z);
   spawnFx(s, 0.3, (o, u) => { o.scale.setScalar(1 + u * 2.4); o.material.opacity = 0.85 * (1 - u); });
@@ -641,7 +1154,7 @@ function blinkFx(e) {
   for (const [x, z, dir] of [[e.x0, e.z0, 1], [e.x1, e.z1, -1]]) {
     const r = new THREE.Mesh(
       new THREE.TorusGeometry(0.7, 0.09, 8, 28),
-      new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, depthWrite: false }),
+      markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, depthWrite: false })),
     );
     layFlat(r);
     r.position.set(x, 0.6, z);
@@ -656,15 +1169,15 @@ function blinkFx(e) {
 function coneFx(e) {
   const c = COLOR[e.who];
   const g = new THREE.CircleGeometry(e.range, 24, -e.half + Math.PI / 2, e.half * 2);
-  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+  const m = new THREE.Mesh(g, markGlow(new THREE.MeshBasicMaterial({
     color: e.hit ? c : 0x8a8f99, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
-  }));
+  })));
   layFlat(m);
   faceHeading(m, e.heading);
   m.position.set(e.x, 0.06, e.z);
   spawnFx(m, 0.3, (o, u) => { o.material.opacity = 0.55 * (1 - u); o.scale.setScalar(1 + u * 0.12); });
   if (!e.hit) {
-    pushFeed(`<span style="color:#${c.toString(16)}">${sideName[e.who]}</span> · ${skillRu('smash', e.who)} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
+    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('smash', e.who))} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
   }
 }
 
@@ -697,11 +1210,11 @@ function makeTelegraph(id) {
   const ring = new THREE.Group();
   const disc = new THREE.Mesh(
     new THREE.CircleGeometry(cfg.fighters[id].radius, 40),
-    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }),
+    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }), 0.35),
   );
   const rim = new THREE.Mesh(
     new THREE.RingGeometry(cfg.fighters[id].radius * 0.87, cfg.fighters[id].radius, 44),
-    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }),
+    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }), 0.5),
   );
   ring.add(disc); ring.add(rim);
   layFlat(ring);
@@ -711,9 +1224,14 @@ function makeTelegraph(id) {
   g.add(ring);
 
   const sk = cfg.skills;
+  /* Фигура на полу — заливка И КОНТУР (см. `telegraphMat`): полупрозрачная
+     заливка цвета стороны на белом полу даёт 1.06–1.19:1, а контур читается
+     на любом фоне. Запасной путь на бэкенде без узловых материалов — прежняя
+     заливка, лучше слабая фигура, чем никакой. */
   const cone = new THREE.Mesh(
     new THREE.CircleGeometry(1, 30, -sk.smash.halfAngle + Math.PI / 2, sk.smash.halfAngle * 2),
-    new THREE.MeshBasicMaterial({ color: 0xff4d3d, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }),
+    telegraphMat(c, 'cone', sk.smash.halfAngle)
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55),
   );
   layFlat(cone);
   cone.position.y = 0.045;
@@ -723,7 +1241,8 @@ function makeTelegraph(id) {
   const laneLen = sk.charge.dashSpeed * sk.charge.dashSeconds;
   const lane = new THREE.Mesh(
     new THREE.PlaneGeometry(2.6, laneLen),
-    new THREE.MeshBasicMaterial({ color: 0xff4d3d, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    telegraphMat(c, 'lane')
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.55),
   );
   lane.geometry.translate(0, laneLen / 2, 0);
   layFlat(lane);
@@ -731,9 +1250,21 @@ function makeTelegraph(id) {
   lane.visible = false;
   g.add(lane);
 
+  /* Диск зоны: единичный радиус, масштабируется под radius умения. Форма
+     телеграфа обязана совпадать с формой доставки (§9.2). Имя `zoneDisc`, а
+     не `disc`: `disc` выше — это заливка кольца под ногами. */
+  const zoneDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 40),
+    telegraphMat(c, 'cone', Math.PI)
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55),
+  );
+  layFlat(zoneDisc);
+  zoneDisc.visible = false;
+  g.add(zoneDisc);
+
   const aim = new THREE.Mesh(
     new THREE.PlaneGeometry(0.06, sk.laser.range),
-    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.8),
   );
   aim.geometry.translate(0, sk.laser.range / 2, 0);
   layFlat(aim);
@@ -746,13 +1277,13 @@ function makeTelegraph(id) {
   // an i-frame telegraph is that you can still see what it is protecting.
   const shell = new THREE.Mesh(
     new THREE.SphereGeometry(cfg.fighters[id].radius * 1.45, 14, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, wireframe: true }),
+    markGlow(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, wireframe: true }), 0.9),
   );
   shell.visible = false;
   g.add(shell);
 
   scene.add(g);
-  return { g, ring, cone, lane, laneLen, aim, shell };
+  return { g, ring, cone, lane, laneLen, aim, shell, disc: zoneDisc };
 }
 
 /**
@@ -958,18 +1489,66 @@ function updateOcclusion(view, dt) {
     }
   }
   t.cone.remove(probe);
+
+  /*
+   * ── И ДИСК ЗОНЫ: ОН ПРОВЕРЯЕТСЯ НЕ В ЦЕНТРЕ АРЕНЫ ────────────────────────
+   *
+   * Проверка выше обнуляет позицию группы — и потому не могла поймать самый
+   * дорогой класс ошибки в этом файле: диск зоны — РЕБЁНОК группы, которой
+   * присвоена позиция бойца, и мировая точка, положенная в его `position`,
+   * складывалась с ней. Боец в (12.7, −0.7) рисовал диск в (19.3, −1.2) —
+   * промах 12.7 м, у самой стены. В центре арены ошибки нет, поэтому она
+   * прожила ровно столько, сколько проверялась в центре.
+   *
+   * Здесь боец ставится ЗАВЕДОМО НЕ В ЦЕНТР.
+   */
+  const dprobe = new THREE.Object3D();
+  t.disc.add(dprobe);
+  t.g.position.set(10, 0, -8);
+  const at = 6;
+  for (const h of [0, Math.PI / 2, -Math.PI / 2]) {
+    t.disc.position.set(Math.sin(h) * at, 0.042, Math.cos(h) * at);
+    t.g.updateMatrixWorld(true);
+    dprobe.getWorldPosition(out);
+    const wantX = 10 + Math.sin(h) * at;
+    const wantZ = -8 + Math.cos(h) * at;
+    if (Math.hypot(out.x - wantX, out.z - wantZ) > 0.02) {
+      fail(`zone telegraph lands in the wrong place at heading ${h.toFixed(2)}: `
+        + `drawn at (${out.x.toFixed(2)}, ${out.z.toFixed(2)}), the zone goes to (${wantX.toFixed(2)}, ${wantZ.toFixed(2)})`);
+    }
+  }
+  t.disc.remove(dprobe);
+  t.disc.position.set(0, 0.042, 0);
+
   t.g.position.copy(keep);
 })();
 
 /** Where in a skill's own clock we are, in seconds, from the snapshot's 0..1. */
-function actElapsed(f) {
-  const sk = cfg.skills[f.act];
+/**
+ * Сколько секунд прошло с начала умения.
+ *
+ * `f.phase` — доля ВСЕГО умения; чтобы получить секунды, нужна его полная
+ * длительность. Она бралась ТОЛЬКО из `cfg.skills`, где живут четыре
+ * захардкоженных умения и прыжок, — а умение из грамматики зовётся `k1..k3`,
+ * и функция возвращала ноль.
+ *
+ * Последствие было не про прыжок и не про одно умение: телеграф на полу
+ * разгорается по `el / kd.windup`, и при нуле он застревал на стартовой
+ * плотности НАВСЕГДА. Комментарий рядом с этой формулой объясняет, что
+ * разгорание — и есть разница между «предупреждение было» и «предупреждение,
+ * на которое можно среагировать»; у всех существ игроков её не было.
+ *
+ * Полоса каста над головой считалась той же функцией и по той же причине
+ * стояла на нуле весь замах.
+ */
+function actElapsed(f, id = null) {
+  const sk = cfg.skills[f.act] || (id && kitLabels[id] && kitLabels[id][f.act]) || null;
   if (!sk) return 0;
   const total = (sk.windup || 0) + (sk.airborne || 0) + (sk.dashSeconds || 0) + (sk.recover || 0);
   return f.phase * total;
 }
 
-function updateTelegraph(id, v) {
+function updateTelegraph(id, v, view = null) {
   const t = tele[id];
   t.g.position.set(v.x, 0, v.z);
   t.g.visible = v.alive;
@@ -979,7 +1558,101 @@ function updateTelegraph(id, v) {
   t.ring.userData.disc.material.opacity = v.stun ? 0.06 : 0.16;
 
   const sk = cfg.skills;
-  const el = actElapsed(v);
+  const el = actElapsed(v, id);
+
+  /*
+   * ТЕЛЕГРАФ ДЛЯ УМЕНИЙ ИЗ ГРАММАТИКИ.
+   *
+   * Всё, что ниже, написано под четыре захардкоженных умения и включается по
+   * именам `smash`, `charge`, `laser`. Умение из грамматики зовётся `k1`, и ни
+   * одна из этих веток на него не срабатывает: существо игрока замахивалось
+   * НЕВИДИМО. §10.3 держится на том, что по замаху видно, что сейчас будет, —
+   * и держалось это ровно для двух наших существ.
+   *
+   * Форма берётся из ДОСТАВКИ — тот же принцип, что у §9.2 (доставка владеет
+   * силуэтом) и у моста «доставка → поза тела». Конус рисуется конусом, всё,
+   * что летит по прямой, — полосой; умения на себя земле не угрожают и фигуры
+   * на полу не получают, у них есть полоса каста над головой.
+   */
+  const kd = kitLabels[id] && kitLabels[id][v.act];
+  if (kd && v.actPhase === 'windup' && (kd.windup || 0) > 0.05) {
+    const u = THREE.MathUtils.clamp(el / kd.windup, 0, 1);
+    /* Плотность несёт УГРОЗУ, цвет — принадлежность (D162): чужая фигура
+       плотнее собственной, потолок 0.82, чтобы пол под ней всё же читался. */
+    const fade = Math.min(0.95, (0.42 + 0.38 * u) * threatGain(id));
+    const reach = kd.range ?? kd.distance ?? 0;
+    if (kd.kind === 'cone' && reach) {
+      t.cone.visible = true;
+      t.cone.scale.setScalar(reach + cfg.fighters[id].radius);
+      faceHeading(t.cone, v.h);
+      setFade(t.cone, fade);
+      t.lane.visible = false;
+      return;
+    }
+    /*
+     * ЗОНА ТЕЛЕГРАФИРУЕТСЯ ДИСКОМ, А НЕ ПОЛОСОЙ.
+     *
+     * Ветка знала только конус, а всё остальное рисовала полосой по курсу.
+     * У зоны range 12 и radius 3: игрок видел прямую полосу длиной двенадцать
+     * метров вместо диска радиусом три в точке установки — вчетверо больше
+     * настоящего и не той формы. Диск появлялся только в момент срабатывания,
+     * то есть когда уходить уже поздно.
+     *
+     * Комментарий в этом же файле называет телеграф, который преувеличивает,
+     * хуже отсутствующего: он учит неверному уклонению. Зона стоит в живых
+     * наборах прямо сейчас.
+     *
+     * Точка установки считается ТАК ЖЕ, как в симуляции (`deliver.js`, ветка
+     * `zone`): min(дальность, расстояние до врага) по курсу. Иначе диск
+     * встанет не туда, куда придёт зона.
+     */
+    if (kd.kind === 'zone' && kd.radius) {
+      t.cone.visible = false;
+      t.lane.visible = false;
+      t.disc.visible = true;
+      const you = view && view[id === 'octopus' ? 'gorilla' : 'octopus'];
+      const toEnemy = you ? Math.hypot(you.x - v.x, you.z - v.z) : reach;
+      const at = Math.min(reach || kd.range || 12, toEnemy);
+      /*
+       * КООРДИНАТЫ ЗДЕСЬ ЛОКАЛЬНЫЕ, А НЕ МИРОВЫЕ.
+       *
+       * `t.disc` — ребёнок группы `t.g`, а группе на первой строке этой
+       * функции присвоена позиция бойца. Мировая точка, положенная в
+       * `disc.position`, складывается с ней и даёт УДВОЕННУЮ координату
+       * кастера: боец в (12.7, −0.7) рисовал диск в (19.3, −1.2) — промах
+       * 12.7 м, у самой стены. Совпадало только когда кастер стоял ровно в
+       * центре арены, а самопроверка `checkTelegraphOrientation` обнуляет
+       * позицию группы и щупает конус — то есть проверяет ровно тот случай,
+       * в котором ошибки нет.
+       */
+      t.disc.position.set(Math.sin(v.h) * at, 0.042, Math.cos(v.h) * at);
+      t.disc.scale.setScalar(kd.radius);
+      setFade(t.disc, fade);
+      return;
+    }
+    if (reach && kd.kind !== 'self' && kd.kind !== 'blink') {
+      t.lane.visible = true;
+      t.cone.visible = false;
+      faceHeading(t.lane, v.h);
+      /*
+       * Обрезаем укрытием ТОЛЬКО то, что укрытие останавливает.
+       *
+       * Луч и рывок упираются в первый солид, и полоса до него — правда.
+       * Навес летит по дуге, зона ставится в точку: им укрытие безразлично
+       * (`needsLos: false` в реестре), и обрезанная полоса обещала бы им
+       * дальность вдвое меньше настоящей. Телеграф, который преуменьшает,
+       * учит неверному дожду ровно так же, как тот, который преувеличивает.
+       */
+      const shown = kd.needsLos ? dashReach(id, v.x, v.z, v.h, reach) : reach;
+      t.lane.scale.set(1, Math.max(0.02, shown) / t.laneLen, 1);
+      setFade(t.lane, fade);
+      return;
+    }
+    /* На себя и мигание: земле ничто не угрожает, фигуры нет. */
+    t.cone.visible = false; t.lane.visible = false;
+    return;
+  }
+  if (kd) { t.cone.visible = false; t.lane.visible = false; t.disc.visible = false; }
 
   /*
    * Both wind-ups are under a third of a second — eight frames at 30 Hz — so a
@@ -988,13 +1661,19 @@ function updateTelegraph(id, v) {
    * which is the difference between "there was a warning" and "there was a
    * warning you could act on".
    */
+  /* Диск гасится БЕЗУСЛОВНО, как конус и полоса ниже.
+     Он гасился только внутри ветки `if (kd)`, а у бойца без набора `kd`
+     всегда falsy — и диск зоны из прошлого боя стоял на арене весь
+     следующий. По живой базе «бой с набором → бой без набора» — обычная
+     последовательность. */
+  t.disc.visible = false;
   const winding = v.act === 'smash' && v.actPhase === 'windup';
   t.cone.visible = winding;
   if (winding) {
     const u = THREE.MathUtils.clamp(el / sk.smash.windup, 0, 1);
     t.cone.scale.setScalar(sk.smash.range + cfg.fighters[id].radius);
     faceHeading(t.cone, v.h);
-    t.cone.material.opacity = 0.30 + 0.35 * u;
+    setFade(t.cone, Math.min(0.95, (0.42 + 0.38 * u) * threatGain(id)));
   }
 
   // charge: the lane while it can still be aimed, and again while it travels,
@@ -1013,10 +1692,10 @@ function updateTelegraph(id, v) {
   }
   if (revving) {
     const u = THREE.MathUtils.clamp(el / sk.charge.windup, 0, 1);
-    t.lane.material.opacity = 0.24 + 0.30 * u;
+    setFade(t.lane, Math.min(0.95, (0.38 + 0.36 * u) * threatGain(id)));
   } else if (running) {
     const u = THREE.MathUtils.clamp((el - sk.charge.windup) / sk.charge.dashSeconds, 0, 1);
-    t.lane.material.opacity = 0.45 * (1 - u);
+    setFade(t.lane, Math.min(0.95, 0.55 * (1 - u) * threatGain(id)));
   }
 
   // laser: where the beam will leave from, tracked live through the cast
@@ -1088,6 +1767,20 @@ const skillRu = (id, who) => {
   if (k) return k.ru.toLowerCase();
   return SKILL_RU[id] || id;
 };
+/**
+ * Почему удар не прошёл — словами игрока.
+ *
+ * `airborne` здесь главная: это единственное место в продукте, где видно,
+ * что прыжок сработал. Остальные три существовали в симуляции с самого
+ * начала и до сих пор не доезжали до экрана ни у одного существа с набором.
+ */
+const MISS_RU = {
+  airborne: 'прошло под прыжком',
+  cover: 'закрыт укрытием',
+  range: 'не достал',
+  aim: 'мимо',
+};
+
 const REASON_RU = {
   kill: 'у соперника кончилось здоровье',
   timeout: 'время вышло — здоровья осталось больше',
@@ -1111,7 +1804,17 @@ function rebuildCds(id, kit) {
   const box = bars[id].cds;
   box.innerHTML = '';
   cdEls[id] = {};
-  const names = kit ? [...Object.keys(kit), 'jump'] : cfg.fighters[id].skills.concat('jump');
+  /*
+   * D160: у существа с набором чипов РОВНО ТРИ. Раньше сюда дописывался
+   * четвёртый, «прыжок», — и он был правдой ровно до того дня, когда прыжок
+   * перестал доставаться всем даром. Чип умения, которого у бойца нет,
+   * обещает кнопку, которой не существует.
+   *
+   * Два захардкоженных эталона кита не имеют, и им прыжок по-прежнему
+   * дописывается: `skillsOf` отдаёт его им на сервере, и HUD обязан
+   * показывать то же, что видит мозг.
+   */
+  const names = kit ? Object.keys(kit) : cfg.fighters[id].skills.concat('jump');
   for (const name of names) {
     const el = document.createElement('div');
     el.className = 'cd';
@@ -1136,7 +1839,8 @@ function setSay(id, textValue) {
    */
   if (textValue && lastSaid[id] !== textValue) {
     lastSaid[id] = textValue;
-    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${sideName[id]}</span> · <i style="font-style:normal;opacity:.9">«${textValue}»</i>`);
+    /* Имя стороны — наше, реплика — чужая: экранируется только она. */
+    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${esc(sideName[id])}</span> · <i style="font-style:normal;opacity:.9">«${esc(textValue)}»</i>`);
   }
   if (!textValue) {
     if (sayEls[id]) { sayEls[id].remove(); sayEls[id] = null; }
@@ -1155,7 +1859,9 @@ function setSay(id, textValue) {
 function floatDamage(x, z, amount, who) {
   const d = document.createElement('div');
   d.className = 'dmg';
-  d.textContent = `-${amount}`;
+  /* Округление на всякий случай и здесь: старые записанные бои в базе несут
+     сырое число, а повтор обязан читаться так же, как живой бой. */
+  d.textContent = `-${Math.round(Number(amount) * 100) / 100}`;
   d.style.color = `#${COLOR[who === 'octopus' ? 'gorilla' : 'octopus'].toString(16).padStart(6, '0')}`;
   hud.appendChild(d);
   const born = performance.now();
@@ -1186,6 +1892,29 @@ function project(x, y, z) {
  * audit shots. Counting the repeat instead keeps the ordering, says how many,
  * and leaves room in fourteen lines for the events that are not repeats.
  */
+/**
+ * Экранирование для ленты боя.
+ *
+ * ЗАЧЕМ. `pushFeed` собирает строку разметкой и кладёт её в `innerHTML` —
+ * это удобно для цветных имён и курсива, и это же дыра, если внутрь попадает
+ * текст, который писали не мы. Ровно один такой текст есть: РЕПЛИКА МОЗГА
+ * (`api.say`). Мозг пишет модель по промпту игрока, симуляция режет реплику
+ * до девяноста символов и НИЧЕГО не экранирует, а кадр с ней уезжает КАЖДОМУ
+ * зрителю боя — включая анонимных гостей на витрине и всё это внутри чужого
+ * iframe (F8).
+ *
+ * Проверено прогоном изолята: `api.say('<img src=x onerror=…>')` доезжает до
+ * кадра ПОБИТОВО. Заголовка CSP сервер не отдаёт, значит обработчик
+ * исполнился бы.
+ *
+ * Имена существ санитизируются на входе (`creatures.js`, `sanitizeName`), а
+ * реплика — нет и не может: это свободный текст, в нём законны и кавычки, и
+ * угловые скобки. Значит экранировать надо на выходе, здесь.
+ */
+const esc = (s) => String(s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 function pushFeed(line, key) {
   const top = feed.firstChild;
   const stamp = `<span class="ft">${renderClock.toFixed(1)}</span>`;
@@ -1224,14 +1953,18 @@ for (const id of ['octopus', 'gorilla']) {
 function updatePlate(id, v, height) {
   const p = plates[id];
   if (!v.alive) { p.root.style.display = 'none'; return; }
-  const sk = cfg.skills[v.act];
+  /* Умение может быть захардкоженным (cfg.skills) или из грамматики — тогда
+     его параметры приехали с набором. Второй случай — это все существа
+     игроков, и до этой строки полоса каста у них не появлялась ни разу. */
+  const sk = cfg.skills[v.act] || (kitLabels[id] && kitLabels[id][v.act]) || null;
   const casting = !!sk && v.actPhase === 'windup' && (sk.windup || 0) > 0.05;
   p.root.style.display = 'block';
   p.root.classList.toggle('casting', casting);
   p.hp.style.width = `${THREE.MathUtils.clamp(v.hp / v.maxHp, 0, 1) * 100}%`;
   if (casting) {
-    p.lab.textContent = v.act;
-    p.cast.style.width = `${THREE.MathUtils.clamp(actElapsed(v) / sk.windup, 0, 1) * 100}%`;
+    /* Имя для человека, а не идентификатор слота: «конус·урон», не «k1». */
+    p.lab.textContent = (kitLabels[id] && kitLabels[id][v.act]?.ru) || v.act;
+    p.cast.style.width = `${THREE.MathUtils.clamp(actElapsed(v, id) / sk.windup, 0, 1) * 100}%`;
   }
   const at = project(v.x, v.y + height + 0.45, v.z);
   p.root.style.left = `${at.x}px`;
@@ -1284,12 +2017,48 @@ const SNAP_DT = 1 / cfg.tickHz;
 const DELAY = SNAP_DT * 2;
 
 let ws;
+/* Живёт СНАРУЖИ `connect`: переподключение вызывает её заново, и локальная
+   переменная обнулялась бы на каждой попытке — то есть «связи нет уже пять
+   секунд» никогда бы не наступило. */
+let downSince = 0;
+
 function connect() {
-  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  /*
+   * ── ЛИЧНОСТЬ СОКЕТА ЕДЕТ ПОДПРОТОКОЛОМ, А НЕ ТОЛЬКО КУКОЙ ────────────────
+   *
+   * D22 увёл сессию из куки в заголовок `Authorization: Bearer` ровно потому,
+   * что продукт живёт в чужом iframe (F8), где куки может не быть вовсе. А
+   * рукопожатие WebSocket из браузера заголовков не принимает — API их не
+   * даёт. Значит сокет опознавался ТОЛЬКО кукой, и в проде, где её нет, он
+   * анонимен: ни «ТВОЁ» на плите, ни «твой бой» под часами, ни перебивки
+   * «свой бой забирает экран». То есть весь D162 в проде не работал бы.
+   *
+   * Подпротокол — единственный заголовок, который браузер даёт задать. Он не
+   * попадает ни в строку запроса, ни в логи прокси, в отличие от `?token=`.
+   * Сервер выбирает первый протокол и читает второй как токен.
+   */
+  let tok = null;
+  try { tok = localStorage.getItem('airena.session'); } catch { /* приватный режим */ }
+  const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+  ws = tok ? new WebSocket(url, ['airena', tok]) : new WebSocket(url);
   window.__ws = () => (ws ? ws.readyState : -1);
   /* Одна дверь наружу для оболочки: попросить сервер повторить конкретный
      бой. Второй сокет дал бы второе мнение о том, что сейчас идёт. */
   window.__airenaSend = (v) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(v)); };
+  /*
+   * ПЕРЕОТКРЫТЬ СОКЕТ. Нужно ровно после привязки аккаунта.
+   *
+   * Личность сокета берётся ОДИН РАЗ, на рукопожатии, из куки. `claimAccount`
+   * всегда меняет id: гостевой `g_…` удаляется, вместо него появляется `u_…`.
+   * Сокет остаётся с прежней личностью, и первое же созданное существо
+   * приезжает как ЧУЖОЕ — `owned: false`, значит ни «ТВОЁ» на плите, ни
+   * «твой бой» под часами.
+   *
+   * Проверять владение по каждой команде нельзя: у сокета нет токена после
+   * рукопожатия, а верить слову клиента про владение — это отдать метку
+   * принадлежности тому, кто её просит. Дешевле и честнее переоткрыть.
+   */
+  window.__airenaReconnect = () => { try { ws.close(); } catch { /* уже закрыт */ } };
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     /*
@@ -1304,6 +2073,30 @@ function connect() {
     if (m.type === 'error') { fail(m.message); return; }
     if (m.type === 'match') {
       frames = []; pendingFx = []; renderClock = 0; over = null; decided = false; matchInfo = m; framingLost = false;
+      /* Чья сторона (D162). Сервер считает это персонально для сокета; здесь
+         только запоминаем, чтобы телеграфы и плиты читали одно и то же. */
+      mineSide = m.mine || null;
+      /*
+       * Эффекты прошлого боя снимаются вместе с ним.
+       *
+       * Стена живёт до пяти секунд, плита зоны — до трёх, ожог — полторы.
+       * Между боями обычно есть карточка итога, поэтому видно это редко; при
+       * быстром переходе (D161 сократил паузу до пяти секунд) плита зоны из
+       * предыдущего боя стояла на арене нового.
+       */
+      for (const f of fxPool) {
+        scene.remove(f.obj);
+        f.obj.traverse?.((o) => {
+          o.geometry?.dispose?.();
+          const mat = o.material;
+          if (!mat) return;
+          for (const one of Array.isArray(mat) ? mat : [mat]) {
+            if (one && !one.userData?.pooled) one.dispose?.();
+          }
+        });
+      }
+      fxPool.length = 0;
+      fps.min = 0;
       // Snap rather than ease onto the first frame: easing in from the previous
       // match's framing means the opening seconds — the approach, which is the
       // only part of the fight with the whole arena in it — are shot from
@@ -1341,6 +2134,29 @@ function connect() {
          */
         kitLabels[id] = (m.kits && m.kits[id]) || null;
         rebuildCds(id, kitLabels[id]);
+        /* Тело этого бойца. Приезжает вместе с именем и набором, потому что
+           это третья часть одного и того же ответа на вопрос «кто дерётся». */
+        swapBody(id, (m.bodies && m.bodies[id]) || id, m.sizes?.[id] ?? 1);
+      }
+      /*
+       * ПОДПИСЬ ПОД БОЕМ ГОВОРИТ ПРО ЭТОТ БОЙ.
+       *
+       * В разметке она статична: «Оба мозга написаны нейросетью. Мы в них не
+       * вмешивались.» Это центральное утверждение продукта, и оно стояло в
+       * двух дюймах от боя, который ему противоречил: показательные бои идут
+       * между библиотечными существами, а у четырёх из них мозг рукописный —
+       * наш эталон грамматики. Утверждение либо верно, либо его нет; третьего
+       * («верно почти всегда») для главной страницы не бывает.
+       */
+      const byline = $('#clock .byline');
+      if (byline) {
+        const models = ['octopus', 'gorilla'].map((id) => m.meta?.[id]?.model || '');
+        const handmade = models.filter((x) => /рукописн/i.test(x)).length;
+        byline.textContent = handmade === 2
+          ? 'Оба мозга здесь наши: это эталонные спарринг-партнёры.'
+          : (handmade === 1
+            ? 'Один мозг написан нейросетью, второй наш — эталонный спарринг-партнёр.'
+            : 'Оба мозга написаны нейросетью. Мы в них не вмешивались.');
       }
       $('#clock .s').textContent = `бой №${m.seed}`;
       const box = $('#seed');
@@ -1348,6 +2164,15 @@ function connect() {
       return;
     }
     if (m.type === 'frame') {
+      /*
+       * Один и тот же кадр может прийти дважды — при догоне после разрыва
+       * связи (D14) сервер отдаёт трансляцию с текущей секунды, и стык
+       * перекрывается. Эффекты кадра при этом проигрывались ВТОРОЙ раз:
+       * двойная вспышка на один удар, двойная стена на одну стену. Кадр
+       * узнаётся по своему времени — оно и есть его имя.
+       */
+      const last = frames.length ? frames[frames.length - 1] : null;
+      if (last && m.frame.t <= last.t) return;
       frames.push(m.frame);
       if (frames.length === 1) renderClock = m.frame.t - DELAY;
       if (frames.length > 240) frames.splice(0, frames.length - 240);
@@ -1381,7 +2206,34 @@ function connect() {
       }
     }
   };
-  ws.onclose = () => setTimeout(connect, 900);
+  /*
+   * РАЗРЫВ СВЯЗИ ВИДЕН.
+   *
+   * Переподключение молча стояло здесь с самого начала и работает: через
+   * секунду сокет открывается снова, и бой продолжается с текущего места
+   * (D14). Чего не было — сообщения. Кадры переставали приходить, HUD
+   * замирал на последнем и продолжал показывать здоровье, время и
+   * кулдауны, как будто бой идёт. Зритель видел не «связь пропала», а
+   * «игра сломалась»: единственная разница между этими двумя вещами —
+   * сказали ему или нет.
+   *
+   * Сообщение появляется не сразу: обрыв на четверть секунды между двумя
+   * кадрами — обычное дело, и мигать плашкой на каждый такой значит
+   * научить не обращать на неё внимания.
+   */
+  ws.onclose = () => {
+    downSince = downSince || Date.now();
+    const el = $('#clock .byline');
+    const late = Date.now() - downSince > 1500;
+    if (el && late) el.textContent = 'связь потерялась — бой идёт на сервере, догоним его сами';
+    dispatchEvent(new CustomEvent('airena:offline', { detail: { since: downSince } }));
+    setTimeout(connect, 900);
+  };
+  ws.onopen = () => {
+    if (!downSince) return;
+    downSince = 0;
+    dispatchEvent(new CustomEvent('airena:online', {}));
+  };
 }
 /*
  * Сокет открывается В КОНЦЕ файла, а не здесь.
@@ -1436,7 +2288,10 @@ addEventListener('keydown', (e) => {
   if (t.tagName === 'SELECT' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
       || t.isContentEditable || document.body.dataset.typing === '1') return;
   if (e.code === 'Space') { e.preventDefault(); startMatch(); }
-  if (e.key === 'c' || e.key === 'C') $('#btn-cam').click();
+  /* Кнопки камеры есть только в дев-вьювере: в продукте её нет, и вызов
+     `.click()` у null ронял обработчик на каждое нажатие «c» — то есть на
+     каждое слово, которое игрок набирал бы вне поля ввода. */
+  if (e.key === 'c' || e.key === 'C') $('#btn-cam')?.click();
   if (e.key === 'Escape') $('#code').classList.remove('on');
 });
 
@@ -1513,9 +2368,24 @@ if (params.get('seed')) {
   if (box) box.value = params.get('seed');
 }
 
-// open on the closest fight the tournament found, when there has been one
+/*
+ * Открыться на самом близком бою, который нашёл турнир, — если он был.
+ *
+ * Это дев-удобство, и ручка живёт только в дев-вьювере (`src/server/index.js`).
+ * Продуктовый сервер её не знает, и запрос давал 404 в консоли КАЖДОМУ игроку.
+ * Ошибка была безвредной и оттого хуже безвредной: она приучает не смотреть в
+ * консоль, а следующая ошибка там будет настоящей.
+ *
+ * Спрашиваем только там, где есть кому отвечать. Условие «есть селекторы
+ * мозгов» для этого не годилось: продуктовая страница держит те же
+ * `#sel-oct`/`#sel-gor` скрытыми в `#controls`, и 404 получал каждый игрок —
+ * ровно то, чего этот комментарий обещал не делать. Метка `data-dev` стоит
+ * только на дев-странице вьювера и проверяема.
+ */
 try {
-  const rec = await (await fetch('/api/recommended')).json();
+  const rec = document.body.dataset.dev && $('#sel-oct') && $('#sel-gor')
+    ? await (await fetch('/api/recommended')).json()
+    : null;
   if (rec) {
     if ([...$('#sel-oct').options].some((o) => o.value === rec.octopus)) $('#sel-oct').value = rec.octopus;
     if ([...$('#sel-gor').options].some((o) => o.value === rec.gorilla)) $('#sel-gor').value = rec.gorilla;
@@ -1579,6 +2449,10 @@ const AIM_HEADROOM = 0.62;
 const FRAME_EDGE = 0.92;
 /** What the framing solves for, leaving the edge slack for the hit shake. */
 const FRAME_TARGET = 0.88;
+/** Насколько быстро камера отъезжает, спасая бойца из-за края кадра, м/с. */
+const RESCUE_RATE = 90;
+/** Потолок угловой скорости камеры вокруг пары, рад/с. */
+const AZ_RATE = 2.2;
 
 /**
  * A trial eye, for the camera to ask "would I see them from over there?".
@@ -1735,7 +2609,22 @@ function updateCamera(a, b, dt) {
    * smoothing term bolted onto this one.
    */
   d = ((want - camState.az + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-  camState.az += d * ease(1.6);
+  /*
+   * У ПОВОРОТА ЕСТЬ ПОТОЛОК СКОРОСТИ, как у отъезда.
+   *
+   * Экспоненциальное сглаживание гладко только при малой ошибке. Биссектриса
+   * пары переворачивается, когда бойцы меняются местами, и `d` доходит до π;
+   * первый кадр после этого поворачивал глаз на 0.08 рад из состояния покоя,
+   * то есть 5 рад/с из нуля за 16.7 мс. Замерено `tools/checkcamera.mjs`:
+   * вторая разность азимута доходила до 465 рад/с².
+   *
+   * 2.2 рад/с — примерно 126°/с: быстрее, чем успевает следить глаз, и
+   * медленнее, чем «камеру провернуло». Потолок не трогает обычное слежение
+   * (99-й процентиль скорости заметно ниже) и срезает только переворот.
+   * Склейка (`snap`) исключена: это монтаж, а не движение.
+   */
+  const azStep = d * ease(1.6);
+  camState.az += snap ? azStep : THREE.MathUtils.clamp(azStep, -AZ_RATE * dt, AZ_RATE * dt);
 
   /*
    * Close, and derived rather than guessed.
@@ -1771,7 +2660,7 @@ function updateCamera(a, b, dt) {
    * `need * 0.75` is still sized to the pair, and the servo below still has the
    * last word.
    */
-  const targetDist = THREE.MathUtils.clamp(decided ? need * 0.75 : need, decided ? 9.5 : 13, 34);
+  let targetDist = THREE.MathUtils.clamp(decided ? need * 0.75 : need, decided ? 9.5 : 13, 34);
   /*
    * Pull back fast, close in slow.
    *
@@ -1809,6 +2698,9 @@ function updateCamera(a, b, dt) {
    * instead of a single frame, and leaves the slow direction untouched: the cap
    * is far above anything the 2.6 ease ever asks for.
    */
+  /* Пол от спасения: пока он стоит, сервопривод не имеет права тянуть камеру
+     обратно внутрь — иначе спасение и сервопривод дерутся каждый кадр. */
+  if (camState.rescueTo) targetDist = Math.max(targetDist, camState.rescueTo);
   const stepDist = (targetDist - camState.dist) * ease(targetDist > camState.dist ? 9 : 2.6);
   /*
    * The cap does not apply to the snap, because the snap is not a dolly.
@@ -1925,7 +2817,7 @@ function updateCamera(a, b, dt) {
    * arithmetic passed and the picture dropped off the bottom edge.
    */
   const eased = ease(7);
-  const holds = (look) => {
+  const holds = (look, edge = FRAME_TARGET) => {
     trialCam.fov = camera.fov; trialCam.aspect = camera.aspect;
     trialCam.updateProjectionMatrix();
     trialCam.position.set(
@@ -1943,7 +2835,7 @@ function updateCamera(a, b, dt) {
       // which is the whole death animation and topple.
       if (!f.alive && !decided) continue;
       _p.set(f.x, f.y + (bodies[id]?.height ?? 2) * 0.5, f.z).project(trialCam);
-      if (Math.abs(_p.x) > FRAME_TARGET || Math.abs(_p.y) > FRAME_TARGET) return false;
+      if (Math.abs(_p.x) > edge || Math.abs(_p.y) > edge) return false;
     }
     return true;
   };
@@ -1984,8 +2876,54 @@ function updateCamera(a, b, dt) {
    * distance 18.2 m and the servo never once reached even the 34 m clamp, let
    * alone this cap.
    */
+  /*
+   * ── СПАСЕНИЕ ПЕРЕСТАЛО БЫТЬ РЫВКОМ ────────────────────────────────────────
+   *
+   * Этот цикл множил `camState.dist` на 1.08 до четырёх раз ЗА ОДИН КАДР, в
+   * обход сервопривода и его потолка в 26 м/с. На восемнадцати метрах это
+   * ×1.36 — плюс шесть с половиной метров за 16.7 мс, то есть скорость около
+   * 390 м/с из нуля. Замерено `tools/checkcamera.mjs`: вторая разность
+   * дистанции доходила до 19643 м/с² при медиане 3.1, и таких кадров 188 из
+   * 52576. Это и есть «камеру дёргает»: почти всегда гладко и изредка рывком.
+   *
+   * Отменить спасение нельзя — оно единственное, что держит бойца в кадре, и
+   * `tools/checkframing.mjs` стоит именно на этом. Но между «пора спасать»
+   * (`FRAME_TARGET` 0.88) и «боец потерян» (`FRAME_EDGE` 0.92) есть запас, и
+   * этого запаса хватает, чтобы доехать за несколько кадров вместо одного.
+   *
+   * Поэтому цикл теперь считает, КУДА надо, а не прыгает туда. Требуемая
+   * дистанция запоминается как пол для сервопривода (`camState.rescueTo`),
+   * иначе на следующем кадре обычный сервопривод потянул бы обратно и всё
+   * повторилось бы; а сам шаг ограничен `RESCUE_RATE`. Пол снимается, как
+   * только кадр снова держится.
+   */
+  const beforeRescue = camState.dist;
+  /* Считается ДО цикла: `holds` читает `camState.dist` из замыкания, а цикл её
+     меняет — спросив после, спрашиваешь про уже спасённый кадр и всегда
+     получаешь «держится». Ровно на этом кадрирование теряло бойца на телепорте
+     в 7.5 м: замер сказал |ndc| 1.118 на t=4.0 с. */
+  const lost = snap || !holds(camState.look, FRAME_EDGE);
   for (let i = 0; i < 4 && camState.dist < 44 && !holds(camState.look); i++) {
     camState.dist = Math.min(44, camState.dist * 1.08);
+  }
+  if (camState.dist > beforeRescue) {
+    camState.rescueTo = Math.max(camState.rescueTo || 0, camState.dist);
+    /*
+     * ЗАПАС ЕСТЬ — ЕДЕМ ПЛАВНО. ЗАПАСА НЕТ — ПРЫГАЕМ.
+     *
+     * Спасение срабатывает по `FRAME_TARGET` (0.88), а провалом считается
+     * `FRAME_EDGE` (0.92). Пока боец в этом зазоре, у камеры есть несколько
+     * кадров, и рывок не нужен. Как только он ВЫШЕЛ за 0.92 — торговаться не о
+     * чем: кадр уже потерян, и плавность потерянного кадра никому не нужна.
+     *
+     * Без этого различения замер сразу это и показал: ограничение скорости
+     * без исключения стоило одного потерянного бойца на 36 прогонах
+     * (l2/l5, сид 808, t=0.2 с, глаз уже на 34 м). Первый кадр матча — тот же
+     * случай: `snap` это склейка, а не движение.
+     */
+    if (!lost) camState.dist = Math.min(camState.dist, beforeRescue + RESCUE_RATE * dt);
+  } else if (camState.rescueTo && camState.dist >= camState.rescueTo - 0.05) {
+    camState.rescueTo = 0;
   }
 
   camState.shake = Math.max(0, camState.shake - dt * 2.4);
@@ -2052,18 +2990,67 @@ function checkFraming(view, t) {
  * watcher can act on and a decoration: when the gorilla's arms are over its
  * head, the cone has not landed yet, and when they come down it has.
  */
+/**
+ * Доставка -> действие тела.
+ *
+ * Тела знают словарь поз (`attack`, `fire`, `block`, `signal`…), а не имена
+ * умений: имена умений у существа из грамматики свои, и знать их тело не
+ * может по определению — набор меняется без перегенерации (F10).
+ *
+ * Мост между ними — ДОСТАВКА, и это ровно тот же принцип, на котором стоит
+ * §9.2: силуэт принадлежит доставке. Луч и снаряд — «выстрел», конус, зона и
+ * стена — «удар», рывок — «упор», мигание и умение на себя — «знак».
+ *
+ * Без этой таблицы существо с набором из грамматики кастовало НЕВИДИМО:
+ * `poseAction` знал четыре захардкоженных умения и на всё остальное отвечал
+ * «ничего не играть». HUD показывал каст, VFX рисовал конус, а тело в это
+ * время просто шло вперёд. Телеграф, который не читается по телу, — это не
+ * телеграф, и вся идея «по замаху видно, что сейчас будет» держалась только
+ * на двух наших существах.
+ */
+const ACTION_BY_DELIVERY = {
+  beam: 'fire', bolt: 'fire', lob: 'fire',
+  cone: 'attack', zone: 'attack', wall: 'attack',
+  dash: 'block', blink: 'signal', self: 'signal',
+  /* `jump` здесь намеренно ОТСУТСТВУЕТ: он один из девяти не укладывается в
+     «одна доставка — один клип». Прыжок это два клипа, `jump` и `land`, и
+     граница между ними — конец воздушной фазы, а не середина умения.
+     Обрабатывается отдельной веткой в `poseAction`. */
+};
+
+/**
+ * Разложить прыжок на подъём и приземление.
+ *
+ * Одна формула на оба прыжка — захардкоженный (`cfg.skills.jump`) и любой из
+ * грамматики (`kitLabels[id][name]`): доля времени до касания земли есть
+ * (замах + воздух) / всё умение, и по ней клип переключается с `jump` на
+ * `land`. Дублировать её было бы приглашением к расхождению, а расхождение
+ * здесь читается как «существо приземлилось раньше, чем коснулось пола».
+ */
+function hopPose(phase, windup, airborne, recover) {
+  const total = windup + airborne + recover;
+  if (!(total > 0)) return { action: 'jump', phase: Math.min(1, phase) };
+  const air = (windup + airborne) / total;
+  return phase < air
+    ? { action: 'jump', phase: phase / air }
+    : { action: 'land', phase: Math.min(1, (phase - air) / (1 - air || 1)) };
+}
+
 function poseAction(f, id, now) {
   if (!f.alive) return { action: 'die', phase: Math.min(1, f.phase) };
   if (f.act === 'laser') return { action: 'fire', phase: f.phase };
   if (f.act === 'smash') return { action: 'attack', phase: f.phase };
   if (f.act === 'blink') return { action: 'signal', phase: Math.min(1, f.phase * 1.6) };
+  /* Умение из грамматики: имени вьювер не знает, доставку — знает. */
+  if (f.act && kitLabels[id] && kitLabels[id][f.act]) {
+    const kd = kitLabels[id][f.act];
+    if (kd.kind === 'jump') return hopPose(f.phase, kd.windup, kd.airborne ?? 0.55, kd.recover);
+    const a = ACTION_BY_DELIVERY[kd.kind];
+    if (a) return { action: a, phase: Math.min(1, f.phase) };
+  }
   if (f.act === 'jump') {
     const sk = cfg.skills.jump;
-    const total = sk.windup + sk.airborne + sk.recover;
-    const air = (sk.windup + sk.airborne) / total;
-    return f.phase < air
-      ? { action: 'jump', phase: f.phase / air }
-      : { action: 'land', phase: (f.phase - air) / (1 - air) };
+    return hopPose(f.phase, sk.windup, sk.airborne, sk.recover);
   }
   if (f.act === 'charge') {
     const sk = cfg.skills.charge;
@@ -2153,7 +3140,37 @@ if (params.get('shots')) {
   })();
 }
 
+/*
+ * СЧЁТЧИК КАДРОВ — ЗАМЕР, А НЕ УКРАШЕНИЕ.
+ *
+ * `docs/STAGE5-LOOK.md` признаёт, что боевой fps не измерен ни разу: он
+ * снимался руками на одной машине, и гейта под него нет. С появлением
+ * постобработки (D163) это перестало быть терпимым — bloom добавляет проходы,
+ * и «стало красиво» без числа рядом ничего не значит.
+ *
+ * Скользящее окно в одну секунду; наружу отдаётся последнее и минимальное.
+ * Минимум важнее среднего: провал в 20 fps на полсекунды виден глазом, а в
+ * среднем за минуту его не видно вовсе.
+ */
+/*
+ * `min` начинается с НУЛЯ, а не с бесконечности, и сбрасывается на каждом бою.
+ *
+ * Бесконечность не переживает JSON — снаружи она приходит как `null`, то есть
+ * прибор молчал ровно там, где его спрашивают. А минимум, взятый от загрузки
+ * страницы, ловит секунду компиляции конвейеров и любую секунду троттлинга:
+ * это худшая секунда БРАУЗЕРА, а не худшая секунда боя.
+ */
+const fps = { last: 0, min: 0, frames: 0, since: performance.now() };
+window.__airenaFps = fps;
+
 renderer.setAnimationLoop(() => {
+  fps.frames++;
+  const t = performance.now();
+  if (t - fps.since >= 1000) {
+    fps.last = Math.round((fps.frames * 1000) / (t - fps.since));
+    if (fps.last > 0) fps.min = fps.min ? Math.min(fps.min, fps.last) : fps.last;
+    fps.frames = 0; fps.since = t;
+  }
   try { frame(); } catch (e) {
     if (!loopFailed) { loopFailed = true; fail(`render loop: ${e.stack || e.message}`); }
   }
@@ -2298,7 +3315,7 @@ function frame() {
         el.className = `cd ${cd > 0.001 ? 'cool' : 'ready'}`;
         el.textContent = cd > 0.001 ? `${label} ${cd.toFixed(1)}` : label;
       }
-      updateTelegraph(id, v);
+      updateTelegraph(id, v, view);
       updatePlate(id, v, body.height || 2);
       setSay(id, v.say);
       if (sayEls[id]) {
@@ -2343,11 +3360,55 @@ function frame() {
     // A handle for a human (or a reviewer's console) to inspect the live view.
     // `decided` as well as `over`: the 2.6 s between them is the curtain, and a
     // recorder that splits a match on `over` alone cannot see into it.
-    window.airena = { THREE, TSL, view, frames, bodies, camera, camState, scene, cfg, over, decided, matchInfo, renderClock, shoot, startMatch, tele, ghosts, solids: SOLIDS, backend: window.__airenaBackend };
+    /* `renderer` здесь ради замера кадров: без него нельзя ни спросить
+       `info.render.drawCalls`, ни отличить «кадр стоит дорого» от «кадр стоит
+       дорого ИМЕННО в отрисовке». Ручка отладочная и в бою ничего не делает. */
+    window.airena = { THREE, TSL, view, frames, bodies, camera, camState, scene, renderer, cfg, over, decided, matchInfo, renderClock, shoot, startMatch, tele, ghosts, solids: SOLIDS, backend: window.__airenaBackend };
   }
 
   updateFx(now);
-  renderer.render(scene, camera);
+  /*
+   * ── КАДР НЕ РИСУЕТСЯ, КОГДА ЕГО НЕ ВИДНО ────────────────────────────────
+   *
+   * Вьювер живёт в той же странице, что и продукт, и `#arena` не
+   * размонтируется никогда — иначе первый кадр (F6) пришлось бы платить на
+   * каждом переходе. Но экраны бывают двух видов, и CSS их уже различает:
+   * `#screen.doc` (существо, лестница) — непрозрачный документ поверх арены,
+   * `#screen.veil` — полупрозрачный слой, сквозь который §10.3 требует
+   * показывать идущий бой.
+   *
+   * Под непрозрачным документом рисовалась полная сцена с тенями 2048,
+   * MRT-проходом, мипами свечения и двумя пулами по три тысячи инстансов —
+   * замерено 2.9 мс GPU на кадр, тридцать раз в секунду, ни одного пикселя
+   * которых никто не видит.
+   *
+   * Логика кадра при этом ИДЁТ: она проигрывает буфер сокета и двигает HUD,
+   * и остановить её значило бы разъехаться с трансляцией. Пропускается ровно
+   * рисование.
+   */
+  /*
+   * `document.hidden` СЮДА НЕ ВХОДИТ, и это решение.
+   *
+   * Скрытой вкладке браузер и так режет `requestAnimationFrame` до одного
+   * кадра в секунду — своя проверка почти ничего не экономит. Зато она
+   * ломает снятие кадров: панель предпросмотра сообщает `hidden: true` и при
+   * этом просит композицию для снимка, и вместо арены получается чёрный
+   * прямоугольник. Инструмент, которым проверяют картинку, не должен
+   * зависеть от того, смотрит ли кто-то в него прямо сейчас.
+   */
+  /*
+   * СНИМОК КАДРА ПЕРЕВЕШИВАЕТ ПРОПУСК РИСОВАНИЯ.
+   *
+   * Пропуск стоял ПЕРЕД этим блоком, и обещание, которое возвращает
+   * `shoot()`, не разрешалось никогда, пока открыт документный экран —
+   * то есть вкладка «Существо» и лестница. Инструмент, которым проверяют
+   * картинку, зависал вместо ответа ровно на тех экранах, ради которых
+   * его и зовут.
+   */
+  const covered = document.getElementById('screen')?.classList.contains('doc');
+  if (covered && !pendingShot) return;
+  /* Постобработка, если она собралась; иначе прямой кадр — бой важнее света. */
+  if (post) post.render(); else renderer.render(scene, camera);
 
   if (pendingShot) {
     const { name, resolve } = pendingShot;

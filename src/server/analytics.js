@@ -12,16 +12,36 @@
  *     кормящее ни одной метрики, — это данные, которые никто не прочтёт.
  */
 
-/** Закрытый словарь. Ключ — имя события, значение — что оно кормит. */
+/**
+ * Закрытый словарь. Ключ — имя события, значение — что оно кормит.
+ *
+ * `server: true` значит «это событие пишет СЕРВЕР по факту, и от клиента оно
+ * не принимается». Словарь был закрыт по именам и открыт по источнику:
+ * `create_done` — событие рождения существа, числитель конверсии §14 —
+ * принималось от кого угодно, и пять curl-ов сдвигали «посетитель → создал
+ * существо» с 0.0165 до 0.0280. A7 запрещает утверждения об удержании без
+ * аналитики; аналитика, которую может писать посторонний, — это не аналитика,
+ * а поле для ввода.
+ */
 export const EVENTS = {
   // воронка первой сессии
   visit: { feeds: 'Посетитель → создал существо', props: ['ref', 'guest'] },
   fight_watched: { feeds: 'Матчей на DAU', props: ['matchId', 'seconds', 'completed'] },
+  /* Разбор боя ОТКРЫТ — не «показана панель итога». Событие кормит проверку
+     F11 «доказательство авторства доходит до игрока», и на панели итога оно
+     срабатывало всегда, то есть измеряло единицу. */
   tactics_opened: { feeds: 'Посетитель → создал существо', props: ['matchId'] },
+  /* Панель итога показана. Отдельное событие, потому что это другой вопрос:
+     сколько людей досмотрело бой до конца. */
+  result_shown: { feeds: 'Матчей на DAU', props: ['matchId'] },
   create_opened: { feeds: 'Посетитель → создал существо', props: [] },
   create_submitted: { feeds: 'Посетитель → создал существо', props: ['bundle', 'archetype', 'promptChars'] },
-  create_done: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'ms', 'attempts', 'fallback'] },
-  create_failed: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'code'] },
+  create_done: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'ms', 'attempts', 'fallback'], server: true },
+  create_failed: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'code'], server: true },
+  /* Отказ ТЕЛА, отдельно от отказа генерации: тело может не собраться, а
+     существо всё равно родится (D117). `whose` отвечает на вопрос основателя
+     «чья вина» — молчала модель или написала код мимо стен. */
+  body_rejected: { feeds: 'Доля отклонённых генераций', props: ['code', 'whose', 'tries', 'model'], server: true },
   account_wall_shown: { feeds: 'Посетитель → создал существо', props: ['creatureId'] },
   account_claimed: { feeds: 'Посетитель → создал существо', props: ['moved'] },
 
@@ -30,13 +50,18 @@ export const EVENTS = {
   tab_view: { feeds: 'Матчей на DAU', props: ['tab'] },
   ladder_viewed: { feeds: 'Матчей на DAU', props: ['rank'] },
   creature_viewed: { feeds: 'Матчей на DAU', props: ['creatureId', 'mine'] },
-  refactor_submitted: { feeds: 'Стоимость на MAU', props: ['creatureId', 'bundle'] },
-  refactor_done: { feeds: 'Стоимость на MAU', props: ['creatureId', 'better'] },
+  refactor_submitted: { feeds: 'Стоимость на MAU', props: ['creatureId', 'bundle'], server: true },
+  refactor_done: { feeds: 'Стоимость на MAU', props: ['creatureId', 'better'], server: true },
   adaptation_shown: { feeds: 'D7', props: ['creatureId', 'kind'] },
 
   // предохранители — не продуктовые, но без них не видно, почему упала воронка
-  limit_denied: { feeds: 'Стоимость на MAU', props: ['code'] },
+  limit_denied: { feeds: 'Стоимость на MAU', props: ['code'], server: true },
   error_shown: { feeds: '—', props: ['code', 'screen'] },
+  /* Тело сломалось В БРАУЗЕРЕ, уже после того как приёмка его пропустила.
+     Единственный честный замер «существо видно»: всё остальное меряется на
+     сервере, где нет ни настоящего рендерера, ни настоящего железа. Каждое
+     такое событие — дыра в приёмке, а не невезение игрока. */
+  body_broken: { feeds: 'Доля отклонённых генераций', props: ['ref', 'side', 'message'] },
 };
 
 const MAX_PROP_BYTES = 512;
@@ -78,8 +103,26 @@ export function metrics(db, { now = Date.now(), windowDays = 7 } = {}) {
     visitorToCreature: visitors ? creators / visitors : null,
     matchesPerDau: dau ? watched / dau : null,
     rejectedShare: gens.n ? (gens.f || 0) / gens.n : null,
-    costPerMauUsd: mau ? spend / mau : null,
-    dau, mau, visitors, creators,
-    targets: TARGETS,
+    /* Стоимость на пользователя — наша экономика, а не игровая метрика.
+       Отдаётся только операторам; §14 её измеряет, но не публикует. */
+    ...(process.env.AIRENA_OPS === '1' ? { costPerMauUsd: mau ? spend / mau : null } : {}),
+    /*
+     * ДОЛИ — НАРУЖУ, АБСОЛЮТНЫЕ ЧИСЛА — ВНУТРЬ.
+     *
+     * Ручка отдавала любому dau, mau, число посетителей и число создавших
+     * существо. Доли выше говорят про игру («из десяти зашедших двое сделали
+     * существо»), и публиковать их не жалко. Абсолютные счётчики говорят про
+     * нас: сколько нас всего, растём мы или падаем, сколько стоит нас
+     * догнать. Это ровно та же граница, которую `limits.publicStatus`
+     * проводит по деньгам, и проведена она должна быть одинаково — иначе
+     * закрытая ручка бессмысленна, пока соседняя открыта.
+     */
+    ...(process.env.AIRENA_OPS === '1' ? { dau, mau, visitors, creators } : {}),
+        /* Цели §14 — тоже наши: они говорят, во сколько мы оцениваем игрока и
+       какую конверсию считаем нормой. Наружу едут те, что про игру
+       (бои, конверсия), денежная — только операторам. */
+    targets: process.env.AIRENA_OPS === '1'
+      ? TARGETS
+      : Object.fromEntries(Object.entries(TARGETS).filter(([k]) => !/usd/i.test(k))),
   };
 }

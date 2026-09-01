@@ -24,7 +24,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 
 import { PRELUDE } from '../../brain/prelude.js';
 import { runMatch } from '../../core/match.js';
-import { FUEL_PER_LOAD, FUEL_PER_THINK, OUT_OF_FUEL } from './instrument.js';
+import { FUEL_PER_LOAD, FUEL_PER_THINK, OUT_OF_FUEL, safeObject } from './instrument.js';
 
 /**
  * Векторная прелюдия — ИЗ ЕДИНОГО ИСТОЧНИКА, а не переписанная от руки.
@@ -55,9 +55,41 @@ async function buildPrelude() {
  * область, свои собственные `import`ы запрещены анализом, а всё, что ему
  * нужно снаружи, приходит аргументами функции-обёртки.
  */
+/* Безопасный `Object` — см. safeObject() в instrument.js. */
+const SAFE_OBJECT = safeObject();
+
+/* Одна реализация на процесс: см. IDX_SOURCE в instrument.js — там же
+   разобрано, почему ключ приводится к строке до сравнения и почему доступ
+   идёт по приведённому значению. */
+const IDX = (o, k) => {
+  const key = typeof k === 'symbol' ? k : String(k);
+  if (key === 'constructor' || key === '__proto__' || key === 'prototype') {
+    throw new Error(`доступ к ${String(key)} запрещён`);
+  }
+  return o[key];
+};
+
 async function loadBrain(instrumented, label, fuel, V) {
-  const wrapped = `export default function build(V, console, __fuel) {
+  /*
+   * ЗАТЕНЕНИЕ ОПАСНЫХ ИМЁН ПАРАМЕТРАМИ — та же техника, что в браузере.
+   *
+   * Мозг грузится модулем в реалм воркера, где `Object`, `Function` и
+   * `globalThis` настоящие. Разбор имён их запрещает, но отражение обходит
+   * разбор: `Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Object),
+   * 'constructor').value` — это конструктор `Function`, а в воркере он даёт
+   * настоящий `process`. На хосте тот же приём упирается в
+   * `codeGeneration: { strings: false }` у `node:vm`; у воркера такой стены
+   * нет, и это единственное место, где она нужна.
+   *
+   * `Object` подменяется шимом без отражения, остальные — undefined.
+   */
+  const wrapped = `export default function build(
+    V, console, __fuel, __idx, __safeObject,
+    Object, Function, Reflect, Proxy, globalThis, process, require, module,
+    WebAssembly, SharedArrayBuffer, Atomics, eval_
+  ) {
   "use strict";
+  Object = __safeObject;
   ${instrumented}
   ;
   return typeof think === 'function' ? think : null;
@@ -85,7 +117,10 @@ async function loadBrain(instrumented, label, fuel, V) {
    */
   const build = () => {
     fuel.left = FUEL_PER_LOAD;
-    const t = mod.default(V, quiet, fuel.tick);
+    /* `__idx` — проверка доступа по вычисляемому ключу; см. instrument.js.
+       Без неё разбор имён обходится собранной строкой, и мозг получает
+       конструктор Function, то есть выполнение кода прямо в воркере. */
+    const t = mod.default(V, quiet, fuel.tick, IDX, SAFE_OBJECT);
     if (typeof t !== 'function') throw new Error(`${label}: функция think не объявлена`);
     return t;
   };
@@ -122,7 +157,7 @@ function sealRandom() {
 }
 
 async function main() {
-  const { seed, seeds, brains, kits, curtainSeconds, record } = workerData;
+  const { seed, seeds, brains, kits, sizes, curtainSeconds, record } = workerData;
   sealRandom();
   const V = await buildPrelude();
   const fuels = {};
@@ -177,7 +212,7 @@ async function main() {
   try {
     for (const s of list) {
       for (const w of Object.values(wrapped)) w.reset();
-      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0, kits });
+      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0, kits, sizes });
       results.push(out.result);
     }
   } catch (e) {

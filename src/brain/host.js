@@ -89,6 +89,7 @@
 import vm from 'node:vm';
 
 import { COMPILE_TIMEOUT_MS, THINK_TIMEOUT_MS } from '../core/config.js';
+import { FUEL_PER_THINK, IDX_SOURCE, instrument } from '../server/sandbox/instrument.js';
 
 /**
  * Helpers compiled into the brain's own realm.
@@ -252,16 +253,63 @@ export function compileBrain(source, label = 'brain') {
    * `throw new Proxy({}, { get() { while (true) {} } })` at top level wedged
    * `compileBrain` with no timeout anywhere above it.
    */
+  /*
+   * ТОПЛИВО, А НЕ ЧАСЫ. A1 требует «предел по инструкциям, не по времени», и
+   * изолят это соблюдает; хост — не соблюдал, и цена оказалась выше, чем
+   * «менее строгая проверка».
+   *
+   * Часы делают бой ЗАВИСЯЩИМ ОТ ЗАГРУЗКИ МАШИНЫ. Замерено: под нагрузкой
+   * (load average 64) честный эталонный мозг не укладывался в 60 мс, получал
+   * fault, и один и тот же сид давал разные бои — четыре расхождения из шести.
+   * То есть A2, «бит-в-бит повторяемость как инвариант CI», держался ровно до
+   * первой занятой машины. И это не только про тесты: через хост идут
+   * `tools/arena.mjs`, `tools/balance.mjs` и весь замер баланса, так что любое
+   * измерение проекта могло быть испорчено фоновой сборкой.
+   *
+   * Разметка та же, что у изолята (`sandbox/instrument.js`), и это важно
+   * отдельно: `tools/checkisolate.mjs` требует, чтобы один и тот же бой,
+   * прогнанный обоими путями, дал одинаковый лог. Пока размечал только
+   * изолят, равенство держалось на том, что разметка ничего не меняет; теперь
+   * оба пути размечены одинаково, и держаться ему больше не на чем.
+   *
+   * Часы остаются последним рубежом — от того, что разметка поймать не может
+   * (геттер-ловушка на брошенном значении читается уже вне брейн-реалма), — но
+   * порог поднят так, чтобы честный мозг не встречал его никогда.
+   */
+  let metered = source;
+  let fuelPoints = 0;
+  try {
+    const out = instrument(source);
+    metered = out.code;
+    fuelPoints = out.points;
+  } catch { /* не размечается — работаем как раньше, часы прикроют */ }
+
   let script;
   try {
     script = new vm.Script(
       `globalThis.__think = null;
        globalThis.__evalError = null;
+       /* Счётчик живёт в ЗАМЫКАНИИ, а не на globalThis.
+          Первая версия держала остаток глобальной переменной, и каждый вызов
+          __fuel() шёл через перехватчик глобалей контекста node:vm —
+          порядка десяти микросекунд на обращение. Двести тысяч шагов топлива
+          при такой цене — это две секунды, то есть ровно тот потолок часов, от
+          которого топливо и должно было избавить: вечный цикл снова ловили
+          часы, а не топливо, и повторяемость снова зависела от машины.
+          В замыкании обращение стоит наносекунды. */
+       ${IDX_SOURCE}
+       globalThis.__idx = __idx;
+       globalThis.__fuel = (function () {
+         let left = 0;
+         const f = function () { if (--left < 0) throw new Error('brain ran out of fuel'); };
+         f.fill = function (n) { left = n; };
+         return f;
+       })();
        try {
          globalThis.__think = (function () {
            "use strict";
            ${PRELUDE}
-           ${source}
+           ${metered}
            ;
            return typeof think === 'function' ? think : null;
          })();
@@ -315,6 +363,7 @@ export function compileBrain(source, label = 'brain') {
    */
   const runner = new vm.Script(
     `(() => {
+       globalThis.__fuel.fill(${FUEL_PER_THINK});
        try {
          globalThis.__think(JSON.parse(globalThis.__p), globalThis.__api);
          return null;

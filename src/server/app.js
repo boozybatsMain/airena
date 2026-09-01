@@ -18,13 +18,14 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 import { compileBrain } from '../brain/host.js';
+import { TICK_HZ } from '../core/config.js';
 import { constantsVersion } from '../core/version.js';
 import { adaptOnce, duelBrains } from './adapt.js';
 import { buildRouter } from './api.js';
-import { ArenaLoop } from './arena-loop.js';
+import { ArenaLoop, REST_MS } from './arena-loop.js';
 import { openDb, kv as makeKv } from './db.js';
 import { buildCatalog, fallbackBundle } from './forge/models.js';
-import { cookies, fail, json, serveStatic } from './http.js';
+import { cookies, fail, json, serveStatic, crossSiteRefused } from './http.js';
 import { Jobs } from './jobs.js';
 import { Live } from './live.js';
 import { buildStamp, stampHtml } from './stamp.js';
@@ -37,11 +38,27 @@ const DEV = process.env.AIRENA_DEV === '1';
 /** Что клиенту разрешено доставать по HTTP. */
 const MOUNTS = [
   ['/vendor/', join(ROOT, 'node_modules/three/build')],
+  /*
+   * Аддоны three — ОДИН файл, и он тут не для удобства.
+   *
+   * `PostProcessing` живёт в самой сборке, а узлы эффектов — в
+   * `examples/jsm/tsl/display`. Bloom нужен потому, что аддитивное свечение
+   * без него — это просто более яркие пиксели: два пула частиц в `vfx.js`
+   * заведены ровно как обход этого (см. комментарий там). Своя реализация
+   * значила бы 500 строк шейдерного кода рядом с проверенным UnrealBloom из
+   * того же пакета, который уже лежит в vendor.
+   *
+   * Гейт объёма (`tools/checkscope.mjs`) обходит бандл по фактическим
+   * ссылкам, поэтому монтирование папки не даёт «плюс сто файлов» — в бандл
+   * попадает ровно то, что импортировано.
+   */
+  ['/vendor-addons/', join(ROOT, 'node_modules/three/examples/jsm')],
   ['/bodies/', join(ROOT, 'bodies')],
   /* Реестр грамматики — чистые данные, ни одного node-импорта. Экран берёт
      палитры элементов и русские имена атомов ОТТУДА ЖЕ, откуда сервер берёт
      цены: две копии палитры разошлись бы в первый же день. */
   ['/skills/', join(ROOT, 'src/skills')],
+  ['/vfx/', join(ROOT, 'src/vfx')],
   ['/assets/', join(ROOT, 'preview/assets')],
   ['/fonts/', join(ROOT, 'src/client/fonts')],
   ['/viewer/', join(ROOT, 'src/viewer')],
@@ -76,12 +93,24 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     /* Замеренная тренировочная пара по сторонам — её считает tools/seed.mjs.
        Без неё первый бой новичка становится монетой (§16: 3.7% против 58.3%). */
     trainingIds: kv.get('training', {}).ids || null,
+    /* Замеренный винрейт пары (мозг, сторона) — тот, по которому партнёр и
+       отобран. Экран показывает ЕГО, а не общее «слабее среднего»: у
+       партнёра может быть 91% побед за всю жизнь против всей библиотеки, и
+       тогда общее утверждение читается как ложь, хотя замер верен. */
+    trainingRates: (() => {
+      const picked = kv.get('training', {}).picked || {};
+      const out = {};
+      for (const [side, v] of Object.entries(picked)) if (v && typeof v.rate === 'number') out[side] = v.rate;
+      return Object.keys(out).length ? out : null;
+    })(),
   });
   const live = new Live(db, { compile: compileFor });
 
   const ctx = {
     db, kv, loop, live, catalog, root: ROOT, dev: DEV,
-    duel: (cand, inc, arch) => duelBrains(db, cand, inc, arch),
+    /* `opts` доносит набор и РАЗМЕР действующего существа: дуэль двух мозгов
+       обязана идти в той же игре, в которой существо живёт. */
+    duel: (cand, inc, arch, opts = {}) => duelBrains(db, cand, inc, arch, opts),
     verifyEmbedToken,
   };
   const jobs = new Jobs(db, ctx);
@@ -95,7 +124,56 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     if (ev.type !== 'match') return;
     const a = db.prepare('SELECT * FROM creature WHERE id = ?').get(ev.a);
     const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(ev.b);
-    if (a && b) live.open(ev.match, { a, b, featured: !!ev.showcase }).catch(() => {});
+    if (!a || !b) return;
+    live.open(ev.match, { a, b, featured: !!ev.showcase, kind: ev.showcase ? 'showcase' : 'ranked' }).then((br) => {
+      /*
+       * Занятость уточняется по НАСТОЯЩЕЙ длине трансляции (D161).
+       *
+       * Резерв в `ArenaLoop` ставится от момента запуска зачётного прогона,
+       * а показ начинается позже — после изолята и после второго прогона с
+       * записью кадров. Разница до 2.5 секунд, и на ней существо уходило в
+       * следующий бой, пока предыдущий ещё шёл на экране.
+       */
+      if (!br || !br.frames) {
+        /*
+         * Трансляция не открылась (насыщение, очередь, ошибка). Бойцов надо
+         * освободить, иначе они простоят занятыми до верхней оценки —
+         * пятьдесят секунд за бой, который никто не увидит.
+         */
+        const secs = Number(ev.match?.seconds) || 0;
+        if (secs > 0) loop.holdUntil([ev.a, ev.b], Date.now() + secs * 1000);
+        return;
+      }
+      /*
+       * Здесь стоял ВТОРОЙ пересчёт занятости — по `frames.length / TICK_HZ`.
+       * Он давал число, отличное от первого (`r.seconds` в `fightOnce`), и
+       * отсчёт на карточке итога успевал откатиться назад: замерено
+       * 4213 → 3114 → 4187 → 3096 мс. Обещание «через N» выполнялось, но
+       * выглядело сломанным.
+       *
+       * Промежуточная оценка не нужна вовсе: первая уже равна длине матча, а
+       * точный конец приходит событием `onFinish` ниже. Остаётся только
+       * запомнить, кто дерётся, чтобы событию было кого освобождать.
+       */
+      br.fighters = [ev.a, ev.b];
+    }).catch(() => {});
+  });
+
+  /*
+   * ОТДЫХ НАЧИНАЕТСЯ, КОГДА ПОКАЗ КОНЧИЛСЯ, А НЕ КОГДА ПОСЧИТАЛИ.
+   *
+   * `holdUntil` выше ставит верхнюю оценку по `frames.length / TICK_HZ` —
+   * по НОМИНАЛЬНЫМ тридцати кадрам. Настоящий темп 28.9–29.7 (таймер дрожит),
+   * и на полном бое расхождение доходило до двух секунд НЕ В ТУ сторону:
+   * резерв истекал раньше конца показа, и следующий бой начинался поверх
+   * предыдущего.
+   *
+   * Момент известен точно — его знает `finish`. Пять секунд отдыха отсчитывает
+   * `hold` от него.
+   */
+  live.onFinish((b) => {
+    if (!b.fighters) return;
+    loop.holdUntil(b.fighters, Date.now());
   });
 
   /*
@@ -116,10 +194,28 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
        значит не выполнить обещание ровно у того, ради кого оно давалось.
        Один прогон — 70 мс CPU, и держать витрину тёплой дешевле, чем
        объяснять пустой пол. */
-    if (live.describe()) return;
+    /*
+     * ВИТРИНА ЖДЁТ ОТДЫХ, А НЕ ЛИНГ (D161).
+     *
+     * Здесь стояло «идёт какая-нибудь трансляция — не запускаем», а
+     * `describe()` возвращает трансляцию ещё двенадцать секунд после конца
+     * боя, чтобы опоздавший увидел исход. То есть между витринными боями
+     * зияло двенадцать секунд статичного пола — при том, что основатель
+     * просил ровно обратного: бои по кулдауну.
+     *
+     * Теперь ждём столько же, сколько ждёт существо игрока: `REST_MS`.
+     * Досмотреть исход всё ещё можно — трансляция не удаляется, она просто
+     * перестаёт блокировать следующую.
+     */
+    const shown = live.describe();
+    if (shown && !shown.over) return;
+    if (shown && shown.over && (shown.overFor ?? 0) < REST_MS) return;
     if (showcasing) return;
     showcasing = true;
-    loop.showcase().catch(() => {}).finally(() => { showcasing = false; });
+    /* Кого ждут подключённые гости — витрина показывает его, а не «кого-нибудь».
+       Иначе выбор из тройки не значит ничего (см. `showcase`). */
+    loop.showcase(undefined, { prefer: live.wanted?.() ?? null })
+      .catch(() => {}).finally(() => { showcasing = false; });
   }, 1200);
   keepShowcase.unref?.();
 
@@ -130,6 +226,11 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
 
     const hit = router.match(req.method, path);
     if (hit) {
+      /* Чужая страница не имеет права действовать от имени игрока — проверка
+         стоит ОДНА на все мутирующие ручки, а не по одной в каждой (см.
+         `crossSiteRefused`). Поштучно её однажды забыли бы добавить. */
+      const cross = crossSiteRefused(req);
+      if (cross) return fail(res, 403, cross.code, cross.message);
       req.params = hit.params;
       try { await hit.handler(req, res); }
       catch (e) {
@@ -173,20 +274,92 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     res.end(body);
   }
 
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  /**
+   * Совпадает ли источник соединения с нашим хостом.
+   *
+   * Отсутствие `Origin` — это НЕ браузер (curl, наш инструмент, тест), и такое
+   * соединение допускается, но анонимно: куку у него не читают.
+   */
+  const sameSite = (req) => {
+    const o = req.headers.origin;
+    if (!o) return true;
+    try { return new URL(o).host === req.headers.host; } catch { return false; }
+  };
+
+  /*
+   * ОТКАЗ НА РУКОПОЖАТИИ, А НЕ ПОСЛЕ НЕГО.
+   *
+   * Первая версия проверяла источник внутри `connection` и закрывала сокет
+   * кодом 1008. Работало — но чужая страница успевала получить событие
+   * `open`, то есть узнать, что сервер жив и что путь верен. `verifyClient`
+   * отвечает 401 до апгрейда: соединения не возникает вовсе.
+   */
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    verifyClient: ({ req }, done) => (sameSite(req) ? done(true) : done(false, 401, 'cross-site')),
+    /*
+     * Из предложенных подпротоколов выбирается «airena» и только он.
+     *
+     * Клиент шлёт два: имя протокола и токен сессии (см. `connect` во
+     * вьювере). Ответить надо ОДНИМ и обязательно из предложенных — иначе
+     * браузер рвёт соединение сразу после рукопожатия. Отражать токен назад
+     * нельзя тем более: он ушёл бы в заголовок ответа.
+     */
+    handleProtocols: (protocols) => (protocols.has('airena') ? 'airena' : false),
+  });
   wss.on('error', (err) => {
     if (err.code === 'EADDRINUSE' || err.code === 'EACCES') return;
     console.error(`  websocket: ${err.message}`);
   });
 
   wss.on('connection', (ws, req) => {
-    const c = cookies(req);
-    const token = bearer(req) || c.a;
+    /*
+     * СОКЕТ ПРОВЕРЯЕТ ИСТОЧНИК ТАК ЖЕ, КАК HTTP.
+     *
+     * `crossSiteRefused` стоит на маршрутизаторе, и её собственный комментарий
+     * обещает «одну проверку на все ручки — поштучно её однажды забыли бы
+     * добавить». Забыли ровно здесь: CORS на WebSocket не распространяется,
+     * кука обязана быть `SameSite=None` (F8), значит браузер приложит её к
+     * рукопожатию С ЛЮБОЙ СТРАНИЦЫ.
+     *
+     * Что при этом утекало: сокет узнаёт сессию и первым же сообщением
+     * отдаёт бой ЕГО существа. То есть чужая страница получала связку «этот
+     * посетитель владеет существом X» — её нет ни в лестнице, ни в одном
+     * публичном ответе, — и дальше читала его бои и слала `replay`.
+     *
+     * Проверяется мягко: соединение без `Origin` (наш же инструмент, тест,
+     * не-браузер) допускается АНОНИМНО — кука игнорируется, показывается
+     * витрина. Чужой `Origin` закрывает соединение сразу.
+     */
+    /* Чужой источник сюда не доходит — его отверг `verifyClient`. Соединение
+       без `Origin` доходит, но сессию у него не читают: кука ставится
+       браузером, а браузер `Origin` шлёт всегда. */
+    const fromBrowser = !!req.headers.origin;
+    const c = fromBrowser ? cookies(req) : {};
+    /*
+     * ТОКЕН ИЗ ПОДПРОТОКОЛА — ГЛАВНЫЙ ИСТОЧНИК, КУКА ЗАПАСНОЙ.
+     *
+     * D22 увёл сессию в `Authorization: Bearer`, потому что продукт живёт в
+     * чужом iframe (F8) и куки там может не быть. Рукопожатие WebSocket из
+     * браузера заголовков не принимает, поэтому сокет опознавался только
+     * кукой — и в проде оставался анонимным: без «ТВОЁ», без «твой бой», без
+     * перебивки «свой бой забирает экран». Клиент шлёт токен вторым
+     * подпротоколом (`['airena', <token>]`); в строку запроса и в логи прокси
+     * он при этом не попадает.
+     */
+    const proto = String(req.headers['sec-websocket-protocol'] || '')
+      .split(',').map((x) => x.trim()).filter(Boolean);
+    const fromProto = proto[0] === 'airena' && proto[1] ? proto[1] : null;
+    const token = (fromBrowser ? (fromProto || bearer(req)) : null) || c.a;
     const acct = accountFromToken(db, token);
     const mine = acct
       ? db.prepare(`SELECT id FROM creature WHERE owner_id = ? AND state='active' ORDER BY created_at DESC LIMIT 1`).get(acct.id)
       : null;
-    const sub = live.attach(ws, { creatureId: mine?.id ?? null, dev: DEV });
+    /* `owned: true` — существо найдено ПО ВЛАДЕЛЬЦУ, значит оно точно его.
+       `accountId` едет рядом, чтобы команда `watch` могла проверить владение
+       заново, не переоткрывая сокет. */
+    const sub = live.attach(ws, { creatureId: mine?.id ?? null, dev: DEV, owned: !!mine, accountId: acct?.id ?? null });
 
     ws.on('message', (raw) => {
       let msg;
@@ -198,21 +371,50 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
        * принадлежать игрокам.
        */
       if (msg.cmd === 'replay' && typeof msg.matchId === 'string') {
+        /*
+         * ОДИН ПОВТОР НА СОКЕТ ЗА РАЗ, И НЕ ЧАЩЕ РАЗА В СЕКУНДУ.
+         *
+         * Повтор — самая дорогая команда сокета: она пересчитывает целый бой
+         * в изоляте. Прислать её может кто угодно без сессии, и поток таких
+         * команд клал арену для всех сразу. Ограничение стоит ЗДЕСЬ, а не
+         * только в `live.open`, потому что дешевле отказать до работы.
+         *
+         * Экран шлёт повтор трижды с запасом (`askReplay`), поэтому окно
+         * секундное, а не минутное: иначе честный клиент упрётся в свой же
+         * ретрай.
+         */
+        const nowMs = Date.now();
+        if (sub.replayBusy || (sub.replayAt && nowMs - sub.replayAt < 1000)) return;
+        sub.replayAt = nowMs;
+        sub.replayBusy = true;
         const m = db.prepare('SELECT * FROM match WHERE id = ?').get(msg.matchId);
-        if (!m) { ws.send(JSON.stringify({ type: 'error', message: 'такого боя нет' })); return; }
+        if (!m) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'такого боя нет' })); return; }
         if (m.constants_version !== constantsVersion()) {
+          sub.replayBusy = false;
           ws.send(JSON.stringify({ type: 'error', code: 'stale_constants',
             message: 'этот бой шёл на других константах и точно не повторится' }));
           return;
         }
         const a = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.a_id);
         const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.b_id);
-        if (!a || !b) { ws.send(JSON.stringify({ type: 'error', message: 'участника боя больше нет' })); return; }
+        if (!a || !b) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'участника боя больше нет' })); return; }
         live.open({
           id: m.id, seed: m.seed, aSlot: m.a_slot, bSlot: m.b_slot,
           winner: m.winner, reason: m.reason,
           result: m.result_json ? JSON.parse(m.result_json) : null,
-        }, { a, b, featured: false }).then((bc) => {
+          /* Снимок наборов на момент боя — см. миграцию 4 и live.open. */
+          kits: m.kits_json ? JSON.parse(m.kits_json) : null,
+          /* И размеров: они меняют здоровье, радиус, скорость и силу удара,
+             значит повтор без них — другой бой. Поле писалось и не читалось. */
+          sizes: m.sizes_json ? JSON.parse(m.sizes_json) : null,
+          /* Вид матча: по нему трансляция решает, тренировочный он и был ли
+             это бой со сломанным мозгом (D8). */
+          kind: m.kind,
+          /* Не путать с `kind` трансляции: у строки матча это ВИД БОЯ
+             (`training`/`ladder`/`brain_fault`), а очередь спрашивает про
+             ПРОИСХОЖДЕНИЕ запроса. Разные слова, одно имя — поэтому вид
+             запроса передаётся вторым параметром, а не внутри строки. */
+        }, { a, b, featured: false, kind: 'replay' }).then((bc) => {
           /*
            * Перематывать можно только СВОЮ трансляцию.
            *
@@ -224,13 +426,66 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
            */
           if (!bc) return;
           if (bc.watchers.size === 0) { bc.at = 0; bc.over = null; }
-          sub.matchId = null;
-          live.deliver(sub);
-        }).catch(() => {});
+          /*
+           * Подключаем к ЗАПРОШЕННОЙ трансляции, а не «куда придётся».
+           *
+           * Здесь стояло `sub.matchId = null; live.deliver(sub)`, а `deliver`
+           * выбирает бой сам — по правилам витрины. То есть игрок открывал
+           * ссылку на конкретный бой и получал тот, который сейчас идёт на
+           * главной; замерено — пять запросов одного id, пять чужих боёв.
+           * Ссылка на бой, показывающая другой бой, — это сломанная ссылка,
+           * а на ней держится вся история про «поделись боем».
+           */
+          if (!live.attachTo(sub, m.id)) live.deliver(sub);
+        }).catch(() => {}).finally(() => { sub.replayBusy = false; });
+        return;
+      }
+      /*
+       * `watch` БЕЗ id — это «покажи, что идёт», и он законен.
+       *
+       * Условие требовало строку, а `watch.js` на посадочной шлёт
+       * `{ cmd: 'watch' }` без поля — то есть «подмена доигравшего боя живым»
+       * не делала ничего ни разу. То же на клиенте, когда существо ушло на
+       * покой или гость сбросил стартера: сокет молча оставался подписан на
+       * прежнее существо.
+       */
+      if (msg.cmd === 'watch' && msg.creatureId == null) {
+        /*
+         * «Покажи, что идёт» НЕ ОТМЕНЯЕТ ПРИНАДЛЕЖНОСТЬ.
+         *
+         * Ровно это шлёт посадочная, когда ссылка на бой протухла. Первая
+         * версия обнуляла и `creatureId`, и `owned`, а вернуть их было
+         * некому: клиент шлёт `watch` с id только при СМЕНЕ существа, а оно
+         * не менялось. Владелец, открывший мёртвую ссылку, до конца сессии
+         * оставался анонимом — без «ТВОЁ», без «твой бой» и без перебивки
+         * «свой бой забирает экран».
+         *
+         * Снимается только привязка к КОНКРЕТНОЙ трансляции.
+         */
+        sub.matchId = null; sub.pinned = false;
+        live.deliver(sub);
         return;
       }
       if (msg.cmd === 'watch' && typeof msg.creatureId === 'string') {
-        sub.creatureId = msg.creatureId; sub.matchId = null; live.deliver(sub);
+        /*
+         * «СЛЕЖУ ЗА» И «МОЁ» — РАЗНЫЕ ВЕЩИ, И ПУТАТЬ ИХ НЕЛЬЗЯ (D162).
+         *
+         * Клиент шлёт сюда и собственное существо, и выбранного гостем
+         * СТАРТЕРА из библиотеки. Для выбора трансляции это одно и то же —
+         * покажи бой вот этого существа. Для метки принадлежности («ТВОЁ» на
+         * плите, «твой бой» под часами) — противоположные вещи: библиотечное
+         * существо гостю не принадлежит, и назвать его своим значит соврать
+         * ровно тому человеку, которому основатель просил показать, что бои
+         * пока чужие.
+         *
+         * Владение проверяется по базе, а не по слову клиента: `owner_id`
+         * знает только сервер.
+         */
+        sub.creatureId = msg.creatureId; sub.matchId = null; sub.pinned = false;
+        const acct = sub.accountId || null;
+        sub.owned = !!acct && !!db.prepare('SELECT 1 FROM creature WHERE id = ? AND owner_id = ?')
+          .get(msg.creatureId, acct);
+        live.deliver(sub);
       }
     });
   });
@@ -289,6 +544,8 @@ export function verifyEmbedToken(token) {
     return null;
   }
   if (!DEV) return null;
+  /* Дальше — дев-путь. Продакшен без настоящего ключа сюда не доходит:
+     стартовая проверка ниже не даёт серверу подняться. */
   try {
     const p = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
     return p.sub ? { sub: String(p.sub), email: p.email ? String(p.email) : null } : null;
@@ -308,7 +565,43 @@ function listen(server, port, attemptsLeft = 12) {
   server.listen(port);
 }
 
+/*
+ * ПРОДАКШЕН БЕЗ НАСТОЯЩЕЙ ПРОВЕРКИ ЛИЧНОСТИ НЕ ПОДНИМАЕТСЯ.
+ *
+ * `verifyEmbedToken` вне дев-режима возвращает `null` всегда: подпись
+ * платформы её публичным ключом ещё не реализована (E8 требует сначала
+ * перечитать стенд GENEX). Комментарий там обещал «пока ключа нет, продакшен
+ * не поднимается: см. проверку в конце файла» — а проверки в файле не было.
+ *
+ * Без неё продукт вставал в состояние без выхода, прикрытое ссылкой на
+ * несуществующий гейт: `POST /api/session/claim` всегда `401`, значит игрок
+ * навсегда гость, значит генерация недоступна НИКОМУ, а §14 меряет
+ * «посетитель → создал существо» и получает ноль по устройству. И заметить
+ * это можно было только пройдя воронку до конца на настоящем сервере.
+ *
+ * Громкий отказ на старте лучше тихого тупика в воронке: он случается у нас,
+ * а не у игрока, и объясняет, что именно нужно сделать.
+ */
+function refuseToStartWithoutIdentity() {
+  if (DEV) return;
+  if (process.env.AIRENA_ALLOW_NO_IDENTITY === '1') {
+    console.error('\n  ВНИМАНИЕ: личность игроков не проверяется (AIRENA_ALLOW_NO_IDENTITY=1).');
+    console.error('  Аккаунт завести нельзя, генерация недоступна. Только для стенда.\n');
+    return;
+  }
+  console.error('\n  Не поднимаюсь: личность игроков проверять нечем.\n');
+  console.error('  Платформа подписывает токен своим ключом, а проверка подписи ещё не');
+  console.error('  реализована (E8: сначала перечитать стенд GENEX). Пока её нет, стена');
+  console.error('  аккаунта непроходима, и продукт работает вхолостую: гость доходит до');
+  console.error('  «СОЗДАТЬ», упирается и уходит.\n');
+  console.error('  Что делать:');
+  console.error('    AIRENA_DEV=1 …                     — дев-режим, токен принимается как base64url');
+  console.error('    AIRENA_ALLOW_NO_IDENTITY=1 …       — поднять всё равно (стенд без генерации)\n');
+  process.exit(78);
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
+  refuseToStartWithoutIdentity();
   const app = createApp();
   await app.catalog.refresh();
   app.loop.start(1000);

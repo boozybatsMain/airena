@@ -6,14 +6,14 @@
   "description": "Two LLM-written brains fight in an arena.",
   "scripts": {
     "serve": "node src/server/app.js",
-    "test": "node tools/test.mjs && node tools/checkprompt.mjs && node tools/checkbehaviour.mjs && node tools/checkframing.mjs && node tools/checkisolate.mjs && node tools/checkscope.mjs && node tools/loadtest.mjs && node tools/falsify.mjs --controls",
+    "test": "node tools/suite.mjs",
     "arena": "node tools/arena.mjs",
     "tournament": "node tools/tournament.mjs",
     "falsify": "node tools/falsify.mjs",
     "balance": "node tools/balance.mjs",
     "report": "node tools/report.mjs",
     "forge": "node tools/brainforge.mjs",
-    "dev": "AIRENA_DEV=1 node src/server/app.js",
+    "dev": "AIRENA_DEV=1 node --env-file-if-exists=.env src/server/app.js",
     "viewer": "node src/server/index.js",
     "seed": "node tools/seed.mjs"
   },

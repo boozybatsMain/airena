@@ -1506,6 +1506,84 @@
    "text": "acceleration        26 m/s^2   (so 4.22 m/s is reached in 0.162 s)",
    "model": "claude-sonnet-5",
    "rubric": "a9a7dccdf1316489"
+  },
+  "936bba942e2e09a93577eb64": {
+   "c": 1,
+   "text": ".zones        discs on the ground that are still working: {x, z, r, mine, left}.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "48df231e126a525b1a401ecc": {
+   "c": 1,
+   "text": "mine is true for the ones you put there; left is seconds until",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5d559696a4bea3e178003f05": {
+   "c": 3,
+   "text": "it stops. Standing in one applies whatever it carries, again,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b02da3695d8b2a6efc88182b": {
+   "c": 3,
+   "text": "every half second",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7a2f2127da2df0703194c5b8": {
+   "c": 1,
+   "text": ".projectiles  things in flight: {x, z, vx, vz, mine, arc, left}. An arc one",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e573e8acd06da00ed17a36a6": {
+   "c": 3,
+   "text": "passes over blocks; the others are stopped by them. left is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cd0b410c013676cfabf54b5b": {
+   "c": 1,
+   "text": "seconds of flight remaining",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4a796c555bb3871560c3d6b7": {
+   "c": 5,
+   "text": "3. A THOUGHT HAS 200000 STEPS AND 400 PERCEPTION CALLS.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1b17aa86b0e388f8822ce549": {
+   "c": 3,
+   "text": "A step is a loop iteration, a function call, a branch. The limit is counted",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2bc91940dcb02625ae26bc3d": {
+   "c": 2,
+   "text": "in STEPS rather than in milliseconds on purpose: the same fight has to",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e7f04724f75841894d4c9138": {
+   "c": 2,
+   "text": "produce the same log on a quiet machine and on a busy one, and a clock",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "92bb1d7c0378e2436d51c873": {
+   "c": 2,
+   "text": "cannot promise that. There is a wall clock behind it — 2000 ms — but",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9bb7e2352f39f4bf56bedb1c": {
+   "c": 2,
+   "text": "it is a backstop for the pathological, not the rule you are living under.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
   }
  }
 }

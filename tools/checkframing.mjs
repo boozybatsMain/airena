@@ -150,6 +150,11 @@ import {
 import { compileBrain } from '../src/brain/host.js';
 import { createWorld, snapshot, step } from '../src/core/sim.js';
 
+import { buildBody } from '../src/viewer/loadbody.js';
+/* Склейка неподвижных частей приходит в срез так же, как сборка тела: гейт
+   обязан гонять то, что поедет в браузер, а не облегчённую версию. */
+import { bakeStatic } from '../src/viewer/bake.js';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function arg(name, dflt) {
@@ -391,16 +396,36 @@ const CONFIG = {
   suddenDeathRamp: SUDDEN_DEATH_RAMP,
 };
 
-/** `loadBody` fetches `/bodies/<name>.js`; here that is a file on disk. */
-const fetchShim = async (url) => ({
-  text: async () => readFileSync(join(ROOT, url.replace(/^\//, '')), 'utf8'),
-  json: async () => JSON.parse(readFileSync(join(ROOT, url.replace(/^\//, '')), 'utf8')),
-});
+/**
+ * `loadBody` fetches `/bodies/<name>.js`; here that is a file on disk.
+ *
+ * `ok` and `status` are not decoration. `loadBody` checks them now, because a
+ * generated body arrives over HTTP from `/api/body/<id>` and a 404 there has
+ * to become a body that fails loudly rather than an empty string that fails
+ * three frames later. A shim that answers only `text()` describes a `fetch`
+ * that cannot fail, and the code under test is exactly the code that handles
+ * failure.
+ */
+const fetchShim = async (url) => {
+  const file = join(ROOT, url.replace(/^\//, ''));
+  let text = null;
+  try { text = readFileSync(file, 'utf8'); } catch { /* нет файла — 404 */ }
+  return {
+    ok: text !== null,
+    status: text === null ? 404 : 200,
+    text: async () => text ?? '',
+    json: async () => JSON.parse(text ?? 'null'),
+  };
+};
 
 async function buildViewer(viewport, clock) {
   const body = [PRELUDE, ...SLICES.map(([a, b]) => cut(a, b)), EPILOGUE].join('\n');
-  const make = new AsyncFunction('THREE', 'TSL', 'cfg', 'viewport', 'clock', 'fetch', body);
-  return make(THREE, TSL, CONFIG, viewport, clock, fetchShim);
+  /* `buildBody` приходит снаружи вместе с THREE и cfg: импорты из тела
+     файла вырезаны, а проверять надо НАСТОЯЩИЙ загрузчик — тот самый, что
+     затеняет опасные имена и считает топливо. Подсунуть здесь упрощённый
+     значило бы проверять камеру на теле, собранном не так, как в игре. */
+  const make = new AsyncFunction('THREE', 'TSL', 'cfg', 'viewport', 'clock', 'fetch', 'buildBody', 'bakeStatic', body);
+  return make(THREE, TSL, CONFIG, viewport, clock, fetchShim, buildBody, bakeStatic);
 }
 
 // ---------------------------------------------------------------------------

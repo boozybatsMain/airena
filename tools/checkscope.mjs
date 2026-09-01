@@ -40,6 +40,7 @@ const MOUNTS = [
   ['/viewer/', 'src/viewer'],
   ['/skills/', 'src/skills'],
   ['/vendor/', 'node_modules/three/build'],
+  ['/vendor-addons/', 'node_modules/three/examples/jsm'],
   ['/bodies/', 'bodies'],
   ['/assets/', 'preview/assets'],
   ['/fonts/', 'src/client/fonts'],
@@ -204,6 +205,56 @@ for (const rule of RULES) {
 const n = FILES.length;
 console.log('  ' + '─'.repeat(60));
 if (VERBOSE) { console.log('\n  бандл игрока:'); for (const f of FILES) console.log(`    ${relative(ROOT, f)}`); }
+
+/*
+ * НАША БУХГАЛТЕРИЯ НЕ УЕЗЖАЕТ АНОНИМУ.
+ *
+ * `checkscope` смотрит бандл игрока на цены и покупки (E6, N1). Но деньги
+ * утекали не через бандл, а через API: `/api/session`, `/api/limits` и
+ * `/api/metrics` отдавали дневной бюджет, потрачено и остаток КОМУ УГОДНО.
+ * Кроме того что это чужое дело, это подсказка тому, кто хочет выжечь
+ * бюджет: видно, сколько осталось.
+ *
+ * Проверяется по ФОРМЕ ответа, а не по коду: сервер поднимается, три ручки
+ * опрашиваются без сессии, и ни одно поле с `usd` в имени не имеет права
+ * там оказаться. Под `AIRENA_OPS=1` — имеет, и это отдельный режим.
+ */
+async function checkMoneyLeak() {
+  const { spawn } = await import('node:child_process');
+  const port = 8900 + Math.floor(Math.random() * 90);
+  const srv = spawn('node', [join(ROOT, 'src/server/app.js')], {
+    env: { ...process.env, PORT: String(port), AIRENA_DEV: '1', AIRENA_OPS: '', OPENROUTER_API_KEY: 'x' },
+    stdio: 'ignore',
+  });
+  const wait = async () => {
+    for (let i = 0; i < 60; i++) {
+      try { await fetch(`http://localhost:${port}/api/session`); return true; } catch { /* ещё поднимается */ }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return false;
+  };
+  const found = [];
+  try {
+    if (!(await wait())) { srv.kill(); return ['сервер не поднялся — проверка пропущена']; }
+    for (const ep of ['session', 'limits', 'metrics']) {
+      const text = await (await fetch(`http://localhost:${port}/api/${ep}`)).text();
+      for (const m2 of text.matchAll(/"([A-Za-z]*[Uu][Ss][Dd][A-Za-z]*)"\s*:/g)) {
+        found.push(`/api/${ep} отдаёт ${m2[1]}`);
+      }
+    }
+  } finally { srv.kill(); }
+  return found;
+}
+
+const leaked = await checkMoneyLeak();
+if (leaked.length) {
+  console.log('\n  ДЕНЬГИ УТЕКАЮТ В API:');
+  for (const l of leaked) console.log(`    ${l}`);
+  process.exitCode = 1;
+} else {
+  console.log('  наша бухгалтерия анониму не видна: session, limits, metrics — без сумм');
+}
+
 console.log(`\n  ${hits.length ? `ОБЪЁМ ПРОБИТ — ${hits.length} нарушений`
   : `объём держится — ${n} файлов бандла и ${SERVER_COPY.length} файлов серверного копирайта, ни одного нарушения`}\n`);
 process.exit(hits.length ? 1 : 0);
