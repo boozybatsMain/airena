@@ -135,5 +135,63 @@ ok('main.js: провал сборки откатывает сторону к т
   /if \(ref !== id\) swapBody\(id, id, size\);/.test(main),
   'иначе на стороне остаётся тело предыдущего боя');
 
+
+/* ── одинаковая ссылка на двух сторонах ────────────────────────────────── */
+
+/**
+ * Модель `bodyFor`: кэш и его ключ. Проверяется НЕ загрузка, а то, может ли
+ * одна ссылка отдать двум сторонам один и тот же объект.
+ */
+function makeCache({ keyHasSide }) {
+  const cache = new Map();
+  let built = 0;
+  return {
+    get built() { return built; },
+    load(ref, side, size) {
+      const key = keyHasSide ? `${ref}@${size}@${side}` : `${ref}@${size}`;
+      if (cache.has(key)) return cache.get(key);
+      const made = { id: ++built, ref, side, size };
+      cache.set(key, made);
+      return made;
+    },
+  };
+}
+
+{
+  /*
+   * Двадцать четыре существа в базе носят клонированные тела, поэтому встреча
+   * двух с одинаковой ссылкой — обычное дело, а не край. Без стороны в ключе
+   * обе стороны получали ОДИН объект: цикл кадра ставил его сначала в точку
+   * левого бойца, потом в точку правого, и левый оставался бестелесным.
+   */
+  const bad = makeCache({ keyHasSide: false });
+  ok('ключ без стороны ОТДАЁТ ОДИН объект обеим сторонам (так и было)',
+    bad.load('gen:одно-тело', 'octopus', 1) === bad.load('gen:одно-тело', 'gorilla', 1));
+
+  const good = makeCache({ keyHasSide: true });
+  const g1 = good.load('gen:одно-тело', 'octopus', 1);
+  const g2 = good.load('gen:одно-тело', 'gorilla', 1);
+  ok('ключ со стороной даёт КАЖДОЙ стороне свой экземпляр', g1 !== g2,
+    `собрано тел: ${good.built}`);
+  ok('и кэш остаётся кэшем: повтор той же стороны не пересобирает',
+    good.load('gen:одно-тело', 'octopus', 1) === g1, `собрано тел: ${good.built}`);
+}
+
+ok('main.js: ключ кэша тела включает сторону',
+  main.includes('const key = `${ref}@${size}@${kind}`'),
+  'масштаб тела считается по стороне — чужой масштаб приезжает вместе с чужим объектом');
+
+/*
+ * Ключ кэша и `bodyRefOf` ОБЯЗАНЫ совпадать по форме. Защита кэша от
+ * вытеснения живого тела сравнивает одно с другим
+ * (`Object.values(bodyRefOf).includes(oldest)`); стоит формам разойтись — кэш
+ * выбросит и УНИЧТОЖИТ тело, которое прямо сейчас на экране, а обе строки по
+ * отдельности останутся верными, и никакая проверка одной из них не поможет.
+ */
+ok('main.js: `bodyRefOf` пишется тем же ключом, что и кэш',
+  main.includes('const want = `${ref}@${size}@${id}`')
+  && main.includes('Object.values(bodyRefOf).includes(oldest)'),
+  'иначе вытеснение уничтожит живое тело');
+
 console.log(failed ? `\n  ПРОВАЛ: ${failed}\n` : '\n  ДЕРЖИТ\n');
 process.exit(failed ? 1 : 0);
