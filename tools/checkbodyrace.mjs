@@ -193,5 +193,46 @@ ok('main.js: `bodyRefOf` пишется тем же ключом, что и кэ
   && main.includes('Object.values(bodyRefOf).includes(oldest)'),
   'иначе вытеснение уничтожит живое тело');
 
+
+/* ── где стоит существо, решает арена ──────────────────────────────────── */
+
+{
+  /*
+   * Арена ставила бойца прямо в корень, который вернула программа тела, и
+   * тут же звала её позу — шестьдесят раз в секунду, с тем же объектом.
+   * Поза вольна написать в него что угодно, и тело СТЕКЛЯННОЙ ОСЫ этим
+   * пользовалось: замерено в живом браузере — арена клала (-16.45, 14.92),
+   * после позы в корне оставался (0, 0). Существо дралось по всей арене и
+   * всё это время стояло в центре.
+   *
+   * Модель поведения ниже — ровно эта последовательность: поставить, вызвать
+   * враждебную позу, прочитать.
+   */
+  const hostilePose = (node) => { node.position.x = 0; node.position.z = 0; };
+
+  const noHolder = { position: { x: 0, y: 0, z: 0 } };
+  noHolder.position.x = -16.45; noHolder.position.z = 14.92;
+  hostilePose(noHolder);
+  ok('без держателя поза УВОДИТ тело в ноль (так и было)',
+    noHolder.position.x === 0 && noHolder.position.z === 0);
+
+  const holder = { position: { x: 0, y: 0, z: 0 }, inner: { position: { x: 0, y: 0, z: 0 } } };
+  holder.position.x = -16.45; holder.position.z = 14.92;
+  hostilePose(holder.inner);
+  ok('с держателем боец остаётся там, куда его поставила арена',
+    holder.position.x === -16.45 && holder.position.z === 14.92,
+    `тело в (${holder.position.x}, ${holder.position.z})`);
+}
+
+ok('main.js: тело завёрнуто в держатель арены',
+  main.includes("const holder = new THREE.Group();")
+  && main.includes('return { root: holder, inner: root,'),
+  'иначе чужая поза снова получит тот же объект, что и позиция бойца');
+
+ok('main.js: позу зовут у корня МОДЕЛИ, а позицию ставят держателю',
+  main.includes('body.inner.userData.pose(')
+  && main.includes('body.root.position.set(v.x, v.y, v.z)'),
+  'позвать позу у держателя — значит не позвать её вовсе');
+
 console.log(failed ? `\n  ПРОВАЛ: ${failed}\n` : '\n  ДЕРЖИТ\n');
 process.exit(failed ? 1 : 0);

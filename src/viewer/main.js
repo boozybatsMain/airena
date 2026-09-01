@@ -450,7 +450,40 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     meshes.push(o);
   });
-  return { root, length, height: size.y, scale, footprint, meshes };
+
+  /*
+   * ── ГДЕ СТОИТ СУЩЕСТВО, РЕШАЕТ АРЕНА, А НЕ ТЕЛО ──────────────────────────
+   *
+   * Арена ставила бойца прямо в корень, который вернула чужая программа, и
+   * СРАЗУ ПОСЛЕ ЭТОГО звала её же позу — шестьдесят раз в секунду. Поза
+   * получает тот же самый объект и вольна написать в него что угодно. Тело
+   * СТЕКЛЯННОЙ ОСЫ этим и пользуется: замерено в живом браузере, кадр за
+   * кадром — арена клала (-16.45, 14.92), а после позы в корне оставался
+   * ровно (0, 0). Существо честно дралось по всей арене и всё это время
+   * стояло в центре, потому что нарисовать себя в другом месте ему не давала
+   * его же собственная программа.
+   *
+   * Заметить это было почти нельзя: цикл кадра ПОСЛЕ позы переписывает `y`
+   * (высота считается по фактически принятой позе), поэтому тело мелко
+   * дышало по вертикали и выглядело живым — просто никуда не ехало.
+   *
+   * Починка — граница, а не запрет. Модель пусть двигает что хочет ВНУТРИ
+   * своего графа: это её работа, там живёт вся анимация. Но её корень теперь
+   * лежит в держателе, который завела арена, и ставит бойца на место
+   * держатель. Написать в него чужой код не может — ссылки на него у него
+   * нет.
+   *
+   * Тот же принцип, что у топлива и у фасада THREE: чужому коду не
+   * запрещают работать, ему очерчивают, где именно.
+   */
+  const holder = new THREE.Group();
+  holder.name = 'arena';
+  holder.add(root);
+  /* Измерения (`spanY`, `fallOrientation`, склейка) идут по СПИСКУ МЕШЕЙ и по
+     мировым матрицам, поэтому лишний узел между корнем и сценой их не
+     трогает: он тождественный, пока арена не поставит бойца. */
+  holder.updateMatrixWorld(true);
+  return { root: holder, inner: root, length, height: size.y, scale, footprint, meshes };
 }
 
 /**
@@ -547,7 +580,7 @@ function fallOrientation(body) {
   const keepR = body.root.rotation.clone();
   body.root.position.set(0, 0, 0);
   body.root.rotation.set(0, 0, 0, 'YXZ');
-  body.root.userData.pose({
+  body.inner.userData.pose({
     t: 0, dt: 1 / 60, speed: 0, stride: 0, turn: 0,
     grounded: true, health: 0, action: 'die', phase: 1,
   });
@@ -661,6 +694,8 @@ const bodyCache = new Map();
 /* Все корни тел, что когда-либо строились: по нему `syncBodies` отличает
    тело от арены, не полагаясь на имя, которое задаёт чужая модель. */
 const bodyRoots = new WeakSet();
+/* см. `__airenaBodies`: последний посчитанный вид, только для диагностики. */
+let lastView = null;
 
 async function bodyFor(ref, kind, size = 1) {
   /* Ключ кэша включает РАЗМЕР: одно и то же тело на 0.75 и на 1.5 — это два
@@ -790,6 +825,47 @@ async function swapBody(id, ref, size = 1) {
  *
  * Стоит это обходом детей сцены (несколько десятков) и только при подмене.
  */
+/*
+ * Наблюдаемость сцены — иначе тело чинится вслепую.
+ *
+ * Дважды подряд дефект «тело не едет за бойцом» приходилось искать чтением
+ * кода: со стороны страницы `bodies`, `bodyRefOf` и содержимое сцены не видны
+ * ниоткуда, а именно их расхождение и есть весь дефект. Хук отдаёт СЛЕПОК, а
+ * не сами объекты: ссылки на граф сцены наружу — это приглашение подержать
+ * их живыми и получить утечку, которой в профайлере не видно.
+ */
+window.__airenaBodies = () => ({
+  refOf: { ...bodyRefOf },
+  sides: Object.fromEntries(['octopus', 'gorilla'].map((id) => {
+    const b = bodies[id];
+    return [id, b ? {
+      visible: b.root.visible,
+      inScene: b.root.parent === scene,
+      pos: [+b.root.position.x.toFixed(2), +b.root.position.y.toFixed(2), +b.root.position.z.toFixed(2)],
+      poseFailed: b.inner.userData.poseFailed || null,
+      meshes: (() => { let n = 0; b.root.traverse((o) => { if (o.isMesh) n++; }); return n; })(),
+    } : null];
+  })),
+  /* Тела в сцене, которых нет ни на одной стороне: ровно то, что выглядит как
+     «существо стоит и не двигается» — осиротевший граф на старом месте. */
+  orphans: scene.children.filter((c) => bodyRoots.has(c)
+    && !Object.values(bodies).some((b) => b && b.root === c))
+    .map((c) => ({ pos: [+c.position.x.toFixed(2), +c.position.z.toFixed(2)], visible: c.visible })),
+  cache: bodyCache.size,
+  /* То, что цикл кадра положил в тела: если тело стоит, а здесь координаты
+     живые — виноват цикл; если и здесь ноль — виновата интерполяция. */
+  view: lastView ? Object.fromEntries(Object.entries(lastView)
+    .map(([k, v]) => [k, { x: +(+v.x).toFixed(2), z: +(+v.z).toFixed(2), y: +(+v.y).toFixed(2) }])) : null,
+  /* Последний пришедший кадр боя — сырой, как его прислал сервер. Именно из
+     него берутся координаты тел, и когда тело стоит, вопрос ровно один:
+     стоит ли оно в кадре или его туда не положили. */
+  frame: frames.length ? (() => {
+    const f = frames[frames.length - 1];
+    const one = (id) => (f[id] ? { x: +(+f[id].x).toFixed(2), z: +(+f[id].z).toFixed(2), hp: f[id].hp } : null);
+    return { t: f.t, keys: Object.keys(f), octopus: one('octopus'), gorilla: one('gorilla') };
+  })() : null,
+});
+
 function syncBodies() {
   const live = new Set(Object.values(bodies).filter(Boolean).map((b) => b.root));
   for (const child of scene.children.slice()) {
@@ -3279,6 +3355,9 @@ function frame() {
       const speedMs = Math.hypot(lerp(a.vx, b.vx, fr.u), lerp(a.vz, b.vz, fr.u));
       view[id] = { ...a, x, y, z, h, speedMs, hp: lerp(a.hp, b.hp, fr.u) };
     }
+    /* Слепок того, ЧТО ИМЕННО получили тела в этом кадре. Одна ссылка на
+       кадр; читается только диагностикой (`__airenaBodies`). */
+    lastView = view;
 
     for (const id of ['octopus', 'gorilla']) {
       const body = bodies[id];
@@ -3321,7 +3400,7 @@ function frame() {
       const fall = body.fall;
       body.root.position.set(v.x, v.y, v.z);
       body.root.rotation.set(fall.rx * fell, v.h, fall.rz * fell, 'YXZ');
-      body.root.userData.pose({
+      body.inner.userData.pose({
         t: now,
         dt,
         speed: speedBl,
