@@ -31,7 +31,7 @@ import * as TSL from 'three/tsl';
 
 /* Относительный путь: у зрителя он разрешается в тот же `/skills/registry.js`,
    а у нас — в настоящий файл, и модуль становится проверяемым гейтом. */
-import { ELEMENTS } from '../skills/registry.js';
+import { EFFECTS, ELEMENTS } from '../skills/registry.js';
 import {
   TIME, basic, markGlow, pooled, rnd, setFade, setGlowEnabled,
   spread, withFade,
@@ -665,6 +665,17 @@ export class Vfx {
      * бывает одно-два, а седьмой удар и при шести пришёлся бы на занятый
      * источник.
      */
+    /*
+     * ЖИВЫЕ СНАРЯДЫ по паре (кто, умение). Сим пишет запись болта или навеса
+     * в МОМЕНТ ЗАПУСКА и не знает, куда снаряд попадёт; про попадание она
+     * пишет отдельную запись `impact` той же парой (`pushImpact` в
+     * `deliver.js`). Без этой связи разряд болта всегда кончался на полной
+     * дальности, даже когда снаряд остановился о тело или об укрытие
+     * (замер 02.09). Форма-снаряд кладёт сюда своё состояние в начале,
+     * каждый кадр смотрит `state.hit` и убирает запись, когда умирает.
+     */
+    this.flights = new Map();
+
     this.lights = [];
     this.lightHead = 0;
     for (let i = 0; i < LIGHT_POOL; i++) {
@@ -685,9 +696,24 @@ export class Vfx {
     this.tickLights();
   }
 
+  /** Форма-снаряд регистрирует своё состояние: удар той же пары его найдёт. */
+  flight(who, skill, state) { this.flights.set(`${who}:${skill}`, state); }
+
   /** Одна запись из `world.fx`. Возвращает true, если нарисовала. */
   play(e, ctx) {
     const P = palette(e.element);
+    /* Удар сообщает живому снаряду точку и момент попадания, ДО того как
+       модули начнут рисовать: разряд болта кончается там, где кончился
+       снаряд. Удар SELF-атомов (`bolt: heal`) `pushImpact` пишет у КАСТЕРА —
+       это не место попадания снаряда, и снаряд о нём знать не должен. */
+    if (e.kind === 'impact') {
+      const f = this.flights.get(`${e.who}:${e.skill}`);
+      const atTarget = e.blocked || (e.effects || []).some((id) => EFFECTS[id]?.klass !== 'self');
+      if (f && atTarget) {
+        f.hit = { x: e.x, z: e.z, t: this.now, blocked: !!e.blocked };
+        this.flights.delete(`${e.who}:${e.skill}`);
+      }
+    }
     /*
      * Элементные модули — первыми: у льда, огня и молнии своё тело эффекта
      * внутри следа доставки (docs/VFX.md). Модуль без функции для этой

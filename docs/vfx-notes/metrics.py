@@ -1,6 +1,10 @@
 """Замеры кадра: горячие/синие пиксели в коробке, метки по шестым долям пути.
 metrics.py box <png> x0,y0,x1,y1        -> hot (min(rgb)>=248), deep-blue (b>=140,r<=110,b-r>=80), maxL, sat
 metrics.py path <png> hx,hy tx,ty half  -> deep-blue count per sixth of the hand->target segment, band +-half px
+metrics.py navy <png> hx,hy tx,ty half  -> ОСТАТОК (тёмно-синяя крошка) по шестым долям: b-r>=40, b>=90.
+    Порог `path` (b>=140) остывший остаток НЕ ловит: замер 03.09 на 1.5 с с
+    верхнего глаза — медиана крошки (38,57,118), из 2543 её пикселей порог 140
+    оставлял 123. NAVY в field.js = (0.010,0.036,0.145) и после ACES это ~118 синего.
 metrics.py crop <png> x0,y0,x1,y1 scale out.png
 """
 import sys
@@ -39,6 +43,21 @@ elif cmd == 'path':
         m = blue & (along >= L * i / 6) & (along < L * (i + 1) / 6)
         out.append(int(m.sum()))
     print(sys.argv[2].split('/')[-1], 'blue per sixth hand->target', out)
+elif cmd == 'navy':
+    hx, hy = map(float, sys.argv[3].split(',')); tx, ty = map(float, sys.argv[4].split(',')); half = float(sys.argv[5])
+    H, W = a.shape[:2]
+    ys, xs = np.mgrid[0:H, 0:W]
+    dx, dy = tx - hx, ty - hy; L = (dx * dx + dy * dy) ** 0.5; ux, uy = dx / L, dy / L
+    along = (xs - hx) * ux + (ys - hy) * uy
+    across = abs(-(xs - hx) * uy + (ys - hy) * ux)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    navy = (b - r >= 40) & (b >= 90) & (across <= half)
+    out = []
+    for i in range(6):
+        m = navy & (along >= L * i / 6) & (along < L * (i + 1) / 6)
+        out.append(int(m.sum()))
+    mx = max(out) or 1
+    print(sys.argv[2].split('/')[-1], 'navy per sixth hand->target', out, 'min/max %.2f' % (min(out) / mx))
 elif cmd == 'crop':
     x0, y0, x1, y1 = map(int, sys.argv[3].split(',')); sc = int(sys.argv[4])
     im = Image.open(sys.argv[2]).crop((x0, y0, x1, y1))
