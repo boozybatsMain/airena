@@ -79,5 +79,24 @@ if (forge) {
   for (const [what, re] of WALLS) ok(`инструкция называет стену: ${what}`, re.test(both));
 }
 
+// ── промпт кузницы называет закрытые списки форм (docs/VFX-PLAN.md §7.5) ───
+{
+  /* Без этой строки E1 молча подменял бы стихию у умения игрока: модель не
+     знала бы, что «временного луча» не бывает. Проверка вакуумно зелена,
+     пока ни одна ВЫПУЩЕННАЯ стихия не ограничена в формах, — так и задумано:
+     четыре новые пока `unreleased` и в промпт не попадают. Фальсифицируется
+     снятием `unreleased` с любой из них. */
+  const { grammar, DELIVERIES } = await import('../src/skills/registry.js');
+  const g = grammar();
+  const { parseUserPrompt } = await import('../src/server/forge/pipeline.js');
+  const txt = parseUserPrompt(g);
+  for (const el of Object.values(g.elements)) {
+    if (!Array.isArray(el.forms) || el.forms.length >= Object.keys(DELIVERIES).length) continue;
+    ok(`промпт кузницы называет формы «${el.ru}»`, txt.includes(`${el.id} (${el.ru}; только доставки `));
+  }
+  ok('промпт кузницы не предлагает нерелизную стихию',
+    !/gravity|time \(время|acid|radiation/.test(txt), 'grammar() отдаёт только выпущенные');
+}
+
 console.log(bad ? `\n  ПРОВАЛ: ${bad}\n` : '\n  ДЕРЖИТ\n');
 process.exit(bad ? 1 : 0);

@@ -361,19 +361,52 @@ export const CHANNELS = table({
  * Словарь обязан быть правдоподобным против РОБОТА: `venom` исключён — яд
  * машине ничто. `acid` — кандидат на замену, открытый вопрос §8.
  */
+/* Все девять доставок: у пяти выпущенных стихий формы не ограничены. */
+const ALL_FORMS = Object.keys(DELIVERIES);
+
 export const ELEMENTS = table({
-  kinetic: { id: 'kinetic', ru: 'кинетика', cost: 0, palette: ['#d8e2ea', '#9fb4c4', '#5d7183'], read: 'удар' },
-  ember: { id: 'ember', ru: 'жар', cost: 0, palette: ['#ffd9a0', '#ff9a4d', '#c8431c'], read: 'перегрев' },
+  kinetic: { id: 'kinetic', ru: 'кинетика', cost: 0, palette: ['#d8e2ea', '#9fb4c4', '#5d7183'], read: 'удар', forms: ALL_FORMS },
+  ember: { id: 'ember', ru: 'жар', cost: 0, palette: ['#ffd9a0', '#ff9a4d', '#c8431c'], read: 'перегрев', forms: ALL_FORMS },
   /* Мороз и дуга были двумя оттенками одного голубого: замер по пикселям
      давал между ними разницу меньше порога различимости, и «элемент владеет
      палитрой» (§9.2) превращалось в «элемент владеет подписью». Мороз уведён
      в бирюзу, дуга — в электрический синий. Измеряется в Lab: ни одна из
      десяти пар не должна сходиться ближе ΔE 10, порога, ниже которого цвета
      на движущейся частице уже неразличимы. Проверяет `tools/checkgrammar.mjs`. */
-  frost: { id: 'frost', ru: 'мороз', cost: 0, palette: ['#e8fbff', '#7fe3e0', '#1f8f9d'], read: 'обледенение и хрупкость' },
-  arc: { id: 'arc', ru: 'дуга', cost: 0, palette: ['#eef8ff', '#8ecbff', '#0a5cff'], read: 'электричество' },
-  void: { id: 'void', ru: 'пустота', cost: 0, palette: ['#e6dcff', '#a98cf0', '#4b2f8c'], read: 'фантастика, но однозначна' },
+  frost: { id: 'frost', ru: 'мороз', cost: 0, palette: ['#e8fbff', '#7fe3e0', '#1f8f9d'], read: 'обледенение и хрупкость', forms: ALL_FORMS },
+  arc: { id: 'arc', ru: 'дуга', cost: 0, palette: ['#eef8ff', '#8ecbff', '#0a5cff'], read: 'электричество', forms: ALL_FORMS },
+  void: { id: 'void', ru: 'пустота', cost: 0, palette: ['#e6dcff', '#a98cf0', '#4b2f8c'], read: 'фантастика, но однозначна', forms: ALL_FORMS },
+
+  /*
+   * ЧЕТЫРЕ НОВЫЕ СТИХИИ (решение основателя 03.09, docs/VFX-PLAN.md §6).
+   * «Не каждой стихии нужны все формы. У времени может не быть ни луча, ни
+   * снаряда, ни урона вовсе; гравитация может существовать только ради
+   * притяжения. Подумайте, ЗАЧЕМ каждая: большинство из них — ради
+   * разнообразия эффектов, а не ради урона.» Отсюда `forms` и правило E1.
+   *
+   * `unreleased: true` — модуль ещё не принят: стихия есть для сидов и
+   * стенда, но модели, клиенту и счёту прочтений не показывается
+   * (`releasedElements`). Снимать флаг — решение ТЗ, только с письменного
+   * согласия основателя (docs/VFX-PLAN.md §7.5, шаг 11).
+   *
+   * Палитры проверены формулой ΔE гейта `checkgrammar`: ни одна пара из
+   * девяти стихий не сходится ближе 21.7 при пороге 10.
+   */
+  gravity: { id: 'gravity', ru: 'гравитация', cost: 0, palette: ['#eef0f4', '#6f7a8c', '#141821'], read: 'тяжесть и притяжение', forms: ['zone', 'self', 'lob'], unreleased: true },
+  time: { id: 'time', ru: 'время', cost: 0, palette: ['#fff4e4', '#d4b48a', '#4a2c10'], read: 'замедление времени', forms: ['zone', 'self', 'blink'], unreleased: true },
+  acid: { id: 'acid', ru: 'кислота', cost: 0, palette: ['#f4ffb0', '#9ee83a', '#3d7a12'], read: 'разъедание', forms: ['cone', 'lob', 'zone', 'bolt'], unreleased: true },
+  radiation: { id: 'radiation', ru: 'радиация', cost: 0, palette: ['#fffbe0', '#ffe14a', '#4b4f18'], read: 'заражение', forms: ['zone', 'lob', 'cone'], unreleased: true },
 });
+
+/**
+ * Стихии, отданные наружу. `unreleased: true` — модуль ещё не принят
+ * (docs/VFX-PLAN.md §7.5): стихия есть для сидов и стенда, но модели,
+ * клиенту и счёту прочтений не показывается. Порог «пять стихий» в
+ * `selfTest` и в гейте ТЗ считается по этому списку, а не по всей таблице.
+ */
+export function releasedElements() {
+  return table(Object.fromEntries(Object.entries(ELEMENTS).filter(([, e]) => !e.unreleased)));
+}
 
 /**
  * L2 — правило ЖИЗНЕСПОСОБНОСТИ. Не о законности, а о том, что бой можно
@@ -431,7 +464,11 @@ export function damagingCount(kit) {
   return n;
 }
 
-/** L1 — единственное правило легальности. */
+/**
+ * L1 — первое правило легальности: доставка К СЕБЕ не бьёт противника.
+ * Второе — E1 (docs/VFX-PLAN.md §7.5, 03.09): `ELEMENTS[x].forms` — закрытый
+ * список доставок стихии, и «не каждой стихии нужны все формы».
+ */
 export const SELF_ALLOWED = new Set(['shield', 'heal', 'cleanse', 'boost', 'wall']);
 
 /**
@@ -559,7 +596,7 @@ export function validateSkill(skill) {
   if (!needsChannel && skill.channel) bad.push({ code: 'channel_extra', ru: 'канал задан, но его некому крутить' });
 
   /*
-   * L1 — единственное исключение в грамматике.
+   * L1 — первое из двух исключений в грамматике (второе — E1 ниже).
    *
    * Правило написано про КЛАСС доставки, а не про её имя. Это не педантизм:
    * SELF-класс носят две доставки, `self` и `blink`, и проверка по имени
@@ -583,6 +620,21 @@ export function validateSkill(skill) {
     }
   }
 
+  /*
+   * E1 — стихия бывает не всякой доставкой (решение основателя 03.09: «не
+   * каждой стихии нужны все формы»). У времени нет луча и снаряда, у
+   * гравитации — только зона, себя и навес: см. `ELEMENTS[x].forms`.
+   *
+   * Только ПРИ ЗАКОННОЙ ДОСТАВКЕ: на злом входе (`delivery: '__proto__'`,
+   * которым кормит `checkgrammar`) `DELIVERIES[...]` — undefined, и правило
+   * молчит, чтобы не подменять сообщение о несуществующей доставке.
+   */
+  const d0 = DELIVERIES[skill.delivery];
+  const el = ELEMENTS[skill.element];
+  if (d0 && el && Array.isArray(el.forms) && !el.forms.includes(skill.delivery)) {
+    bad.push({ code: 'E1', ru: `«${el.ru}» не бывает «${d0.ru}»: у этой стихии только ${el.forms.map((f) => DELIVERIES[f]?.ru || f).join(', ')}` });
+  }
+
   const cost = costOf(skill);
   if (cost > SKILL_BUDGET) bad.push({ code: 'budget', ru: `умение стоит ${cost} очков из ${SKILL_BUDGET}` });
   return bad;
@@ -604,6 +656,19 @@ export function validateKit(kit, { size = KIT_SIZE } = {}) {
      ноль, а именно она — предмет §8. */
   const sig = kit.map((s) => `${s.delivery}:${(s.effects || []).join('+')}`);
   if (new Set(sig).size < sig.length) bad.push({ code: 'kit_dup', ru: 'два умения в наборе делают одно и то же' });
+  /*
+   * НЕРЕЛИЗНАЯ СТИХИЯ (docs/VFX-PLAN.md §7.5) — правило НАБОРА, и это
+   * намеренно. `compileKit` пробрасывает наружу только `size`, `kit_budget` и
+   * `kit_dup`, так что сиды и чтение из базы продолжают компилироваться, а
+   * игроку через HTTP (`api.js` зовёт `validateKit`) стихия без принятого
+   * модуля не отдаётся. Сид, который её ставит, обязан сам отфильтровать
+   * этот код — см. `tools/seedvfx.mjs`.
+   */
+  kit.forEach((s, i) => {
+    const el = ELEMENTS[s?.element];
+    if (el?.unreleased) bad.push({ code: 'element_unreleased', slot: i, ru: `стихия «${el.ru}» ещё не выпущена` });
+  });
+
   /* L2: набор обязан уметь закончить бой — см. комментарий к DAMAGING. */
   if (size !== null && damagingCount(kit) < MIN_DAMAGING_SKILLS) {
     bad.push({
@@ -649,15 +714,17 @@ export function describe(skill) {
  * игрок не увидит.
  */
 export function readingCount() {
+  /* Перебор ПО СТИХИЯМ, а не умножение на их число: с правилом E1 стихии
+     перестали быть ортогональны доставкам — у времени нет луча, и умножение
+     насчитало бы прочтения, которых грамматика не пропустит. Считаются
+     только ВЫПУЩЕННЫЕ: нерелизная стихия игроку не предлагается. */
   let n = 0;
-  for (const d of Object.keys(DELIVERIES)) {
-    for (const e of Object.keys(EFFECTS)) {
-      const chs = EFFECTS[e].needsChannel ? Object.keys(CHANNELS) : [null];
-      const legal = chs.some((ch) => !validateSkill({
-        delivery: d, effects: [e], element: 'kinetic',
-        ...(ch ? { channel: ch } : {}),
-      }).length);
-      if (legal) n += Object.keys(ELEMENTS).length;
+  for (const el of Object.keys(releasedElements())) {
+    for (const d of Object.keys(DELIVERIES)) {
+      for (const e of Object.keys(EFFECTS)) {
+        const chs = EFFECTS[e].needsChannel ? Object.keys(CHANNELS) : [null];
+        if (chs.some((ch) => !validateSkill({ delivery: d, effects: [e], element: el, ...(ch ? { channel: ch } : {}) }).length)) n++;
+      }
     }
   }
   return n;
@@ -686,7 +753,10 @@ export function selfTest() {
   if (Object.keys(DELIVERIES).length !== 9) errs.push('доставок должно быть 9');
   if (Object.keys(EFFECTS).length !== 14) errs.push('эффектов должно быть 14');
   if (Object.keys(CHANNELS).length !== 7) errs.push('каналов должно быть 7');
-  if (Object.keys(ELEMENTS).length !== 5) errs.push('элементов должно быть 5');
+  if (Object.keys(releasedElements()).length !== 5) errs.push('выпущенных элементов должно быть 5');
+  for (const [id, e] of Object.entries(ELEMENTS)) {
+    if (e.forms && e.forms.some((f) => !DELIVERIES[f])) errs.push(`элемент ${id}: forms называет несуществующую доставку`);
+  }
   return errs;
 }
 
@@ -696,7 +766,7 @@ export function grammar() {
     deliveries: DELIVERIES,
     effects: EFFECTS,
     channels: CHANNELS,
-    elements: ELEMENTS,
+    elements: releasedElements(),
     selfAllowed: [...SELF_ALLOWED],
     budgets: { skill: SKILL_BUDGET, kit: KIT_BUDGET, size: KIT_SIZE },
     readings: readingCount(),

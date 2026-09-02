@@ -27,7 +27,7 @@
 
 import { POOL_SIZE, closePool, runJobs, superviseSelf } from './matchpool.mjs';
 import { BASELINE, GAUNTLET, isDiverse, readShape } from '../src/skills/gauntlet.js';
-import { CHANNELS, DELIVERIES, EFFECTS, ELEMENTS, validateKit, validateSkill } from '../src/skills/registry.js';
+import { CHANNELS, DELIVERIES, EFFECTS, ELEMENTS, releasedElements, validateKit, validateSkill } from '../src/skills/registry.js';
 
 superviseSelf('AIRENA_GAUNTLET_CHILD');
 
@@ -71,7 +71,9 @@ async function against(kit, label) {
 /** Случайный законный набор: три умения, в бюджете, без дублей. */
 function randomKit(rnd) {
   const dl = Object.keys(DELIVERIES); const ef = Object.keys(EFFECTS);
-  const ch = Object.keys(CHANNELS); const el = Object.keys(ELEMENTS);
+  const ch = Object.keys(CHANNELS); /* Только выпущенные стихии: нерелизная (docs/VFX-PLAN.md §7.5) в наборы
+     измерительных прогонов попадать не должна — её отвергнет `validateKit`. */
+  const el = Object.keys(releasedElements());
   for (let tries = 0; tries < 400; tries++) {
     const kit = [];
     for (let i = 0; i < 3; i++) {

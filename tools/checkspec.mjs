@@ -25,7 +25,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  CHANNELS, DELIVERIES, EFFECTS, ELEMENTS, readingCount,
+  CHANNELS, DELIVERIES, EFFECTS, ELEMENTS, readingCount, releasedElements,
 } from '../src/skills/registry.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -84,8 +84,8 @@ bound('число прочтений грамматики (§9.2)', /\*\*(\d+) �
 ok('осей грамматики в коде столько, сколько в §8 перечислено, кроме снятой',
   Object.keys(DELIVERIES).length === 9
   && Object.keys(EFFECTS).length === 14 && Object.keys(CHANNELS).length === 7
-  && Object.keys(ELEMENTS).length === 5,
-  `доставок ${Object.keys(DELIVERIES).length}, эффектов ${Object.keys(EFFECTS).length}, каналов ${Object.keys(CHANNELS).length}, элементов ${Object.keys(ELEMENTS).length}; триггеры сняты`);
+  && Object.keys(releasedElements()).length === 5,
+  `доставок ${Object.keys(DELIVERIES).length}, эффектов ${Object.keys(EFFECTS).length}, каналов ${Object.keys(CHANNELS).length}, выпущенных элементов ${Object.keys(releasedElements()).length} из ${Object.keys(ELEMENTS).length}; нерелизные (docs/VFX-PLAN.md §7.5) в ТЗ не входят, пока основатель не примет модуль; триггеры сняты`);
 
 /*
  * НЕ ВСЁ, ЧТО ХОЧЕТСЯ СВЕРИТЬ, СВЕРЯЕМО.

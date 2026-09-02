@@ -237,7 +237,7 @@ const PARSE_SYSTEM = `Ты переводишь описание существ�
  * Правило шире случая: если сервер что-то пересчитывает, он обязан сообщить
  * правило — иначе он не проверяет, а угадывает за собеседника.
  */
-function parseUserPrompt(g) {
+export function parseUserPrompt(g) {
   const list = (o) => Object.values(o).map((x) => `${x.id} (${x.ru}, ${x.cost})`).join(', ');
   const axes = Object.entries(BUILD_AXES).map(([name, a]) => {
     const ru = {
@@ -278,7 +278,7 @@ ${axes}
 ДОСТАВКИ: ${Object.values(g.deliveries).map((x) => `\n  ${x.id} (${x.ru}, ${x.cost}) — ${x.doc}`).join('')}
 ЭФФЕКТЫ: ${list(g.effects)}
 КАНАЛЫ: ${list(g.channels)}
-ЭЛЕМЕНТЫ (цена 0, только вид): ${Object.values(g.elements).map((x) => `${x.id} (${x.ru})`).join(', ')}
+ЭЛЕМЕНТЫ (цена 0, только вид): ${Object.values(g.elements).map((x) => `${x.id} (${x.ru}${Array.isArray(x.forms) && x.forms.length < Object.keys(g.deliveries).length ? `; только доставки ${x.forms.join('/')}` : ''})`).join(', ')}
 
 Потолок одного скилла — ${g.budgets.skill} очков, всего набора — ${g.budgets.kit}.
 Посчитай КАЖДЫЙ скилл перед тем, как его записать. Скилл дороже потолка —
@@ -392,7 +392,19 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   const repaired = [];
 
   for (let i = 0; i < KIT_SIZE; i++) {
-    if (kit[i] && !validateSkill(kit[i]).length) continue;
+    const bad = kit[i] ? validateSkill(kit[i]) : [{ code: 'shape' }];
+    if (!bad.length) continue;
+    /*
+     * ЕДИНСТВЕННОЕ НАРУШЕНИЕ — E1 (стихия не бывает этой доставкой): умение
+     * игрока сохраняется, меняется только стихия. Иначе «временной луч»
+     * молча превращался бы в чужой стартовый пресет, и игрок получал бы не
+     * своё умение вместо своего с другим цветом (docs/VFX-PLAN.md §7.5).
+     */
+    if (bad.every((b) => b.code === 'E1')) {
+      kit[i] = { ...kit[i], element: 'kinetic' };
+      repaired.push({ slot: i, why: `${bad[0].ru} — стихия заменена на кинетику` });
+      continue;
+    }
     kit[i] = fallback.kit[i];
     repaired.push({ slot: i, why: 'не собрался по правилам грамматики' });
   }

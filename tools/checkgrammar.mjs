@@ -33,7 +33,7 @@ import { perceive } from '../src/core/sim.js';
 import { compileKit, compileSkill } from '../src/skills/compile.js';
 import {
   CHANNELS, DELIVERIES, EFFECTS, ELEMENTS, KIT_BUDGET, SKILL_BUDGET,
-  costOf, validateSkill,
+  costOf, validateKit, validateSkill,
 } from '../src/skills/registry.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -71,6 +71,10 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
     { delivery: 'bolt', effects: 'damage', element: 'kinetic' },
     { delivery: 'bolt', effects: [], element: 'kinetic' },
     { delivery: 'bolt', effects: ['damage'], element: '__proto__' },
+    /* Злой вход ПРИ НОВОМ ПРАВИЛЕ E1: несуществующая доставка со стихией, у
+       которой список форм закрыт, — E1 не имеет права подменить собой
+       сообщение о несуществующей доставке или бросить на undefined. */
+    { delivery: '__proto__', effects: ['damage'], element: 'time' },
   ];
   const slipped = evil.filter((s) => {
     const c = costOf(s);
@@ -380,6 +384,40 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
   const total = over.reduce((s, k) => s + costOf(k), 0);
   const built = compileKit(over);
   ok('набор дороже бюджета не собирается', built.problems.length > 0, `цена ${total} против ${KIT_BUDGET}`);
+}
+
+
+
+// ── 10. E1: стихия бывает не всякой доставкой (docs/VFX-PLAN.md §7.5) ──────
+{
+  ok('E1: время не бывает лучом',
+    validateSkill({ delivery: 'beam', effects: ['damage'], element: 'time' }).some((b) => b.code === 'E1'),
+    'у времени только зона, себя и мигание');
+  ok('E1: кислота бывает конусом',
+    validateSkill({ delivery: 'cone', effects: ['burn'], element: 'acid' }).length === 0,
+    'форма из списка стихии проходит');
+  ok('E1 не трогает выпущенные стихии',
+    validateSkill({ delivery: 'beam', effects: ['damage'], element: 'arc' }).length === 0,
+    'у пяти выпущенных стихий формы не ограничены');
+  ok('нерелизная стихия не отдаётся игроку',
+    validateKit([
+      { delivery: 'zone', effects: ['pull', 'damage'], element: 'gravity' },
+      { delivery: 'self', effects: ['boost'], channel: 'armor', element: 'gravity' },
+      { delivery: 'cone', effects: ['damage'], element: 'kinetic' },
+    ]).some((b) => b.code === 'element_unreleased'),
+    'правило набора: сиды и стенд компилируются, HTTP — нет');
+
+  /* У стихии с модулем каждая ОБЕЩАННАЯ форма обязана быть в модуле:
+     иначе стенд предложит кнопку, за которой штатный силуэт. Гейт зелен,
+     пока файла модуля нет. */
+  const NEW = new Set(['gravity', 'time', 'acid', 'radiation']);
+  for (const [id, e] of Object.entries(ELEMENTS)) {
+    if (!NEW.has(id) || !Array.isArray(e.forms)) continue;
+    let mod = null;
+    try { mod = await import(`../src/viewer/vfx/${id}.js`); } catch { continue; /* модуль ещё не написан */ }
+    for (const f of e.forms) ok(`${id}: форма ${f} есть в модуле`, typeof mod[f] === 'function');
+    for (const f of ['impact', 'status', 'charge']) ok(`${id}: ${f} есть в модуле`, typeof mod[f] === 'function');
+  }
 }
 
 console.log(`\n  ${failed ? `ПРОВАЛ: ${failed}` : 'ДЕРЖИТ'}\n`);
