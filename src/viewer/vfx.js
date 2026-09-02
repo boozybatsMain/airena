@@ -593,6 +593,22 @@ export class Particles {
 /** Элемент → модуль с функциями `cone zone self beam bolt lob impact charge`. */
 const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx };
 
+/**
+ * Кто рисует доставку `kind` стихии `element` — зеркало порядка в `play()`:
+ * `module` — элементный модуль; `module+stock` — удар, где модуль ДОБАВЛЯЕТ
+ * вспышку к штатному; `laser` — штатный луч стихий без модуля (`laser.js`,
+ * с падением на старую трубу); `stock` — штатный силуэт; `none` — заряд без
+ * модуля (рисовать нечего). Нужно дев-стенду (`vfxstand.js`), чтобы подпись
+ * на кнопке не расходилась с тем, что на экране.
+ */
+export function drawnBy(element, kind) {
+  const mod = MODULES[element];
+  if (mod && typeof mod[kind] === 'function') return kind === 'impact' ? 'module+stock' : 'module';
+  if (kind === 'beam') return 'laser';
+  if (kind === 'charge') return 'none';
+  return 'stock';
+}
+
 export class Vfx {
   /**
    * ДВА пула, и это не роскошь, а следствие §10.1.

@@ -38,6 +38,16 @@
         "cd /Users/boozybats/Public/Repos/work/Autoage/apps/client && npx vite --port 5174 --strictPort"
       ],
       "port": 5174
+    },
+    {
+      "name": "stand",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd .claude/worktrees/stand && PORT=8830 node src/server/index.js"
+      ],
+      "port": 8830,
+      "url": "http://localhost:8830"
     }
   ]
 }

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Любая команда ПОД ЗАМКОМ GPU: один headless Chrome на GPU за раз. Несколько
+# инструментов съёмки, работающих параллельно, сдвигают моменты друг друга на
+# 0.1–0.5 с (замер 02.09: 0.3 → 0.5, 0.6 → 0.9). Замок — атомарный mkdir, тот
+# же, что у `vfxshot-lock.sh`, чтобы кадры и ролики стояли в одной очереди.
+#   tools/vfxlock.sh node tools/vfxclip.mjs --el=arc --kind=beam --cam=side
+LOCK=${TMPDIR:-/tmp}/airena-vfxshot.lock
+i=0
+while ! mkdir "$LOCK" 2>/dev/null; do
+  i=$((i+1)); [ $i -gt 900 ] && { echo "vfxlock: не дождался замка" >&2; exit 2; }
+  sleep 2
+done
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+"$@"

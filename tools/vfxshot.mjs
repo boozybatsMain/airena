@@ -9,6 +9,7 @@
  *   node tools/vfxshot.mjs --out=reports/vfx/before --tag=before
  *   node tools/vfxshot.mjs --url=http://localhost:8823/?vfx=1
  *   node tools/vfxshot.mjs --webgl               тот же прогон на WebGL2
+ *   node tools/vfxshot.mjs --moments=0.06,0.12,0.38,0.8,1.5   близкие моменты — отдельными кастами
  *   node tools/vfxshot.mjs --fight --seed=101    настоящий бой на дев-вьювере
  *   node tools/vfxshot.mjs --watch=<match id> --url='http://localhost:8787/?vfx=1&sweep=1'
  *                                                  повтор боя из базы продукта: камера
@@ -33,11 +34,11 @@
  * с планом, чтобы галерею можно было собрать без разбора имён.
  */
 
-import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
-import WebSocket from 'ws';
+/* Запуск Chrome, глаза, стойка бойцов и записи доставок — общие с
+   `vfxclip.mjs` (ролики): см. `vfxchrome.mjs`. */
+import { CAMS, BLUE, ORANGE, fxFor, launchChrome, closeChrome, Cdp, openPage, waitReady, sleep } from './vfxchrome.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
@@ -50,145 +51,48 @@ const OUT = resolve(ROOT, args.out || join('reports', 'vfx', TAG));
 const PORT = Number(args.port || 8823);
 const BASE = args.url || `http://localhost:${PORT}/?vfx=1&sweep=1${args.webgl ? '&webgl=1' : ''}${args.bloom === '0' ? '&bloom=0' : ''}`;
 const W = Number(args.w || 1600), H = Number(args.h || 900);
-const CHROME = args.chrome || process.env.CHROME
-  || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 /* ── план ──────────────────────────────────────────────────────────────── */
 
 const ELEMENTS = (args.el ? args.el.split(',') : ['frost', 'ember', 'arc', 'void', 'kinetic']);
 const KINDS = (args.kind ? args.kind.split(',') : ['cone', 'self', 'zone', 'beam', 'bolt', 'lob']);
 
-/* Бойцы стоят так, чтобы каст шёл слева направо в кадре трансляции, и в
-   стороне от блоков `a` (−7,−3) и `b` (7,3): с трансляционного глаза
-   (+x,+z) тело у блока `b` пряталось за ним целиком. */
-const BLUE = { x: -3.5, z: -1.5, h: Math.PI * 0.32 };
-const ORANGE = { x: 3.0, z: 5.0, h: Math.PI * 1.32 };
-
-/* Четыре глаза. `broadcast` — дистанция и высота решателя боя (13–34 м,
-   высота 2.8 + 0.42·dist), чтобы «огромный» мерилось там, где смотрят. */
-const CAMS = {
-  broadcast: { az: Math.PI * 0.25, pitch: 0.46, dist: 26, look: { x: 0, y: 1.2, z: 1.6 } },
-  /* Тот же глаз решателя, но ПОПЕРЁК каста: с `broadcast` луч от синего к
-     оранжевому идёт почти вдоль взгляда и схлопывается в столбик — судить по
-     нему форму пучка нельзя (замер турнира молнии 02.09). */
-  side: { az: -Math.PI * 0.25, pitch: 0.46, dist: 26, look: { x: 0, y: 1.2, z: 1.6 } },
-  low: { az: Math.PI * 0.62, pitch: 0.2, dist: 15, look: { x: 0, y: 1.4, z: 1.6 } },
-  top: { az: Math.PI * 0.1, pitch: 1.15, dist: 22, look: { x: 0, y: 0.6, z: 1.6 } },
-};
 const CAM_NAMES = (args.cams ? args.cams.split(',') : Object.keys(CAMS));
 
 /* Моменты от каста, секунды: выход, пик, удержание. */
 const MOMENTS = (args.moments ? args.moments.split(',').map(Number) : [0.2, 0.7, 1.6]);
 
-function fxFor(kind, element) {
-  const base = { kind, element, who: 'blue', t: 0, skill: 'k1' };
-  const h = Math.atan2(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
-  const dist = Math.hypot(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
-  switch (kind) {
-    case 'beam': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x, z1: ORANGE.z, hit: true };
-    case 'cone': return { ...base, x: BLUE.x, z: BLUE.z, h, range: 3.4, halfAngle: 0.96, hit: true };
-    case 'bolt': return { ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 22 };
-    case 'lob': return { ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 12 };
-    case 'zone': return { ...base, x: ORANGE.x, z: ORANGE.z, r: 3.0, duration: 3 };
-    case 'dash': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x - 1.5, z1: ORANGE.z - 1, hit: true };
-    case 'blink': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: BLUE.x + 4, z1: BLUE.z + 3 };
-    case 'self': return { ...base, x: BLUE.x, z: BLUE.z };
-    case 'jump': return { ...base, x: BLUE.x, z: BLUE.z, h, height: 2.2, duration: 0.55 };
-    case 'wall': return { ...base, x: 1, z: 1, w: 4, d: 1, duration: 4 };
-    case 'impact': return { ...base, x: ORANGE.x, z: ORANGE.z, who: 'orange', effects: ['damage'] };
-    case 'status': return { ...base, who: 'orange', effect: 'burn' };
-    /* Заряд в замахе — запись только вьювера (см. docs/VFX.md §4). */
-    case 'charge': return { ...base, x: BLUE.x, z: BLUE.z, h, windup: 0.9, for: 'cone' };
-    default: return null;
+/*
+ * МОМЕНТЫ ДЕЛЯТСЯ НА КАСТЫ. `Page.captureScreenshot` на WebGPU стоит ~0.3 с и
+ * сдвигает следующий момент того же каста: один каст с 0.06, 0.15, 0.3
+ * снимался на 0.06, 0.43, 0.78 (замер 02.09). Поэтому в одном касте моменты
+ * стоят не ближе `--gap` (0.45 с), а близкие уходят в отдельные касты того же
+ * глаза. Эффекты детерминированы от координат каста (A2), кадры разных кастов
+ * совпадают — проверено на пяти моментах полировки молнии.
+ */
+const GAP = Number(args.gap || 0.45);
+function groupMoments(ms) {
+  const groups = [];
+  for (const m of [...ms].sort((a, b) => a - b)) {
+    let g = groups.find((gr) => m - gr[gr.length - 1] >= GAP);
+    if (!g) { g = []; groups.push(g); }
+    g.push(m);
   }
+  return groups;
 }
-
-/* ── Chrome по CDP ─────────────────────────────────────────────────────── */
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function launchChrome() {
-  const profile = join(tmpdir(), `airena-vfxshot-${process.pid}`);
-  rmSync(profile, { recursive: true, force: true });
-  mkdirSync(profile, { recursive: true });
-  const flags = [
-    '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-    '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--mute-audio',
-    '--enable-unsafe-webgpu', '--enable-features=WebGPU', '--ignore-gpu-blocklist',
-    '--use-angle=metal', `--window-size=${W},${H}`, 'about:blank',
-  ];
-  const proc = spawn(CHROME, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
-  let stderr = '';
-  proc.stderr.on('data', (d) => { stderr += d; });
-  const portFile = join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !existsSync(portFile); i++) await sleep(100);
-  if (!existsSync(portFile)) { proc.kill(); throw new Error(`Chrome не поднял DevTools: ${stderr.slice(-400)}`); }
-  const [port, path] = readFileSync(portFile, 'utf8').trim().split('\n');
-  const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`, { perMessageDeflate: false, maxPayload: 256 * 1024 * 1024 });
-  await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
-  return { proc, ws, profile };
-}
-
-class Cdp {
-  constructor(ws) {
-    this.ws = ws; this.id = 0; this.waiting = new Map(); this.listeners = [];
-    ws.on('message', (raw) => {
-      const m = JSON.parse(raw);
-      if (m.id && this.waiting.has(m.id)) {
-        const { res, rej } = this.waiting.get(m.id); this.waiting.delete(m.id);
-        if (m.error) rej(new Error(`${m.error.message} (${m.error.data || ''})`)); else res(m.result);
-      } else if (m.method) for (const l of this.listeners) l(m);
-    });
-  }
-  send(method, params = {}, sessionId) {
-    const id = ++this.id;
-    this.ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
-    return new Promise((res, rej) => this.waiting.set(id, { res, rej }));
-  }
-  on(fn) { this.listeners.push(fn); }
-}
-
-async function openPage(cdp, url) {
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', newWindow: true, width: W, height: H });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  await cdp.send('Page.enable', {}, sessionId);
-  await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false }, sessionId);
-  const errors = [];
-  cdp.on((m) => {
-    if (m.sessionId !== sessionId) return;
-    if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails?.exception?.description || m.params.exceptionDetails?.text);
-    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(m.params.args.map((a) => a.value || a.description).join(' '));
-  });
-  await cdp.send('Page.navigate', { url }, sessionId);
-  const evaluate = async (expr) => {
-    const r = await cdp.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }, sessionId);
-    if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
-    return r.result.value;
-  };
-  const shot = async (file) => {
-    const r = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, sessionId);
-    writeFileSync(file, Buffer.from(r.data, 'base64'));
-  };
-  return { sessionId, evaluate, shot, errors };
-}
+const GROUPS = groupMoments(MOMENTS);
 
 /* ── прогон ─────────────────────────────────────────────────────────────── */
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const { proc, ws, profile } = await launchChrome();
-  const cdp = new Cdp(ws);
-  const index = { url: BASE, at: new Date().toISOString(), w: W, h: H, cams: CAMS, moments: MOMENTS, shots: [] };
+  const chrome = await launchChrome({ chrome: args.chrome, w: W, h: H });
+  const cdp = new Cdp(chrome.ws);
+  const index = { url: BASE, at: new Date().toISOString(), w: W, h: H, cams: CAMS, moments: MOMENTS, casts: GROUPS, gap: GAP, shots: [] };
   try {
-    const page = await openPage(cdp, BASE);
+    const page = await openPage(cdp, BASE, { w: W, h: H });
     /* Сцена готова, когда есть ручки прогона и тела обеих сторон. */
-    let ready = false;
-    for (let i = 0; i < 300 && !ready; i++) {
-      await sleep(200);
-      ready = await page.evaluate('!!(window.__airenaSweep && window.__airenaSweep.bodies().blue && window.__airenaSweep.bodies().orange)').catch(() => false);
-    }
-    if (!ready) throw new Error(`вьювер не поднялся за 60 с: ${BASE} — ошибки: ${page.errors.slice(0, 3).join(' | ')}`);
+    await waitReady(page, BASE);
     /* Прогрев: первый кадр с новым материалом на WebGPU пустой (стенд /ice
        выяснил это первым), и конвейеры собираются на первом появлении. */
     await page.evaluate(`window.__airenaSweep.place(${JSON.stringify({ blue: BLUE, orange: ORANGE })}); true`);
@@ -222,24 +126,26 @@ async function main() {
           for (const camName of CAM_NAMES) {
             await page.evaluate(`window.__airenaSweep.cam(${JSON.stringify(CAMS[camName])}); true`);
             await sleep(150);
-            /* Один каст на глаз: моменты снимаются последовательно по часам
-               СТРАНИЦЫ (ответ `cast` возвращает её `performance.now()`), ракурс
-               меняется между кастами. Эффекты детерминированы от координат
-               каста (A2), кадры совпадут. */
-            const t0 = Date.now();
-            const pageT0 = await page.evaluate(`(window.__airenaSweep.cast(${JSON.stringify(fx)}), performance.now())`);
-            for (const m of MOMENTS) {
-              const wait = t0 + m * 1000 - Date.now();
-              if (wait > 0) await sleep(wait);
-              const name = `${el}-${kind}-t${m.toFixed(2).replace('.', '_')}-${camName}.png`;
-              const at = await page.evaluate('performance.now()');
-              await page.shot(join(OUT, name));
-              index.shots.push({ el, kind, moment: m, cam: camName, file: name, actual: +((at - pageT0) / 1000).toFixed(3) });
+            /* Каст на глаз и группу моментов (см. `groupMoments`): моменты
+               снимаются последовательно по часам СТРАНИЦЫ (ответ `cast`
+               возвращает её `performance.now()`), ракурс меняется между
+               кастами. */
+            for (const [gi, group] of GROUPS.entries()) {
+              const t0 = Date.now();
+              const pageT0 = await page.evaluate(`(window.__airenaSweep.cast(${JSON.stringify(fx)}), performance.now())`);
+              for (const m of group) {
+                const wait = t0 + m * 1000 - Date.now();
+                if (wait > 0) await sleep(wait);
+                const name = `${el}-${kind}-t${m.toFixed(2).replace('.', '_')}-${camName}.png`;
+                const at = await page.evaluate('performance.now()');
+                await page.shot(join(OUT, name));
+                index.shots.push({ el, kind, moment: m, cam: camName, cast: gi, file: name, actual: +((at - pageT0) / 1000).toFixed(3) });
+              }
+              /* Дать эффекту догореть, чтобы следующий каст не снимал хвост. */
+              await sleep(Math.max(1200, 3800 - (Date.now() - t0)));
             }
-            /* Дать эффекту догореть, чтобы следующий ракурс не снимал хвост. */
-            await sleep(Math.max(1200, 3800 - (Date.now() - t0)));
           }
-          console.log(`  ${el} · ${kind}: ${CAM_NAMES.length * MOMENTS.length} кадров`);
+          console.log(`  ${el} · ${kind}: ${CAM_NAMES.length * MOMENTS.length} кадров, кастов на глаз: ${GROUPS.length}`);
         }
       }
     }
@@ -249,14 +155,7 @@ async function main() {
     writeFileSync(join(OUT, 'index.json'), JSON.stringify(index, null, 2));
     console.log(`${index.shots.length} кадров → ${OUT}${page.errors.length ? `  (ошибок консоли: ${page.errors.length})` : ''}`);
   } finally {
-    try { ws.close(); } catch { /* уже закрыт */ }
-    proc.kill();
-    /* Chrome дописывает профиль ещё с полсекунды после SIGTERM; две попытки
-       с паузой, и мусор в tmp не считается провалом прогона. */
-    for (let i = 0; i < 4; i++) {
-      await sleep(400);
-      try { rmSync(profile, { recursive: true, force: true }); break; } catch { /* ещё пишет */ }
-    }
+    await closeChrome(chrome);
   }
 }
 
