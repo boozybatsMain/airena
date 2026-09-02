@@ -20,9 +20,20 @@
  * будут показаны без дрессировки. Набор проходит обычный `compileKit`: демо
  * не имеет права провозить в базу то, что не прошло бы у игрока.
  *
- * Элементов три, а не пять: пустота и кинетика сняты с визуальной работы
- * (решение основателя 02.09) и в демо-бои не идут, чтобы приёмка смотрела
- * только на лёд, огонь и молнию.
+ * Элементы. Лёд, огонь и молния — приёмка визуала; пустота и кинетика сняты
+ * с визуальной работы (решение основателя 02.09) и в демо-бои не идут.
+ * Четыре новые стихии (гравитация, время, кислота, радиация) заданы ЯВНЫМИ
+ * наборами через поле `kits`: у них закрытые списки форм (правило E1), и
+ * общий шаблон «конус + себя + зона / луч + болт + навес» им не подходит —
+ * у времени нет ни луча, ни снаряда вовсе.
+ *
+ * ПОКА ОСНОВАТЕЛЬ НЕ ПРИНЯЛ СТИХИЮ, сеять её надо в СТЕНДОВУЮ базу, а не в
+ * боевую: заселённые существа активны, и боевой цикл выведет их в публичную
+ * трансляцию.
+ *
+ *   AIRENA_DB=data/vfx-stand.db node tools/seedvfx.mjs --el=gravity
+ *
+ * и поднять вьюверы 8823/8830 с тем же `AIRENA_DB`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -30,6 +41,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compileKit } from '../src/skills/compile.js';
+import { validateKit } from '../src/skills/registry.js';
 import { constantsVersion } from '../src/core/version.js';
 import { create as createCreature } from '../src/server/creatures.js';
 import { openDb } from '../src/server/db.js';
@@ -44,9 +56,37 @@ const ROSTER = [
   { el: 'frost', melee: 'ЛЕДОКОЛ', ranged: 'СТУЖА', body: 'gorilla', zone: 'damage', lob: 'damage' },
   { el: 'ember', melee: 'МАГМАРЬ', ranged: 'ПЕПЕЛ', body: 'octopus', zone: 'burn', lob: 'burn' },
   { el: 'arc', melee: 'РАЗРЯДНИК', ranged: 'ГРОЗА', body: 'gorilla', zone: 'damage', lob: 'damage' },
+
+  /* Новые стихии: набор задан явно (форм-матрица docs/VFX-PLAN.md §6; по
+     правилу L2 в наборе обязан быть один источник урона — можно чужой
+     стихии, и это намеренно: время и гравитация существуют не ради урона). */
+  { el: 'gravity', body: 'gorilla', kits: { 'ТЯЖЕСТЬ': [
+    { delivery: 'zone', effects: ['pull', 'damage'], element: 'gravity' },
+    { delivery: 'self', effects: ['boost'], channel: 'armor', element: 'gravity' },
+    { delivery: 'cone', effects: ['damage'], element: 'kinetic' }] } },
+  { el: 'gravity', body: 'octopus', kits: { 'ВОРОНКА': [
+    { delivery: 'lob', effects: ['pull'], element: 'gravity' },
+    { delivery: 'bolt', effects: ['damage'], element: 'kinetic' },
+    { delivery: 'zone', effects: ['weaken'], channel: 'speed', element: 'gravity' }] } },
+  { el: 'time', body: 'octopus', kits: { 'ХРОНОС': [
+    { delivery: 'zone', effects: ['weaken'], channel: 'speed', element: 'time' },
+    { delivery: 'self', effects: ['boost'], channel: 'speed', element: 'time' },
+    { delivery: 'bolt', effects: ['damage'], element: 'kinetic' }] } },
+  { el: 'acid', body: 'gorilla', kits: { 'ЩЁЛОЧЬ': [
+    { delivery: 'cone', effects: ['burn'], element: 'acid' },
+    { delivery: 'zone', effects: ['burn', 'weaken'], channel: 'armor', element: 'acid' },
+    { delivery: 'self', effects: ['shield'], element: 'kinetic' }] } },
+  { el: 'acid', body: 'octopus', kits: { 'КИСЛОТНИК': [
+    { delivery: 'bolt', effects: ['damage'], element: 'acid' },
+    { delivery: 'lob', effects: ['burn'], element: 'acid' },
+    { delivery: 'beam', effects: ['damage'], element: 'kinetic' }] } },
+  { el: 'radiation', body: 'gorilla', kits: { 'ИЗОТОП': [
+    { delivery: 'zone', effects: ['burn', 'blind'], element: 'radiation' },
+    { delivery: 'lob', effects: ['burn'], element: 'radiation' },
+    { delivery: 'cone', effects: ['weaken'], channel: 'armor', element: 'radiation' }] } },
 ];
 
-const kitsFor = (r) => ({
+const kitsFor = (r) => r.kits || ({
   [r.melee]: [
     { delivery: 'cone', effects: ['damage'], element: r.el },
     { delivery: 'self', effects: ['shield'], element: r.el },
@@ -65,6 +105,19 @@ let failed = false;
 for (const r of ROSTER) {
   if (only && only !== r.el) continue;
   for (const [name, kit] of Object.entries(kitsFor(r))) {
+    /*
+     * Грамматика проверяется ЦЕЛИКОМ, а не только тем, что пробрасывает
+     * `compileKit` (он отдаёт наружу лишь `size`, `kit_budget`, `kit_dup`).
+     * Единственное исключение — `element_unreleased`: сид имеет право сеять
+     * непринятую стихию в стендовую базу, игроку её всё равно не отдадут.
+     */
+    const illegal = validateKit(kit).filter((b) => b.code !== 'element_unreleased');
+    if (illegal.length) {
+      failed = true;
+      console.error(name, '— набор не прошёл грамматику:');
+      for (const b of illegal) console.error(' ·', b.ru || JSON.stringify(b));
+      continue;
+    }
     const out = compileKit(kit);
     if (out.problems.length) {
       failed = true;
