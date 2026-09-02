@@ -8,9 +8,11 @@
 
   Управление:
     ?el=arc            — стихия (frost|ember|arc; kinetic и void рисуются штатным силуэтом)
-    ?kind=cone         — одна доставка (cone|self|zone), иначе все три по кругу
-    ?hold=2.4          — секунд на выстрел
-    ?bloom=0 ?webgl=1  — как везде
+    кнопки внизу       — конус, зона, щит, луч, болт, навес, заряд, удар: смотреть глазами
+    ?auto=1&hold=2.4   — автоцикл по всем доставкам, секунд на выстрел
+    ?kind=beam         — одна доставка в автоцикле
+    ?bloom=0 ?webgl=1  — как везде (умолчание — WebGPU)
+    ПКМ+тяга — орбита, колесо — зум
     window.__fire(kind, el) — выстрел руками (для снимков)
 -->
 <style>
@@ -63,10 +65,10 @@ const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.3, 40
 
 let renderer;
 try {
-  /* На ЭТОМ стенде WebGL2 — умолчание (?webgl=0 вернёт WebGPU): у стенда
-     WebGPU-бэкенд молча не рисует узловые материалы vfx (в бою рисует —
-     загадка стендовая, не боевая), а стенд обязан показывать, а не гадать. */
-  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: params.get('webgl') !== '0' });
+  /* WebGPU — умолчание, как в бою; `?webgl=1` — запасной путь. Прежняя
+     «стендовая загадка» с пустыми узловыми материалами ушла вместе с
+     семью вершинными буферами частиц (см. vfx.js, чередующийся буфер). */
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: params.get('webgl') === '1' });
   await renderer.init();
 } catch (e) {
   renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: true });
@@ -183,15 +185,25 @@ const hud = document.getElementById('hud');
 const EL = params.get('el') || 'arc';
 const ONLY = params.get('kind');
 const HOLD = Number(params.get('hold') || 2.6);
-const KINDS = ONLY ? [ONLY] : ['cone', 'self', 'zone'];
+const KINDS = ONLY ? [ONLY] : ['cone', 'zone', 'self', 'beam', 'bolt', 'lob', 'impact'];
 
-/* Формы событий — как у стенда вьювера: те же поля, что кладёт deliver.js. */
+/* Формы событий — как у стенда вьювера: те же поля, что кладёт deliver.js.
+   Всё стреляет от синего тела в сторону оранжевого, как в бою. */
 function shape(kind, el) {
   const base = { kind, element: el, who: 'blue', t: 0, skill: 'k1' };
+  const bx = blueBody.position.x, bz = blueBody.position.z;
+  const ox = orangeBody.position.x, oz = orangeBody.position.z;
+  const h = Math.atan2(ox - bx, oz - bz);
+  const dist = Math.hypot(ox - bx, oz - bz);
   switch (kind) {
-    case 'cone': return { ...base, x: -4, z: -2, h: Math.PI * 0.32, range: 7.5, halfAngle: 0.9, hit: true };
-    case 'self': return { ...base, x: blueBody.position.x, z: blueBody.position.z };
-    case 'zone': return { ...base, x: 5, z: 3.5, r: 3.2, duration: 3 };
+    case 'cone': return { ...base, x: bx, z: bz, h, range: 3.4, halfAngle: 0.96, hit: true };
+    case 'self': return { ...base, x: bx, z: bz };
+    case 'zone': return { ...base, x: ox, z: oz, r: 3.0, duration: 3 };
+    case 'beam': return { ...base, x0: bx, z0: bz, x1: ox, z1: oz, hit: true };
+    case 'bolt': return { ...base, x: bx, z: bz, h, range: dist, speed: 22 };
+    case 'lob': return { ...base, x: bx, z: bz, h, range: dist, speed: 12 };
+    case 'impact': return { ...base, x: ox, z: oz, effects: ['damage'] };
+    case 'charge': return { ...base, x: bx, z: bz, h, windup: 0.9, for: 'cone' };
     default: return base;
   }
 }
@@ -223,9 +235,9 @@ window.__shot = async (kind, el, t) => {
 };
 window.__thaw = () => { frozen = false; };
 
-/* Автоцикл, если не пиновый режим: смотреть глазами. */
+/* Автоцикл — по просьбе (`?auto=1`): по умолчанию стенд ждёт кнопок. */
 let idx = 0;
-if (params.get('auto') !== '0') {
+if (params.get('auto') === '1') {
   setInterval(() => { fire(KINDS[idx % KINDS.length]); idx++; }, HOLD * 1000);
 }
 
@@ -241,13 +253,12 @@ if (params.get('auto') !== '0') {
     a.textContent = RU[el];
     const q = new URLSearchParams(params);
     q.set('el', el);
-    if (!q.has('webgl')) q.set('webgl', '1');
     a.href = `?${q}`;
     if (el === EL) a.className = 'on';
     bar.appendChild(a);
   }
   const sep = document.createElement('span'); sep.className = 'sep'; bar.appendChild(sep);
-  for (const [kind, ru] of [['cone', 'волна'], ['self', 'щит'], ['zone', 'зона']]) {
+  for (const [kind, ru] of [['cone', 'конус'], ['zone', 'зона'], ['self', 'щит'], ['beam', 'луч'], ['bolt', 'болт'], ['lob', 'навес'], ['charge', 'заряд'], ['impact', 'удар']]) {
     const b = document.createElement('button');
     b.textContent = ru;
     b.onclick = () => fire(kind);
