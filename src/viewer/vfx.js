@@ -33,7 +33,7 @@ import * as TSL from 'three/tsl';
    а у нас — в настоящий файл, и модуль становится проверяемым гейтом. */
 import { ELEMENTS } from '../skills/registry.js';
 import {
-  TIME, basic, clamp01, easeOutBack, markGlow, mulberry, pooled, rnd, setFade, setGlowEnabled,
+  TIME, basic, markGlow, pooled, rnd, setFade, setGlowEnabled,
   spread, withFade,
 } from './vfx/core.js';
 import * as kit from './vfx/kit.js';
@@ -297,143 +297,6 @@ function makeTelegraphMat(color, kind, halfAngle) {
   return m;
 }
 
-/*
- * ══ ЛЁД (D163, продолжение): кварц, ледяное поле и купол ══════════════════
- *
- * Приёмы со стендов /ice и /frost, проверенные против белого пола, и один
- * кусок кода из второго репозитория основателя, который оказался на нашем
- * стеке: `GeometryPainterThreeJS` (MIT, three/webgpu + TSL) — геометрия
- * кварца перенесена оттуда почти дословно.
- *
- * Почему это ЭЛЕМЕНТО-зависимый силуэт и почему это законно. §9.2 говорит
- * «доставка задаёт силуэт, элемент — палитру», и мороз этого не нарушает:
- * силуэт доставки остаётся (клин конуса, диск зоны, оболочка self),
- * меняется то, ЧЕМ он заполнен.
- *
- * Правила, которые здесь принуждены и которые дороже красоты:
- *   · материалы живут в кольце `pooled` — новый узловой материал стоит
- *     12–22 мс на кадре спавна (замер выше по файлу), и лёд не имеет права
- *     возвращать эту просадку;
- *   · в свечение уходит МАСКА (кант, вершина), а не материал целиком —
- *     иначе на белом полу лёд превращается в белую кляксу (замер /ice);
- *   · трещины ТЁМНЫЕ: разлом — это щель, отсутствие света.
- */
-
-
-/**
- * Кварц из GeometryPainterThreeJS: шестигранная призма, у которой дрожит
- * КОЛОННА грани (угол и радиус выбираются один раз на грань — рёбра остаются
- * прямыми сверху донизу), лёгкое сужение и пирамидальное завершение со
- * сдвинутой вершиной. Неиндексированная, плоские нормали: жёсткие грани и
- * есть то, что читается как «кристалл». Высота 1, основание в y=0.
- */
-function makeQuartz(rnd) {
-  const sides = 6;
-  const baseR = 0.16 + rnd() * 0.1;
-  const shaftH = 0.55 + rnd() * 0.2;
-  const taper = 0.78 + rnd() * 0.16;
-  const apex = new THREE.Vector3((rnd() - 0.5) * 0.14, 1, (rnd() - 0.5) * 0.14);
-
-  const angles = [], radii = [];
-  for (let i = 0; i < sides; i++) {
-    angles.push(((i + (rnd() - 0.5) * 0.34) / sides) * Math.PI * 2);
-    radii.push(baseR * (0.8 + rnd() * 0.4));
-  }
-  const lower = [], upper = [];
-  for (let i = 0; i < sides; i++) {
-    const c = Math.cos(angles[i]), s = Math.sin(angles[i]);
-    lower.push(new THREE.Vector3(c * radii[i], 0, s * radii[i]));
-    upper.push(new THREE.Vector3(c * radii[i] * taper, shaftH, s * radii[i] * taper));
-  }
-  const pos = [];
-  const push = (a, b, c) => pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-  const bottom = new THREE.Vector3(0, -0.02, 0);
-  for (let i = 0; i < sides; i++) {
-    const j = (i + 1) % sides;
-    push(lower[i], upper[i], upper[j]);
-    push(lower[i], upper[j], lower[j]);
-    push(upper[i], apex, upper[j]);
-    push(lower[j], bottom, lower[i]);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.computeVertexNormals();
-  geo.computeBoundingSphere();
-  return geo;
-}
-
-/* Три варианта — три формы на весь бой; лениво, чтобы не платить на старте
-   страниц, где льда не будет. Разнообразие внутри одного варианта дают
-   прожилки по МИРОВЫМ координатам в материале. */
-let QUARTZ = null;
-function quartz() {
-  if (!QUARTZ) {
-    const rnd = mulberry(0xc0ffee);
-    QUARTZ = [makeQuartz(rnd), makeQuartz(rnd), makeQuartz(rnd)];
-  }
-  return QUARTZ;
-}
-
-
-/**
- * Плотное тело льда. Прозрачности нет намеренно: `transmission` показывает
- * то, что ПОЗАДИ, а позади над белой платформой белое — честная физика даёт
- * ровный белый лёд (проверено на стенде). Вместо неё четыре слоя: глубина по
- * высоте, френелевый кант, прожилки шумом по мировым координатам, иней у
- * основания.
- */
-function iceMat(element, P) {
-  return pooled(`ice:${element}`, () => {
-    const m = new THREE.MeshStandardNodeMaterial({ metalness: 0.05, roughness: 0.22 });
-    const fade = withFade(m);
-    const col = (c) => vec3(c.r, c.g, c.b);
-
-    const h = TSL.positionLocal.y.clamp(0, 1);
-    const fres = oneMinus(tabs(TSL.dot(TSL.normalView, TSL.positionViewDirection))).pow(2.1).clamp(0, 1);
-    const veins = mx_fractal_noise_float(TSL.positionWorld.mul(2.9), 3, 2.0, 0.5, 1).mul(0.5).add(0.5);
-    const cracks = smoothstep(float(0.46), float(0.54), veins);
-    const rime = oneMinus(smoothstep(float(0.0), float(0.28), h));
-
-    const body = mix(col(P[2]), col(P[1]), h.pow(0.62));
-    const withVeins = mix(body, col(P[0]), cracks.mul(0.28));
-    const withRime = mix(withVeins, col(P[0]).mul(0.86), rime.mul(0.4));
-    /* 0.42 подобрано против БЕЛОГО пола: перетянутый френель стирает
-       кристалл в белый. Тёмный фон прощает всё, белый не прощает ничего. */
-    const tinted = mix(withRime, col(P[0]), fres.mul(0.42));
-    m.colorNode = tinted.mul(h.mul(0.3).add(0.7));
-
-    const flare = fres.pow(1.6).mul(0.8).add(h.pow(4.0).mul(0.35));
-    m.emissiveNode = col(P[0]).mul(flare.mul(fade).mul(0.9));
-    /* В bloom уходит ТА ЖЕ маска, что светится. */
-    return markGlow(m, flare.mul(fade).clamp(0, 1));
-  });
-}
-
-/**
- * Купол: вся плотность на канте и в ползущих прожилках, середина почти
- * прозрачна — тело видно сквозь щит, это его работа.
- */
-function domeMat(element, P) {
-  return pooled(`dome:${element}`, () => {
-    const m = new THREE.MeshBasicNodeMaterial({
-      transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    });
-    const fade = withFade(m);
-    const col = (c) => vec3(c.r, c.g, c.b);
-
-    const n = TSL.normalWorld;
-    const fres = oneMinus(tabs(TSL.dot(TSL.normalView, TSL.positionViewDirection))).pow(2.0).clamp(0, 1);
-    const drift = vec3(0, TIME.mul(0.05), TIME.mul(0.03));
-    const v1 = mx_fractal_noise_float(n.mul(3.0).add(drift), 3, 2.0, 0.5, 1);
-    const vein = oneMinus(smoothstep(float(0.0), float(0.07), tabs(v1)));
-
-    m.colorNode = mix(mix(col(P[2]), col(P[1]), fres.mul(0.8).add(0.1)), col(P[0]), vein.mul(0.5));
-    m.opacityNode = fres.pow(1.2).mul(0.5).add(0.06).add(vein.mul(0.22)).mul(fade).clamp(0, 1);
-    return markGlow(m, fres.mul(0.3).add(vein.mul(0.4)).mul(fade).clamp(0, 1));
-  });
-}
-
-/** Палитра элемента: три цвета, от ядра к краю. */
 /**
  * Какой цвет палитры взять для i-й частицы.
  *
@@ -902,7 +765,6 @@ export class Vfx {
 
   // ── конус: клин из частиц, а не полигон ──────────────────────────────
   cone(e, P, ctx) {
-    if (e.element === 'frost') return this.iceWave(e, P, ctx);
     /* Шире и крупнее, чем было (46 частиц по 0.34–0.72): конус — удар в упор,
        и на стенде он читался облачком пыли, а не ударом. */
     const n = 64;
@@ -915,107 +777,6 @@ export class Vfx {
       s.color(hue(P, i));
       s.life(this.now, rnd(0.26, 0.52), rnd(0.5, 1.0));
     });
-    return true;
-  }
-
-  /*
-   * ── ледяная волна: клин конуса как разлом с кристаллами ──────────────
-   *
-   * Силуэт доставки не тронут — это тот же клин от кастера по heading, с той
-   * же дальностью и тем же углом. Кристаллы выходят из пола волной (фронт
-   * идёт 0.45 с), стоят и тают. Матрицы пересобираются на процессоре каждый
-   * кадр — до полусотни композиций, это ничто, зато фаза живая, а буферы не
-   * пересоздаются (приём GeometryPainter).
-   */
-  iceWave(e, P, ctx) {
-    const geos = quartz();
-    const dx = Math.sin(e.h), dz = Math.cos(e.h);
-    const sx = -dz, sz = dx;
-    const rng = mulberry((e.t * 1000 | 0) ^ 0x1ce);
-
-    const items = [];
-    for (let i = 0; i < 30; i++) {
-      const t = Math.pow(rng(), 1.45);
-      const d = 0.7 + t * (e.range - 0.9);
-      const a = (rng() * 2 - 1) * e.halfAngle * 0.92;
-      const lat = Math.tan(a) * d;
-      items.push({
-        x: e.x + dx * d + sx * lat, z: e.z + dz * d + sz * lat,
-        yaw: rng() * Math.PI * 2,
-        tx: (rng() - 0.5) * 0.3, tz: (rng() - 0.5) * 0.5 + Math.sign(a || 1) * 0.2,
-        h: (0.7 + rng() * 1.3) * (1.1 - t * 0.3), w: 0.6 + rng() * 0.6,
-        born: t * 0.8,
-      });
-    }
-    /* Дуга-стена у дальнего края: раскрытие разлома, как на стенде. */
-    for (let i = 0; i < 10; i++) {
-      const u = (i / 9 - 0.5) * 2;
-      const a = u * e.halfAngle * 0.9;
-      const d = e.range * (1 - Math.abs(u) * 0.12);
-      const lat = Math.tan(a) * d;
-      items.push({
-        x: e.x + dx * d + sx * lat, z: e.z + dz * d + sz * lat,
-        yaw: rng() * Math.PI * 2,
-        tx: (rng() - 0.5) * 0.2, tz: u * 0.5,
-        h: 1.6 + rng() * 1.6 * (1 - Math.abs(u) * 0.4), w: 0.9 + rng() * 0.6,
-        born: 0.82 + rng() * 0.1,
-      });
-    }
-
-    const mesh = new THREE.InstancedMesh(geos[(e.t * 7 | 0) % 3], iceMat(e.element, P), items.length);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.castShadow = true;
-    mesh.frustumCulled = false;
-
-    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(),
-      S = new THREE.Vector3(), Pp = new THREE.Vector3();
-    const LIFE = 1.9, TRAVEL = 0.45;
-    this.spawnMesh(mesh, LIFE, (o, u) => {
-      const t = u * LIFE;
-      const front = clamp01(t / TRAVEL);
-      const melt = t > 1.3 ? clamp01(1 - (t - 1.3) / 0.6) : 1;
-      setFade(o, melt);
-      const k0 = 0.25 + melt * 0.75;
-      for (let i = 0; i < items.length; i++) {
-        const c = items[i];
-        const a = clamp01((front - c.born) / 0.2);
-        const g = (a <= 0 ? 0 : easeOutBack(a)) * k0;
-        E.set(c.tx, c.yaw, c.tz);
-        Q.setFromEuler(E);
-        S.set(c.w * g, Math.max(0.001, c.h * g), c.w * g);
-        Pp.set(c.x, -0.1 * c.h * (1 - a), c.z);
-        M.compose(Pp, Q, S);
-        o.setMatrixAt(i, M);
-      }
-      o.instanceMatrix.needsUpdate = true;
-    });
-
-    /* Пыль вдоль фронта — пачками по ходу, как искры у зоны. */
-    for (let k = 0; k < 4; k++) {
-      const at = this.now + (k / 4) * TRAVEL;
-      const d0 = 0.7 + (k / 4) * (e.range - 0.9);
-      this.add.emit(7, (i, s) => {
-        const a = (Math.random() * 2 - 1) * e.halfAngle;
-        const lat = Math.tan(a) * d0;
-        s.pos(e.x + dx * d0 + sx * lat, rnd(0.1, 0.5), e.z + dz * d0 + sz * lat);
-        s.vel(dx * 1.6 + rnd(-0.7, 0.7), rnd(0.9, 2.2), dz * 1.6 + rnd(-0.7, 0.7));
-        s.gravity(0, -2.6, 0);
-        s.color(hue(P, i));
-        s.life(at, rnd(0.4, 0.7), rnd(0.3, 0.6));
-      });
-    }
-    /* Удар в момент, когда фронт дошёл: вспышка и сноп у дальнего края. */
-    const tipX = e.x + dx * e.range, tipZ = e.z + dz * e.range;
-    this.flashLight(tipX, 1.4, tipZ, P[0], 26, 0.24);
-    this.add.emit(22, (i, s) => {
-      const a = Math.random() * 7, r = Math.random() * 1.6;
-      s.pos(tipX + Math.sin(a) * r, rnd(0.2, 1.2), tipZ + Math.cos(a) * r);
-      s.vel(Math.sin(a) * rnd(2, 4.5), rnd(1.4, 3.2), Math.cos(a) * rnd(2, 4.5));
-      s.gravity(0, -3.4, 0);
-      s.color(hue(P, i));
-      s.life(this.now + TRAVEL, rnd(0.45, 0.8), rnd(0.3, 0.6));
-    });
-    this.scorch(e.x + dx * e.range * 0.7, e.z + dz * e.range * 0.7, P, 1.6);
     return true;
   }
 
@@ -1077,91 +838,6 @@ export class Vfx {
         s.life(at, rnd(0.4, 0.9), rnd(0.28, 0.58));
       });
     }
-    if (e.element === 'frost') this.iceRain(e, P, ctx);
-    return true;
-  }
-
-  /*
-   * ── ледяной дождь: сосульки в зону всю её жизнь ──────────────────────
-   *
-   * ДОБАВКА к плите зоны, не замена: диск с трещинами уже нарисован выше.
-   * Сосульки — тот же кварц остриём вниз (поворот на π переводит вершину
-   * y=1 в −1, origin инстанса — хвост); в местах ударов растут и тают
-   * наросты. Столб света не ставится: в бою зона уже объявлена телеграфом
-   * и плитой, а столб на всю арену спорил бы с лучами.
-   */
-  iceRain(e, P, ctx) {
-    const geos = quartz();
-    const life = e.duration || 3;
-    const rng = mulberry((e.t * 1000 | 0) ^ 0xa1d);
-    const N = Math.min(18, Math.max(10, Math.round(life * 5)));
-    const H = 8;
-
-    const items = [];
-    for (let i = 0; i < N; i++) {
-      const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (e.r - 0.3);
-      items.push({
-        x: e.x + Math.cos(a) * r, z: e.z + Math.sin(a) * r,
-        delay: rng() * Math.max(0.4, life - 1.2),
-        fall: 0.34 + rng() * 0.1,
-        len: 1.2 + rng() * 0.8,
-        yaw: rng() * Math.PI * 2,
-        pw: 0.5 + rng() * 0.5, ph: 0.6 + rng() * 0.9,
-        hit: false,
-      });
-    }
-
-    const drops = new THREE.InstancedMesh(geos[2], iceMat(e.element, P), N);
-    drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    drops.frustumCulled = false;
-    const patches = new THREE.InstancedMesh(geos[0], iceMat(e.element, P), N);
-    patches.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    patches.castShadow = true;
-    patches.frustumCulled = false;
-
-    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(),
-      S = new THREE.Vector3(), Pp = new THREE.Vector3();
-
-    this.spawnMesh(drops, life, (o, u) => {
-      const t = u * life;
-      for (let i = 0; i < N; i++) {
-        const d = items[i];
-        const ft = (t - d.delay) / d.fall;
-        const k = ft > 0 && ft < 1 ? 1 : 0;
-        const stretch = 1.45 - 0.45 * clamp01(ft);
-        E.set(Math.PI, d.yaw, 0.06);
-        Q.setFromEuler(E);
-        S.set(0.5 * k, Math.max(0.001, d.len * stretch * k), 0.5 * k);
-        Pp.set(d.x, H * (1 - clamp01(ft) ** 2) + d.len * stretch, d.z);
-        M.compose(Pp, Q, S);
-        o.setMatrixAt(i, M);
-        /* Момент удара: крошка. Флаг на элементе списка, не на мешах —
-           оба меша живут от одного списка. */
-        if (!d.hit && ft >= 1) {
-          d.hit = true;
-          this.burst(d.x, 0.3, d.z, P, 6);
-        }
-      }
-      o.instanceMatrix.needsUpdate = true;
-    });
-
-    this.spawnMesh(patches, life, (o, u) => {
-      const t = u * life;
-      const melt = t > life - 0.6 ? clamp01((life - t) / 0.6) : 1;
-      setFade(o, melt);
-      for (let i = 0; i < N; i++) {
-        const d = items[i];
-        const pt = clamp01((t - d.delay - d.fall) / 0.28);
-        const g = (pt <= 0 ? 0 : easeOutBack(pt)) * (0.25 + melt * 0.75);
-        E.set(0, d.yaw, (i % 2 ? 1 : -1) * 0.22);
-        Q.setFromEuler(E);
-        S.set(d.pw * g, Math.max(0.001, d.ph * g), d.pw * g);
-        Pp.set(d.x, 0, d.z);
-        M.compose(Pp, Q, S);
-        o.setMatrixAt(i, M);
-      }
-      o.instanceMatrix.needsUpdate = true;
-    });
     return true;
   }
 
@@ -1217,7 +893,6 @@ export class Vfx {
 
   // ── self: оболочка по силуэту тела ───────────────────────────────────
   shell(e, P, ctx) {
-    if (e.element === 'frost') return this.iceDome(e, P, ctx);
     const sph = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 12), basic(P[1], 0.3));
     sph.position.set(e.x, 1.0, e.z);
     this.spawnMesh(sph, 0.6, (o, u) => {
@@ -1232,62 +907,6 @@ export class Vfx {
       s.color(hue(P, i));
       s.life(this.now, rnd(0.4, 0.8), rnd(0.26, 0.52));
     });
-    return true;
-  }
-
-  /*
-   * ── ледяной купол: оболочка self, которая ЖИВЁТ, а не мигает ─────────
-   *
-   * Штатная оболочка — вспышка на 0.6 с; купол стоит 2.6 с и ходит за телом
-   * (`ctx.bodyPos`): щит, который остался стоять там, где его скастовали,
-   * читался бы как зона. Тело видно сквозь — плотность на канте и в
-   * прожилках, это работа купольного материала.
-   */
-  iceDome(e, P, ctx) {
-    const LIFE = 2.6, R = 2.35, CY = 1.15;
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 26), domeMat(e.element, P));
-    dome.position.set(e.x, CY, e.z);
-    dome.renderOrder = 3;
-    dome.frustumCulled = false;
-
-    /* Кольцо контакта — сечение сферы полом, а не декоративная константа. */
-    const RR = Math.sqrt(Math.max(0.2, R * R - CY * CY));
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.92, 1.0, 56), basic(P[1], 0.8));
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(e.x, 0.03, e.z);
-
-    const place = (o, u) => {
-      const t = u * LIFE;
-      const grow = t < 0.4 ? easeOutBack(clamp01(t / 0.4)) : 1;
-      const melt = t > LIFE - 0.55 ? clamp01((LIFE - t) / 0.55) : 1;
-      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
-      const x = p ? p.x : e.x, z = p ? p.z : e.z;
-      return { grow, melt, x, z };
-    };
-    this.spawnMesh(dome, LIFE, (o, u) => {
-      const { grow, melt, x, z } = place(o, u);
-      o.position.set(x, CY, z);
-      o.scale.setScalar(Math.max(0.001, R * grow * (0.6 + melt * 0.4)));
-      setFade(o, melt);
-    });
-    this.spawnMesh(ring, LIFE, (o, u) => {
-      const { grow, melt, x, z } = place(o, u);
-      o.position.set(x, 0.03, z);
-      o.scale.setScalar(Math.max(0.001, RR * grow));
-      o.material.opacity = 0.8 * melt;
-    });
-
-    /* Морозная взвесь сползает по куполу всю его жизнь — пачками. */
-    for (let k = 0; k < 6; k++) {
-      this.add.emit(4, (i, s) => {
-        const a = Math.random() * 7;
-        s.pos(e.x + Math.sin(a) * RR * 0.95, rnd(0.2, 1.0), e.z + Math.cos(a) * RR * 0.95);
-        s.vel(-Math.sin(a) * 0.4, rnd(0.3, 0.8), -Math.cos(a) * 0.4);
-        s.gravity(0, -0.6, 0);
-        s.color(hue(P, i));
-        s.life(this.now + k * (LIFE - 0.6) / 6, rnd(0.5, 0.9), rnd(0.2, 0.4));
-      });
-    }
     return true;
   }
 

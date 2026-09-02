@@ -140,9 +140,12 @@ function burstMat(mode) {
     /* Тело: шум в мировых-локальных координатах, дрейфует вверх — огонь
        течёт по шару, а не приклеен к нему. */
     const flow = mx_fractal_noise_float(positionLocal.mul(2.6).add(vec3(seed, TIME.mul(-0.9), 0)), 4, 2.1, 0.5, 1).mul(0.5).add(0.5);
-    /* Растворение: пиксель живёт, пока его шум выше возраста. */
+    /* Растворение: пиксель живёт, пока его шум выше возраста. Порог идёт
+       быстрее возраста (×1.25): к последней трети жизни шар уже рваный, а не
+       плотный красный мяч, стоящий на теле до конца (снято на навесе огня). */
     const dn = mx_noise_float(positionLocal.mul(3.1).add(seed.mul(1.3))).mul(0.5).add(0.5);
-    const keep = smoothstep(age.sub(0.16), age.add(0.06), dn.mul(0.85).add(flow.mul(0.15)));
+    const gone = age.mul(1.12).sub(0.06);
+    const keep = smoothstep(gone.sub(0.14), gone.add(0.05), dn.mul(0.85).add(flow.mul(0.15)));
 
     if (additive) {
       const body = mix(cA, cB, fres.mul(0.7).add(age.mul(0.3)).clamp(0, 1));
@@ -156,10 +159,12 @@ function burstMat(mode) {
     const heat = flow.mul(1.25).sub(age.mul(0.95)).add(fres.mul(-0.35)).clamp(0, 1);
     const hot = mix(cB, cA, smoothstep(float(0.55), float(0.95), heat));
     const body = mix(cC, hot, smoothstep(float(0.08), float(0.6), heat));
-    /* Кант по френелю темнеет к саже: край шара — это уже дым. */
+    /* Кант по френелю темнеет к саже: край шара — это уже дым. К концу
+       жизни саже уходит и тело целиком. */
     const soot = cC.mul(0.35);
-    m.colorNode = mix(body, soot, fres.pow(1.8).mul(0.75).mul(age.mul(0.7).add(0.3)));
-    const alpha = intensity.mul(oneMinus(age.pow(1.6)).pow(0.9)).mul(keep).mul(oneMinus(fres.pow(2.5).mul(0.55)));
+    const rimmed = mix(body, soot, fres.pow(1.8).mul(0.75).mul(age.mul(0.7).add(0.3)));
+    m.colorNode = mix(rimmed, soot, age.pow(1.6).mul(0.8));
+    const alpha = intensity.mul(oneMinus(age.pow(1.3)).pow(1.3)).mul(keep).mul(oneMinus(fres.pow(2.5).mul(0.55)));
     m.opacityNode = alpha.clamp(0, 1);
     /* В свечение уходит только ЖАР: сажа не светится. */
     return markGlow(m, smoothstep(float(0.35), float(0.9), heat).mul(alpha).mul(1.1).clamp(0, 1));

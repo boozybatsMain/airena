@@ -7,7 +7,7 @@
   события — те же записи `world.fx`, что кладёт `src/core/deliver.js`.
 
   Управление:
-    ?el=arc            — стихия (kinetic|ember|frost|arc|void)
+    ?el=arc            — стихия (frost|ember|arc; kinetic и void рисуются штатным силуэтом)
     ?kind=cone         — одна доставка (cone|self|zone), иначе все три по кругу
     ?hold=2.4          — секунд на выстрел
     ?bloom=0 ?webgl=1  — как везде
@@ -51,7 +51,7 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { pass, mrt, output as tslOutput, float } from 'three/tsl';
+import { pass, mrt, output as tslOutput, float, vec3 } from 'three/tsl';
 import { Vfx, markGlow, setGlowEnabled } from '/src/viewer/vfx.js';
 
 const params = new URLSearchParams(location.search);
@@ -84,7 +84,10 @@ if (params.get('bloom') !== '0') {
   try {
     const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
     const scenePass = pass(scene, camera);
-    scenePass.setMRT(mrt({ output: tslOutput, bloomIntensity: float(0) }));
+    /* Третий выход — тепловое искажение (`markDistort` в vfx/core.js): без него
+       материал-прокси марева пишет в выход, которого у прохода нет. Стенд его
+       не читает — ему хватает свечения, — но собраться материал обязан. */
+    scenePass.setMRT(mrt({ output: tslOutput, bloomIntensity: float(0), distort: vec3(0) }));
     const colour = scenePass.getTextureNode('output');
     const glow = scenePass.getTextureNode('bloomIntensity');
     post = new THREE.PostProcessing(renderer);
@@ -230,8 +233,10 @@ if (params.get('auto') !== '0') {
    пиновые параметры оставались честными), касты — кнопками. */
 {
   const bar = document.getElementById('bar');
-  const RU = { kinetic: 'кинетика', ember: 'жар', frost: 'мороз', arc: 'дуга', void: 'пустота' };
-  for (const el of ['kinetic', 'ember', 'frost', 'arc', 'void']) {
+  /* Три элемента в работе (решение основателя 02.09); кинетика и пустота
+     живут штатным силуэтом и на стенде не нужны. */
+  const RU = { frost: 'мороз', ember: 'жар', arc: 'дуга' };
+  for (const el of ['frost', 'ember', 'arc']) {
     const a = document.createElement('a');
     a.textContent = RU[el];
     const q = new URLSearchParams(params);

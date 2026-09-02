@@ -9,7 +9,10 @@
  *   node tools/vfxshot.mjs --out=reports/vfx/before --tag=before
  *   node tools/vfxshot.mjs --url=http://localhost:8823/?vfx=1
  *   node tools/vfxshot.mjs --webgl               тот же прогон на WebGL2
- *   node tools/vfxshot.mjs --fight --seed=101    настоящий бой: кадры по ходу
+ *   node tools/vfxshot.mjs --fight --seed=101    настоящий бой на дев-вьювере
+ *   node tools/vfxshot.mjs --watch=<match id> --url='http://localhost:8787/?vfx=1&sweep=1'
+ *                                                  повтор боя из базы продукта: камера
+ *                                                  решателя, наборы, тряска — как у зрителя
  *
  * Зачем инструмент, а не «открой и посмотри». Эффект, снятый с одного
  * ракурса в один момент, проверяет ракурс и момент, а не эффект: то, что
@@ -89,6 +92,8 @@ function fxFor(kind, element) {
     case 'wall': return { ...base, x: 1, z: 1, w: 4, d: 1, duration: 4 };
     case 'impact': return { ...base, x: ORANGE.x, z: ORANGE.z, who: 'orange', effects: ['damage'] };
     case 'status': return { ...base, who: 'orange', effect: 'burn' };
+    /* Заряд в замахе — запись только вьювера (см. docs/VFX.md §4). */
+    case 'charge': return { ...base, x: BLUE.x, z: BLUE.z, h, windup: 0.9, for: 'cone' };
     default: return null;
   }
 }
@@ -188,8 +193,8 @@ async function main() {
     console.log(`вьювер: ${stats.backend}, bloom ${stats.bloom ? 'on' : 'off'}, ${W}×${H}`);
     index.backend = stats.backend;
 
-    if (args.fight) {
-      await fightRun(page, index);
+    if (args.fight || args.watch) {
+      await fightRun(page, index, !!args.watch);
     } else {
       for (const el of ELEMENTS) {
         for (const kind of KINDS) {
@@ -255,19 +260,33 @@ async function main() {
  * каждые `--every` секунд `--n` кадров и отдельно каждый кадр, в котором
  * сработал эффект (по событию сокета `airena:frame` с непустым `fx`).
  */
-async function fightRun(page, index) {
+async function fightRun(page, index, watching = false) {
   const n = Number(args.n || 24), every = Number(args.every || 0.8);
   await page.evaluate(`window.__airenaSweep.cam(null); true`);
   await page.evaluate(`(() => {
     window.__fxSeen = [];
     addEventListener('airena:frame', (ev) => { const f = ev.detail.frame; if (f && f.fx && f.fx.length) window.__fxSeen.push({ t: f.t, kinds: f.fx.map((e) => e.kind + ':' + (e.element || '')) }); });
-    const sel = (id, v) => { const s = document.querySelector(id); if (s && v) s.value = v; };
-    sel('#sel-oct', ${JSON.stringify(args.blue || '')}); sel('#sel-gor', ${JSON.stringify(args.orange || '')});
-    ${args.seed ? `const b = document.querySelector('#seed'); if (b) b.value = ${JSON.stringify(String(args.seed))};` : ''}
-    window.airena ? window.airena.startMatch() : document.querySelector('#btn-run').click();
     return true;
   })()`);
-  await sleep(1500);
+  if (!watching) {
+    await page.evaluate(`(() => {
+      const sel = (id, v) => { const s = document.querySelector(id); if (s && v) s.value = v; };
+      sel('#sel-oct', ${JSON.stringify(args.blue || '')}); sel('#sel-gor', ${JSON.stringify(args.orange || '')});
+      ${args.seed ? `const b = document.querySelector('#seed'); if (b) b.value = ${JSON.stringify(String(args.seed))};` : ''}
+      window.airena ? window.airena.startMatch() : document.querySelector('#btn-run').click();
+      return true;
+    })()`);
+  }
+  /* Повтор из базы просим ТОЛЬКО когда сцена готова: по `?m=` он стартовал
+     бы на загрузке страницы, и первые десять секунд боя уходили на сборку
+     WebGPU и тел. Маршрут продукта — хеш, `app.js` сам зовёт повтор. */
+  if (watching) await page.evaluate(`(location.hash = ${JSON.stringify('#/watch/' + args.watch)}, true)`);
+  for (let i = 0; i < 150; i++) {
+    const going = await page.evaluate('!!(window.airena && window.airena.frames && window.airena.frames.length > 2)').catch(() => false);
+    if (going) break;
+    await sleep(200);
+  }
+  await sleep(300);
   for (let i = 0; i < n; i++) {
     const t = await page.evaluate('(window.airena && window.airena.renderClock) || 0');
     const name = `fight-${String(i).padStart(2, '0')}-t${Number(t).toFixed(1).replace('.', '_')}.png`;

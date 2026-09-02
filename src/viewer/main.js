@@ -1208,9 +1208,22 @@ function bodyMaterials(body) {
   body.mats = [...seen].map((m) => ({ m, color: m.color.clone(), emissive: m.emissive ? m.emissive.clone() : null }));
   return body.mats;
 }
+/*
+ * Вспышка идёт от СОБЫТИЯ удара, а не от падения здоровья: горение и
+ * внезапная смерть снимают здоровье каждый кадр, и по дельте hp оба тела
+ * стояли красными до конца боя (снято на повторе m_fbe57248). Удар — это
+ * запись `hit` или `impact` с уроном по цели.
+ */
 function hitFlash(id) {
   if (!bodies[id]) return;
   hitUntil[id] = performance.now() / 1000 + 0.22;
+}
+const TARGETED = new Set(['damage', 'knock', 'pull', 'stun', 'root', 'blind', 'silence', 'weaken']);
+function hitFlashFromImpact(e) {
+  if (e.blocked) return;
+  const list = Array.isArray(e.effects) ? e.effects : ['damage'];
+  if (!list.some((a) => TARGETED.has(a))) return;
+  hitFlash(e.who === 'blue' ? 'orange' : 'blue');
 }
 function tickHit(now) {
   for (const id of ['blue', 'orange']) {
@@ -1379,6 +1392,7 @@ function playFx(e) {
         + ` · <span style="opacity:.65">${MISS_RU[e.miss] || 'мимо'}</span>`,
       `${e.who}|${e.skill}|${e.miss}`);
     }
+    if (e.kind === 'impact') hitFlashFromImpact(e);
     if (e.kind === 'impact' || (e.hit && (e.kind === 'beam' || e.kind === 'cone' || e.kind === 'dash'))) {
       /* `camState` объявлена ниже по файлу через `let`, а `playFx` может быть
          вызвана до конца evaluation — стендом VFX или сокетом, пришедшим во
@@ -1396,6 +1410,7 @@ function playFx(e) {
     // viewer that makes an impact read as an impact rather than as a number
     // changing.
     camState.shake = Math.min(0.55, camState.shake + e.amount / 90);
+    hitFlash(e.who);
     floatDamage(e.x, e.z, e.amount, e.who);
     const src = e.who === 'blue' ? 'orange' : 'blue';
     pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${esc(sideName[src])}</span> · ${esc(skillRu(e.skill, src))} · <b>${Math.round(Number(e.amount) * 100) / 100}</b>`, `${src}|${e.skill}|${e.amount}`);
@@ -1894,6 +1909,33 @@ function actElapsed(f, id = null) {
   return f.phase * total;
 }
 
+/*
+ * ЗАРЯД В ЗАМАХЕ (docs/VFX.md §4).
+ *
+ * Грамматика каста начинается не с выхода, а с замаха: элементная энергия
+ * собирается на кастере, пока горит телеграф. Сим этого события не пишет —
+ * замах виден только по фазе действия в кадре, той же, по которой рисуется
+ * телеграф. Здесь она превращается в запись `charge` для слоя эффектов ровно
+ * один раз на замах: новое действие или откат `el` назад — новый замах.
+ * Телеграф при этом не трогается ни цветом, ни формой (D162).
+ */
+const chargeSeen = { blue: { act: null, lastEl: 0, live: false }, orange: { act: null, lastEl: 0, live: false } };
+function chargeBeat(id, v, kd, el) {
+  const cs = chargeSeen[id];
+  const winding = !!kd && v.actPhase === 'windup' && (kd.windup || 0) > 0.12;
+  if (!winding) { cs.live = false; cs.act = null; return; }
+  const fresh = !cs.live || cs.act !== v.act || el < cs.lastEl - 0.05;
+  cs.lastEl = el;
+  if (!fresh) return;
+  cs.live = true; cs.act = v.act;
+  try {
+    vfx.play({
+      kind: 'charge', who: id, element: kd.element || 'kinetic', skill: v.act, t: renderClock,
+      x: v.x, z: v.z, h: v.h, windup: Math.max(0.1, kd.windup - el), for: kd.kind,
+    }, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
+  } catch (err) { console.warn('charge', err); }
+}
+
 function updateTelegraph(id, v, view = null) {
   const t = tele[id];
   t.g.position.set(v.x, 0, v.z);
@@ -1921,6 +1963,7 @@ function updateTelegraph(id, v, view = null) {
    * на полу не получают, у них есть полоса каста над головой.
    */
   const kd = kitLabels[id] && kitLabels[id][v.act];
+  chargeBeat(id, v, kd, el);
   if (kd && v.actPhase === 'windup' && (kd.windup || 0) > 0.05) {
     const u = THREE.MathUtils.clamp(el / kd.windup, 0, 1);
     /* Плотность несёт УГРОЗУ, цвет — принадлежность (D162): чужая фигура
@@ -3633,7 +3676,7 @@ function frame() {
       const st = anim[id];
       if (!body) continue;
 
-      if (st.lastHp !== null && v.hp < st.lastHp - 0.01 && v.alive) { st.hitUntil = now + 0.34; hitFlash(id); }
+      if (st.lastHp !== null && v.hp < st.lastHp - 0.01 && v.alive) st.hitUntil = now + 0.34;
       st.lastHp = v.hp;
 
       const moved = st.lastX === null ? 0 : Math.hypot(v.x - st.lastX, v.z - st.lastZ);

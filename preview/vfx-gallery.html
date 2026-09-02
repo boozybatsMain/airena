@@ -1,0 +1,78 @@
+<!--
+  Галерея прогонов эффектов: кадры `tools/vfxshot.mjs` рядом — «до», «после»,
+  референс. Одно умение — одна строка на момент: три ракурса подряд.
+
+    /vfx                       теги before и after (если есть)
+    /vfx?tags=before,frost-wip сравнить любые прогоны
+    /vfx?el=frost&kind=cone    сузить
+-->
+<title>Airena · VFX галерея</title>
+<style>
+  body{background:#0d0f14;color:#dfe6ee;font:14px/1.4 ui-monospace,monospace;margin:0;padding:20px}
+  h1{font-size:16px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px}
+  .bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;color:#8fa3b3}
+  .bar a{color:#7fe3e0;text-decoration:none}
+  .row{display:grid;grid-template-columns:140px repeat(var(--n),1fr);gap:8px;align-items:start;margin-bottom:10px}
+  .row .lab{color:#8fa3b3;padding-top:4px}
+  .row .lab b{color:#fff;display:block}
+  .tag{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .tag img{width:100%;display:block;background:#000;border:1px solid #1f2731}
+  .tag .cap{grid-column:1/-1;color:#5f7182;font-size:11px}
+  .ref{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 20px}
+  .ref img{height:120px;border:1px solid #1f2731}
+  h2{font-size:13px;color:#7fe3e0;letter-spacing:.1em;text-transform:uppercase;margin:26px 0 8px}
+</style>
+<h1>VFX · кадры прогонов</h1>
+<div class="bar" id="bar"></div>
+<div id="ref"></div>
+<div id="grid"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const tags = (q.get('tags') || 'before,after').split(',').map((s) => s.trim()).filter(Boolean);
+const onlyEl = q.get('el'), onlyKind = q.get('kind');
+const bar = document.getElementById('bar');
+const loaded = [];
+for (const tag of tags) {
+  try {
+    const idx = await (await fetch(`/reports/vfx/${tag}/index.json`)).json();
+    loaded.push({ tag, idx });
+    bar.insertAdjacentHTML('beforeend', `<span><b>${tag}</b> · ${idx.backend || '?'} · ${idx.shots.length} кадров · ${new Date(idx.at).toLocaleString()}${idx.errors && idx.errors.length ? ` · <span style="color:#f0736a">ошибок ${idx.errors.length}</span>` : ''}</span>`);
+  } catch { bar.insertAdjacentHTML('beforeend', `<span style="color:#f0736a">${tag}: нет index.json</span>`); }
+}
+document.documentElement.style.setProperty('--n', String(Math.max(1, loaded.length)));
+/* Референс — статичный список: кадры живого демо основателя. */
+const refs = ['frost', 'storm', 'cinder', 'nova'];
+const refBox = document.getElementById('ref');
+for (const r of refs) {
+  const files = { frost: [120, 380, 800, 1500], storm: [120, 380, 800, 1500], cinder: [200, 600, 1100, 1900], nova: [150, 450, 900, 1600] }[r];
+  refBox.insertAdjacentHTML('beforeend', `<h2>референс · ${r}</h2><div class="ref">${files.map((t) => `<a href="/reports/vfx/reference/ref-${r}-${t}.png" target="_blank"><img loading="lazy" src="/reports/vfx/reference/ref-${r}-${t}.png" alt="${r} ${t}"></a>`).join('')}</div>`);
+}
+const grid = document.getElementById('grid');
+const keys = new Map();
+for (const { tag, idx } of loaded) for (const s of idx.shots) {
+  if (s.fight) continue;
+  if (onlyEl && s.el !== onlyEl) continue;
+  if (onlyKind && s.kind !== onlyKind) continue;
+  const k = `${s.el}|${s.kind}|${s.moment}`;
+  if (!keys.has(k)) keys.set(k, { el: s.el, kind: s.kind, moment: s.moment, by: {} });
+  const row = keys.get(k);
+  (row.by[tag] ||= []).push(s);
+}
+const order = ['broadcast', 'low', 'top'];
+let lastEl = '';
+for (const row of [...keys.values()].sort((a, b) => a.el.localeCompare(b.el) || a.kind.localeCompare(b.kind) || a.moment - b.moment)) {
+  if (row.el !== lastEl) { grid.insertAdjacentHTML('beforeend', `<h2>${row.el}</h2>`); lastEl = row.el; }
+  const cells = loaded.map(({ tag }) => {
+    const shots = (row.by[tag] || []).sort((a, b) => order.indexOf(a.cam) - order.indexOf(b.cam));
+    if (!shots.length) return '<div class="tag"><span class="cap">—</span></div>';
+    return `<div class="tag">${shots.map((s) => `<a href="/reports/vfx/${tag}/${s.file}" target="_blank"><img loading="lazy" src="/reports/vfx/${tag}/${s.file}" alt="${s.file}"></a>`).join('')}<span class="cap">${tag} · ${shots.map((s) => s.cam).join(' · ')}</span></div>`;
+  }).join('');
+  grid.insertAdjacentHTML('beforeend', `<div class="row"><div class="lab"><b>${row.kind}</b>t = ${row.moment.toFixed(2)} с</div>${cells}</div>`);
+}
+/* Кадры боя — отдельной лентой внизу, по тегам. */
+for (const { tag, idx } of loaded) {
+  const fights = idx.shots.filter((s) => s.fight);
+  if (!fights.length) continue;
+  grid.insertAdjacentHTML('beforeend', `<h2>бой · ${tag}</h2><div class="ref">${fights.map((s) => `<a href="/reports/vfx/${tag}/${s.file}" target="_blank" title="${s.fx || ''}"><img loading="lazy" src="/reports/vfx/${tag}/${s.file}" alt="${s.file}"></a>`).join('')}</div>`);
+}
+</script>

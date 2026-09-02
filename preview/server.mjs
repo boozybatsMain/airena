@@ -8,7 +8,7 @@ import { gallery } from './gallery.mjs';
 /* Снимки тел лежат в студии Autoage — она только читается, не правится. */
 const SHOTS = '/Users/boozybats/Public/Repos/work/Autoage/captures/forge';
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
-  '.js': 'text/javascript; charset=utf-8' };
+  '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8' };
 
 const PAGES = {
   '/': 'spec.html',
@@ -16,27 +16,33 @@ const PAGES = {
   '/creature': 'creature.html',
   '/arena': 'arena.html',
   '/uikit': 'uikit.html',
-  '/ice': 'ice.html',
-  '/frost': 'frost.html',
+  /* Стенды /ice и /frost сняты (решение основателя 02.09): их лёд перенесён в
+     боевой код, стенд /elements рисует именно им. История — в git. */
   '/elements': 'elements.html',
+  '/vfx': 'vfx-gallery.html',
 };
 
 /* Макет арены — настоящий three.js и настоящие тела из репозитория. */
 const REPO = new URL('..', import.meta.url).pathname;
 const STATIC = {
   '/vendor/': join(REPO, 'node_modules/three/build'),
-  /* Аддоны нужны стенду `/ice`: узел свечения живёт именно там. */
+  /* Аддоны нужны стендам: узел свечения живёт именно там. */
   '/vendor-addons/': join(REPO, 'node_modules/three/examples/jsm'),
   /* Стенд `/elements` импортирует БОЕВОЙ `src/viewer/vfx.js` как модуль:
      проверяется тот код, что рисует бой, а не его копия на стенде. */
   '/src/': join(REPO, 'src'),
   '/bodies/': join(REPO, 'bodies'),
   '/assets/': join(REPO, 'preview/assets'),
+  /* Кадры прогонов `tools/vfxshot.mjs` — для галереи `/vfx`. */
+  '/reports/vfx/': join(REPO, 'reports/vfx'),
 };
 
 const wrap = (body) => `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>*{margin:0}</style></head><body>${body}</body></html>`;
+
+/* Порт из окружения: два сеанса просмотра не имеют права спорить за 8899. */
+const PORT = Number(process.env.PORT || 8899);
 
 createServer((req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname.replace(/\/$/, '') || '/';
@@ -83,4 +89,4 @@ createServer((req, res) => {
     res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end(String(e));
   }
-}).listen(8899, () => console.log('Airena preview: http://localhost:8899'));
+}).listen(PORT, () => console.log(`Airena preview: http://localhost:${PORT}`));

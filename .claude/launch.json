@@ -27,7 +27,8 @@
       "runtimeArgs": [
         "preview/server.mjs"
       ],
-      "port": 8899
+      "port": 8899,
+      "autoPort": true
     },
     {
       "name": "forge",

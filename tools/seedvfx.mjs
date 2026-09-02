@@ -72,10 +72,13 @@ for (const r of ROSTER) {
       for (const p of out.problems) console.error(' ·', JSON.stringify(p));
       continue;
     }
-    /* Пересев тем же именем — замена, не дубль: демо гоняют много раз. */
-    for (const row of db.prepare('SELECT id FROM creature WHERE name = ? AND owner_id IS NULL').all(name)) {
-      db.prepare('DELETE FROM creature WHERE id = ?').run(row.id);
-      console.log('снят прежний', name, row.id);
+    /* Пересев тем же именем — замена, не дубль: демо гоняют много раз.
+       Прежний НЕ удаляется, а списывается (`state = 'retired'`, как в
+       `tools/retire.mjs`): на него ссылаются сыгранные бои, и DELETE
+       упирается во внешний ключ. Списанный боец на арену не выходит. */
+    for (const row of db.prepare(`SELECT id FROM creature WHERE name = ? AND owner_id IS NULL AND state = 'active'`).all(name)) {
+      db.prepare(`UPDATE creature SET state = 'retired', updated_at = ? WHERE id = ?`).run(Date.now(), row.id);
+      console.log('списан прежний', name, row.id);
     }
     const brainSource = readFileSync(join(ROOT, `brains/kit-stub/${r.body}.js`), 'utf8');
     const c = createCreature(db, {
@@ -95,11 +98,11 @@ for (const r of ROSTER) {
   }
 }
 
-/* Прежние демо пустоты и кинетики снимаются: приёмка смотрит три элемента. */
+/* Прежние демо пустоты и кинетики списываются: приёмка смотрит три элемента. */
 for (const name of ['ПРОВАЛ', 'ТАРАН']) {
-  for (const row of db.prepare('SELECT id FROM creature WHERE name = ? AND owner_id IS NULL').all(name)) {
-    db.prepare('DELETE FROM creature WHERE id = ?').run(row.id);
-    console.log('снят', name, row.id);
+  for (const row of db.prepare(`SELECT id FROM creature WHERE name = ? AND owner_id IS NULL AND state = 'active'`).all(name)) {
+    db.prepare(`UPDATE creature SET state = 'retired', updated_at = ? WHERE id = ?`).run(Date.now(), row.id);
+    console.log('списан', name, row.id);
   }
 }
 
