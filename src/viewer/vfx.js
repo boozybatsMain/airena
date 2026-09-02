@@ -595,15 +595,29 @@ const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx };
 
 /**
  * Кто рисует доставку `kind` стихии `element` — зеркало порядка в `play()`:
- * `module` — элементный модуль; `module+stock` — удар, где модуль ДОБАВЛЯЕТ
- * вспышку к штатному; `laser` — штатный луч стихий без модуля (`laser.js`,
+ * `module` — элементный модуль; `module+stock` — удар, прыжок и стена, где
+ * модуль ДОБАВЛЯЕТ разряд к штатному силуэту (§7.3); `laser` — штатный луч стихий без модуля (`laser.js`,
  * с падением на старую трубу); `stock` — штатный силуэт; `none` — заряд без
  * модуля (рисовать нечего). Нужно дев-стенду (`vfxstand.js`), чтобы подпись
  * на кнопке не расходилась с тем, что на экране.
  */
+/**
+ * ЧЕРНИЛА ПО БЕЛОМУ ПОЛУ (§7.8). Арена белая и в HDR ярче единицы: всё
+ * аддитивное на ней невидимо, а полупрозрачное светлое выцветает в серое.
+ * Штатные силуэты рисовались аддитивным `P[1]` — на полу от них не
+ * оставалось ничего. Обычный блендинг тёмного `P[2]` держит форму: пиксель
+ * получается либо цветом стихии, либо цветом пола, но не бледной кашей.
+ * Материал плоский, без узлового графа и без пула: он живёт секунды и
+ * заводится по одному на каст.
+ */
+const inkMat = (c, opacity) => new THREE.MeshBasicMaterial({
+  color: c, transparent: true, opacity, side: THREE.DoubleSide,
+  depthWrite: false, blending: THREE.NormalBlending,
+});
+
 export function drawnBy(element, kind) {
   const mod = MODULES[element];
-  if (mod && typeof mod[kind] === 'function') return kind === 'impact' ? 'module+stock' : 'module';
+  if (mod && typeof mod[kind] === 'function') return kind === 'impact' || kind === 'jump' || kind === 'wall' ? 'module+stock' : 'module';
   if (kind === 'beam') return 'laser';
   if (kind === 'charge') return 'none';
   return 'stock';
@@ -727,7 +741,11 @@ export class Vfx {
         /* Удар — исключение: модуль ДОБАВЛЯЕТ элементную вспышку, а подписи
            атомов (§9.2: эффект владеет ударом) рисует штатный `impact` всегда.
            Модуль, нарисовавший свой удар, снимает только общий ожог и свет. */
-        if (e.kind === 'impact') { if (drew) e.__elemental = true; } else if (drew) return true;
+        /* Прыжок и стена — как удар (§7.3): модуль ДОБАВЛЯЕТ элементный
+           разряд, а штатный силуэт всё равно рисует то, что читает бой, —
+           ЧЁРНУЮ ТЕНЬ под прыжком (она показывает высоту, это не эффект) и
+           плиту стены (это коллизионная коробка). */
+        if (e.kind === 'impact' || e.kind === 'jump' || e.kind === 'wall') { if (drew) e.__elemental = true; } else if (drew) return true;
       } catch (err) { console.warn('vfx', e.element, e.kind, err); }
     }
     switch (e.kind) {
@@ -895,12 +913,12 @@ export class Vfx {
     const len = a.distanceTo(b);
     if (len > 0.2) {
       const g = new THREE.PlaneGeometry(len, 1.5);
-      const ribbon = new THREE.Mesh(g, basic(P[1], 0.4));
+      const ribbon = new THREE.Mesh(g, inkMat(P[2].clone().multiplyScalar(0.6), 0.5));
       ribbon.position.copy(a).lerp(b, 0.5);
       ribbon.lookAt(ribbon.position.clone().add(new THREE.Vector3(0, 1, 0)));
       ribbon.rotation.z = Math.atan2(b.x - a.x, b.z - a.z);
       ribbon.rotation.x = -Math.PI / 2;
-      this.spawnMesh(ribbon, 0.3, (o, u) => { o.material.opacity = 0.4 * (1 - u) ** 1.5; });
+      this.spawnMesh(ribbon, 0.3, (o, u) => { o.material.opacity = 0.5 * (1 - u) ** 1.5; });
     }
     this.add.emit(42, (i, s) => {
       const f = Math.random();
@@ -917,14 +935,17 @@ export class Vfx {
   // ── мигание: два кольца, откуда и куда ───────────────────────────────
   blink(e, P, ctx) {
     for (const [x, z, grow] of [[e.x0, e.z0, 1], [e.x1, e.z1, -1]]) {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.42, 32), basic(P[0], 0.9));
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(x, 0.06, z);
-      this.spawnMesh(ring, 0.4, (o, u) => {
-        const k = grow > 0 ? 1 + u * 2.6 : 3.6 - u * 2.6;
-        o.scale.setScalar(k);
-        o.material.opacity = 0.9 * (1 - u);
-      });
+      /* Тёмное кольцо держит форму на полу, белое узкое поверх него — блик. */
+      for (const [mat, w] of [[inkMat(P[2], 0.9), 1], [basic(P[0], 0.9), 0.6]]) {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.28 + 0.14 * (1 - w), 0.42 - 0.14 * (1 - w), 32), mat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(x, 0.06 + (1 - w) * 0.004, z);
+        this.spawnMesh(ring, 0.4, (o, u) => {
+          const k = grow > 0 ? 1 + u * 2.6 : 3.6 - u * 2.6;
+          o.scale.setScalar(k);
+          o.material.opacity = 0.9 * (1 - u);
+        });
+      }
     }
     this.add.emit(30, (i, s) => {
       const at = i < 12 ? [e.x0, e.z0] : [e.x1, e.z1];
@@ -940,12 +961,14 @@ export class Vfx {
 
   // ── self: оболочка по силуэту тела ───────────────────────────────────
   shell(e, P, ctx) {
-    const sph = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 12), basic(P[1], 0.3));
-    sph.position.set(e.x, 1.0, e.z);
-    this.spawnMesh(sph, 0.6, (o, u) => {
-      o.scale.setScalar(0.7 + u * 0.8);
-      o.material.opacity = 0.3 * (1 - u) ** 1.3;
-    });
+    for (const [mat, op, k] of [[inkMat(P[2], 0.25), 0.25, 1.0], [basic(P[1], 0.3), 0.3, 0.98]]) {
+      const sph = new THREE.Mesh(new THREE.SphereGeometry(1.5 * k, 18, 12), mat);
+      sph.position.set(e.x, 1.0, e.z);
+      this.spawnMesh(sph, 0.6, (o, u) => {
+        o.scale.setScalar(0.7 + u * 0.8);
+        o.material.opacity = op * (1 - u) ** 1.3;
+      });
+    }
     this.add.emit(26, (i, s) => {
       const a = Math.random() * 7;
       s.pos(e.x + Math.sin(a) * 1.1, rnd(0.1, 0.4), e.z + Math.cos(a) * 1.1);
@@ -982,17 +1005,21 @@ export class Vfx {
     const dur = e.duration || 0.55;
     const h = e.height || 1.5;
 
-    /* Кольцо отрыва: расходится по полу и гаснет за треть воздушной фазы. */
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.55, 0.85, 28),
-      basic(P[1], 0.5),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(e.x, 0.03, e.z);
-    this.spawnMesh(ring, Math.max(0.35, dur * 0.6), (o, u) => {
-      o.scale.setScalar(1 + u * 2.4);
-      o.material.opacity = 0.5 * (1 - u) ** 1.4;
-    });
+    /* Кольцо отрыва: расходится по полу и гаснет за треть воздушной фазы.
+       Элементный модуль рисует свой отрыв (§7.3) — тогда штатное кольцо и
+       пыль ниже пропускаются, а ТЕНЬ рисуется всегда: она не эффект. */
+    if (!e.__elemental) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.55, 0.85, 28),
+        inkMat(P[2], 0.5),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(e.x, 0.03, e.z);
+      this.spawnMesh(ring, Math.max(0.35, dur * 0.6), (o, u) => {
+        o.scale.setScalar(1 + u * 2.4);
+        o.material.opacity = 0.5 * (1 - u) ** 1.4;
+      });
+    }
 
     /*
      * Тень. Радиус ведётся по ТОЙ ЖЕ параболе, что и тело
@@ -1026,7 +1053,7 @@ export class Vfx {
     });
 
     /* Пыль из-под ног: вниз и в стороны, а не вверх — толчок идёт в пол. */
-    this.add.emit(22, (i, s) => {
+    if (!e.__elemental) this.add.emit(22, (i, s) => {
       const a = (i / 22) * Math.PI * 2;
       s.pos(e.x + Math.sin(a) * 0.5, rnd(0.05, 0.25), e.z + Math.cos(a) * 0.5);
       s.vel(Math.sin(a) * rnd(1.8, 3.4), rnd(0.2, 1.1), Math.cos(a) * rnd(1.8, 3.4));
@@ -1048,9 +1075,13 @@ export class Vfx {
      * видел укрытие там, где его нет, и это худший вид расхождения картинки
      * с миром — он учит неправильному.
      */
+    /* Плита — ЧЕРНИЛА (§7.8): аддитивная светлая на белом полу не читалась.
+       Под элементной стеной она тоньше (0.15): там форму держит разряд
+       модуля, а плита остаётся только показанием коллизионной коробки. */
+    const OP = e.__elemental ? 0.15 : 0.25;
     const box = new THREE.Mesh(
       new THREE.BoxGeometry(e.w, 2.2, e.d),
-      basic(P[1], 0.34),
+      inkMat(P[2], OP),
     );
     box.position.set(e.x, 1.1, e.z);
     /* Живёт ровно столько, сколько живёт настоящая стена. */
@@ -1058,7 +1089,7 @@ export class Vfx {
       const rise = Math.min(1, u * 12);
       o.scale.set(1, rise, 1);
       o.position.y = 1.1 * rise;
-      o.material.opacity = 0.34 * (u > 0.85 ? (1 - u) / 0.15 : 1);
+      o.material.opacity = OP * (u > 0.85 ? (1 - u) / 0.15 : 1);
     });
     return true;
   }

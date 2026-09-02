@@ -47,3 +47,4 @@ export { self } from './arc/self.js';
 export { bolt, lob } from './arc/ball.js';
 export { impact, charge } from './arc/impact.js';
 export { status } from './arc/status.js';
+export { dash, blink, jump, wall } from './arc/move.js';
