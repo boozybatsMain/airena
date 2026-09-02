@@ -40,6 +40,7 @@ import * as kit from './vfx/kit.js';
 import * as iceFx from './vfx/ice.js';
 import * as fireFx from './vfx/fire.js';
 import * as arcFx from './vfx/arc.js';
+import * as laserFx from './vfx/laser.js';
 
 /*
  * Метка свечения, часы, затухание и пул материалов живут в `vfx/core.js`
@@ -709,6 +710,10 @@ export class Vfx {
 
   // ── луч: цилиндр + искры вдоль ствола ────────────────────────────────
   beam(e, P, ctx) {
+    /* Штатный луч — лазер (`vfx/laser.js`, эталон Nova Beam) для элементов
+       без своего модуля; труба ниже — запасной путь, если модуль отказался
+       (слишком короткий луч) или упал: эффект не имеет права уносить кадр. */
+    try { if (laserFx.beam(this, e, P, ctx)) return true; } catch (err) { console.warn('vfx laser', err); }
     const a = new THREE.Vector3(e.x0, 1.15, e.z0);
     const b = new THREE.Vector3(e.x1, 1.15, e.z1);
     const len = a.distanceTo(b);

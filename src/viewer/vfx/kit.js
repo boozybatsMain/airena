@@ -291,11 +291,14 @@ export function shockwave(vfx, { x, z, radius = 5, r0 = 0.6, life = 0.6, colour,
  *
  * Типы: `soot` — сажа; `scorch` — ожог с остывающими трещинами; `frost` —
  * иней с тёмными трещинами; `arc` — ветвистый электрический ожог;
- * `crater` — воронка кольцами. Все — плоские на полу, обычный блендинг:
- * сажа на белом столе обязана ТЕМНИТЬ, аддитивное там невидимо.
+ * `crater` — воронка кольцами; `laser` — оплавленное стекловидное пятно с
+ * тёмным ободом и лучами (лазер плавит, а не жжёт: иней и ожог не подошли —
+ * иней на белом полу невидим, у ожога горячие трещины). Все — плоские на
+ * полу, обычный блендинг: сажа на белом столе обязана ТЕМНИТЬ, аддитивное
+ * там невидимо.
  */
 const MAX_DECALS = 28;
-const DECAL_Y = { soot: 0.018, scorch: 0.022, frost: 0.026, arc: 0.030, crater: 0.014 };
+const DECAL_Y = { soot: 0.018, scorch: 0.022, frost: 0.026, arc: 0.030, crater: 0.014, laser: 0.028 };
 
 class DecalField {
   constructor(scene, type, palette) {
@@ -361,6 +364,22 @@ class DecalField {
       colour = mix(vec3(0.05, 0.05, 0.06), mix(tint, vec3(1, 1, 1), heat.mul(0.6)), branches.mul(heat.mul(0.8).add(0.2)).clamp(0, 1));
       alpha = branches.clamp(0, 1).mul(core).mul(0.92);
       glow = branches.clamp(0, 1).mul(core).mul(heat);
+    } else if (type === 'laser') {
+      /* Стекло: почти круглое пятно, внутри светлое с зерном и лучами по
+         оттенку элемента, по краю — ТЁМНЫЙ обод оплавления (он и держит
+         след на белом полу); обод остывает ~1.5 с из оттенка в тёмный. */
+      const edge = d.add(mx_fractal_noise_float(p3.mul(2.0), 2, 2.0, 0.5, 1).mul(0.12));
+      const glass = oneMinus(smoothstep(float(0.5), float(0.92), edge));
+      const halo = smoothstep(float(0.6), float(0.8), edge).mul(oneMinus(smoothstep(float(0.86), float(1.0), edge)));
+      const grain = mx_noise_float(p3.mul(8.0).add(4.4)).mul(0.5).add(0.5);
+      const ang = TSL.atan(q.y, q.x);
+      const rays = smoothstep(float(0.62), float(0.9), mx_noise_float(vec3(tcos(ang).mul(3.5), tsin(ang).mul(3.5), seed.add(2))).mul(0.5).add(0.5)).mul(glass);
+      const heat = oneMinus(age.div(1.5)).clamp(0, 1);
+      const glassC = mix(mix(tint.mul(0.75), vec3(0.94, 0.96, 1.0), grain.mul(0.5)), tint.mul(0.55), rays.mul(0.7));
+      const dark = mix(vec3(0.09, 0.09, 0.11), tint.mul(0.5), 0.35);
+      colour = mix(glassC, mix(dark, tint, heat.mul(0.6)), halo.clamp(0, 1));
+      alpha = glass.mul(grain.mul(0.3).add(0.4)).mul(0.6).add(rays.mul(0.25)).add(halo.mul(0.78)).clamp(0, 1);
+      glow = halo.mul(heat).mul(0.5);
     } else {
       /* crater: тёмное кольцо с рваным краем и светлым отсыпанным валом */
       const edge = d.add(mx_fractal_noise_float(p3.mul(2.0), 2, 2.0, 0.5, 1).mul(0.25));
