@@ -1,8 +1,9 @@
 /**
  * Молния · общие кусочки доставок: шар грозы и чехол, перестройщик,
  * ползущие дуги, гроза, искры, выброс у руки, ведомый свет, веер дуг,
- * ОБЛАКО (шар каста у руки и облако удара), горячее ядро, ШИПЫ удара,
- * тонкое кольцо по полу.
+ * ОБЛАКО (шар каста у руки — обычный блендинг; облако удара — аддитивное),
+ * горячее ядро, ШИПЫ удара (две копии: белая в свечение, синяя в тело),
+ * кольцо по полу метровой ширины.
  */
 
 import * as THREE from 'three';
@@ -32,7 +33,9 @@ function tubeGeo() {
 let RING_GEO = null;
 function ringGeo() {
   if (!RING_GEO) {
-    RING_GEO = shared(new THREE.RingGeometry(0.86, 1, 96, 1));
+    /* Внутренний радиус 0.3, а не 0.86: полоса кольца задаётся в метрах и
+       при малом радиусе занимает до 60 % диска. */
+    RING_GEO = shared(new THREE.RingGeometry(0.3, 1, 96, 1));
     RING_GEO.rotateX(-Math.PI / 2);
   }
   return RING_GEO;
@@ -134,15 +137,27 @@ function halo(vfx, P, a, b, radius, life) {
 
 /**
  * Мягкое бело-голубое облако (эталон: шар ~1.2 м у руки в первые 300 мс и
- * облако ~2.5 м в точке удара). Обычный блендинг: середина — HDR-белое
- * (по метке уходит в bloom), к краю — светло-синий и на самом ободе
- * глубокий синий с малой прозрачностью. Именно синий обод делает белое
- * облако видимым на белом полу; поверх тёмного тела оно просто белое.
- * Поверхность рыхлая — смещение по нормали шумом, пятна по второму шуму.
+ * облако ~2.5 м в точке удара). Два режима.
+ *
+ * `solid` (шар каста): обычный блендинг, середина — HDR-белое (по метке
+ * уходит в bloom), к краю — светло-синий и на самом ободе глубокий синий с
+ * малой прозрачностью. Синий обод делает белое облако видимым на белом
+ * полу; у руки кастера оно так и читается (замер турнира: единственный
+ * выброс, совпавший с эталоном).
+ *
+ * `additive` (облако удара): оно ложится на ТЁМНОЕ тело жертвы, и обычный
+ * блендинг при частичной прозрачности давал серый полупрозрачный пузырь
+ * поверх меха (замер турнира на 0.3 и 0.6 с). Аддитивное над тёмным при
+ * любой прозрачности только светлеет и никогда не серое; на белом полу его
+ * не видно, но там лежат клубок и треск. Без синего френелевого обода —
+ * с ним облако читалось стеклянным шаром (снежный глобус).
  */
-function cloudMat(P) {
-  return pooled(`arc:cloud:${hex(P)}`, () => {
-    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.NormalBlending });
+function cloudMat(P, additive = false) {
+  return pooled(`arc:cloud:${additive ? 'add' : 'solid'}:${hex(P)}`, () => {
+    const m = new THREE.MeshBasicNodeMaterial({
+      transparent: true, depthWrite: false, side: THREE.FrontSide,
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    });
     const fade = withFade(m);
     const seed = uniform(0), hotK = uniform(1), dense = uniform(1);
     m.userData.u = { fade, seed, hotK, dense };
@@ -151,6 +166,15 @@ function cloudMat(P) {
     const fres = oneMinus(tabs(TSL.dot(normalView, positionViewDirection))).clamp(0, 1);
     const body = oneMinus(fres).pow(1.1);
     const mottle = mx_noise_float(normalLocal.mul(3.5).add(vec3(TIME.mul(2.0), seed, 0))).mul(0.5).add(0.5);
+    if (additive) {
+      /* Бело-горячая середина, к краю — светло-синий и ноль: мягкий край без
+         обода. В bloom — половина: облако должно белеть, а не висеть. */
+      const white = vec3(1.6, 1.7, 1.9);
+      m.colorNode = mix(col(P[1]).mul(0.5), white, body.mul(hotK).clamp(0, 1));
+      const alpha = body.pow(1.3).mul(mottle.mul(0.35).add(0.65)).mul(dense).mul(fade).clamp(0, 1);
+      m.opacityNode = alpha;
+      return markGlow(m, body.mul(alpha).mul(0.2).clamp(0, 1));
+    }
     const white = vec3(1.15, 1.2, 1.3);
     const rimC = mix(col(P[1]), col(P[2]), fres.pow(2.0).mul(0.35));
     m.colorNode = mix(rimC, white, body.mul(hotK).clamp(0, 1));
@@ -165,10 +189,11 @@ function cloudMat(P) {
 /**
  * Облако с собственной жизнью: с момента `at` растёт от `r0` до `r1` за
  * `grow` секунд (замедляясь), держится до `hold`, гаснет к `life`. Время —
- * секунды от каста; `squash` прижимает к полу. Возвращает меш.
+ * секунды от каста; `squash` прижимает к полу; `additive` — режим облака
+ * удара (см. `cloudMat`). Возвращает меш.
  */
-function cloud(vfx, P, { x, y, z, at = 0, r0 = 0.3, r1 = 1.0, grow = 0.2, hold = 0.4, life = 0.7, squash = 1, seed = 1, hot = 1, dense = 1 }) {
-  const m = cloudMat(P);
+function cloud(vfx, P, { x, y, z, at = 0, r0 = 0.3, r1 = 1.0, grow = 0.2, hold = 0.4, life = 0.7, squash = 1, seed = 1, hot = 1, dense = 1, additive = false }) {
+  const m = cloudMat(P, additive);
   const u = m.userData.u;
   u.seed.value = seed; u.hotK.value = hot; u.dense.value = dense;
   const mesh = new THREE.Mesh(orbGeo(), m);
@@ -220,64 +245,109 @@ function hotCore(vfx, P, { x, y, z, r = 0.2, life = 0.4, at = 0, hold = 0.3 }) {
 /* ── шипы удара и кольцо по полу ───────────────────────────────────────── */
 
 /**
- * Шипы: длинные тонкие бело-голубые штрихи, летящие из точки радиально
- * (эталон: 0.5–1.5 м, десятки штук в момент удара). Форма — штрих,
+ * Шипы: длинные тонкие бело-голубые штрихи, летящие из точки (эталон:
+ * 0.5–1.5 м, десятки штук в момент удара; и вбок из пучка). Форма — штрих,
  * вытянутый по скорости: при 13 м/с квад длиной ~1.4 м и толщиной ~8 см.
- * Без тяжести — это свет, а не осколки; к концу жизни уходят в синий,
- * чтобы дочитаться на белом полу.
+ * Без тяжести по умолчанию — это свет, а не осколки.
+ *
+ * ДВЕ КОПИИ одной траектории: белая в пуле свечения (на тёмном теле и
+ * стенах — белый шип с bloom) и глубоко-синяя (0.08,0.4,1.0 → 0.7·P[2]) в
+ * обычном пуле — на белом полу белое невидимо, а синий штрих читается.
+ * Один аддитивный выброс с трансляции не существовал вовсе (замер турнира:
+ * шипы были видны только на гранях блоков).
+ *
+ * Направление: по умолчанию — во все стороны с подъёмом ±`up` рад; `dir`
+ * (+ `half`) — веер вокруг азимута; `side: [ux, uz]` — перпендикулярно оси
+ * пучка (боковые штрихи); `flat` 0..1 прижимает к горизонту (веер по полу).
  */
-function spikes(vfx, P, { x, y, z, n = 40, speed = 13, life = 0.32, size = 0.26, at = null, r, up = 0.55 }) {
+function spikes(vfx, P, { x, y, z, n = 40, speed = 13, life = 0.32, size = 0.26, at = null, r, up = 0.55, dir = null, half = Math.PI, side = null, flat = 0, gravity = 0, spread = 0 }) {
   const born = at ?? vfx.now;
-  const white = new THREE.Color(0.8, 0.9, 1.0);
-  vfx.add.emit(n, (i, s) => {
-    const a = r() * TAU, e = (r() * 2 - 1) * up;
-    const ce = Math.cos(e);
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    let vx, vy, vz;
+    if (side) {
+      const [ux, uz] = side;
+      const sgn = r() < 0.5 ? -1 : 1;
+      const e = (r() - 0.5) * 1.2;
+      vx = -uz * sgn * Math.cos(e) + ux * (r() - 0.5) * 0.6; vz = ux * sgn * Math.cos(e) + uz * (r() - 0.5) * 0.6; vy = Math.sin(e);
+    } else {
+      const a = dir == null ? r() * TAU : dir + (r() * 2 - 1) * half;
+      const e = (r() * 2 - 1) * up * (1 - flat);
+      const ce = Math.cos(e);
+      vx = Math.sin(a) * ce; vy = Math.sin(e); vz = Math.cos(a) * ce;
+    }
     const v = speed * (0.6 + r() * 0.8);
-    s.pos(x, y, z);
-    s.vel(Math.sin(a) * ce * v, Math.sin(e) * v, Math.cos(a) * ce * v);
-    s.gravity(0, 0, 0);
-    s.color(white, P[2]);
-    s.life(born + r() * 0.03, life * (0.6 + r() * 0.8), size * (0.6 + r() * 0.8), kit.SHAPE.streak);
-    s.ext(0, 0.5, 1, 1);
-  });
+    list.push({
+      vx: vx * v, vy: vy * v, vz: vz * v,
+      ox: (r() - 0.5) * spread, oy: (r() - 0.5) * spread, oz: (r() - 0.5) * spread,
+      born: born + r() * 0.03, life: life * (0.6 + r() * 0.8), size: size * (0.6 + r() * 0.8),
+    });
+  }
+  const white = new THREE.Color(0.9, 0.95, 1.0);
+  const blue = new THREE.Color(0.08, 0.4, 1.0), tailB = P[2].clone().multiplyScalar(0.7);
+  const fill = (c1, c2, glow, sizeK) => (i, s) => {
+    const k = list[i];
+    s.pos(x + k.ox, y + k.oy, z + k.oz);
+    s.vel(k.vx, k.vy, k.vz);
+    s.gravity(0, gravity, 0);
+    s.color(c1, c2);
+    s.life(k.born, k.life, k.size * sizeK, kit.SHAPE.streak);
+    s.ext(0, 0.35, 1, glow);
+  };
+  vfx.glow.emit(n, fill(white, P[1], 1, 1));
+  vfx.body.emit(n, fill(blue, tailB, 0.4, 1.0));
 }
 
 /**
- * Тонкое кольцо по полу: белое с голубыми краями, обычный блендинг (на
- * белом полу — светло-синее, на тёмном — белое), расходится от `r0` до `r1`.
+ * Кольцо по полу от удара: полоса ФИКСИРОВАННОЙ ширины в метрах (`thick`,
+ * ~0.3 м — с 26 м это 12 px, кант 0.2 м читался призраком; ширина в uv
+ * делится на радиус), расходится от `r0` до `r1`.
+ * Обычный блендинг: глубоко-синяя полоса почти непрозрачна (0.95) и тонкая
+ * белая жила посередине (при широкой жиле кольцо с 26 м читалось сиреневым,
+ * замер r2) — на белом полу читается синее кольцо с белой жилой, на
+ * тёмном — белое. Прежняя полоса 0.07 радиуса с краем `band^0.3` с 26 м
+ * была призраком (замер турнира); ширина в метрах не тает при росте.
  */
 function ringMat(P) {
   return pooled(`arc:ring:${hex(P)}`, () => {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending });
     const fade = withFade(m);
+    const wid = uniform(0.1);
+    m.userData.u = { fade, wid };
     const q = uv().sub(vec2(0.5, 0.5)).mul(2);
     const d = q.length();
-    const band = oneMinus(d.sub(0.93).abs().div(0.07)).clamp(0, 1);
-    /* Края кольца — глубокий синий, середина — белая: на белом полу читается
-       синее кольцо с белой жилой, на тёмном — белое. В bloom — чуть: белая
-       жила и так яркая, а засветка стирала бы синие края. */
-    m.colorNode = mix(col(P[2]), vec3(1.3, 1.35, 1.45), band.pow(7.0));
-    const alpha = band.pow(0.3).mul(fade).clamp(0, 1);
+    const inner = oneMinus(wid);
+    /* Полоса [1−wid, 1]: жёсткий внутренний край, мягкий внешний кант. */
+    const band = smoothstep(inner, inner.add(wid.mul(0.1)), d).mul(oneMinus(smoothstep(oneMinus(wid.mul(0.12)), float(1.0), d)));
+    /* Белая жила — треугольник по центру полосы. */
+    const core = oneMinus(d.sub(oneMinus(wid.mul(0.5))).abs().div(wid.mul(0.5).max(1e-4))).clamp(0, 1).pow(6.0);
+    const ang = TSL.atan(q.y, q.x);
+    const rag = mx_noise_float(vec3(TSL.cos(ang).mul(3.0), TSL.sin(ang).mul(3.0), 0.5)).mul(0.25).add(0.85);
+    m.colorNode = mix(col(P[2]).mul(0.75), vec3(1.4, 1.45, 1.6), core);
+    const alpha = band.mul(rag).mul(0.95).add(core.mul(0.05)).mul(fade).clamp(0, 1);
     m.opacityNode = alpha;
-    return markGlow(m, alpha.mul(0.15));
+    return markGlow(m, core.mul(alpha).mul(0.4));
   }, 4);
 }
 
-function floorRing(vfx, P, { x, z, r0 = 0.4, r1 = 3.5, life = 0.45, at = 0, y = 0.07 }) {
+function floorRing(vfx, P, { x, z, r0 = 0.4, r1 = 3.0, life = 0.5, at = 0, y = 0.07, thick = 0.3 }) {
   const mesh = new THREE.Mesh(ringGeo(), ringMat(P));
   mesh.position.set(x, y, z);
   mesh.renderOrder = 6;
   mesh.frustumCulled = false;
   mesh.scale.setScalar(0.001);
-  const fade = mesh.material.userData.fade;
+  const u = mesh.material.userData.u;
   const total = at + life;
   vfx.spawnMesh(mesh, total, (o, k) => {
     const t = k * total - at;
-    if (t < 0) { fade.value = 0; return; }
-    const u = clamp01(t / life);
-    const r = r0 + (r1 - r0) * easeOutCubic(u);
+    if (t < 0) { u.fade.value = 0; return; }
+    const q = clamp01(t / life);
+    const r = r0 + (r1 - r0) * easeOutCubic(q);
     o.scale.set(r, 1, r);
-    fade.value = (1 - u) ** 0.8;
+    u.wid.value = Math.min(0.6, thick / Math.max(0.05, r));
+    /* Держится в полную силу первую половину, потом гаснет: кольцо должно
+       быть найдено с 26 м без кропа, а не тлеть. */
+    u.fade.value = q < 0.5 ? 1 : (1 - (q - 0.5) / 0.5) ** 0.8;
   });
   return mesh;
 }
