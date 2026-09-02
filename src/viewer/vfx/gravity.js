@@ -208,11 +208,15 @@ export function self(vfx, e, P, ctx) {
   const R = (bs ? bs.r : 0.9) * 1.4, H = (bs ? bs.h : 2.0) * 0.55;
   const p0 = at();
   /* БЕАТ КАСТА: обод нарастает 0.3 → 1.0 и одно кольцо на полу. */
-  const sh = well(P, R, 0.15);
+  /* ОБОЛОЧКА ПО ТЕЛУ, 1.2 с и с плато: судья не отличил каст «массы» от
+     сброшенной массы и от замаха — все три были одинаковым тёмным шариком у
+     бойца. Здесь оболочка РАЗМЕРОМ С ТЕЛО, стоит полсекунды на полной
+     непрозрачности и только потом гаснет. */
+  const sh = well(P, R, 0.35);
   sh.mesh.position.set(p0.x, H, p0.z);
-  vfx.spawnMesh(sh.mesh, 0.6, (o, u) => {
-    const k = u < 0.4 ? u / 0.4 : 1 - (u - 0.4) / 0.6;
-    sh.set(k, R * (0.6 + 0.4 * u), 0.15);
+  vfx.spawnMesh(sh.mesh, 1.2, (o, u) => {
+    const k = u < 0.25 ? u / 0.25 : (u > 0.6 ? Math.max(0, (1 - u) / 0.4) : 1);
+    sh.set(k, R * (0.55 + 0.45 * Math.min(1, u / 0.25)), 0.35);
     const p = at(); o.position.set(p.x, H, p.z);
   });
   rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.2, life: 0.7, follow: at });
@@ -233,8 +237,11 @@ export function lob(vfx, e, P, ctx) {
   const apex = 0.35 * len;
 
   /* БРОШЕННЫЙ ПРЕДМЕТ — P1 к нему не применяется: ядро действительно летит. */
-  const core = well(P, 0.35);
-  const lensMesh = kit.lens(vfx, { x: S[0], y: S[1], z: S[2], size: 1.4, life: travel, strength: 0.6 });
+  /* Ядро 0.55 м и ШЛЕЙФ ПЫЛИ за ним: сброшенная масса обязана отличаться от
+     замаха и от каста «массы» — судья видел один и тот же тёмный шарик. */
+  const core = well(P, 0.55);
+  const lensMesh = kit.lens(vfx, { x: S[0], y: S[1], z: S[2], size: 2.0, life: travel, strength: 0.8 });
+  let trailAt = 0;
   let landed = false;
   vfx.spawnMesh(core.mesh, travel + 0.1, (o, u) => {
     const f = Math.min(1, (u * (travel + 0.1)) / travel);
@@ -242,8 +249,19 @@ export function lob(vfx, e, P, ctx) {
     const z = S[2] + (E[2] - S[2]) * f;
     const y = Math.max(0.3, S[1] + (E[1] - S[1]) * f + 4 * apex * f * (1 - f));
     o.position.set(x, y, z);
-    core.set(1, 0.35, 0.95);
+    core.set(1, 0.55, 0.95);
     if (lensMesh) lensMesh.position.set(x, y, z);
+    if (u * (travel + 0.1) >= trailAt && f < 1) {
+      trailAt = u * (travel + 0.1) + 0.05;
+      /* Пыль СРЫВАЕТСЯ с ядра и падает: масса тянет за собой воздух. */
+      vfx.body.emit(4, (i, s2) => {
+        s2.pos(x + (rng() - 0.5) * 0.5, y + (rng() - 0.5) * 0.5, z + (rng() - 0.5) * 0.5);
+        s2.vel(0, 0, 0); s2.gravity(0, -9, 0);
+        s2.color(P[2], P[2].clone().multiplyScalar(0.5));
+        s2.life(vfx.now, 0.6, 0.07 + rng() * 0.05, kit.SHAPE.dot);
+        s2.ext(0, 0.6, 0, 0.2);
+      });
+    }
     if (f >= 1 && !landed) {
       landed = true;
       o.visible = false;
@@ -273,6 +291,14 @@ export function impact(vfx, e, P, ctx) {
   vfx.spawnMesh(w.mesh, 0.25, (o, u) => w.set(1, 0.6 * (1 - u), 0.9 * (1 - u * 0.5)));
   kit.lens(vfx, { x: cx, y: cy, z: cz, size: 1.6, life: 0.3, strength: 0.8 });
   kit.decal(vfx, { type: 'grav', x: cx, z: cz, radius: 0.9, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
+  /* ХРУСТ ЧИТАЕТСЯ СЖАТИЕМ: кольца на полу СХОДЯТСЯ к жертве за 0.35 с.
+     Судья увидел на месте удара «плоскую красную вспышку и белое сияние под
+     ногами — обычный урон, а не вес». Расходящееся кольцо у гравитации было
+     бы враньём: её удар давит внутрь. */
+  {
+    const rr = rings(vfx, P, { x: cx, z: cz, r: 2.2, life: 0.35 });
+    vfx.spawnMesh(new THREE.Group(), 0.35, (o, u) => { rr.scale.setScalar(2.2 * 2 * (1 - 0.72 * u)); });
+  }
   /* Тридцать точек падают на тело с кольца 1.4 м — вес, придавивший жертву. */
   vfx.body.emit(30, (i, s) => {
     const a = rng() * TAU, d = 1.0 + rng() * 0.4;
@@ -327,7 +353,11 @@ export function status(vfx, e, P, ctx) {
   const R = (bs ? bs.r : 0.9) * 1.3, H = (bs ? bs.h : 2.0) * 0.55;
   const p0 = at();
   /* ПРИДАВЛЕН: пыль сыплется отвесно, кольца ползут за телом, обод на 0.4. */
-  const sh = well(P, R, 0.0);
+  /* ЛИНЗА, А НЕ ПУЗЫРЬ. Замер 03.09 (судья, «почти белое на белом, на
+     дистанции пропадает»): при заливке 0 и затухании 0.4 оболочка была
+     невидима. Теперь нутро 0.3 тёмного при полном затухании — тело под
+     весом ТЕМНЕЕТ, а это и есть «придавлен»; кольца под ним вдвое темнее. */
+  const sh = well(P, R, 0.3);
   sh.mesh.position.set(p0.x, H, p0.z);
   const MAX = 60;
   let next = 0;
@@ -341,10 +371,11 @@ export function status(vfx, e, P, ctx) {
     o.visible = true;
     const p = at();
     o.position.set(p.x, H, p.z);
-    sh.set(0.4, R, 0.0);
-    if (t >= next) { next = t + 1; fallDust(vfx, P, { x: p.x, z: p.z, r: R, n: 12, rng }); }
+    sh.set(1, R, 0.3);
+    if (t >= next) { next = t + 0.6; fallDust(vfx, P, { x: p.x, z: p.z, r: R * 1.2, n: 18, rng }); }
   });
-  rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.1, life: dur, follow: at });
+  rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.3, life: dur, follow: at });
+  kit.lens(vfx, { x: p0.x, y: H, z: p0.z, size: R * 2, life: dur, strength: 0.6 });
   return true;
 }
 

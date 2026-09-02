@@ -57,7 +57,10 @@ function flecks(vfx, P, { x, z, r, hi = 1.5, n, window = 1, rng, at = 0, surf = 
     s.gravity(0, 0, 0);
     s.color(colour, colour);
     /* Рождение РАЗМАЗАНО по окну — щелчки идут вразнобой, а не залпом. */
-    s.life(vfx.now + at + rng() * window, 0.08 + rng() * 0.08, s0 + rng() * (s1 - s0), kit.SHAPE.dot);
+    /* 0.10–0.20 с вместо 0.08–0.16: при средних 0.12 с и окне 0.25 с в
+       кадре жило лишь ~48 % выпущенных крупинок, и треска не было видно
+       из-под заливки следа. */
+    s.life(vfx.now + at + rng() * window, 0.10 + rng() * 0.10, s0 + rng() * (s1 - s0), kit.SHAPE.dot);
     s.ext(0, 0, 0, 0);
   });
   /* Светлая крупинка 0.05 м (тела, стены), тёмная 0.07–0.10 м (белый пол).
@@ -89,7 +92,10 @@ function domeMat(P) {
     const pulse = tsin(TIME.mul(9.4)).mul(0.5).add(0.5);
     const inner = float(0.08).add(pulse.mul(0.06));
     m.colorNode = mix(mix(col(P[1]), col(P[2]).mul(0.8), rim.mul(0.7)), col(P[1]).mul(1.6), rim.mul(pulse.mul(0.4).add(0.3)));
-    const alpha = mix(inner, float(0.8), rim).mul(fade).clamp(0, 1);
+    /* Кромка 0.45, не 0.8: над зоной купол читался ЩИТОМ, а не дрожью
+       воздуха (замер 03.09 по статусу и зоне). Заражение держит на полу
+       сыпь и треск, а купол только подкрашивает объём. */
+    const alpha = mix(inner, float(0.45), rim).mul(fade).clamp(0, 1);
     m.opacityNode = alpha;
     /* Дрожь: шумовое смещение, сильное только там, где купол плотный. */
     const n = mx_noise_float(normalLocal.mul(3.0).add(vec3(TIME.mul(1.4), 0, 0)));
@@ -138,7 +144,7 @@ export function zone(vfx, e, P, ctx) {
     if (t >= next && t < D + 1) {
       next = t + 0.25;
       /* Плотность на пике — `nFleck` в секунду: четверть за четверть. */
-      flecks(vfx, P, { x: e.x, z: e.z, r, hi: 1.5, n: Math.max(2, Math.round((nFleck * 0.25) / 2)), window: 0.25, rng });
+      flecks(vfx, P, { x: e.x, z: e.z, r, hi: 1.5, n: Math.max(4, Math.round(nFleck * 0.25)), window: 0.25, rng });
     }
     if (t >= fumeAt + 0.34 && t < D) { fumeAt = t; fume(vfx, P, { x: e.x, z: e.z, r: r * 0.8, n: 3, life: 2, rng }); }
     if (t - lightAt > 0.3 && t < D) { vfx.flashLight(e.x, 1.0, e.z, P[1], 10, 0.4, r + 2); lightAt = t; }
@@ -207,11 +213,11 @@ export function lob(vfx, e, P, ctx) {
      с полосой `P[1]`, кувыркающаяся по параболе и сыплющая крупинками. */
   const g = new THREE.Group();
   const body = new THREE.Mesh(
-    shared(new THREE.CapsuleGeometry(0.12, 0.22, 4, 10)),
+    shared(new THREE.CapsuleGeometry(0.11, 0.34, 6, 12)),
     new THREE.MeshBasicMaterial({ color: P[2], transparent: true, opacity: 0.98, depthWrite: false }),
   );
   const band = new THREE.Mesh(
-    shared(new THREE.CylinderGeometry(0.126, 0.126, 0.08, 12)),
+    shared(new THREE.CylinderGeometry(0.122, 0.122, 0.10, 14)),
     new THREE.MeshBasicMaterial({ color: P[1], transparent: true, opacity: 1, depthWrite: false }),
   );
   g.add(body, band);
@@ -325,12 +331,15 @@ export function charge(vfx, e, P, ctx) {
     const hx = p.x + Math.sin(dir) * 0.7, hz = p.z + Math.cos(dir) * 0.7;
     o.position.set(hx, 1.1, hz);
     /* Купол в руке растёт 0.1 → 0.4 м, крупинки СХОДЯТСЯ к ней. */
-    const r = 0.1 + 0.3 * u;
+    /* Купол в руке 0.16 → 0.55 м при полной непрозрачности и крупинки,
+       СХОДЯЩИЕСЯ к ней: замах должен ТЕЛЕГРАФИРОВАТЬ каст, а при 0.1 → 0.4 м
+       и альфе 0.6 судья нашёл лишь «слабый оттенок в тени ноги». */
+    const r = 0.16 + 0.39 * u;
     o.scale.setScalar(r);
-    d.set(0.6);
+    d.set(1);
     if (t >= next) {
-      next = t + 0.12;
-      flecks(vfx, P, { x: hx, z: hz, r: 1.6 * (1 - u * 0.6), hi: 1.6, n: 6, window: 0.12, rng });
+      next = t + 0.08;
+      flecks(vfx, P, { x: hx, z: hz, r: 2.0 * (1 - u * 0.65), hi: 1.8, n: 12, window: 0.08, rng });
     }
     if (t - lightAt > 0.3) { vfx.flashLight(hx, 1.1, hz, P[1], 6 + 6 * u, 0.4, 5); lightAt = t; }
   });
