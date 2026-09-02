@@ -116,6 +116,7 @@ addEventListener('resize', () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  hitRT.setSize(Math.round(w * renderer.getPixelRatio()), Math.round(h * renderer.getPixelRatio()));
 });
 
 /*
@@ -164,6 +165,19 @@ let post = null;
  * `post` остаётся null, тонмаппинг возвращается растру и кадр рисуется
  * напрямую. Вспышка тогда идёт через DOM `#vfxflash`.
  */
+/*
+ * Красный силуэт удара живёт в СВОЕЙ текстуре: жертва рисуется в неё одним
+ * красным материалом-оверрайдом (см. `drawHitFlash`), а пост-граф кладёт эту
+ * текстуру ПОСЛЕДНИМ слоем поверх готового кадра. Второй проход в канвас
+ * (первая попытка) стирал кадр в чёрное: WebGPU не держит `autoClear = false`
+ * между двумя `render` в одном кадре.
+ */
+const hitRT = new THREE.RenderTarget(
+  Math.max(1, Math.round(innerWidth * renderer.getPixelRatio())),
+  Math.max(1, Math.round(innerHeight * renderer.getPixelRatio())),
+  { depthBuffer: true },
+);
+const hitU = { alpha: TSL.uniform(0), colour: TSL.uniform(new THREE.Color(1, 0.14, 0.09)) };
 const postU = {
   exposure: TSL.uniform(1.05),
   aberration: TSL.uniform(0),
@@ -211,11 +225,14 @@ try {
   const mapped = TSL.toneMapping(THREE.ACESFilmicToneMapping, postU.exposure, hdr);
   const vig = TSL.oneMinus(TSL.smoothstep(TSL.float(0.25), TSL.float(1.35), r2.mul(2.4)).mul(postU.vignette));
   const flashed = TSL.mix(mapped.mul(vig), postU.flashColour, postU.flashAmount);
+  /* Силуэт жертвы — поверх всего, как спрайт в старой игре. */
+  const hitTex = TSL.texture(hitRT.texture).sample(uvN);
+  const struck = TSL.mix(flashed.rgb, hitU.colour, hitTex.a.mul(hitU.alpha).clamp(0, 1));
   post = new THREE.PostProcessing(renderer);
   post.outputColorTransform = false;
   /* `.rgb` явно: узел смешивания наследует тип, и vec4 с пятью компонентами
      роняет сборку графа тихой ошибкой в консоли. */
-  post.outputNode = TSL.renderOutput(TSL.vec4(flashed.rgb, 1));
+  post.outputNode = TSL.renderOutput(TSL.vec4(struck, 1));
   /* Тонмаппинг переехал в граф: растр отдаёт линейный HDR. */
   renderer.toneMapping = THREE.NoToneMapping;
   /* Метку разрешаем ТОЛЬКО теперь: материал с `mrtNode` при проходе без MRT
@@ -1190,23 +1207,31 @@ function tickScreen(dt) {
 
 /*
  * КРАСНАЯ ВСПЫШКА ТЕЛА (решение основателя 02.09): жертва на мгновение
- * становится целиком красной — так в большинстве игр читается «получил урон».
- * Материалы тела уводятся в красный по цвету и эмиссии и возвращаются за
- * 0.2 с; метки свечения они не получают — §10.1 «тело не светится» держится.
+ * становится целиком красной — так в старых играх читается «получил урон».
+ *
+ * Не через материалы тела. Первый заход менял `material.color`, а у стоковых
+ * тел материалы узловые со своим графом цвета: поле `color` там не читается
+ * вовсе, и вспышки не было видно (основатель заметил на повторе). Вместо
+ * этого — ОТДЕЛЬНЫЙ ПРОХОД ПОВЕРХ КАДРА: меши жертвы поднимаются на слой
+ * `HIT_LAYER`, сцена рисуется ещё раз одним красным материалом-оверрайдом
+ * без теста глубины и без очистки — сплошной красный силуэт поверх всех
+ * эффектов и пост-графа, как спрайт в старой игре. Тело при этом не
+ * светится: проход идёт после свечения и в него не попадает (§10.1).
  */
-const HIT_RED = new THREE.Color(1, 0.1, 0.06);
-const HIT_GLOW = new THREE.Color(0.85, 0.06, 0.03);
+const HIT_LAYER = 3;
+const HIT_SOLID = 0.12, HIT_FADE = 0.16;
 const hitUntil = { blue: 0, orange: 0 };
-function bodyMaterials(body) {
-  if (body.mats) return body.mats;
-  const seen = new Set();
-  body.root.traverse((o) => {
-    const m = o.material;
-    if (!m) return;
-    for (const one of Array.isArray(m) ? m : [m]) if (one && one.color && !seen.has(one)) seen.add(one);
-  });
-  body.mats = [...seen].map((m) => ({ m, color: m.color.clone(), emissive: m.emissive ? m.emissive.clone() : null }));
-  return body.mats;
+const hitMat = (() => {
+  const M = THREE.MeshBasicNodeMaterial || THREE.MeshBasicMaterial;
+  return new M({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
+})();
+/* Своя камера на слой удара: копия боевой, но видит только `HIT_LAYER`. */
+const hitCam = camera.clone();
+let hitActive = false;
+function setHitLayer(body, on) {
+  if (body.hitLayer === on) return;
+  body.hitLayer = on;
+  body.root.traverse((o) => { if (o.isMesh) { if (on) o.layers.enable(HIT_LAYER); else o.layers.disable(HIT_LAYER); } });
 }
 /*
  * Вспышка идёт от СОБЫТИЯ удара, а не от падения здоровья: горение и
@@ -1216,7 +1241,7 @@ function bodyMaterials(body) {
  */
 function hitFlash(id) {
   if (!bodies[id]) return;
-  hitUntil[id] = performance.now() / 1000 + 0.22;
+  hitUntil[id] = performance.now() / 1000 + HIT_SOLID + HIT_FADE;
 }
 const TARGETED = new Set(['damage', 'burn', 'knock', 'pull', 'stun', 'root', 'blind', 'silence', 'weaken']);
 function hitFlashFromImpact(e) {
@@ -1226,18 +1251,42 @@ function hitFlashFromImpact(e) {
   hitFlash(e.who === 'blue' ? 'orange' : 'blue');
 }
 function tickHit(now) {
+  let peak = 0;
   for (const id of ['blue', 'orange']) {
-    if (!hitUntil[id]) continue;
     const b = bodies[id];
+    if (!hitUntil[id]) { if (b) setHitLayer(b, false); continue; }
     if (!b) { hitUntil[id] = 0; continue; }
     const left = hitUntil[id] - now;
-    const k = left <= 0 ? 0 : Math.min(1, left / 0.22) ** 0.6;
-    for (const r of bodyMaterials(b)) {
-      r.m.color.copy(r.color).lerp(HIT_RED, k);
-      if (r.m.emissive && r.emissive) r.m.emissive.copy(r.emissive).lerp(HIT_GLOW, k);
-    }
-    if (left <= 0) hitUntil[id] = 0;
+    if (left <= 0) { hitUntil[id] = 0; setHitLayer(b, false); continue; }
+    setHitLayer(b, true);
+    /* Сплошной красный, потом короткий спад. */
+    peak = Math.max(peak, left > HIT_FADE ? 1 : left / HIT_FADE);
   }
+  hitU.alpha.value = peak * 0.95;
+  hitActive = peak > 0;
+}
+/**
+ * Силуэт жертвы — в свою текстуру, ДО основного кадра; пост-граф кладёт его
+ * сверху. Без пост-графа вспышки нет: запасной путь рисует бой, а не свет.
+ */
+const clearTmp = new THREE.Color();
+function drawHitFlash() {
+  if (!post) return;
+  if (!hitActive) { hitU.alpha.value = 0; return; }
+  hitCam.copy(camera);
+  hitCam.layers.set(HIT_LAYER);
+  const bg = scene.background, fogWas = scene.fog;
+  renderer.getClearColor(clearTmp);
+  const clearA = renderer.getClearAlpha();
+  scene.background = null; scene.fog = null;
+  scene.overrideMaterial = hitMat;
+  renderer.setClearColor(0x000000, 0);
+  renderer.setRenderTarget(hitRT);
+  try { renderer.render(scene, hitCam); } catch (e) { hitActive = false; hitU.alpha.value = 0; console.warn('hit flash', e); }
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(clearTmp, clearA);
+  scene.overrideMaterial = null;
+  scene.background = bg; scene.fog = fogWas;
 }
 
 /* Стенд VFX стреляет теми же событиями, что и симуляция, через ту же
@@ -3872,6 +3921,7 @@ function frame() {
   const covered = document.getElementById('screen')?.classList.contains('doc');
   if (covered && !pendingShot) return;
   /* Постобработка, если она собралась; иначе прямой кадр — бой важнее света. */
+  drawHitFlash();
   if (post) post.render(); else renderer.render(scene, camera);
 
   if (pendingShot) {
