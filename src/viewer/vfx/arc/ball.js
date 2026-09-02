@@ -125,7 +125,11 @@ function ball(vfx, e, P, ctx, lob) {
          голове рвался (провал теста P1). Здесь тот же участок нарисован в
          свободном поле, где `reach` = 1: пучок из главного поля плавно
          входит в него, и разряд остаётся цельным. */
-      const back = Math.max(0, hd.f - 0.22);
+      /* Перекрытие 0.30 доли пути, не 0.22: окно гашения — 0.18, и на стыке
+         между перестройками главного поля голова на два кадра отрывалась от
+         пучка (замер 03.09 по ролику на 0.20 с: «изолированный клубок с
+         разрывом спереди и сзади»). Запас в 0.12 доли закрывает стык. */
+      const back = Math.max(0, hd.f - 0.30);
       const Hb = headAt(back);
       if (hd.f > 0.02) {
         out.push({
@@ -219,9 +223,15 @@ function ball(vfx, e, P, ctx, lob) {
       const X = state.hit ? state.hit.x : E[0], Z = state.hit ? state.hit.z : E[2];
       const Y = Math.max(0.6, headAt(endF)[1]);
       const blocked = state.hit ? state.hit.blocked : false;
+      /* НАВЕС ПАДАЕТ ВСЕГДА. Болт, не попавший ни во что, просто кончается
+         (энергия иссякла), а навес брошен В ТОЧКУ: парабола кончается на
+         полу, и удар вниз — её естественный конец. Замер 03.09 (судья, 35 из
+         100 за посадку): без записи `impact` от сима навес приходил к цели и
+         гас без вспышки, кольца и ожога — «посадка неотличима от промаха». */
+      const lands = !!state.hit || lob;
       /* Клубок удара живёт две перестройки — 0.1 с белой путаницы в точке. */
-      if (state.hit) { hd.tangle = blocked ? 0.5 : 1; hd.tangleUntil = t + 0.1; }
-      if (state.hit && !blocked) {
+      if (lands) { hd.tangle = blocked ? 0.5 : 1; hd.tangleUntil = t + 0.1; }
+      if (lands && !blocked) {
         spikes(vfx, P, { x: X, y: Y, z: Z, n: 40, speed: 13, life: 0.34, r: rng });
         floorRing(vfx, P, { x: X, z: Z, r0: 0.3, r1: lob ? 2.6 : 2.2, life: 0.4 });
         arcSparks(vfx, P, { x: X, y: Y, z: Z, n: 24, speed: 11, life: 0.45, r: rng });
@@ -239,7 +249,7 @@ function ball(vfx, e, P, ctx, lob) {
         spikes(vfx, P, { x: X, y: Y, z: Z, n: 12, speed: 10, life: 0.26, r: rng });
         vfx.flashLight(X, Y, Z, P[1], 10, 0.2, 5);
       }
-      /* Промах (`state.hit` пуст) — ничего: энергия просто кончилась. */
+      /* Промах болта (`state.hit` пуст) — ничего: энергия просто кончилась. */
     }
     if (t > LIFE - 0.05) vfx.flights.delete(`${e.who}:${e.skill}`);
   });

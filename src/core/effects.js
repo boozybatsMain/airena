@@ -87,7 +87,14 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
         by: srcId,
         by: srcId,
       };
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'burn', element: def.element });
+      /* ДЛИТЕЛЬНОСТЬ В ЗАПИСИ (docs/VFX-PLAN.md §7.7): вьювер держит статус
+         ровно столько, сколько его держит сим, и не заводит второй эффект на
+         то же тело, когда зона подкладывает статус каждые 0.5 с (P10).
+         `atom.duration` — уже свёрнутая доля и тик (`compile.js`); у лечения
+         и очищения её нет вовсе, и поле не пишется: `round3(null)` дал бы 0,
+         а `??` пропустил бы этот 0 как настоящую длительность. Сим пишет,
+         вьювер читает — инвариант §9 цел, у записи просто появилось поле. */
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'burn', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       /* В лог — только начало пожара, не его продление. */
       if (fresh) log.push({ t: round3(t), type: 'ignite', who: srcId, target: to.id, skill: def.id });
       return;
@@ -113,18 +120,18 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       /* Оглушение не продлевает уже идущее: цепочка оглушений — это бой,
          в котором один из двоих не играет, и смотреть его нечего. */
       to.stun = Math.max(to.stun, atom.duration);
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'stun', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'stun', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'root':
       st.root = Math.max(st.root, t + atom.duration);
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'root', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'root', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'shield':
       st.shield = Math.max(st.shield, atom.mag);
       st.shieldUntil = Math.max(st.shieldUntil, t + atom.duration);
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'shield', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'shield', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'heal': {
@@ -132,7 +139,7 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       to.hp = Math.min(to.def.hp, to.hp + atom.mag);
       if (to.hp > before) {
         log.push({ t: round3(t), type: 'heal', who: to.id, amount: round3(to.hp - before) });
-        fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'heal', element: def.element });
+        fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'heal', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       }
       return;
     }
@@ -141,19 +148,19 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       st.burn = null; st.root = 0; st.blind = 0; st.silence = 0;
       st.weaken = {};
       to.stun = 0;
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'cleanse', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'cleanse', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'blind':
       /* Портится ОБЪЕКТ ПЕРЦЕПЦИИ, а не прицел: цель продолжает видеть, но
          видит прошлое. И знает об этом — `self.blinded` в перцепции. */
       st.blind = Math.max(st.blind, t + atom.duration);
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'blind', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'blind', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'silence':
       st.silence = Math.max(st.silence, t + atom.duration);
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'silence', element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'silence', element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'wall': {
@@ -208,12 +215,12 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
 
     case 'boost':
       st.boost[atom.channel] = { mul: atom.mag, until: t + atom.duration };
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'boost', channel: atom.channel, element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'boost', channel: atom.channel, element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     case 'weaken':
       st.weaken[atom.channel] = { mul: atom.mag, until: t + atom.duration };
-      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'weaken', channel: atom.channel, element: def.element });
+      fx.push({ kind: 'status', who: to.id, t: round3(t), effect: 'weaken', channel: atom.channel, element: def.element, ...(atom.duration != null ? { duration: round3(atom.duration) } : {}) });
       return;
 
     default:

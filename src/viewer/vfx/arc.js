@@ -1,5 +1,6 @@
 /**
- * Молния (`arc`): cone zone self beam bolt lob impact charge.
+ * Молния (`arc`): cone zone self beam bolt lob impact charge status
+ * (рывок, блинк, прыжок и стена — план §3 A9).
  *
  * Эталон — Storm Lance из Path of Exile 2 (reports/vfx/reference/ref-storm-*):
  * не тонкая синяя линия, а ТОЛСТЫЙ пучок нитей, который рвётся по земле,
@@ -45,3 +46,4 @@ export { zone } from './arc/zone.js';
 export { self } from './arc/self.js';
 export { bolt, lob } from './arc/ball.js';
 export { impact, charge } from './arc/impact.js';
+export { status } from './arc/status.js';

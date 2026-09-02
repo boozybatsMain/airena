@@ -70,7 +70,7 @@ export const STATUSES = ['burn', 'stun', 'root', 'shield', 'heal', 'cleanse', 'b
  * эффект статуса, `t` — время каста (входит в сид: другой `t` — другой
  * рисунок того же эффекта).
  */
-export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'burn', t = 0 } = {}) {
+export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'burn', who = null, t = 0 } = {}) {
   const base = { kind, element, who: 'blue', t, skill: 'k1' };
   const h = Math.atan2(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
   const dist = Math.hypot(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
@@ -89,7 +89,10 @@ export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'bu
        выводит сам (другой боец). У статуса наоборот: `who` — цель
        (`effects.js` пишет `to.id`). `channel` нужен усилению и ослаблению. */
     case 'impact': return { ...base, x: ORANGE.x, z: ORANGE.z, effects: [atom] };
-    case 'status': return { ...base, who: 'orange', effect, ...(effect === 'boost' || effect === 'weaken' ? { channel: 'speed' } : {}) };
+    /* Цель статуса по умолчанию — оранжевый (`effects.js` пишет `to.id`), но
+       SELF-эффекты (щит, лечение, очищение, усиление) сим кладёт на самого
+       кастера: их надо уметь заказать на синего — `who: 'blue'`. */
+    case 'status': return { ...base, who: who || (effect === 'shield' || effect === 'heal' || effect === 'cleanse' || effect === 'boost' ? 'blue' : 'orange'), effect, duration: 4, ...(effect === 'boost' || effect === 'weaken' ? { channel: 'speed' } : {}) };
     /* Заряд в замахе — запись только вьювера (см. docs/VFX.md §4). */
     case 'charge': return { ...base, x: BLUE.x, z: BLUE.z, h, windup: 0.9, for: 'cone' };
     default: return null;

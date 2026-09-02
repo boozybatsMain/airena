@@ -719,6 +719,32 @@ function fallOrientation(body) {
 const bodies = {};
 
 /**
+ * ОДИН КОНТЕКСТ на оба вызова `vfx.play` (docs/VFX-PLAN.md §7.1).
+ *
+ * `bodyPos` — где тело сейчас (эффект, привязанный к телу, идёт за ним).
+ * `bodyShape` — КАПСУЛА тела: она нужна всему, что живёт на его поверхности,
+ * — щиту, удару по жертве, статусу. Радиус берётся из `footprint` СЫРОЙ
+ * модели (это её размер ДО масштаба, у осьминога 3.94 модельных единицы) и
+ * потому обязан быть умножен на `scale`: `footprint·scale/2` — это ровно
+ * радиус коллайдера в метрах. `height` меряется ПОСЛЕ масштаба, то есть уже
+ * в метрах. Модуль, которому капсулы не дали, рисует шар — см. `arc/self.js`.
+ */
+const FX_CTX = {
+  bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null),
+  bodyShape: (who) => {
+    const b = bodies[who];
+    if (!b) return null;
+    const p = b.root.position;
+    return {
+      x: p.x, y: p.y, z: p.z,
+      r: Math.max(0.5, b.footprint * b.scale * 0.5),
+      h: Math.max(0.8, b.height || 2.0),
+      yaw: b.root.rotation.y,
+    };
+  },
+};
+
+/**
  * Поставить на сторону другое тело.
  *
  * Тела грузились один раз при старте и держались весь сеанс — правильно,
@@ -1388,7 +1414,7 @@ const IR_DRAWS = false;
 
 function playFx(e) {
   if (e.element) {
-    vfx.play(e, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
+    vfx.play(e, FX_CTX);
     /*
      * ДЕКОРАЦИЯ ИГРАЕТСЯ ПОСЛЕ READ-KIT И НЕ ВМЕСТО НЕГО.
      *
@@ -1981,7 +2007,7 @@ function chargeBeat(id, v, kd, el) {
     vfx.play({
       kind: 'charge', who: id, element: kd.element || 'kinetic', skill: v.act, t: renderClock,
       x: v.x, z: v.z, h: v.h, windup: Math.max(0.1, kd.windup - el), for: kd.kind,
-    }, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
+    }, FX_CTX);
   } catch (err) { console.warn('charge', err); }
 }
 
