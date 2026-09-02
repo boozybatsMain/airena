@@ -16,12 +16,20 @@ const PAGES = {
   '/creature': 'creature.html',
   '/arena': 'arena.html',
   '/uikit': 'uikit.html',
+  '/ice': 'ice.html',
+  '/frost': 'frost.html',
+  '/elements': 'elements.html',
 };
 
 /* Макет арены — настоящий three.js и настоящие тела из репозитория. */
 const REPO = new URL('..', import.meta.url).pathname;
 const STATIC = {
   '/vendor/': join(REPO, 'node_modules/three/build'),
+  /* Аддоны нужны стенду `/ice`: узел свечения живёт именно там. */
+  '/vendor-addons/': join(REPO, 'node_modules/three/examples/jsm'),
+  /* Стенд `/elements` импортирует БОЕВОЙ `src/viewer/vfx.js` как модуль:
+     проверяется тот код, что рисует бой, а не его копия на стенде. */
+  '/src/': join(REPO, 'src'),
   '/bodies/': join(REPO, 'bodies'),
   '/assets/': join(REPO, 'preview/assets'),
 };

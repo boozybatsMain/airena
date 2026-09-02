@@ -32,49 +32,21 @@ import * as TSL from 'three/tsl';
 /* Относительный путь: у зрителя он разрешается в тот же `/skills/registry.js`,
    а у нас — в настоящий файл, и модуль становится проверяемым гейтом. */
 import { ELEMENTS } from '../skills/registry.js';
+import {
+  TIME, basic, clamp01, easeOutBack, markGlow, mulberry, pooled, rnd, setFade, setGlowEnabled,
+  spread, withFade,
+} from './vfx/core.js';
+import * as kit from './vfx/kit.js';
+import * as iceFx from './vfx/ice.js';
+import * as fireFx from './vfx/fire.js';
+import * as arcFx from './vfx/arc.js';
 
-/**
- * ── МЕТКА «ЭТО СВЕТИТСЯ» (D163) ───────────────────────────────────────────
- *
- * Bloom в этом проекте не пороговый, а избирательный: растровый проход пишет
- * второй выход `bloomIntensity`, и в свечение попадает ровно то, что его
- * пометило. Причина — арена белая (§10.1), и пороговый bloom засветил бы пол.
- *
- * Из этого получается приятная вещь: правило §10.1 «эмиссия зарезервирована
- * исключительно за скиллами, телеграфами и импактами» перестало быть
- * соглашением в комментарии. Материал без метки физически не может попасть
- * в bloom, а метка ставится только здесь и только этой функцией.
- *
- * `try` не для красоты: `mrtNode` — свойство узловых материалов, и на
- * бэкенде без MRT присваивание может бросить. Эффект обязан нарисоваться и
- * без свечения.
- */
 /*
- * Метка ставится, ТОЛЬКО ЕСЛИ конвейер свечения действительно собрался.
- *
- * `material.mrtNode` описывает, что материал пишет в дополнительные выходы
- * растрового прохода. Если у прохода MRT не настроен, а у материала есть, —
- * получается структура выхода БЕЗ ЕДИНОГО ПОЛЯ, и WGSL такой шейдер не
- * компилирует: «structures must have at least one member». Материал молча не
- * рисуется, а с ним и весь кадр.
- *
- * Проверено вживую: с `?bloom=0` арена была чёрной, а консоль — в ошибках
- * компиляции. То есть выключатель, заведённый ради проверки запасного пути,
- * сам этот путь и ломал.
+ * Метка свечения, часы, затухание и пул материалов живут в `vfx/core.js`
+ * (на них стоят и набор `vfx/kit.js`, и элементные модули); отсюда они
+ * только реэкспортируются под прежними именами для `main.js`.
  */
-let glowOn = false;
-
-/** Включает пометку. Зовёт `main.js` — ровно тогда, когда `PostProcessing` собран. */
-export function setGlowEnabled(on) { glowOn = !!on; }
-
-/** Материал фигуры телеграфа и переключатель его затухания — для `main.js`. */
-export { telegraphMat, setFade };
-
-export function markGlow(material, amount = 1) {
-  if (!glowOn) return material;
-  try { material.mrtNode = TSL.mrt({ bloomIntensity: TSL.float(amount) }); } catch { /* без MRT */ }
-  return material;
-}
+export { setGlowEnabled, markGlow, setFade, telegraphMat };
 
 /**
  * Тень прыжка — ЕДИНСТВЕННЫЙ меш этого файла, который не светится.
@@ -110,8 +82,8 @@ function shadowMat() {
  * снаряд — летящая голова), меняется только то, ЧЕМ он закрашен.
  */
 
-const { Fn, float, vec2, vec3, vec4, uv, uniform, mix, smoothstep, oneMinus,
-  abs: tabs, sin: tsin, fract, pow: tpow, mx_noise_float, mx_fractal_noise_float } = TSL;
+const { float, vec2, vec3, vec4, uv, uniform, mix, smoothstep, oneMinus,
+  abs: tabs, sin: tsin, mx_noise_float, mx_fractal_noise_float } = TSL;
 
 /**
  * Труба луча: яркое ядро, мягкая оболочка, бегущая по стволу рябь.
@@ -123,82 +95,6 @@ const { Fn, float, vec2, vec3, vec4, uv, uniform, mix, smoothstep, oneMinus,
  * `t` — живая униформа, её двигает `update`. Рябь идёт ВДОЛЬ ствола к цели:
  * это то, что отличает выстрел от нарисованной палки, и оно дешевле искр.
  */
-/**
- * Одни часы на все узловые материалы этого файла.
- *
- * Не `TSL.time`: он идёт от старта страницы, а нам нужны часы, которые
- * двигает `Vfx.update` — те же, по которым живут частицы. Одна униформа на
- * все материалы, а не по одной на эффект: их за бой создаются сотни, и
- * сотня униформ — это сотня обновлений на кадр вместо одного.
- */
-const TIME = TSL.uniform(0);
-
-/*
- * ЗАТУХАНИЕ ЖИВЁТ В УЗЛЕ, А НЕ В `material.opacity`.
- *
- * Если у узлового материала задан `opacityNode`, поле `opacity` не читается
- * вовсе — три.js берёт значение из графа. Написать `o.material.opacity = 1-u`
- * рядом с `opacityNode` значит написать строку, которая ничего не делает, и
- * эффект будет висеть на полу с полной яркостью до самого удаления.
- *
- * Поэтому у каждого такого материала есть своя униформа `fade`, и она
- * умножается внутри графа. Ссылка кладётся в `userData`, чтобы обновлять её
- * из колбэка `spawnMesh` одной строкой.
- */
-function withFade(m) {
-  const f = TSL.uniform(1);
-  m.userData.fade = f;
-  return f;
-}
-
-/*
- * ── ПУЛ МАТЕРИАЛОВ (замер ревью 01.09) ────────────────────────────────────
- *
- * У узлового материала ключ кэша программы включает `object.id` каждого узла
- * графа (`NodeUtils.getCacheKey`). Значит НОВЫЙ материал — это всегда промах
- * кэша и полная пересборка графа с генерацией WGSL на том же кадре, где
- * эффект появился.
- *
- * Замерено в живом Chrome на WebGPU: кадр со спавном стоит 12–22 мс против
- * 0.3–1.0 мс покоя, и это не прогрев — восемь одинаковых импактов подряд дали
- * 18.1 / 14.8 / 14.7 / 16.3 / 20.7 / 12.9 / 11.5 / 12.8 мс. За бой таких
- * спавнов около ста тридцати, то есть просадка гарантирована ровно на кадрах
- * попаданий — там, где смотреть важнее всего.
- *
- * Материалы теперь берутся из кольца по ключу «вид + палитра». Кольцо, а не
- * один экземпляр: единственное, что различается у двух одновременных
- * эффектов, — униформа затухания, и общий материал заставил бы старший
- * эффект мигать вместе с младшим. Шести хватает: эффект живёт 0.3–3 с, а
- * одновременных одного вида бывает два-три.
- *
- * Цена честная и её видно: при седьмом одновременном эффекте одного вида
- * старший переиспользует материал младшего и доиграет с его прозрачностью.
- * Это дешевле, чем двадцать миллисекунд на каждом попадании.
- */
-const MAT_RING = 6;
-const matPool = new Map();
-
-function pooled(key, make) {
-  let ring = matPool.get(key);
-  if (!ring) { ring = { list: [], head: 0 }; matPool.set(key, ring); }
-  if (ring.list.length < MAT_RING) {
-    const m = make();
-    /* Помечен как общий: `updateFx` не имеет права его утилизировать. */
-    m.userData.pooled = true;
-    ring.list.push(m);
-    return m;
-  }
-  const m = ring.list[ring.head % MAT_RING];
-  ring.head++;
-  return m;
-}
-
-/** Поставить затухание материалу, у которого оно есть. Тихо молчит, если нет. */
-function setFade(o, v) {
-  const f = o.material && o.material.userData && o.material.userData.fade;
-  if (f) f.value = v; else if (o.material) o.material.opacity = v;
-}
-
 function tubeMat(P, t = TIME) {
   const M = THREE.MeshBasicNodeMaterial || THREE.MeshBasicMaterial;
   if (!THREE.MeshBasicNodeMaterial) return basic(P[1], 0.95);
@@ -401,6 +297,142 @@ function makeTelegraphMat(color, kind, halfAngle) {
   return m;
 }
 
+/*
+ * ══ ЛЁД (D163, продолжение): кварц, ледяное поле и купол ══════════════════
+ *
+ * Приёмы со стендов /ice и /frost, проверенные против белого пола, и один
+ * кусок кода из второго репозитория основателя, который оказался на нашем
+ * стеке: `GeometryPainterThreeJS` (MIT, three/webgpu + TSL) — геометрия
+ * кварца перенесена оттуда почти дословно.
+ *
+ * Почему это ЭЛЕМЕНТО-зависимый силуэт и почему это законно. §9.2 говорит
+ * «доставка задаёт силуэт, элемент — палитру», и мороз этого не нарушает:
+ * силуэт доставки остаётся (клин конуса, диск зоны, оболочка self),
+ * меняется то, ЧЕМ он заполнен.
+ *
+ * Правила, которые здесь принуждены и которые дороже красоты:
+ *   · материалы живут в кольце `pooled` — новый узловой материал стоит
+ *     12–22 мс на кадре спавна (замер выше по файлу), и лёд не имеет права
+ *     возвращать эту просадку;
+ *   · в свечение уходит МАСКА (кант, вершина), а не материал целиком —
+ *     иначе на белом полу лёд превращается в белую кляксу (замер /ice);
+ *   · трещины ТЁМНЫЕ: разлом — это щель, отсутствие света.
+ */
+
+
+/**
+ * Кварц из GeometryPainterThreeJS: шестигранная призма, у которой дрожит
+ * КОЛОННА грани (угол и радиус выбираются один раз на грань — рёбра остаются
+ * прямыми сверху донизу), лёгкое сужение и пирамидальное завершение со
+ * сдвинутой вершиной. Неиндексированная, плоские нормали: жёсткие грани и
+ * есть то, что читается как «кристалл». Высота 1, основание в y=0.
+ */
+function makeQuartz(rnd) {
+  const sides = 6;
+  const baseR = 0.16 + rnd() * 0.1;
+  const shaftH = 0.55 + rnd() * 0.2;
+  const taper = 0.78 + rnd() * 0.16;
+  const apex = new THREE.Vector3((rnd() - 0.5) * 0.14, 1, (rnd() - 0.5) * 0.14);
+
+  const angles = [], radii = [];
+  for (let i = 0; i < sides; i++) {
+    angles.push(((i + (rnd() - 0.5) * 0.34) / sides) * Math.PI * 2);
+    radii.push(baseR * (0.8 + rnd() * 0.4));
+  }
+  const lower = [], upper = [];
+  for (let i = 0; i < sides; i++) {
+    const c = Math.cos(angles[i]), s = Math.sin(angles[i]);
+    lower.push(new THREE.Vector3(c * radii[i], 0, s * radii[i]));
+    upper.push(new THREE.Vector3(c * radii[i] * taper, shaftH, s * radii[i] * taper));
+  }
+  const pos = [];
+  const push = (a, b, c) => pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  const bottom = new THREE.Vector3(0, -0.02, 0);
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    push(lower[i], upper[i], upper[j]);
+    push(lower[i], upper[j], lower[j]);
+    push(upper[i], apex, upper[j]);
+    push(lower[j], bottom, lower[i]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/* Три варианта — три формы на весь бой; лениво, чтобы не платить на старте
+   страниц, где льда не будет. Разнообразие внутри одного варианта дают
+   прожилки по МИРОВЫМ координатам в материале. */
+let QUARTZ = null;
+function quartz() {
+  if (!QUARTZ) {
+    const rnd = mulberry(0xc0ffee);
+    QUARTZ = [makeQuartz(rnd), makeQuartz(rnd), makeQuartz(rnd)];
+  }
+  return QUARTZ;
+}
+
+
+/**
+ * Плотное тело льда. Прозрачности нет намеренно: `transmission` показывает
+ * то, что ПОЗАДИ, а позади над белой платформой белое — честная физика даёт
+ * ровный белый лёд (проверено на стенде). Вместо неё четыре слоя: глубина по
+ * высоте, френелевый кант, прожилки шумом по мировым координатам, иней у
+ * основания.
+ */
+function iceMat(element, P) {
+  return pooled(`ice:${element}`, () => {
+    const m = new THREE.MeshStandardNodeMaterial({ metalness: 0.05, roughness: 0.22 });
+    const fade = withFade(m);
+    const col = (c) => vec3(c.r, c.g, c.b);
+
+    const h = TSL.positionLocal.y.clamp(0, 1);
+    const fres = oneMinus(tabs(TSL.dot(TSL.normalView, TSL.positionViewDirection))).pow(2.1).clamp(0, 1);
+    const veins = mx_fractal_noise_float(TSL.positionWorld.mul(2.9), 3, 2.0, 0.5, 1).mul(0.5).add(0.5);
+    const cracks = smoothstep(float(0.46), float(0.54), veins);
+    const rime = oneMinus(smoothstep(float(0.0), float(0.28), h));
+
+    const body = mix(col(P[2]), col(P[1]), h.pow(0.62));
+    const withVeins = mix(body, col(P[0]), cracks.mul(0.28));
+    const withRime = mix(withVeins, col(P[0]).mul(0.86), rime.mul(0.4));
+    /* 0.42 подобрано против БЕЛОГО пола: перетянутый френель стирает
+       кристалл в белый. Тёмный фон прощает всё, белый не прощает ничего. */
+    const tinted = mix(withRime, col(P[0]), fres.mul(0.42));
+    m.colorNode = tinted.mul(h.mul(0.3).add(0.7));
+
+    const flare = fres.pow(1.6).mul(0.8).add(h.pow(4.0).mul(0.35));
+    m.emissiveNode = col(P[0]).mul(flare.mul(fade).mul(0.9));
+    /* В bloom уходит ТА ЖЕ маска, что светится. */
+    return markGlow(m, flare.mul(fade).clamp(0, 1));
+  });
+}
+
+/**
+ * Купол: вся плотность на канте и в ползущих прожилках, середина почти
+ * прозрачна — тело видно сквозь щит, это его работа.
+ */
+function domeMat(element, P) {
+  return pooled(`dome:${element}`, () => {
+    const m = new THREE.MeshBasicNodeMaterial({
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const fade = withFade(m);
+    const col = (c) => vec3(c.r, c.g, c.b);
+
+    const n = TSL.normalWorld;
+    const fres = oneMinus(tabs(TSL.dot(TSL.normalView, TSL.positionViewDirection))).pow(2.0).clamp(0, 1);
+    const drift = vec3(0, TIME.mul(0.05), TIME.mul(0.03));
+    const v1 = mx_fractal_noise_float(n.mul(3.0).add(drift), 3, 2.0, 0.5, 1);
+    const vein = oneMinus(smoothstep(float(0.0), float(0.07), tabs(v1)));
+
+    m.colorNode = mix(mix(col(P[2]), col(P[1]), fres.mul(0.8).add(0.1)), col(P[0]), vein.mul(0.5));
+    m.opacityNode = fres.pow(1.2).mul(0.5).add(0.06).add(vein.mul(0.22)).mul(fade).clamp(0, 1);
+    return markGlow(m, fres.mul(0.3).add(vein.mul(0.4)).mul(fade).clamp(0, 1));
+  });
+}
+
 /** Палитра элемента: три цвета, от ядра к краю. */
 /**
  * Какой цвет палитры взять для i-й частицы.
@@ -425,10 +457,10 @@ export function palette(element) {
 // пул частиц
 // ───────────────────────────────────────────────────────────────────────────
 
-const MAX_PARTICLES = 3000;
+const MAX_PARTICLES = 5000;
 
 /** Сколько источников света держим под вспышки удара. См. конструктор `Vfx`. */
-const LIGHT_POOL = 2;
+const LIGHT_POOL = 4;
 
 /**
  * Инстансированные квады с аналитическим движением.
@@ -453,25 +485,31 @@ export class Particles {
     geo.attributes.position = quad.attributes.position;
     geo.attributes.uv = quad.attributes.uv;
 
-    this.buf = {
-      p0: new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3),
-      v0: new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3),
-      acc: new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3),
-      col: new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3),
-      /* x: born, y: life, z: size, w: ФОРМА (0 точка, 1 штрих, 2 осколок, 3 искра).
-         Здесь раньше лежал `spin`, который не читал никто: ни вершинный узел,
-         ни фрагментный. Слот стоял занятым и не делал ничего, а ось «спрайт»
-         в грамматике VFX-IR при этом существовала и была невидимой — то есть
-         игрок платил за выбор, которого не видно. Реестр умений про это
-         говорит прямо: разнообразие, которого не видно, разнообразием не
-         является. Слот отдан форме. */
-      cfg: new THREE.InstancedBufferAttribute(new Float32Array(max * 4), 4),
-    };
-    for (const [k, a] of Object.entries(this.buf)) {
-      a.setUsage(THREE.DynamicDrawUsage);
-      geo.setAttribute(k, a);
+    /*
+     * ОДИН ЧЕРЕДУЮЩИЙСЯ БУФЕР, А НЕ СЕМЬ.
+     *
+     * WebGPU даёт конвейеру не больше ВОСЬМИ вершинных буферов; квад плюс
+     * семь инстансных атрибутов — девять, и конвейер не собирается вовсе
+     * (проверено: «Vertex buffer count (9) exceeds the maximum number of
+     * vertex buffers (8)», пустой кадр без единой частицы). Все данные
+     * частицы лежат подряд в одном `InstancedInterleavedBuffer`, и это ещё и
+     * одна загрузка на кадр вместо семи.
+     *
+     * Раскладка (23 числа): p0 ×3, v0 ×3, acc ×3, col ×3, col2 ×3,
+     * cfg ×4 (born, life, size, форма), ext ×4 (вращение, размер к концу,
+     * вытягивание по скорости, доля в свечении).
+     */
+    const STRIDE = 23;
+    this.stride = STRIDE;
+    this.arr = new Float32Array(max * STRIDE);
+    this.ibuf = new THREE.InstancedInterleavedBuffer(this.arr, STRIDE, 1);
+    this.ibuf.setUsage(THREE.DynamicDrawUsage);
+    const layout = { p0: [0, 3], v0: [3, 3], acc: [6, 3], col: [9, 3], col2: [12, 3], cfg: [15, 4], ext: [19, 4] };
+    this.off = {};
+    for (const [k, [offset, size]] of Object.entries(layout)) {
+      this.off[k] = offset;
+      geo.setAttribute(k, new THREE.InterleavedBufferAttribute(this.ibuf, size, offset));
     }
-    /* Жизнь нулевой длины = частица не существует. Пул стартует пустым. */
     this.geo = geo;
 
     /*
@@ -490,13 +528,18 @@ export class Particles {
      * только записанный узлами вместо сырого GLSL — `WebGPURenderer` не
      * рендерит `ShaderMaterial` в принципе (§9.1).
      */
-    const { attribute, cameraProjectionMatrix, float, modelViewMatrix, positionLocal, uv, vec2, vec4 } = TSL;
+    const {
+      attribute, cameraProjectionMatrix, float, modelViewMatrix, positionLocal, uv, vec2, vec3, vec4,
+      mix, smoothstep, oneMinus, fract, select, mx_noise_float,
+    } = TSL;
     const t = this.time;
     const p0 = attribute('p0', 'vec3');
     const v0 = attribute('v0', 'vec3');
     const acc = attribute('acc', 'vec3');
     const col = attribute('col', 'vec3');
+    const col2 = attribute('col2', 'vec3');
     const cfg = attribute('cfg', 'vec4');
+    const ext = attribute('ext', 'vec4');
 
     const age = t.sub(cfg.x);
     const life = cfg.y;
@@ -505,15 +548,19 @@ export class Particles {
     const u = age.div(life.max(float(0.0001)));
     const alive = u.greaterThanEqual(float(0)).and(u.lessThan(float(1)));
     const uc = u.clamp(0, 1);
+    const on = alive.select(float(1), float(0));
 
     /* Аналитическая интеграция: p = p0 + v0·τ + ½a·τ². Ни одного шага, ни
        одной аллокации, ни одной строки работы на процессоре. */
     const tau = age.max(float(0));
     const pos = p0.add(v0.mul(tau)).add(acc.mul(tau).mul(tau).mul(0.5));
+    const vel = v0.add(acc.mul(tau));
 
-    /* Размер гаснет к концу жизни, но не в ноль: частица, схлопнувшаяся в
-       точку, читается как артефакт, а не как затухание. Мёртвая — в ноль. */
-    const size = cfg.z.mul(float(1).sub(uc.mul(0.5))).mul(alive.select(float(1), float(0)));
+    /* Размер: вход за первую десятую жизни (рождение в полный размер
+       читается как мигание), к концу — множитель `ext.y`: дым растёт,
+       искра сжимается. Мёртвая — в ноль. */
+    const sizeIn = smoothstep(float(0), float(0.1), uc);
+    const size = cfg.z.mul(mix(float(1), ext.y, uc)).mul(sizeIn).mul(on);
 
     const mat = new THREE.MeshBasicNodeMaterial();
     mat.transparent = true;
@@ -521,50 +568,83 @@ export class Particles {
     mat.blending = blending;
     mat.side = THREE.DoubleSide;
     /*
-     * ЧЕТЫРЕ ФОРМЫ, А НЕ ОДИН КРУГ.
+     * ВОСЕМЬ ФОРМ, А НЕ ОДИН КРУГ.
      *
-     * Форма — это одна из шести осей, которые модель выбирает в VFX-IR (§9.2),
-     * и до этого места она не доезжала: все частицы рисовались одинаковым
-     * мягким кругом. Проверено глазом на стенде — штрих, осколок и искра были
-     * неотличимы, то есть треть грамматики декораций не существовала.
+     * Форма — ось, которую выбирает и модель в VFX-IR (§9.2), и элементный
+     * модуль; до этого места она не доезжала: все частицы были одинаковым
+     * мягким кругом. Форма делается ДВУМЯ вещами сразу: ПРОПОРЦИЕЙ квада
+     * (штрих и пламя вытянуты) и МАСКОЙ в пикселе (осколок с углами, дым
+     * рваный по шуму, обломок угловатый). Одной пропорции мало — овал;
+     * одной маски мало — углы срезаются краем квада.
      *
-     * Форма делается ДВУМЯ вещами сразу, и обеими нужно:
-     *   ПРОПОРЦИЯ квада — штрих обязан быть вытянутым, иначе он круг;
-     *   МАСКА в пикселе — осколок обязан иметь углы, иначе он тот же круг.
-     * Одной пропорции мало (получается овал), одной маски мало (углы упираются
-     * в квадратный квад и срезаются).
+     *   0 точка · 1 штрих · 2 осколок · 3 искра · 4 дым · 5 обломок ·
+     *   6 пламя · 7 кольцо
      */
     const shape = cfg.w;
     const isStreak = shape.greaterThan(float(0.5)).and(shape.lessThan(float(1.5)));
     const isShard = shape.greaterThan(float(1.5)).and(shape.lessThan(float(2.5)));
-    const isSpark = shape.greaterThan(float(2.5));
+    const isSpark = shape.greaterThan(float(2.5)).and(shape.lessThan(float(3.5)));
+    const isSmoke = shape.greaterThan(float(3.5)).and(shape.lessThan(float(4.5)));
+    const isChip = shape.greaterThan(float(4.5)).and(shape.lessThan(float(5.5)));
+    const isFlame = shape.greaterThan(float(5.5)).and(shape.lessThan(float(6.5)));
+    const isRing = shape.greaterThan(float(6.5));
 
-    /* Штрих вытянут по экранной вертикали: частицы летят, и вертикальный
-       штрих читается как след движения, а не как палка. */
     const aspect = vec2(
-      isStreak.select(float(0.42), float(1)),
-      isStreak.select(float(2.1), float(1)),
+      isStreak.select(float(0.42), isFlame.select(float(0.72), float(1))),
+      isStreak.select(float(2.1), isFlame.select(float(1.55), float(1))),
     );
+    const local = positionLocal.xy.mul(size).mul(aspect);
+
+    /*
+     * Ось квада. По умолчанию — экранная вертикаль, повёрнутая на `ext.x·τ`
+     * (обломки крутятся). С `ext.z` — по СКОРОСТИ в пространстве вида и
+     * вытянуто пропорционально ей: искра и уголь летят хвостом назад, а не
+     * стоят вертикальной палкой при горизонтальном полёте. Тот же приём,
+     * что в референсе основателя, записанный узлами.
+     */
+    const vv = modelViewMatrix.mul(vec4(vel, 0)).xy;
+    const vlen = vv.length();
+    const vdir = select(vlen.greaterThan(float(0.001)), vv.div(vlen.max(float(0.001))), vec2(0, 1));
+    const stretch = float(1).add(vlen.mul(0.18).min(3.5).mul(ext.z));
+    const ang = ext.x.mul(tau).add(fract(cfg.x.mul(0.37)).mul(6.28));
+    const rdir = vec2(ang.sin().negate(), ang.cos());
+    const useVel = ext.z.greaterThan(float(0.5));
+    const axisY = select(useVel, vdir, rdir);
+    const axisX = vec2(axisY.y, axisY.x.negate());
+    const offset = axisX.mul(local.x).add(axisY.mul(local.y.mul(select(useVel, stretch, float(1)))));
     mat.vertexNode = cameraProjectionMatrix.mul(
-      modelViewMatrix.mul(vec4(pos, 1)).add(vec4(positionLocal.xy.mul(size).mul(aspect), 0, 0)),
+      modelViewMatrix.mul(vec4(pos, 1)).add(vec4(offset, 0, 0)),
     );
-    mat.colorNode = col;
+    mat.colorNode = mix(col, col2, uc);
 
     const q = uv().sub(vec2(0.5, 0.5));
-    /* Круг — расстояние; осколок — ромб (сумма модулей); искра — тот же круг,
-       но с резким ядром и почти без ореола. */
+    const seed = fract(cfg.x.mul(0.37)).mul(17.0);
     const dRound = q.length().mul(2);
     const dDiamond = q.x.abs().add(q.y.abs()).mul(2);
-    const d = isShard.select(dDiamond, dRound);
-    const soft = float(1).sub(d).clamp(0, 1);
-    const mask = isSpark.select(soft.pow(3.2), soft.pow(1.5));
-    mat.opacityNode = mask
-      .mul(float(1).sub(uc).pow(1.3))
-      .mul(alive.select(float(1), float(0)));
+    const noise = mx_noise_float(vec3(q.mul(3.0), seed)).mul(0.5).add(0.5);
+    const soft = oneMinus(dRound).clamp(0, 1);
+    /* дым: мягкое пятно, рваное шумом, редеет к концу */
+    const smokeM = smoothstep(float(0.12), float(0.78), soft.mul(noise.mul(0.9).add(0.45))).mul(oneMinus(uc.mul(0.35)));
+    /* обломок: угловатый многоугольник с жёстким краем */
+    const dChip = q.x.abs().mul(1.5).max(q.y.abs()).mul(2).add(noise.sub(0.5).mul(0.5));
+    const chipM = oneMinus(smoothstep(float(0.7), float(0.9), dChip));
+    /* пламя: капля острием вверх, вершина обгрызена шумом и возрастом */
+    const fy = q.y.add(0.15);
+    const dFlame = vec2(q.x.mul(1.7), fy.mul(float(1).add(q.y.mul(1.4)))).length().mul(2.1);
+    const flameCore = oneMinus(dFlame).clamp(0, 1).pow(1.1);
+    const flameM = flameCore.mul(smoothstep(float(0.05), float(0.5), flameCore.add(noise.mul(0.5)).sub(uc.mul(0.55))));
+    /* кольцо: узкая полоса на 0.72 радиуса */
+    const ringM = oneMinus(dRound.sub(0.72).abs().mul(6)).clamp(0, 1).pow(1.4);
+    const baseM = isSpark.select(soft.pow(3.2), isShard.select(oneMinus(dDiamond).clamp(0, 1).pow(1.5), soft.pow(1.5)));
+    const mask = isSmoke.select(smokeM, isChip.select(chipM, isFlame.select(flameM, isRing.select(ringM, baseM))));
+    const fadeIn = smoothstep(float(0), float(0.06), uc);
+    const alpha = mask.mul(fadeIn).mul(oneMinus(uc).pow(1.3)).mul(on);
+    mat.opacityNode = alpha;
 
     /* Частицы — это скиллы и импакты, то есть ровно то, чему §10.1 разрешает
-       эмиссию. Пул целиком помечается светящимся один раз (D163). */
-    markGlow(mat, blending === THREE.AdditiveBlending ? 1 : 0.5);
+       эмиссию. В свечение уходит маска частицы, взвешенная её долей `ext.w`:
+       дым не светится, уголь — целиком. */
+    markGlow(mat, alpha.mul(ext.w).mul(blending === THREE.AdditiveBlending ? 1 : 0.5));
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 8;
@@ -579,25 +659,38 @@ export class Particles {
    * место, и ничего не аллоцируется — в этом весь смысл пула.
    */
   emit(n, fn) {
-    const { p0, v0, acc, col, cfg } = this.buf;
+    const A = this.arr, S = this.stride, O = this.off;
     const start = this.head;
     for (let k = 0; k < n; k++) {
       const i = this.head;
       this.head = (this.head + 1) % this.max;
+      /* Кольцо хранит прошлую частицу: расширение сбрасывается явно. */
+      A[i * S + O.ext] = 0; A[i * S + O.ext + 1] = 0.5; A[i * S + O.ext + 2] = 0; A[i * S + O.ext + 3] = 1;
       /* Первым аргументом идёт НОМЕР В ПАЧКЕ (0..n-1), а не индекс в пуле.
          Вызывающему нужен именно он — разложить частицы по дуге, выбрать
          цвет, растянуть шлейф. Индекс в пуле — внутреннее дело кольца, и
          когда он торчал наружу, «частица номер i» оказывалась частицей
          номер 1380 и улетала за арену. */
       fn(k, {
-        pos: (x, y, z) => { p0.array[i * 3] = x; p0.array[i * 3 + 1] = y; p0.array[i * 3 + 2] = z; },
-        vel: (x, y, z) => { v0.array[i * 3] = x; v0.array[i * 3 + 1] = y; v0.array[i * 3 + 2] = z; },
-        gravity: (x, y, z) => { acc.array[i * 3] = x; acc.array[i * 3 + 1] = y; acc.array[i * 3 + 2] = z; },
-        color: (c) => { col.array[i * 3] = c.r; col.array[i * 3 + 1] = c.g; col.array[i * 3 + 2] = c.b; },
+        pos: (x, y, z) => { const b = i * S + O.p0; A[b] = x; A[b + 1] = y; A[b + 2] = z; },
+        vel: (x, y, z) => { const b = i * S + O.v0; A[b] = x; A[b + 1] = y; A[b + 2] = z; },
+        gravity: (x, y, z) => { const b = i * S + O.acc; A[b] = x; A[b + 1] = y; A[b + 2] = z; },
+        /* Второй цвет — к концу жизни; по умолчанию тот же. */
+        color: (c, c2 = c) => {
+          const b = i * S + O.col, b2 = i * S + O.col2;
+          A[b] = c.r; A[b + 1] = c.g; A[b + 2] = c.b;
+          A[b2] = c2.r; A[b2 + 1] = c2.g; A[b2 + 2] = c2.b;
+        },
+        /* Вращение рад/с, множитель размера к концу, вытягивание по
+           скорости (0/1), доля в свечении 0..1. */
+        ext: (spin = 0, endSize = 0.5, stretch = 0, glow = 1) => {
+          const b = i * S + O.ext;
+          A[b] = spin; A[b + 1] = endSize; A[b + 2] = stretch; A[b + 3] = glow;
+        },
         /* Четвёртый аргумент — ФОРМА (см. раскладку `cfg` выше), не спин. */
         life: (born, secs, size, shape = 0) => {
-          cfg.array[i * 4] = born; cfg.array[i * 4 + 1] = secs;
-          cfg.array[i * 4 + 2] = size; cfg.array[i * 4 + 3] = shape;
+          const b = i * S + O.cfg;
+          A[b] = born; A[b + 1] = secs; A[b + 2] = size; A[b + 3] = shape;
         },
       });
     }
@@ -614,13 +707,10 @@ export class Particles {
      * — и тогда честнее обновить всё, чем городить два диапазона.
      */
     const wrapped = this.head < start;
-    for (const a of [p0, v0, acc, col, cfg]) {
-      a.needsUpdate = true;
-      if (a.clearUpdateRanges) a.clearUpdateRanges();
-      if (!wrapped && a.addUpdateRange) {
-        a.addUpdateRange(start * a.itemSize, (this.head - start) * a.itemSize);
-      }
-    }
+    const b = this.ibuf;
+    b.needsUpdate = true;
+    if (b.clearUpdateRanges) b.clearUpdateRanges();
+    if (!wrapped && b.addUpdateRange) b.addUpdateRange(start * S, (this.head - start) * S);
   }
 }
 
@@ -628,13 +718,6 @@ export class Particles {
 // силуэты доставок
 // ───────────────────────────────────────────────────────────────────────────
 
-const rnd = (a, b) => a + Math.random() * (b - a);
-
-/** Разброс по конусу вокруг направления. */
-function spread(dx, dz, angle) {
-  const a = Math.atan2(dx, dz) + rnd(-angle, angle);
-  return [Math.sin(a), Math.cos(a)];
-}
 
 /**
  * Слой эффектов: держит пул, знает палитры и рисует силуэт по доставке.
@@ -643,6 +726,9 @@ function spread(dx, dz, angle) {
  * `world.fx` и не пишет в него ни разу; прогон с отключённым рендером даёт
  * побитово тот же лог. Проверяемо и проверяется.
  */
+/** Элемент → модуль с функциями `cone zone self beam bolt lob impact charge`. */
+const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx };
+
 export class Vfx {
   /**
    * ДВА пула, и это не роскошь, а следствие §10.1.
@@ -670,6 +756,14 @@ export class Vfx {
     this.add = { emit: (n, fn) => { this.body.emit(n, fn); this.glow.emit(Math.ceil(n * 0.5), fn); } };
     this.spawnMesh = spawnMesh;
     this.now = 0;
+    /* Ударный набор — общий словарь элементных модулей (docs/VFX.md §3). */
+    this.kit = kit;
+    /*
+     * Хуки экрана ставит `main.js`: толчок камеры (травма 0..1), вспышка
+     * кадра, всплеск аберрации, красная вспышка тела жертвы. По умолчанию —
+     * пустые: стенды без камеры и гейты без экрана зовут их безнаказанно.
+     */
+    this.screen = { shake() {}, flash() {}, aberration() {}, hit() {} };
 
     /*
      * ПУЛ ИСТОЧНИКОВ СВЕТА — ДВА, ЗАВЕДЁННЫХ СРАЗУ.
@@ -714,7 +808,26 @@ export class Vfx {
   /** Одна запись из `world.fx`. Возвращает true, если нарисовала. */
   play(e, ctx) {
     const P = palette(e.element);
+    /*
+     * Элементные модули — первыми: у льда, огня и молнии своё тело эффекта
+     * внутри следа доставки (docs/VFX.md). Модуль без функции для этой
+     * доставки или вернувший false отдаёт штатному силуэту ниже; упавший —
+     * тоже: эффект не имеет права уносить кадр.
+     */
+    const mod = MODULES[e.element];
+    if (mod && typeof mod[e.kind] === 'function') {
+      try {
+        const drew = mod[e.kind](this, e, P, ctx);
+        /* Удар — исключение: модуль ДОБАВЛЯЕТ элементную вспышку, а подписи
+           атомов (§9.2: эффект владеет ударом) рисует штатный `impact` всегда.
+           Модуль, нарисовавший свой удар, снимает только общий ожог и свет. */
+        if (e.kind === 'impact') { if (drew) e.__elemental = true; } else if (drew) return true;
+      } catch (err) { console.warn('vfx', e.element, e.kind, err); }
+    }
     switch (e.kind) {
+      /* Заряд в замахе — запись только вьювера (`main.js` из телеграфа);
+         без элементного модуля рисовать нечего. */
+      case 'charge': return false;
       case 'beam': return this.beam(e, P, ctx);
       case 'cone': return this.cone(e, P, ctx);
       case 'bolt':
@@ -752,69 +865,22 @@ export class Vfx {
      * Сегментов по окружности 14, а не 8: на восьми грань ствола видно как
      * грань, и «луч» читается как гранёная палка.
      */
-    /*
-     * ── МОЛНИЯ У ЭЛЕМЕНТА `arc`, ПРЯМОЙ СТВОЛ У ОСТАЛЬНЫХ ──────────────────
-     *
-     * Приём из референса основателя (Storm Lance): труба ведётся не по
-     * отрезку, а по ЛОМАНОЙ, отклонения которой берутся у шумовой функции.
-     * Силуэт §9.2 при этом не нарушен — «цилиндр от кастера к точке
-     * попадания» остаётся цилиндром, он просто перестаёт быть прямым.
-     *
-     * Зачем именно `arc`. Элемент — единственная ось грамматики, которая
-     * существует РАДИ ВИДА (§8), и до этого она различалась только палитрой.
-     * Палитра на белом полу и под свечением сближается; форма — нет. Молния
-     * читается молнией с любого ракурса и на любой яркости.
-     *
-     * Отклонения ДЕТЕРМИНИРОВАНЫ: `noise` от координат выстрела, а не
-     * `Math.random`. Повтор боя обязан выглядеть так же (A2), и «ломаная
-     * каждый раз новая» сделала бы два просмотра одного боя разными.
-     */
-    const kinked = e.element === 'arc';
-    let core;
-    let glow;
-    if (kinked) {
-      const seed = Math.abs(e.x0 * 7.3 + e.z0 * 3.1 + len * 11.7);
-      const wob = (i, n) => {
-        const t = i / n;
-        /* Ноль на концах: молния выходит из ствола и приходит в цель, а не
-           мимо. Иначе телеграф и попадание расходятся с картинкой. */
-        const amp = Math.sin(t * Math.PI) * Math.min(1.1, len * 0.09);
-        const f = Math.sin(seed + i * 2.399) * 0.6 + Math.sin(seed * 1.7 + i * 5.13) * 0.4;
-        return f * amp;
-      };
-      const side = new THREE.Vector3().subVectors(b, a).normalize().cross(new THREE.Vector3(0, 1, 0)).normalize();
-      const SEGS = 14;
-      const pts = [];
-      for (let i = 0; i <= SEGS; i++) {
-        const t = i / SEGS;
-        const p = a.clone().lerp(b, t);
-        p.addScaledVector(side, wob(i, SEGS));
-        p.y += wob(i + 31, SEGS) * 0.55;
-        pts.push(p);
-      }
-      const curve = new THREE.CatmullRomCurve3(pts);
-      core = new THREE.Mesh(new THREE.TubeGeometry(curve, SEGS * 2, 0.24, 8, false), tubeMat(P));
-      glow = new THREE.Mesh(new THREE.TubeGeometry(curve, SEGS, 0.6, 6, false), basic(P[2], 0.22));
-      core.add(glow);
-    } else {
-      const g = new THREE.CylinderGeometry(0.34, 0.34, len, 14, 1, true);
-      g.translate(0, len / 2, 0);
-      core = new THREE.Mesh(g, tubeMat(P));
-      core.position.copy(a);
-      core.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-      /* Внешняя оболочка: она даёт лучу объём на расстоянии, где ядро уже
-         в один пиксель. */
-      const glowG = new THREE.CylinderGeometry(0.62, 0.62, len, 10, 1, true);
-      glowG.translate(0, len / 2, 0);
-      glow = new THREE.Mesh(glowG, basic(P[2], 0.22));
-      core.add(glow);
-    }
+    const g = new THREE.CylinderGeometry(0.34, 0.34, len, 14, 1, true);
+    g.translate(0, len / 2, 0);
+    const core = new THREE.Mesh(g, tubeMat(P));
+    core.position.copy(a);
+    core.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    /* Внешняя оболочка: она даёт лучу объём на расстоянии, где ядро уже
+       в один пиксель. */
+    const glowG = new THREE.CylinderGeometry(0.62, 0.62, len, 10, 1, true);
+    glowG.translate(0, len / 2, 0);
+    const glow = new THREE.Mesh(glowG, basic(P[2], 0.22));
+    core.add(glow);
     this.spawnMesh(core, 0.3, (o, u) => {
       setFade(o, 1 - u);
       glow.material.opacity = 0.18 * (1 - u) ** 2;
-      /* Прямой ствол ужимается поперёк — так гаснет луч. Ломаную ужимать
-         нельзя: масштаб по локальным осям увёл бы молнию с линии выстрела. */
-      if (!kinked) o.scale.set(1 - u * 0.6, 1, 1 - u * 0.6);
+      /* Ствол ужимается поперёк — так гаснет луч. */
+      o.scale.set(1 - u * 0.6, 1, 1 - u * 0.6);
     });
     /* Искры по стволу — то, что отличает выстрел от нарисованной палки. */
     /* Искры по стволу — то, что отличает выстрел от нарисованной палки.
@@ -836,6 +902,7 @@ export class Vfx {
 
   // ── конус: клин из частиц, а не полигон ──────────────────────────────
   cone(e, P, ctx) {
+    if (e.element === 'frost') return this.iceWave(e, P, ctx);
     /* Шире и крупнее, чем было (46 частиц по 0.34–0.72): конус — удар в упор,
        и на стенде он читался облачком пыли, а не ударом. */
     const n = 64;
@@ -848,6 +915,107 @@ export class Vfx {
       s.color(hue(P, i));
       s.life(this.now, rnd(0.26, 0.52), rnd(0.5, 1.0));
     });
+    return true;
+  }
+
+  /*
+   * ── ледяная волна: клин конуса как разлом с кристаллами ──────────────
+   *
+   * Силуэт доставки не тронут — это тот же клин от кастера по heading, с той
+   * же дальностью и тем же углом. Кристаллы выходят из пола волной (фронт
+   * идёт 0.45 с), стоят и тают. Матрицы пересобираются на процессоре каждый
+   * кадр — до полусотни композиций, это ничто, зато фаза живая, а буферы не
+   * пересоздаются (приём GeometryPainter).
+   */
+  iceWave(e, P, ctx) {
+    const geos = quartz();
+    const dx = Math.sin(e.h), dz = Math.cos(e.h);
+    const sx = -dz, sz = dx;
+    const rng = mulberry((e.t * 1000 | 0) ^ 0x1ce);
+
+    const items = [];
+    for (let i = 0; i < 30; i++) {
+      const t = Math.pow(rng(), 1.45);
+      const d = 0.7 + t * (e.range - 0.9);
+      const a = (rng() * 2 - 1) * e.halfAngle * 0.92;
+      const lat = Math.tan(a) * d;
+      items.push({
+        x: e.x + dx * d + sx * lat, z: e.z + dz * d + sz * lat,
+        yaw: rng() * Math.PI * 2,
+        tx: (rng() - 0.5) * 0.3, tz: (rng() - 0.5) * 0.5 + Math.sign(a || 1) * 0.2,
+        h: (0.7 + rng() * 1.3) * (1.1 - t * 0.3), w: 0.6 + rng() * 0.6,
+        born: t * 0.8,
+      });
+    }
+    /* Дуга-стена у дальнего края: раскрытие разлома, как на стенде. */
+    for (let i = 0; i < 10; i++) {
+      const u = (i / 9 - 0.5) * 2;
+      const a = u * e.halfAngle * 0.9;
+      const d = e.range * (1 - Math.abs(u) * 0.12);
+      const lat = Math.tan(a) * d;
+      items.push({
+        x: e.x + dx * d + sx * lat, z: e.z + dz * d + sz * lat,
+        yaw: rng() * Math.PI * 2,
+        tx: (rng() - 0.5) * 0.2, tz: u * 0.5,
+        h: 1.6 + rng() * 1.6 * (1 - Math.abs(u) * 0.4), w: 0.9 + rng() * 0.6,
+        born: 0.82 + rng() * 0.1,
+      });
+    }
+
+    const mesh = new THREE.InstancedMesh(geos[(e.t * 7 | 0) % 3], iceMat(e.element, P), items.length);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow = true;
+    mesh.frustumCulled = false;
+
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(),
+      S = new THREE.Vector3(), Pp = new THREE.Vector3();
+    const LIFE = 1.9, TRAVEL = 0.45;
+    this.spawnMesh(mesh, LIFE, (o, u) => {
+      const t = u * LIFE;
+      const front = clamp01(t / TRAVEL);
+      const melt = t > 1.3 ? clamp01(1 - (t - 1.3) / 0.6) : 1;
+      setFade(o, melt);
+      const k0 = 0.25 + melt * 0.75;
+      for (let i = 0; i < items.length; i++) {
+        const c = items[i];
+        const a = clamp01((front - c.born) / 0.2);
+        const g = (a <= 0 ? 0 : easeOutBack(a)) * k0;
+        E.set(c.tx, c.yaw, c.tz);
+        Q.setFromEuler(E);
+        S.set(c.w * g, Math.max(0.001, c.h * g), c.w * g);
+        Pp.set(c.x, -0.1 * c.h * (1 - a), c.z);
+        M.compose(Pp, Q, S);
+        o.setMatrixAt(i, M);
+      }
+      o.instanceMatrix.needsUpdate = true;
+    });
+
+    /* Пыль вдоль фронта — пачками по ходу, как искры у зоны. */
+    for (let k = 0; k < 4; k++) {
+      const at = this.now + (k / 4) * TRAVEL;
+      const d0 = 0.7 + (k / 4) * (e.range - 0.9);
+      this.add.emit(7, (i, s) => {
+        const a = (Math.random() * 2 - 1) * e.halfAngle;
+        const lat = Math.tan(a) * d0;
+        s.pos(e.x + dx * d0 + sx * lat, rnd(0.1, 0.5), e.z + dz * d0 + sz * lat);
+        s.vel(dx * 1.6 + rnd(-0.7, 0.7), rnd(0.9, 2.2), dz * 1.6 + rnd(-0.7, 0.7));
+        s.gravity(0, -2.6, 0);
+        s.color(hue(P, i));
+        s.life(at, rnd(0.4, 0.7), rnd(0.3, 0.6));
+      });
+    }
+    /* Удар в момент, когда фронт дошёл: вспышка и сноп у дальнего края. */
+    const tipX = e.x + dx * e.range, tipZ = e.z + dz * e.range;
+    this.flashLight(tipX, 1.4, tipZ, P[0], 26, 0.24);
+    this.add.emit(22, (i, s) => {
+      const a = Math.random() * 7, r = Math.random() * 1.6;
+      s.pos(tipX + Math.sin(a) * r, rnd(0.2, 1.2), tipZ + Math.cos(a) * r);
+      s.vel(Math.sin(a) * rnd(2, 4.5), rnd(1.4, 3.2), Math.cos(a) * rnd(2, 4.5));
+      s.gravity(0, -3.4, 0);
+      s.color(hue(P, i));
+      s.life(this.now + TRAVEL, rnd(0.45, 0.8), rnd(0.3, 0.6));
+    });
+    this.scorch(e.x + dx * e.range * 0.7, e.z + dz * e.range * 0.7, P, 1.6);
     return true;
   }
 
@@ -909,6 +1077,91 @@ export class Vfx {
         s.life(at, rnd(0.4, 0.9), rnd(0.28, 0.58));
       });
     }
+    if (e.element === 'frost') this.iceRain(e, P, ctx);
+    return true;
+  }
+
+  /*
+   * ── ледяной дождь: сосульки в зону всю её жизнь ──────────────────────
+   *
+   * ДОБАВКА к плите зоны, не замена: диск с трещинами уже нарисован выше.
+   * Сосульки — тот же кварц остриём вниз (поворот на π переводит вершину
+   * y=1 в −1, origin инстанса — хвост); в местах ударов растут и тают
+   * наросты. Столб света не ставится: в бою зона уже объявлена телеграфом
+   * и плитой, а столб на всю арену спорил бы с лучами.
+   */
+  iceRain(e, P, ctx) {
+    const geos = quartz();
+    const life = e.duration || 3;
+    const rng = mulberry((e.t * 1000 | 0) ^ 0xa1d);
+    const N = Math.min(18, Math.max(10, Math.round(life * 5)));
+    const H = 8;
+
+    const items = [];
+    for (let i = 0; i < N; i++) {
+      const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (e.r - 0.3);
+      items.push({
+        x: e.x + Math.cos(a) * r, z: e.z + Math.sin(a) * r,
+        delay: rng() * Math.max(0.4, life - 1.2),
+        fall: 0.34 + rng() * 0.1,
+        len: 1.2 + rng() * 0.8,
+        yaw: rng() * Math.PI * 2,
+        pw: 0.5 + rng() * 0.5, ph: 0.6 + rng() * 0.9,
+        hit: false,
+      });
+    }
+
+    const drops = new THREE.InstancedMesh(geos[2], iceMat(e.element, P), N);
+    drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    drops.frustumCulled = false;
+    const patches = new THREE.InstancedMesh(geos[0], iceMat(e.element, P), N);
+    patches.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    patches.castShadow = true;
+    patches.frustumCulled = false;
+
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(),
+      S = new THREE.Vector3(), Pp = new THREE.Vector3();
+
+    this.spawnMesh(drops, life, (o, u) => {
+      const t = u * life;
+      for (let i = 0; i < N; i++) {
+        const d = items[i];
+        const ft = (t - d.delay) / d.fall;
+        const k = ft > 0 && ft < 1 ? 1 : 0;
+        const stretch = 1.45 - 0.45 * clamp01(ft);
+        E.set(Math.PI, d.yaw, 0.06);
+        Q.setFromEuler(E);
+        S.set(0.5 * k, Math.max(0.001, d.len * stretch * k), 0.5 * k);
+        Pp.set(d.x, H * (1 - clamp01(ft) ** 2) + d.len * stretch, d.z);
+        M.compose(Pp, Q, S);
+        o.setMatrixAt(i, M);
+        /* Момент удара: крошка. Флаг на элементе списка, не на мешах —
+           оба меша живут от одного списка. */
+        if (!d.hit && ft >= 1) {
+          d.hit = true;
+          this.burst(d.x, 0.3, d.z, P, 6);
+        }
+      }
+      o.instanceMatrix.needsUpdate = true;
+    });
+
+    this.spawnMesh(patches, life, (o, u) => {
+      const t = u * life;
+      const melt = t > life - 0.6 ? clamp01((life - t) / 0.6) : 1;
+      setFade(o, melt);
+      for (let i = 0; i < N; i++) {
+        const d = items[i];
+        const pt = clamp01((t - d.delay - d.fall) / 0.28);
+        const g = (pt <= 0 ? 0 : easeOutBack(pt)) * (0.25 + melt * 0.75);
+        E.set(0, d.yaw, (i % 2 ? 1 : -1) * 0.22);
+        Q.setFromEuler(E);
+        S.set(d.pw * g, Math.max(0.001, d.ph * g), d.pw * g);
+        Pp.set(d.x, 0, d.z);
+        M.compose(Pp, Q, S);
+        o.setMatrixAt(i, M);
+      }
+      o.instanceMatrix.needsUpdate = true;
+    });
     return true;
   }
 
@@ -964,6 +1217,7 @@ export class Vfx {
 
   // ── self: оболочка по силуэту тела ───────────────────────────────────
   shell(e, P, ctx) {
+    if (e.element === 'frost') return this.iceDome(e, P, ctx);
     const sph = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 12), basic(P[1], 0.3));
     sph.position.set(e.x, 1.0, e.z);
     this.spawnMesh(sph, 0.6, (o, u) => {
@@ -978,6 +1232,62 @@ export class Vfx {
       s.color(hue(P, i));
       s.life(this.now, rnd(0.4, 0.8), rnd(0.26, 0.52));
     });
+    return true;
+  }
+
+  /*
+   * ── ледяной купол: оболочка self, которая ЖИВЁТ, а не мигает ─────────
+   *
+   * Штатная оболочка — вспышка на 0.6 с; купол стоит 2.6 с и ходит за телом
+   * (`ctx.bodyPos`): щит, который остался стоять там, где его скастовали,
+   * читался бы как зона. Тело видно сквозь — плотность на канте и в
+   * прожилках, это работа купольного материала.
+   */
+  iceDome(e, P, ctx) {
+    const LIFE = 2.6, R = 2.35, CY = 1.15;
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 26), domeMat(e.element, P));
+    dome.position.set(e.x, CY, e.z);
+    dome.renderOrder = 3;
+    dome.frustumCulled = false;
+
+    /* Кольцо контакта — сечение сферы полом, а не декоративная константа. */
+    const RR = Math.sqrt(Math.max(0.2, R * R - CY * CY));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.92, 1.0, 56), basic(P[1], 0.8));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(e.x, 0.03, e.z);
+
+    const place = (o, u) => {
+      const t = u * LIFE;
+      const grow = t < 0.4 ? easeOutBack(clamp01(t / 0.4)) : 1;
+      const melt = t > LIFE - 0.55 ? clamp01((LIFE - t) / 0.55) : 1;
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      const x = p ? p.x : e.x, z = p ? p.z : e.z;
+      return { grow, melt, x, z };
+    };
+    this.spawnMesh(dome, LIFE, (o, u) => {
+      const { grow, melt, x, z } = place(o, u);
+      o.position.set(x, CY, z);
+      o.scale.setScalar(Math.max(0.001, R * grow * (0.6 + melt * 0.4)));
+      setFade(o, melt);
+    });
+    this.spawnMesh(ring, LIFE, (o, u) => {
+      const { grow, melt, x, z } = place(o, u);
+      o.position.set(x, 0.03, z);
+      o.scale.setScalar(Math.max(0.001, RR * grow));
+      o.material.opacity = 0.8 * melt;
+    });
+
+    /* Морозная взвесь сползает по куполу всю его жизнь — пачками. */
+    for (let k = 0; k < 6; k++) {
+      this.add.emit(4, (i, s) => {
+        const a = Math.random() * 7;
+        s.pos(e.x + Math.sin(a) * RR * 0.95, rnd(0.2, 1.0), e.z + Math.cos(a) * RR * 0.95);
+        s.vel(-Math.sin(a) * 0.4, rnd(0.3, 0.8), -Math.cos(a) * 0.4);
+        s.gravity(0, -0.6, 0);
+        s.color(hue(P, i));
+        s.life(this.now + k * (LIFE - 0.6) / 6, rnd(0.5, 0.9), rnd(0.2, 0.4));
+      });
+    }
     return true;
   }
 
@@ -1117,7 +1427,7 @@ export class Vfx {
      * попадания делает то, чего не может сделать ни один аддитивный спрайт, —
      * подсвечивает ТЕЛА и пол вокруг.
      */
-    if (!e.blocked) {
+    if (!e.blocked && !e.__elemental) {
       this.scorch(e.x, e.z, P, 0.9);
       this.flashLight(e.x, 1.1, e.z, P[1], 9, 0.22);
     }
@@ -1336,12 +1646,13 @@ export class Vfx {
    * гаснут в ноль и переиспользуются по кругу. Сколько именно и почему —
    * в конструкторе `Vfx`, там же замер.
    */
-  flashLight(x, y, z, color, intensity, secs) {
+  flashLight(x, y, z, color, intensity, secs, radius = 9) {
     if (!this.lights) return;
     const l = this.lights[this.lightHead % this.lights.length];
     this.lightHead++;
     l.color.set(color);
     l.position.set(x, y, z);
+    l.distance = radius;
     l.intensity = intensity;
     l.userData.born = this.now;
     l.userData.secs = secs;
@@ -1382,19 +1693,3 @@ export class Vfx {
   }
 }
 
-/**
- * Обычный материал эффекта — и он СВЕТИТСЯ.
- *
- * Все меши этого файла — силуэты доставок и импактов, то есть ровно то, чему
- * §10.1 разрешает эмиссию. Метка ставится в одном месте, а не в семнадцати
- * конструкторах: пропущенная метка выглядит как «этот эффект тусклее
- * остальных», и искать её пришлось бы глазами.
- */
-function basic(color, opacity, glow = 1) {
-  const M = THREE.MeshBasicNodeMaterial || THREE.MeshBasicMaterial;
-  return markGlow(new M({
-    color, transparent: true, opacity,
-    side: THREE.DoubleSide, depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }), glow);
-}

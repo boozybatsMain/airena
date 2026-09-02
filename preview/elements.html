@@ -1,0 +1,304 @@
+<!--
+  СТЕНД СТИХИЙ — боевой `src/viewer/vfx.js`, импортированный как модуль.
+
+  Отличие от стендов /ice и /frost принципиальное: те рисовали СВОИМ кодом и
+  доказывали осуществимость, этот рисует КОДОМ БОЯ и проверяет то, что увидит
+  зритель. Сцена, свет, пол и избирательное свечение — те же, что в арене;
+  события — те же записи `world.fx`, что кладёт `src/core/deliver.js`.
+
+  Управление:
+    ?el=arc            — стихия (kinetic|ember|frost|arc|void)
+    ?kind=cone         — одна доставка (cone|self|zone), иначе все три по кругу
+    ?hold=2.4          — секунд на выстрел
+    ?bloom=0 ?webgl=1  — как везде
+    window.__fire(kind, el) — выстрел руками (для снимков)
+-->
+<style>
+  html, body { height: 100%; background: #0d0f14; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 14px; top: 12px; z-index: 5;
+    font: 11px/1.55 ui-monospace, "SF Mono", Menlo, monospace; color: #9fd8e4;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8); pointer-events: none; letter-spacing: .04em; }
+  #hud b { color: #e8fbff; font-weight: 600; }
+  #label { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5;
+    font: 600 13px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .14em;
+    text-transform: uppercase; color: #cfe6ee; background: rgba(8,14,22,.8);
+    padding: 6px 14px; }
+</style>
+
+<div id="hud"></div>
+<div id="label"></div>
+<div id="bar"></div>
+<style>
+  #bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 6;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  #bar a, #bar button { font: 600 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .1em;
+    text-transform: uppercase; color: #cfe6ee; background: rgba(8,14,22,.85);
+    border: 1px solid rgba(120,170,190,.35); padding: 8px 12px; cursor: pointer;
+    text-decoration: none; }
+  #bar a.on { color: #0d131c; background: #7fd6e8; border-color: #7fd6e8; }
+  #bar .sep { width: 14px; }
+</style>
+
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.webgpu.js",
+  "three/webgpu": "/vendor/three.webgpu.js",
+  "three/tsl": "/vendor/three.tsl.js",
+  "three/addons/": "/vendor-addons/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { pass, mrt, output as tslOutput, float } from 'three/tsl';
+import { Vfx, markGlow, setGlowEnabled } from '/src/viewer/vfx.js';
+
+const params = new URLSearchParams(location.search);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0f14);
+scene.fog = new THREE.Fog(0x101620, 42, 120);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.3, 400);
+
+let renderer;
+try {
+  /* На ЭТОМ стенде WebGL2 — умолчание (?webgl=0 вернёт WebGPU): у стенда
+     WebGPU-бэкенд молча не рисует узловые материалы vfx (в бою рисует —
+     загадка стендовая, не боевая), а стенд обязан показывать, а не гадать. */
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: params.get('webgl') !== '0' });
+  await renderer.init();
+} catch (e) {
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: true });
+  await renderer.init();
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+let post = null;
+if (params.get('bloom') !== '0') {
+  try {
+    const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
+    const scenePass = pass(scene, camera);
+    scenePass.setMRT(mrt({ output: tslOutput, bloomIntensity: float(0) }));
+    const colour = scenePass.getTextureNode('output');
+    const glow = scenePass.getTextureNode('bloomIntensity');
+    post = new THREE.PostProcessing(renderer);
+    post.outputNode = colour.add(bloom(colour.mul(glow), 0.38, 0.75, 0));
+    setGlowEnabled(true);
+  } catch { /* без свечения */ }
+}
+
+scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x2a2f38, 1.5));
+const key = new THREE.DirectionalLight(0xfff4e0, 2.6);
+key.position.set(16, 30, 12);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -30; key.shadow.camera.right = 30;
+key.shadow.camera.top = 30; key.shadow.camera.bottom = -30;
+key.shadow.bias = -0.0012;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fa8ff, 0.9);
+rim.position.set(-18, 12, -16);
+scene.add(rim);
+
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(19, 96),
+  new THREE.MeshStandardMaterial({ color: 0xf2f1ec, roughness: 0.86, metalness: 0.04 }),
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+{
+  const edge = new THREE.Mesh(
+    new THREE.RingGeometry(18.9, 19.2, 128),
+    markGlow(new THREE.MeshBasicNodeMaterial({ color: 0x2e6f7d, transparent: true, opacity: 0.85 }), 0.7),
+  );
+  edge.rotation.x = -Math.PI / 2;
+  edge.position.y = 0.012;
+  scene.add(edge);
+}
+
+/* Два болвана вместо бойцов: оболочке нужно тело, за которым она ходит. */
+const dummy = (hex, x, z) => {
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.7, metalness: 0.06 });
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.1, 6, 14), m);
+  torso.position.y = 1.15; torso.castShadow = true;
+  g.add(torso);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 1), m);
+  head.position.y = 2.25; head.castShadow = true;
+  g.add(head);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+};
+const blueBody = dummy(0xc7d3da, -4, -2);
+const orangeBody = dummy(0xd9cdc0, 6, 4);
+
+/* Контракт вьювера: пул эффектов с колбэком по нормированному возрасту и
+   утилизацией всего, кроме общих материалов, — дословно `updateFx`. */
+const fxPool = [];
+const spawnMesh = (obj, life, update) => {
+  scene.add(obj);
+  /* Рождение — в «эффектных» часах (минус накопленный долг заморозок),
+     иначе эффект, рождённый после паузы, получает отрицательный возраст,
+     живёт вечно и его колбэки уезжают в дикие масштабы. */
+  fxPool.push({ obj, born: performance.now() / 1000 - frozenDebt, life, update });
+};
+function updateFx(now) {
+  for (let i = fxPool.length - 1; i >= 0; i--) {
+    const f = fxPool[i];
+    const u = (now - f.born) / f.life;
+    if (u >= 1) {
+      scene.remove(f.obj);
+      f.obj.traverse?.((o) => {
+        o.geometry?.dispose?.();
+        const m = o.material;
+        if (!m) return;
+        for (const one of Array.isArray(m) ? m : [m]) {
+          if (one && !one.userData?.pooled) one.dispose?.();
+        }
+      });
+      fxPool.splice(i, 1);
+      continue;
+    }
+    if (f.update) f.update(f.obj, u);
+  }
+}
+
+const vfx = new Vfx(scene, { spawnMesh });
+const bodyPos = (who) => (who === 'blue' ? blueBody.position : orangeBody.position);
+
+const label = document.getElementById('label');
+const hud = document.getElementById('hud');
+
+const EL = params.get('el') || 'arc';
+const ONLY = params.get('kind');
+const HOLD = Number(params.get('hold') || 2.6);
+const KINDS = ONLY ? [ONLY] : ['cone', 'self', 'zone'];
+
+/* Формы событий — как у стенда вьювера: те же поля, что кладёт deliver.js. */
+function shape(kind, el) {
+  const base = { kind, element: el, who: 'blue', t: 0, skill: 'k1' };
+  switch (kind) {
+    case 'cone': return { ...base, x: -4, z: -2, h: Math.PI * 0.32, range: 7.5, halfAngle: 0.9, hit: true };
+    case 'self': return { ...base, x: blueBody.position.x, z: blueBody.position.z };
+    case 'zone': return { ...base, x: 5, z: 3.5, r: 3.2, duration: 3 };
+    default: return base;
+  }
+}
+
+let fired = 0;
+function fire(kind, el = EL) {
+  frozen = false;
+  const e = shape(kind, el);
+  label.textContent = `${el} · ${kind}  [${++fired}]`;
+  vfx.play(e, { bodyPos });
+  return e;
+}
+window.__fire = fire;
+window.__vfx = vfx;
+
+/* Выстрел + заморозка на фазе `t`: часы стенда встают, кадр висит вечно —
+   снимок перестаёт быть гонкой со временем жизни эффекта. */
+let frozen = false;
+let frozenDebt = 0;
+window.__shot = async (kind, el, t) => {
+  fire(kind, el);
+  await new Promise((r) => setTimeout(r, Math.max(0, t * 1000)));
+  frozen = true;
+  /* Часы встали — `tickLights` больше не гасит вспышки, и пойманный на пике
+     свет заливал бы кадр вечно. Прижимаем до фонового уровня. */
+  for (const l of vfx.lights ?? []) l.intensity = Math.min(l.intensity, 8);
+  label.textContent = `${el} · ${kind} · t=${t}s [замер]`;
+  return 'frozen';
+};
+window.__thaw = () => { frozen = false; };
+
+/* Автоцикл, если не пиновый режим: смотреть глазами. */
+let idx = 0;
+if (params.get('auto') !== '0') {
+  setInterval(() => { fire(KINDS[idx % KINDS.length]); idx++; }, HOLD * 1000);
+}
+
+/* Панель для рук: стихии — ссылками (смена стихии = смена адреса, чтобы
+   пиновые параметры оставались честными), касты — кнопками. */
+{
+  const bar = document.getElementById('bar');
+  const RU = { kinetic: 'кинетика', ember: 'жар', frost: 'мороз', arc: 'дуга', void: 'пустота' };
+  for (const el of ['kinetic', 'ember', 'frost', 'arc', 'void']) {
+    const a = document.createElement('a');
+    a.textContent = RU[el];
+    const q = new URLSearchParams(params);
+    q.set('el', el);
+    if (!q.has('webgl')) q.set('webgl', '1');
+    a.href = `?${q}`;
+    if (el === EL) a.className = 'on';
+    bar.appendChild(a);
+  }
+  const sep = document.createElement('span'); sep.className = 'sep'; bar.appendChild(sep);
+  for (const [kind, ru] of [['cone', 'волна'], ['self', 'щит'], ['zone', 'зона']]) {
+    const b = document.createElement('button');
+    b.textContent = ru;
+    b.onclick = () => fire(kind);
+    bar.appendChild(b);
+  }
+}
+
+const LOOK = new THREE.Vector3(0.5, 1.1, 0.8);
+const num = (k, d) => { const v = parseFloat(params.get(k) ?? ''); return Number.isFinite(v) ? v : d; };
+let camYaw = num('yaw', -0.5), camPitch = num('pitch', 0.45), camDist = num('dist', 17);
+function placeCamera() {
+  const cy = Math.cos(camPitch) * camDist;
+  camera.position.set(LOOK.x + Math.sin(camYaw) * cy, LOOK.y + Math.sin(camPitch) * camDist, LOOK.z + Math.cos(camYaw) * cy);
+  camera.lookAt(LOOK);
+}
+placeCamera();
+let dragging = false, lx = 0, ly = 0;
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+renderer.domElement.addEventListener('pointerdown', (e) => { if (e.button === 2) { dragging = true; lx = e.clientX; ly = e.clientY; } });
+addEventListener('pointerup', () => { dragging = false; });
+addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  camYaw -= (e.clientX - lx) * 0.006;
+  camPitch = THREE.MathUtils.clamp(camPitch + (e.clientY - ly) * 0.004, 0.06, 1.35);
+  lx = e.clientX; ly = e.clientY; placeCamera();
+});
+addEventListener('wheel', (e) => { camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 8, 60); placeCamera(); }, { passive: true });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const clock = new THREE.Clock();
+let acc = 0, frames = 0, fps = 0, ms = 0, msAcc = 0, lastWall = performance.now();
+let now = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (!frozen) {
+    now += dt;
+    vfx.update(now);
+    updateFx(performance.now() / 1000 - frozenDebt);
+  } else {
+    frozenDebt += dt;   // пока стоим, эффекты не стареют
+  }
+  if (post) post.render(); else renderer.render(scene, camera);
+  const wall = performance.now();
+  msAcc += wall - lastWall; lastWall = wall;
+  acc += dt; frames++;
+  if (acc >= 0.5) { fps = frames / acc; ms = msAcc / frames; msAcc = 0; acc = 0; frames = 0; }
+  const info = renderer.info?.render ?? {};
+  hud.innerHTML = `<b>СТЕНД СТИХИЙ</b> · боевой vfx.js<br>` +
+    `<span style="color:#5d7a86">draw calls</span> <b>${info.drawCalls ?? '—'}</b> · ` +
+    `<span style="color:#5d7a86">кадр</span> <b>${ms.toFixed(2)} мс</b> · ${fps.toFixed(0)} fps<br>` +
+    `<span style="color:#5d7a86">${renderer.backend?.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · bloom ${post ? 'on' : 'off'}</span>`;
+});
+
+/* Прогрев: пустой кадр до первого выстрела, чтобы конвейеры собрались. */
+if (post) { await post.renderAsync(); } else { await renderer.renderAsync(scene, camera); }
+</script>

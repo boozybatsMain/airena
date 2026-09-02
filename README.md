@@ -80,8 +80,8 @@ tools/         arena · bake · balance · bench · bodyinstall · bracket · br
                kitbalance · lane-cli · loadtest · matchpool ·
                matchworker ·
                nanscan · orbrain · plan · report · retire · seed · seedlive ·
-               seedforge · sizebalance · suite · test ·
-               tournament · visibility          (runs/ — разовые прогоны)
+               seedforge · seedvfx · sizebalance · suite · test ·
+               tournament · vfxshot · visibility (runs/ — разовые прогоны)
 docs/          shots/ (visual evidence) · EXPERIMENT.md (the results) · DECISIONS.md (what the spec left open,
                and why each was decided that way) · SCREENS.md (the screen build order) ·
                the look brief in `docs/` (what the founder asked of the look, and
@@ -187,6 +187,8 @@ have broken it while looking like a security improvement.
 | `node tools/checkkits.mjs` | every **stored** kit must still be legal under the current prices. Atom prices are a measurement, not a constant (see `kitbalance`), and raising one silently makes every creature that sat near the budget unplayable — the server recomputes the budget before a match (A3), so it would surface when a player pressed "fight". This names them beforehand, and deliberately cannot fix them: rewriting a player's kit is taking their choice away |
 | `node tools/matchpool.mjs` | worker pool behind the balance leagues; `tools/matchworker.mjs` is the worker. A round-robin is far more fights than one process finishes while anyone is still waiting, and balance work that takes that long per iteration gets abandoned rather than done. The worker also holds the **symmetric arena** used only for measuring: same body and same brain on both sides, so the only difference left is the kit |
 | `node tools/checkforgebody.mjs "<prompt>"` | the body path end to end, through the **product** code rather than the lab tool: the player's words go to the model with `packages/forge`'s instruction, the reply goes through A1-for-bodies, and what comes back is the pair the database stores — what the model wrote, and what a stranger's browser is allowed to run. `--dry` prints the call without making it |
+| `node tools/seedvfx.mjs` | six demo creatures for the VFX work, two kits per element (contact: cone · self · zone; ranged: beam · bolt · lob) for frost, ember and arc, seeded as **game** creatures so the arena loop schedules real broadcast fights for them; void and kinetic demos are removed — acceptance looks at three elements (docs/VFX.md) |
+| `node tools/vfxshot.mjs` | the capture grid behind every visual claim about effects: headless Chrome over CDP on real WebGPU, bodies placed in the combat scene, one cast shot from three eyes (broadcast distance, low side, top) at three moments (release, peak, hold); `--fight` shoots a real match with the framing camera instead. Frames land in `reports/vfx/<tag>` with an `index.json`; `before` was taken before the non-ice effects were removed, `reference` holds the founder's reference casts |
 | `node tools/seedlive.mjs` | stock the library through the **product** path — `forgeCreature`, so body and brain are generated exactly as a player's would be, and the result is marked library. `tools/seed.mjs` fills the library from `brains/`, which is right for a sparring partner and wrong for a shop window: the library is also what a guest is shown first, and creatures with a hand-written brain cannot show the one claim the product makes |
 | `node tools/bodyinstall.mjs <creature> <file>` | put a body from a file on a creature — a dev tool for the five steps of the body path that generation does not cover: storage, the route, the shadowed build in the browser, the swap at the start of a fight, and the poses |
 | `node tools/balance.mjs --samples=40 --rounds=10` | search the constants against the whole population |

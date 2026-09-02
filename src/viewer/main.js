@@ -140,47 +140,92 @@ addEventListener('resize', () => {
  * построился, `post` остаётся null и кадр рисуется напрямую, как раньше.
  */
 let post = null;
-/* `?bloom=0` — выключить постобработку намеренно. Тот же приём, что `?webgl=1`:
-   путь, который нельзя пройти по своей воле, — это путь, который никто не
-   проверял. Заодно это единственный способ сравнить «со свечением» и «без»
-   на одном и том же кадре. */
-const wantBloom = new URLSearchParams(location.search).get('bloom') !== '0';
+/*
+ * ── СОСТАВНОЙ ПОСТ-ГРАФ (решение основателя 02.09) ────────────────────────
+ *
+ * Один полноэкранный проход, внутри которого — вся кинематография кадра:
+ *
+ *   растр (HDR, без тонмаппинга; MRT: цвет, маска свечения, искажение)
+ *     → тепловое искажение: цвет читается со сдвигом по выходу `distort`
+ *     → хроматическая аберрация: R и B по радиальному смещению от центра,
+ *       покой 0, всплеск на ударе
+ *     → избирательное свечение по маске `bloomIntensity` — В HDR: до того,
+ *       как ACES прижмёт цвета к единице. Именно из-за порядка первый заход
+ *       (D163) при силе 1.15 давал три ОДИНАКОВЫХ белых луча — свечение
+ *       складывалось с уже LDR-цветом
+ *     → ACES с экспозицией → виньетка → вспышка удара (смешивание с цветом
+ *       элемента) → выход в sRGB.
+ *
+ * Свечение по-прежнему ИЗБИРАТЕЛЬНОЕ, по метке `markGlow`: пороговое
+ * засветило бы белый пол §10.1. Искажение пишут только материалы-прокси
+ * (`markDistort`), остальные пишут ноль.
+ *
+ * ЗАПАСНОЙ ПУТЬ ОБЯЗАТЕЛЕН. Если граф не собрался (`?post=0`, бэкенд без MRT),
+ * `post` остаётся null, тонмаппинг возвращается растру и кадр рисуется
+ * напрямую. Вспышка тогда идёт через DOM `#vfxflash`.
+ */
+const postU = {
+  exposure: TSL.uniform(1.05),
+  aberration: TSL.uniform(0),
+  vignette: TSL.uniform(0.38),
+  distort: TSL.uniform(0.07),
+  flashAmount: TSL.uniform(0),
+  flashColour: TSL.uniform(new THREE.Color(1, 1, 1)),
+  bloom: TSL.uniform(0.9),
+};
+/* `?post=0` (и прежний `?bloom=0`) — выключить постобработку намеренно.
+   Путь, который нельзя пройти по своей воле, — это путь, который никто не
+   проверял. Заодно это единственный способ сравнить «с графом» и «без». */
+const wantBloom = new URLSearchParams(location.search).get('bloom') !== '0'
+  && new URLSearchParams(location.search).get('post') !== '0';
 try {
-  if (!wantBloom) throw new Error('выключено параметром ?bloom=0');
+  if (!wantBloom) throw new Error('выключено параметром ?post=0');
   const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
   const scenePass = TSL.pass(scene, camera);
-  scenePass.setMRT(TSL.mrt({ output: TSL.output, bloomIntensity: TSL.float(0) }));
-  const colour = scenePass.getTextureNode('output');
-  const glow = scenePass.getTextureNode('bloomIntensity');
+  scenePass.setMRT(TSL.mrt({ output: TSL.output, bloomIntensity: TSL.float(0), distort: TSL.vec3(0) }));
+  const colourTex = scenePass.getTextureNode('output');
+  const glowTex = scenePass.getTextureNode('bloomIntensity');
+  const distTex = scenePass.getTextureNode('distort');
+
+  const uvN = TSL.uv();
+  const centred = uvN.sub(TSL.vec2(0.5, 0.5));
+  const r2 = centred.dot(centred);
+  /* тепловое искажение: смещение xy · сила z · коэффициент */
+  const dst = distTex.sample(uvN);
+  const uvW = uvN.add(dst.xy.mul(dst.z).mul(postU.distort));
+  /* аберрация: радиальная, сильнее к краю кадра */
+  const shift = centred.mul(r2.mul(2.0).add(0.2)).mul(postU.aberration).mul(0.022);
+  const cr = colourTex.sample(uvW.add(shift)).r;
+  const cg = colourTex.sample(uvW).g;
+  const cb = colourTex.sample(uvW.sub(shift)).b;
+  const colour = TSL.vec3(cr, cg, cb);
+  const glow = glowTex.sample(uvW).r;
   /*
-   * ЧИСЛА ВЫБРАНЫ ЗАМЕРОМ НА СТЕНДЕ, И ГЛАВНОЕ ИЗ НИХ — СИЛА.
-   *
-   * Тонемаппинг (`ACESFilmic`) применяется В растровом проходе, то есть в
-   * bloom приходит уже LDR-цвет в диапазоне 0..1. Складывать его с самим
-   * собой в полторы силы значит гарантированно уехать в единицу по всем трём
-   * каналам — то есть в белое.
-   *
-   * Именно это и вышло на первом заходе: при strength 1.15 луч `kinetic`,
-   * `ember` и `void` дали три ОДИНАКОВЫХ белых шнура. Проверено выключателем
-   * `?bloom=0` — без свечения тот же самый луч честно оранжевый. То есть
-   * свечение съедало единственную ось грамматики, которая существует ради
-   * вида (§8: элемент — только визуал).
-   *
-   *   strength 0.38 — ореол вокруг силуэта, а не вторая копия силуэта;
-   *   radius   0.75 — растекание шире, чем сам эффект, иначе это не свет;
-   *   threshold 0   — порог не нужен: в этот проход и так попадает только то,
-   *                   что помечено, и отсекать внутри него нечего.
+   * ЧИСЛА. Сила свечения выше прежних 0.38, потому что теперь оно
+   * складывается с HDR-цветом ДО тонмаппинга и палитра не стирается;
+   * радиус 0.85 — растекание шире силуэта, иначе это не свет.
    */
-  const bloomPass = bloom(colour.mul(glow), 0.38, 0.75, 0);
+  const bloomPass = bloom(colour.mul(glow), 0.9, 0.85, 0);
+  /* Свечение возвращает vec4; в HDR складывается только цвет. */
+  const hdr = colour.add(bloomPass.rgb.mul(postU.bloom));
+  const mapped = TSL.toneMapping(THREE.ACESFilmicToneMapping, postU.exposure, hdr);
+  const vig = TSL.oneMinus(TSL.smoothstep(TSL.float(0.25), TSL.float(1.35), r2.mul(2.4)).mul(postU.vignette));
+  const flashed = TSL.mix(mapped.mul(vig), postU.flashColour, postU.flashAmount);
   post = new THREE.PostProcessing(renderer);
-  post.outputNode = colour.add(bloomPass);
+  post.outputColorTransform = false;
+  /* `.rgb` явно: узел смешивания наследует тип, и vec4 с пятью компонентами
+     роняет сборку графа тихой ошибкой в консоли. */
+  post.outputNode = TSL.renderOutput(TSL.vec4(flashed.rgb, 1));
+  /* Тонмаппинг переехал в граф: растр отдаёт линейный HDR. */
+  renderer.toneMapping = THREE.NoToneMapping;
   /* Метку разрешаем ТОЛЬКО теперь: материал с `mrtNode` при проходе без MRT
      компилируется в пустую структуру выхода и не рисуется вовсе. */
   setGlowEnabled(true);
   window.__airenaBloom = true;
+  window.__airenaPost = postU;
 } catch (e) {
   window.__airenaBloom = false;
-  if (wantBloom) fail(`bloom unavailable (${e.message}) — рисуем без постобработки`);
+  if (wantBloom) fail(`post unavailable (${e.message}) — рисуем без постобработки`);
 }
 
 scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x2a2f38, 1.5));
@@ -1115,6 +1160,73 @@ const vfx = new Vfx(scene, {
   spawnMesh: (obj, life, update) => spawnFx(obj, life, update),
 });
 
+/*
+ * Хуки экрана для набора эффектов (docs/VFX.md §6). `camState` объявлена
+ * ниже через `let`, а удар может прийти раньше конца evaluation (стенд,
+ * сокет во время верхнеуровневого await) — поэтому `try`, как и прежде.
+ */
+vfx.screen = {
+  shake: (trauma) => { try { camState.trauma = Math.min(1, (camState.trauma || 0) + trauma); } catch { /* ещё не готова */ } },
+  flash: (colour, amount) => screenFlash(colour, amount),
+  aberration: (amount) => { postU.aberration.value = Math.min(1.4, postU.aberration.value + amount); },
+  hit: (who) => hitFlash(who),
+};
+
+/** Вспышка кадра: в граф, если он есть; иначе DOM-вспышка, как раньше. */
+function screenFlash(colour, amount) {
+  if (post) {
+    postU.flashAmount.value = Math.min(0.55, postU.flashAmount.value + amount);
+    if (colour) postU.flashColour.value.set(colour);
+  } else flashFrame(amount);
+}
+
+/** Спад экранных величин между кадрами: вспышка и аберрация. */
+function tickScreen(dt) {
+  postU.flashAmount.value *= Math.exp(-dt * 11);
+  if (postU.flashAmount.value < 0.002) postU.flashAmount.value = 0;
+  postU.aberration.value *= Math.exp(-dt * 7);
+  if (postU.aberration.value < 0.003) postU.aberration.value = 0;
+}
+
+/*
+ * КРАСНАЯ ВСПЫШКА ТЕЛА (решение основателя 02.09): жертва на мгновение
+ * становится целиком красной — так в большинстве игр читается «получил урон».
+ * Материалы тела уводятся в красный по цвету и эмиссии и возвращаются за
+ * 0.2 с; метки свечения они не получают — §10.1 «тело не светится» держится.
+ */
+const HIT_RED = new THREE.Color(1, 0.1, 0.06);
+const HIT_GLOW = new THREE.Color(0.85, 0.06, 0.03);
+const hitUntil = { blue: 0, orange: 0 };
+function bodyMaterials(body) {
+  if (body.mats) return body.mats;
+  const seen = new Set();
+  body.root.traverse((o) => {
+    const m = o.material;
+    if (!m) return;
+    for (const one of Array.isArray(m) ? m : [m]) if (one && one.color && !seen.has(one)) seen.add(one);
+  });
+  body.mats = [...seen].map((m) => ({ m, color: m.color.clone(), emissive: m.emissive ? m.emissive.clone() : null }));
+  return body.mats;
+}
+function hitFlash(id) {
+  if (!bodies[id]) return;
+  hitUntil[id] = performance.now() / 1000 + 0.22;
+}
+function tickHit(now) {
+  for (const id of ['blue', 'orange']) {
+    if (!hitUntil[id]) continue;
+    const b = bodies[id];
+    if (!b) { hitUntil[id] = 0; continue; }
+    const left = hitUntil[id] - now;
+    const k = left <= 0 ? 0 : Math.min(1, left / 0.22) ** 0.6;
+    for (const r of bodyMaterials(b)) {
+      r.m.color.copy(r.color).lerp(HIT_RED, k);
+      if (r.m.emissive && r.emissive) r.m.emissive.copy(r.emissive).lerp(HIT_GLOW, k);
+    }
+    if (left <= 0) hitUntil[id] = 0;
+  }
+}
+
 /* Стенд VFX стреляет теми же событиями, что и симуляция, через ту же
    функцию. Стенд, рисующий сам, проверял бы себя. */
 /* Ручки для стенда: сцена и слой эффектов. Только при ?vfx=1 — в
@@ -1126,7 +1238,40 @@ if (new URLSearchParams(location.search).get('vfx')) {
      ракурса проверяет ракурс, а не эффект: половина того, что видно сверху,
      сбоку не читается вовсе. */
   window.__airenaCamera = camera;
+  /*
+   * Прогон снимков (`tools/vfxshot.mjs`): поставить тела, задать глаз,
+   * выстрелить событием. Ручки, а не сценарий: сценарий живёт в инструменте,
+   * чтобы один и тот же кадр можно было снять с трёх ракурсов и в три
+   * момента — визуальная проверка с одного ракурса проверяет ракурс.
+   *
+   * `cam` переопределяет глаз ПОСЛЕ решателя кадрирования (см. `frame`),
+   * поэтому работает и в пустой арене, и поверх идущего боя; `null`
+   * возвращает камеру решателю.
+   */
+  window.__airenaSweep = {
+    cam: (spec) => { sweepCam = spec || null; },
+    place: (at) => {
+      for (const id of ['blue', 'orange']) {
+        const b = bodies[id], v = at && at[id];
+        if (!b || !v) continue;
+        b.root.position.set(v.x, 0, v.z);
+        b.root.rotation.set(0, v.h || 0, 0, 'YXZ');
+        b.root.visible = true;
+        if (!b.root.parent) scene.add(b.root);
+        try {
+          b.inner.userData.pose({ t: 0, dt: 1 / 60, speed: 0, stride: 0, turn: 0, grounded: true, health: 1, action: 'idle', phase: 0 });
+          b.root.updateMatrixWorld(true);
+          b.root.position.y = Math.max(0, -spanY(b).min);
+        } catch { /* тело без позы — стоит как есть */ }
+      }
+    },
+    cast: (e) => { playFx(e); },
+    bodies: () => Object.fromEntries(['blue', 'orange'].map((id) => [id, bodies[id] ? { x: bodies[id].root.position.x, z: bodies[id].root.position.z, h: bodies[id].root.rotation.y, height: bodies[id].height } : null])),
+    stats: () => ({ backend: window.__airenaBackend, bloom: window.__airenaBloom, fps: fps.last, draws: renderer.info?.render?.drawCalls ?? null }),
+  };
 }
+/** Глаз прогона снимков: `{az, pitch, dist, look:{x,y,z}}` или null. */
+let sweepCam = null;
 
 addEventListener('airena:demofx', (ev) => {
   try { playFx(ev.detail); } catch (err) { console.error('demofx', err); }
@@ -1166,6 +1311,19 @@ function paintFlash() {
   flashRaf = requestAnimationFrame(paintFlash);
 }
 
+/*
+ * ДЕКОРАЦИЯ УРОВНЯ 1 ЗАМОРОЖЕНА (решение основателя 02.09).
+ *
+ * Интерпретатор, валидатор, хранение в базе и гейт `tools/checkvfx.mjs`
+ * остаются как есть: контракт с моделью не меняется, и стары́е IR в базе
+ * по-прежнему валидны. Не рисуется ровно то, что интерпретатор кладёт
+ * ПОВЕРХ read-kit: плоские квадраты-частицы и одна декаль на каст. Поверх
+ * новых кинематографических эффектов они читались как дешёвые частицы и
+ * спорили с ними за тот же кадр. Когда части IR будут переведены на новые
+ * системы (частицы с масками, декали пола, свет), флаг снимается.
+ */
+const IR_DRAWS = false;
+
 function playFx(e) {
   if (e.element) {
     vfx.play(e, { bodyPos: (who) => (bodies[who] ? bodies[who].root.position : null) });
@@ -1196,7 +1354,7 @@ function playFx(e) {
        */
       const k = kitLabels[e.who] && kitLabels[e.who][e.skill];
       const ir = e.__demoVfx || (k && k.vfx);
-      if (ir) {
+      if (ir && IR_DRAWS) {
         playIr(vfx, ir, e, {
           shake: (a) => { try { camState.shake = Math.min(0.55, camState.shake + a); } catch { /* ещё не готова */ } },
           flash: (a) => flashFrame(a),
@@ -1273,7 +1431,10 @@ function updateFx(now) {
        * пересборку графа, ради устранения которой пул и заведён.
        */
       f.obj.traverse?.((o) => {
-        o.geometry?.dispose?.();
+        /* Общая геометрия набора (`shared` в vfx/core.js) — как пул материалов:
+           её делят все взрывы и волны, утилизировать её значит грузить заново
+           на каждом ударе. */
+        if (!o.geometry?.userData?.shared) o.geometry?.dispose?.();
         const m = o.material;
         if (!m) return;
         for (const one of Array.isArray(m) ? m : [m]) {
@@ -2282,7 +2443,7 @@ function connect() {
       for (const f of fxPool) {
         scene.remove(f.obj);
         f.obj.traverse?.((o) => {
-          o.geometry?.dispose?.();
+          if (!o.geometry?.userData?.shared) o.geometry?.dispose?.();
           const mat = o.material;
           if (!mat) return;
           for (const one of Array.isArray(mat) ? mat : [mat]) {
@@ -3152,15 +3313,33 @@ function updateCamera(a, b, dt) {
     camState.rescueTo = 0;
   }
 
+  /*
+   * ТРЯСКА — МОДЕЛЬ ТРАВМЫ (решение основателя 02.09), ПОСЛЕ решателя.
+   *
+   * `trauma` копится ударами до единицы и спадает линейно; сила — квадрат:
+   * мелкие удары почти не трясут, большой трясёт по-настоящему. Смещение
+   * идёт по ОСЯМ ЭКРАНА уже поставленной камеры плюс крен до двух градусов,
+   * суммой синусов на несоизмеримых частотах — так это не читается как
+   * дрожь одной пружины. В след камеры (`checkcamera` судит `dist/height/az`)
+   * тряска не попадает: судят решатель, а не удар. `shake` — прежняя ось,
+   * оставлена для автора IR (`MAX_SHAKE`) и гейта кадрирования.
+   */
+  camState.trauma = Math.max(0, (camState.trauma || 0) - dt * 1.7);
   camState.shake = Math.max(0, camState.shake - dt * 2.4);
-  const k = camState.shake * camState.shake;
+  const k = camState.trauma * camState.trauma + camState.shake * camState.shake;
   const t = performance.now() / 1000;
   camera.position.set(
-    camState.look.x + Math.sin(camState.az) * camState.dist + Math.sin(t * 47) * k,
-    camState.height + Math.sin(t * 61 + 1.7) * k * 0.8,
-    camState.look.z + Math.cos(camState.az) * camState.dist + Math.sin(t * 53 + 3.1) * k,
+    camState.look.x + Math.sin(camState.az) * camState.dist,
+    camState.height,
+    camState.look.z + Math.cos(camState.az) * camState.dist,
   );
   camera.lookAt(camState.look.x, camState.look.y + 0.4, camState.look.z);
+  if (k > 0.0001) {
+    const amp = 0.42 * k * (camState.dist / 26);
+    camera.translateX((Math.sin(t * 47) * 0.6 + Math.sin(t * 89 + 1.3) * 0.4) * amp);
+    camera.translateY((Math.sin(t * 61 + 1.7) * 0.6 + Math.sin(t * 103 + 0.4) * 0.4) * amp * 0.7);
+    camera.rotateZ((Math.sin(t * 53 + 3.1) * 0.6 + Math.sin(t * 71) * 0.4) * 0.03 * k);
+  }
 }
 
 /**
@@ -3454,7 +3633,7 @@ function frame() {
       const st = anim[id];
       if (!body) continue;
 
-      if (st.lastHp !== null && v.hp < st.lastHp - 0.01 && v.alive) st.hitUntil = now + 0.34;
+      if (st.lastHp !== null && v.hp < st.lastHp - 0.01 && v.alive) { st.hitUntil = now + 0.34; hitFlash(id); }
       st.lastHp = v.hp;
 
       const moved = st.lastX === null ? 0 : Math.hypot(v.x - st.lastX, v.z - st.lastZ);
@@ -3596,6 +3775,19 @@ function frame() {
   }
 
   updateFx(now);
+  tickScreen(dt);
+  tickHit(now);
+  if (sweepCam) {
+    /* Орбита вокруг точки взгляда: азимут, наклон, дистанция. Тряска
+       решателя сюда не попадает — снимок сравнивают, а не переживают. */
+    const { az = Math.PI * 0.25, pitch = 0.5, dist = 26, look = { x: 0, y: 1.2, z: 0 } } = sweepCam;
+    camera.position.set(
+      look.x + Math.sin(az) * Math.cos(pitch) * dist,
+      look.y + Math.sin(pitch) * dist,
+      look.z + Math.cos(az) * Math.cos(pitch) * dist,
+    );
+    camera.lookAt(look.x, look.y, look.z);
+  }
   /*
    * ── КАДР НЕ РИСУЕТСЯ, КОГДА ЕГО НЕ ВИДНО ────────────────────────────────
    *

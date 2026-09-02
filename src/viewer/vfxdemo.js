@@ -18,7 +18,9 @@
  */
 
 const params = new URLSearchParams(location.search);
-if (params.get('vfx')) {
+/* `?sweep=1` — прогон снимков (`tools/vfxshot.mjs`): ему нужны ручки
+   `?vfx=1`, но не карусель и не подпись поверх кадра. */
+if (params.get('vfx') && !params.get('sweep')) {
   const ELEMENTS = ['kinetic', 'ember', 'frost', 'arc', 'void'];
   const DELIVERIES = ['beam', 'cone', 'bolt', 'lob', 'zone', 'dash', 'blink', 'self', 'jump', 'wall', 'impact', 'status'];
   const only = params.get('only');
