@@ -58,10 +58,17 @@ src/viewer/vfx/kit.js      ударный набор: TSL-хелперы, пул
                            обломки, заряд/выброс, площадь следа → плотность
 src/viewer/vfx/ice.js      лёд:   cone zone self beam bolt impact charge
 src/viewer/vfx/fire.js     огонь: те же семь
-src/viewer/vfx/arc.js      молния: те же семь
+src/viewer/vfx/arc.js      молния: вход модуля; тело — в arc/ (util, field — поле
+                           разрядов, common — шар/облако/штрихи/кольцо, и по файлу
+                           на доставку: beam cone zone self ball impact)
+src/viewer/vfx/laser.js    лазер: штатный луч для стихий без модуля (kinetic, void),
+                           эталон Nova Beam; `Vfx.beam` зовёт его первым
+docs/vfx-notes/            брифы, карта API примитива молнии, скрипты прогонов
+                           агентов и замеров (см. docs/VFX-HANDOFF.md)
 src/viewer/main.js         пост-граф, тряска, вспышка, красная вспышка тела,
                            хуки заряда из телеграфа, ручки прогона снимков
-tools/vfxshot.mjs          прогон снимков (headless Chrome по CDP, WebGPU)
+tools/vfxshot.mjs          прогон снимков (headless Chrome по CDP, WebGPU); четыре глаза
+tools/vfxshot-lock.sh      тот же прогон под замком: один Chrome на GPU за раз
 tools/seedvfx.mjs          шесть демо-существ: три элемента × два набора
 reports/vfx/<tag>/         кадры прогона + index.json (в git не идут)
 ```
