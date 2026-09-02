@@ -1023,3 +1023,167 @@ export function charge(vfx, e, P, ctx) {
   vfx.flashLight(e.x, y, e.z, P[1], 6, secs, 5);
   return true;
 }
+
+/*
+ * ── РЫВОК, БЛИНК, ПРЫЖОК, СТЕНА, СТАТУС (план §5, часть C) ────────────────
+ *
+ * Тот же факт сима, что у молнии и льда: записи рывка и блинка играются,
+ * когда тело УЖЕ СТОИТ В КОНЦЕ. Всё ведётся ВРЕМЕНЕМ от точки старта
+ * (`born = f·T`), ничто не следует за телом.
+ *
+ * Прыжок и стена — «модуль добавляет, штатный рисует» (§7.3): чёрная тень и
+ * коллизионная плита не эффекты, их модуль не трогает.
+ */
+
+const FIRE_DASH_T = (len) => Math.min(0.4, Math.max(0.18, len / 22));
+
+export function dash(vfx, e, P, ctx) {
+  const seed = seedOf(e);
+  const rng = mulberry(seed);
+  const S = [e.x0, e.z0], E = [e.x1, e.z1];
+  const len = Math.hypot(E[0] - S[0], E[1] - S[1]);
+  if (len < 0.5) return false;
+  const T = FIRE_DASH_T(len);
+  const ux = (E[0] - S[0]) / len, uz = (E[1] - S[1]) / len;
+  const sx = -uz, sz = ux;
+  const now = vfx.now;
+
+  /* ОГНЕННЫЙ СЛЕД: угли и низкие языки рождаются вдоль ПРОЙДЕННОЙ части —
+     `born = f·T`. Кладка вдоль трассы, а не облако у бойца. */
+  const place = (i) => {
+    const f = ((i * 0.618) % 1);
+    const lat = (rng() - 0.5) * 1.2;
+    return [S[0] + ux * len * f + sx * lat, S[1] + uz * len * f + sz * lat];
+  };
+  const N = Math.min(220, Math.max(60, Math.round(len * 22)));
+  vfx.body.emit(N, (i, s) => {
+    const f = rng();
+    const lat = (rng() - 0.5) * 1.2;
+    s.pos(S[0] + ux * len * f + sx * lat, 0.15 + rng() * 0.5, S[1] + uz * len * f + sz * lat);
+    s.vel((rng() - 0.5) * 0.8, rnd(1.4, 3.0, rng), (rng() - 0.5) * 0.8);
+    s.gravity(0, rnd(0.6, 1.6, rng), 0);
+    s.color(i % 3 ? P[1] : P[0], flameEnd(P));
+    s.life(now + f * T, rnd(0.35, 0.8, rng), rnd(0.35, 0.85, rng), SHAPE.flame);
+    s.ext(rnd(-0.6, 0.6, rng), 0.3, 0, 0.6);
+  });
+  emitEmbers(vfx, Math.round(N * 0.5), place, { P, y: 0.15, yJit: 0.4, speed: 2.5, up: 5, life: 1.3, size: 0.15, at: now, jitter: T, gravity: -7, r: rng });
+  emitSmoke(vfx, Math.round(N * 0.3), place, { lit: smokeLit(P), y: 0.4, yJit: 0.5, rise: 2.4, life: 2.6, size: 0.9, at: now + 0.1, jitter: T, out: 0.8, r: rng });
+  /* Полоса сажи вдоль трассы: три следа, чтобы длинный рывок не был диском. */
+  for (let i = 0; i < 3; i++) {
+    const f = 0.2 + i * 0.3;
+    kit.decal(vfx, { type: 'soot', x: S[0] + ux * len * f, z: S[1] + uz * len * f, radius: len * 0.22 + 0.4, hold: 20, tint: P[2], seed: ((seed + i) % 9) + 1, at: f * T });
+  }
+  if (e.hit) {
+    kit.burst(vfx, { x: E[0], y: 1.0, z: E[1], radius: 0.5, endRadius: 1.7, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.1, at: T });
+    kit.decal(vfx, { type: 'scorch', x: E[0], z: E[1], radius: 1.2, hold: 20, tint: P[1], seed: (seed % 9) + 1, at: T });
+    vfx.flashLight(E[0], 1.0, E[1], P[1], 16, 0.3, 7);
+  }
+  return true;
+}
+
+export function blink(vfx, e, P, ctx) {
+  const seed = seedOf(e);
+  const rng = mulberry(seed);
+  /* У СТАРТА — хлопок сажи и углей (тело выгорело из точки), у КОНЦА —
+     вспышка пламени (оно там появилось). */
+  const at0 = (i) => [e.x0 + (rng() - 0.5) * 1.0, e.z0 + (rng() - 0.5) * 1.0];
+  const at1 = (i) => [e.x1 + (rng() - 0.5) * 1.0, e.z1 + (rng() - 0.5) * 1.0];
+  emitSmoke(vfx, 40, at0, { lit: smokeLit(P), y: 0.5, yJit: 0.8, rise: 3.0, life: 2.4, size: 1.0, out: 1.2, r: rng });
+  emitEmbers(vfx, 28, at0, { P, y: 0.6, yJit: 0.7, speed: 4, up: 6, life: 1.2, size: 0.16, r: rng });
+  kit.decal(vfx, { type: 'soot', x: e.x0, z: e.z0, radius: 1.0, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
+  kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.4, endRadius: 1.6, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.2, at: 0.08 });
+  emitFlames(vfx, 34, at1, { P, y: 0.3, yJit: 0.9, rise: 3.2, life: 0.7, size: 0.9, at: vfx.now + 0.08, jitter: 0.15, r: rng });
+  kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: 1.0, hold: 20, tint: P[2], seed: ((seed + 2) % 9) + 1, at: 0.08 });
+  vfx.flashLight(e.x1, 1.0, e.z1, P[1], 18, 0.3, 7);
+  return true;
+}
+
+export function jump(vfx, e, P, ctx) {
+  const seed = seedOf(e);
+  const rng = mulberry(seed);
+  const dur = Math.max(0.2, e.duration || 0.55);
+  const foot = () => [e.x + (rng() - 0.5) * 1.0, e.z + (rng() - 0.5) * 1.0];
+  /* Отрыв — выхлоп пламени из-под ног; в воздухе НИЧЕГО. */
+  emitFlames(vfx, 26, foot, { P, y: 0.1, yJit: 0.3, rise: 1.6, life: 0.5, size: 0.7, out: 1.4, r: rng });
+  emitSmoke(vfx, 18, foot, { lit: smokeLit(P), y: 0.2, yJit: 0.3, rise: 2.0, life: 2.0, size: 0.8, out: 1.4, r: rng });
+  vfx.spawnMesh(new THREE.Group(), dur + 1.4, (o, u) => {
+    if (o.userData.done || u * (dur + 1.4) < dur) return;
+    o.userData.done = true;
+    const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+    const lx = p ? p.x : e.x, lz = p ? p.z : e.z;
+    const land = () => [lx + (rng() - 0.5) * 2.0, lz + (rng() - 0.5) * 2.0];
+    kit.shockwave(vfx, { x: lx, z: lz, radius: 3.0, r0: 0.3, life: 0.55, colour: P[1], intensity: 1.2 });
+    emitEmbers(vfx, 54, land, { P, y: 0.2, yJit: 0.5, speed: 5, up: 7, life: 1.4, size: 0.17, r: rng });
+    emitFlames(vfx, 30, land, { P, y: 0.15, yJit: 0.4, rise: 2.6, life: 0.6, size: 0.9, out: 1.2, r: rng });
+    kit.decal(vfx, { type: 'scorch', x: lx, z: lz, radius: 1.6, hold: 20, tint: P[1], seed: (seed % 9) + 1 });
+    vfx.flashLight(lx, 0.8, lz, P[1], 16, 0.35, 7);
+    vfx.screen.shake(0.22);
+  });
+  return true;
+}
+
+export function wall(vfx, e, P, ctx) {
+  const seed = seedOf(e);
+  const rng = mulberry(seed);
+  const D = Math.max(0.6, e.duration || 5);
+  const W = Math.max(0.6, e.w || 4), Dd = Math.max(0.5, e.d || 1);
+  /* СТЕНА ОГНЯ: языки по всей длине коробки, марево над ней, угли, полоса
+     сажи. Плиту коллизии рисует штатный силуэт под нами (§7.3). */
+  const place = () => [e.x + (rng() - 0.5) * W * 0.96, e.z + (rng() - 0.5) * Dd * 0.9];
+  let next = 0;
+  vfx.spawnMesh(new THREE.Group(), D, (o, u) => {
+    const t = u * D;
+    if (t < next || t > D - 0.3) return;
+    next = t + 0.18;
+    const k = t < 0.15 ? t / 0.15 : 1;
+    emitFlames(vfx, Math.round(W * 6 * k), place, { P, y: 0.1, yJit: 0.5, rise: 3.4, life: 0.75, size: 0.85, out: 0.4, r: rng });
+    if (t % 0.5 < 0.19) {
+      emitEmbers(vfx, Math.round(W * 2), place, { P, y: 0.4, yJit: 0.6, speed: 1.4, up: 6, life: 1.5, size: 0.14, r: rng });
+      emitSmoke(vfx, Math.round(W * 2), place, { lit: smokeLit(P), y: 1.4, yJit: 0.6, rise: 3.0, life: 3.0, size: 1.1, out: 0.5, r: rng });
+    }
+  });
+  kit.heat(vfx, { x: e.x, y: 1.6, z: e.z, size: Math.max(W, 2.2), life: D, strength: 0.9 });
+  for (let i = 0; i < 3; i++) {
+    kit.decal(vfx, { type: 'soot', x: e.x + ((i - 1) * W) / 3, z: e.z, radius: W * 0.22 + 0.4, hold: 20, tint: P[2], seed: ((seed + i) % 9) + 1 });
+  }
+  vfx.flashLight(e.x, 1.0, e.z, P[1], 12, 0.4, W + 2);
+  return true;
+}
+
+/** Одно тело — один статус (§P10). */
+const FIRE_STATUS = new Map();
+
+export function status(vfx, e, P, ctx) {
+  const who = e.who || 'orange';
+  const dur = e.duration ?? 1.5;
+  const key = `${who}:${e.effect}`;
+  const live = FIRE_STATUS.get(key);
+  if (live && live.until > vfx.now) { live.until = vfx.now + dur; return true; }
+  const entry = { until: vfx.now + dur };
+  FIRE_STATUS.set(key, entry);
+
+  const seed = seedOf(e);
+  const rng = mulberry(seed);
+  const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(who) : null) || { x: e.x ?? 0, z: e.z ?? 0 };
+  const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
+  const R = (bs ? bs.r : 0.9) * 1.0, H = (bs ? bs.h : 2.0);
+  /* ТЛЕНИЕ НА ТЕЛЕ: языки и угли рождаются НА КАПСУЛЕ (§7.1) и всплывают —
+     это горит само тело, а не костёр рядом с ним. */
+  const MAX = 60;
+  let next = 0;
+  vfx.spawnMesh(new THREE.Group(), MAX, (o, u) => {
+    const t = u * MAX;
+    if (vfx.now > entry.until) { if (FIRE_STATUS.get(key) === entry) FIRE_STATUS.delete(key); return; }
+    if (t < next) return;
+    next = t + 0.22;
+    const p = at();
+    const surf = () => {
+      const a = rng() * Math.PI * 2;
+      return [p.x + Math.sin(a) * R, p.z + Math.cos(a) * R];
+    };
+    emitFlames(vfx, 7, surf, { P, y: 0.25, yJit: H * 0.75, rise: 2.0, life: 0.5, size: 0.42, out: 0.25, hotK: 0.6, r: rng });
+    emitEmbers(vfx, 4, surf, { P, y: H * 0.5, yJit: H * 0.4, speed: 0.6, up: 2.4, life: 1.0, size: 0.1, r: rng });
+    if (t % 1 < 0.23) emitSmoke(vfx, 3, surf, { lit: smokeLit(P), y: H * 0.8, yJit: 0.4, rise: 2.2, life: 2.0, size: 0.6, out: 0.4, r: rng });
+  });
+  return true;
+}
