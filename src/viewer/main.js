@@ -1218,7 +1218,7 @@ function hitFlash(id) {
   if (!bodies[id]) return;
   hitUntil[id] = performance.now() / 1000 + 0.22;
 }
-const TARGETED = new Set(['damage', 'knock', 'pull', 'stun', 'root', 'blind', 'silence', 'weaken']);
+const TARGETED = new Set(['damage', 'burn', 'knock', 'pull', 'stun', 'root', 'blind', 'silence', 'weaken']);
 function hitFlashFromImpact(e) {
   if (e.blocked) return;
   const list = Array.isArray(e.effects) ? e.effects : ['damage'];
