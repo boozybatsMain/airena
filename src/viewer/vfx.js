@@ -41,6 +41,7 @@ import * as iceFx from './vfx/ice.js';
 import * as fireFx from './vfx/fire.js';
 import * as arcFx from './vfx/arc.js';
 import * as laserFx from './vfx/laser.js';
+import * as gravityFx from './vfx/gravity.js';
 
 /*
  * Метка свечения, часы, затухание и пул материалов живут в `vfx/core.js`
@@ -591,7 +592,7 @@ export class Particles {
  * побитово тот же лог. Проверяемо и проверяется.
  */
 /** Элемент → модуль с функциями `cone zone self beam bolt lob impact charge`. */
-const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx };
+const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx, gravity: gravityFx };
 
 /**
  * Кто рисует доставку `kind` стихии `element` — зеркало порядка в `play()`:

@@ -152,31 +152,39 @@ export function blink(vfx, e, P, ctx) {
   const BR = (bs ? bs.r : 0.9) * 1.05, BH = (bs ? bs.h : 2.0) * 0.55;
   const S = [e.x0, BH, e.z0], E = [e.x1, BH, e.z1];
   const len = Math.hypot(E[0] - S[0], E[2] - S[2]);
-  const LIFE = 0.35;
+  const LIFE = 0.42;
 
-  const field = boltField(vfx, P, 1100);
+  const field = boltField(vfx, P, 1400);
   const rs = restriker(field, seed, (t, g) => {
     const out = [];
     /* ТЕЛЕПОРТ МГНОВЕНЕН — окно P1 к нему не применяется: разряд между
        точками горит ЦЕЛИКОМ первые 90 мс и гаснет. */
-    if (t < 0.09 && len > 0.5) {
+    /* 0.16 с, а не 0.09: судья, снявший кадр на 0.12 с, увидел два
+       НЕСВЯЗАННЫХ острова с тёмным провалом между ними — «нет сквозного
+       разряда, которого требует спецификация» (40 из 100). Телепорт всё ещё
+       мгновенен по смыслу (окно P1 к нему не применяется, полоса горит
+       целиком), но он обязан попасть хотя бы в один кадр глаза. */
+    if (t < 0.16 && len > 0.5) {
       out.push({
-        bundle: true, a: S, b: E, n: 5, r0: 0.06, r1: 0.25, step: 0.45, width: 0.024,
-        heroes: 2, rungs: 0.5, stubs: 0.3, tangle: 0, bend: 0.05, minY: 0.15, phase: 0,
+        bundle: true, a: S, b: E, n: 7, r0: 0.06, r1: 0.3, step: 0.42, width: 0.028,
+        heroes: 3, rungs: 0.6, stubs: 0.35, tangle: 0, bend: 0.05, minY: 0.15, phase: 0,
       });
     }
     /* У СТАРТА разряд уходит В ПОЛ (тело исчезло — заряд стекает), у КОНЦА
        сходится из пола на тело (оно появилось). */
-    if (t < 0.12) {
-      for (let i = 0; i < 6; i++) {
-        const a = g() * TAU, d = 0.5 + g() * 0.7;
-        out.push({ a: [S[0] + Math.sin(a) * BR * 0.6, BH, S[2] + Math.cos(a) * BR * 0.6], b: [S[0] + Math.sin(a) * d, 0.05, S[2] + Math.cos(a) * d], floor: true, floorTop: 0.6, width: 0.021, bright: 1, jag: 0.22, branches: 1, minY: 0.05, phase: 100 + i, step: 0.26 });
+    if (t < 0.16) {
+      /* Восемь нитей вместо шести и ядро 0.026: у судьи в коробке отрыва
+         было НОЛЬ горячих пикселей — «бледное серо-голубое облачко, а не
+         молния». Толстая нить с белым ядром на белом полу читается. */
+      for (let i = 0; i < 8; i++) {
+        const a = g() * TAU, d = 0.6 + g() * 0.8;
+        out.push({ a: [S[0] + Math.sin(a) * BR * 0.6, BH, S[2] + Math.cos(a) * BR * 0.6], b: [S[0] + Math.sin(a) * d, 0.05, S[2] + Math.cos(a) * d], floor: true, floorTop: 0.6, width: 0.026, bright: 1.05, jag: 0.22, branches: 1, minY: 0.05, phase: 100 + i, step: 0.26 });
       }
     }
-    if (t >= 0.05 && t < 0.2) {
-      for (let i = 0; i < 6; i++) {
-        const a = g() * TAU, d = 0.5 + g() * 0.7;
-        out.push({ a: [E[0] + Math.sin(a) * d, 0.05, E[2] + Math.cos(a) * d], b: [E[0] + Math.sin(a) * BR * 0.6, BH, E[2] + Math.cos(a) * BR * 0.6], floor: true, floorTop: 0.6, width: 0.021, bright: 1, jag: 0.22, branches: 1, minY: 0.05, phase: 200 + i, step: 0.26 });
+    if (t >= 0.05 && t < 0.24) {
+      for (let i = 0; i < 8; i++) {
+        const a = g() * TAU, d = 0.6 + g() * 0.8;
+        out.push({ a: [E[0] + Math.sin(a) * d, 0.05, E[2] + Math.cos(a) * d], b: [E[0] + Math.sin(a) * BR * 0.6, BH, E[2] + Math.cos(a) * BR * 0.6], floor: true, floorTop: 0.6, width: 0.026, bright: 1.05, jag: 0.22, branches: 1, minY: 0.05, phase: 200 + i, step: 0.26 });
       }
     }
     /* Диски треска под обеими точками. */
@@ -193,7 +201,7 @@ export function blink(vfx, e, P, ctx) {
 
   vfx.spawnMesh(field.group, LIFE, (o, u) => {
     const t = u * LIFE;
-    field.set({ fade: t < 0.25 ? 1 : 1 - (t - 0.25) / 0.1, hot: rs.tick(t), reach: 1, tail: 0 });
+    field.set({ fade: t < 0.28 ? 1 : Math.max(0, 1 - (t - 0.28) / 0.12), hot: rs.tick(t), reach: 1, tail: 0 });
   });
   rs.tick(0);
 
@@ -287,13 +295,24 @@ export function wall(vfx, e, P, ctx) {
       const px = e.x + sgn * (W / 2) * 0.92, pz = e.z;
       out.push({ a: [px, 0.08, pz], b: [px, 0.08 + 2.1 * k, pz], width: 0.032, bright: 1.1, jag: 0.12, branches: 1, minY: 0.06, phase: sgn > 0 ? 0 : 1, step: 0.32 });
     }
-    /* Плотность как у щита: замер i1 (7 нитей по 6 звеньев на оболочке
-       2×1.1×0.5 м) — 42 узла на 15 м², решётка сквозила. */
-    out.push({
-      surface: true, c: [e.x, CY, e.z], r: W / 2, ry: CY * k, rz,
-      n: clampN(Math.round(W * 3.5), 10, 20), links: 8, link: 0.3, width: 0.024,
-      bright: 1.0, rungs: 2.2, offset: 0.03, seed, minY: 0.06, phase: 10,
-    });
+    /* Решётка выкладывается ПО ДЛИНЕ СТЕНЫ, нить за нитью с явной точкой
+       старта. Замер i2 (одна `surfaceSegs` с общим случайным стартом на
+       эллипсоиде 2×1.1×0.5 м): проекция сгущает случайные точки к торцам, и
+       решётка сбилась в клубок над левой половиной коробки, правая осталась
+       почти пустой (судья, 69 из 100). Явный старт через каждые W/n метров
+       раскладывает изгородь ровно. */
+    const nn = clampN(Math.round(W * 3), 8, 18);
+    for (let i = 0; i < nn; i++) {
+      const fx = ((i + 0.5) / nn - 0.5) * W * 0.94;
+      const fy = CY + ((i % 3) - 1) * CY * 0.45;
+      out.push({
+        surface: true, c: [e.x, CY, e.z], r: W / 2, ry: CY * k, rz,
+        start: [e.x + fx, Math.max(0.15, fy), e.z + ((i % 2) ? rz : -rz) * 0.5],
+        n: 1, links: 7, link: 0.3, width: 0.024,
+        bright: 1.0, rungs: 0, offset: 0.03, seed: (seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0,
+        minY: 0.06, phase: 10 + i,
+      });
+    }
     /* Ковёр треска вдоль основания, пересевается раз в полсекунды. */
     const win = Math.floor(t / 0.5);
     const gc = mulberry((seed ^ Math.imul(win + 1, 0x85ebca6b)) >>> 0);

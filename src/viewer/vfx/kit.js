@@ -27,7 +27,7 @@ import {
 const {
   float, vec2, vec3, uv, uniform, mix, smoothstep, oneMinus, abs: tabs,
   mx_noise_float, mx_fractal_noise_float, positionLocal, normalLocal, normalView,
-  positionViewDirection, positionWorld, attribute, sin: tsin, cos: tcos,
+  positionViewDirection, positionWorld, attribute, sin: tsin, cos: tcos, step: tstep,
 } = TSL;
 
 /* ── след умения → площадь → плотность ─────────────────────────────────── */
@@ -231,14 +231,20 @@ function shockMat(hot) {
       blending: hot ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     const age = uniform(0), seed = uniform(0), intensity = uniform(1), colour = uniform(new THREE.Color(1, 0.8, 0.5));
-    m.userData.u = { age, seed, intensity, colour };
+    /* `half` — полураствор сектора в радианах; π (по умолчанию) = целое
+       кольцо. Нужен фронту волны конуса (радиация §6.5). Направление НЕ
+       мапится в шейдере — меш поворачивается по Y (см. `shockwave`). */
+    const half = uniform(Math.PI);
+    m.userData.u = { age, seed, intensity, colour, half };
     /* uv кольца — квадрат описанной окружности; радиус — расстояние до центра. */
     const q = uv().sub(vec2(0.5, 0.5)).mul(2);
     const d = q.length();
     const ang = TSL.atan(q.y, q.x);
     const rag = mx_fractal_noise_float(vec3(tcos(ang).mul(2.2), tsin(ang).mul(2.2), seed), 2, 2.0, 0.5, 1).mul(0.35).add(0.85);
+    /* Клин: uv-угол 0 — местная ось +x, и `step(edge, x)` берёт край ПЕРВЫМ. */
+    const wedge = tstep(tcos(half), tcos(ang));
     if (hot) {
-      const band = smoothstep(float(0.62), float(0.8), d).mul(oneMinus(smoothstep(float(0.86), float(1.0), d)));
+      const band = smoothstep(float(0.62), float(0.8), d).mul(oneMinus(smoothstep(float(0.86), float(1.0), d))).mul(wedge);
       m.colorNode = mix(colour, vec3(1, 1, 1), oneMinus(age).mul(0.5));
       const alpha = band.mul(rag).mul(oneMinus(age).pow(2.0)).mul(intensity);
       m.opacityNode = alpha.clamp(0, 1);
@@ -246,7 +252,7 @@ function shockMat(hot) {
     }
     /* ПЫЛЬ: широкая тёмная волна, поднятая ударом. Обычный блендинг —
        аддитивное кольцо на белом полу невидимо (замер выше по проекту). */
-    const band = smoothstep(float(0.5), float(0.7), d).mul(oneMinus(smoothstep(float(0.8), float(1.0), d)));
+    const band = smoothstep(float(0.5), float(0.7), d).mul(oneMinus(smoothstep(float(0.8), float(1.0), d))).mul(wedge);
     const grain = mx_noise_float(vec3(q.mul(6.0), seed.add(3))).mul(0.5).add(0.5);
     m.colorNode = mix(colour.mul(0.35), vec3(0.16, 0.14, 0.12), grain.mul(0.6).add(0.2));
     const alpha = band.mul(rag).mul(grain.mul(0.5).add(0.5)).mul(oneMinus(age).pow(1.3)).mul(intensity).mul(0.8);
@@ -259,14 +265,23 @@ function shockMat(hot) {
  * Ударная волна: пылевое кольцо, расширяющееся от `r0` до `radius` за
  * `life` секунд, и внутри — горячее светящееся, гаснущее вдвое быстрее.
  */
-export function shockwave(vfx, { x, z, radius = 5, r0 = 0.6, life = 0.6, colour, intensity = 1, y = 0.06, dust = true }) {
+export function shockwave(vfx, { x, z, radius = 5, r0 = 0.6, life = 0.6, colour, intensity = 1, y = 0.06, dust = true, dir = null, half = null }) {
   const make = (hot, lifeK, order) => {
     const m = shockMat(hot);
     const u = m.userData.u;
     u.seed.value = ((x * 1.3 + z * 2.9) % 5) + 1;
     u.intensity.value = intensity;
     if (colour) u.colour.value.copy(colour);
+    if (u.half) u.half.value = half == null ? Math.PI : half;
     const mesh = new THREE.Mesh(shockGeo(), m);
+    /*
+     * ПОЧЕМУ −π/2. uv-угол 0 геометрии кольца — её местная ось +x
+     * (`RingGeometry` + `rotateX(−π/2)` уводит местную y в мировую −z);
+     * мировой курс `h` смотрит в `(sin h, cos h)`, как в `Vfx.cone`; поворот
+     * на θ вокруг Y уносит местную +x в `(cos θ, −sin θ)`. Отсюда θ = h − π/2.
+     * Если фронт лёг на 90° мимо сектора — ошибка ровно в этом знаке.
+     */
+    if (dir != null) mesh.rotation.y = dir - Math.PI / 2;
     mesh.position.set(x, y + (hot ? 0.01 : 0), z);
     mesh.renderOrder = order;
     mesh.frustumCulled = false;
@@ -291,6 +306,9 @@ export function shockwave(vfx, { x, z, radius = 5, r0 = 0.6, life = 0.6, colour,
  *
  * Типы: `soot` — сажа; `scorch` — ожог с остывающими трещинами; `frost` —
  * иней с тёмными трещинами; `arc` — ветвистый электрический ожог;
+ * `grav` — концентрические кольца, сжимающиеся к центру (продавленный пол);
+ * `time` — циферблат тёмными линиями; `acid` — глянцевая лужа с тёмным
+ * мокрым ободом; `rad` — заражение: кляксы, пульсирующие цветом;
  * `crater` — воронка кольцами; `laser` — оплавленное стекловидное пятно с
  * тёмным ободом и лучами (лазер плавит, а не жжёт: иней и ожог не подошли —
  * иней на белом полу невидим, у ожога горячие трещины). Все — плоские на
@@ -298,7 +316,9 @@ export function shockwave(vfx, { x, z, radius = 5, r0 = 0.6, life = 0.6, colour,
  * там невидимо.
  */
 const MAX_DECALS = 28;
-const DECAL_Y = { soot: 0.018, scorch: 0.022, frost: 0.026, arc: 0.030, crater: 0.014, laser: 0.028 };
+/* Высота над полом — порядок наложения. Кислота НИЖЕ инея, ожога и лазера:
+   капли и поздние следы обязаны лечь ПОВЕРХ лужи, а не под ней. */
+const DECAL_Y = { soot: 0.018, scorch: 0.022, frost: 0.026, arc: 0.030, crater: 0.014, laser: 0.028, grav: 0.021, time: 0.023, acid: 0.020, rad: 0.025 };
 
 class DecalField {
   constructor(scene, type, palette) {
@@ -384,6 +404,65 @@ class DecalField {
       colour = mix(glassC, mix(dark, tint, heat.mul(0.5)), rim.clamp(0, 1));
       alpha = glass.mul(grain.mul(0.2).add(0.35)).add(rays.mul(0.25)).add(rim.mul(0.85)).clamp(0, 1);
       glow = glass.mul(heat).mul(0.12).add(rim.mul(heat).mul(0.35));
+    } else if (type === 'grav') {
+      /* ГРАВИТАЦИЯ: концентрические тёмные кольца, шаг которых СЖИМАЕТСЯ к
+         центру, и чуть более тёмная середина — пол, продавленный весом.
+         Никакого свечения: у гравитации светится только ободок горизонта, и
+         тот на сфере, а не на полу. Кольца медленно ползут внутрь
+         (`TIME·0.6`), поэтому колодец не выглядит наклейкой. */
+      const core = oneMinus(smoothstep(float(0.75), float(1.0), d));
+      /* Шаг по d^0.55: у центра кольца плотнее, у края реже. */
+      const rings = tsin(d.pow(0.55).mul(26.0).sub(TIME.mul(0.6))).mul(0.5).add(0.5);
+      const line = smoothstep(float(0.55), float(0.95), rings);
+      const dip = oneMinus(d).clamp(0, 1).pow(2.2);
+      colour = mix(tint.mul(0.5), vec3(0.02, 0.02, 0.03), line.mul(0.7).add(dip.mul(0.3)));
+      alpha = core.mul(line.mul(0.55).add(0.25).add(dip.mul(0.35))).clamp(0, 1).mul(0.92);
+    } else if (type === 'time') {
+      /* ВРЕМЯ: циферблат — обод, двенадцать штрихов и волосок-стрелка,
+         тёмным умбровым по белому полу (P3: у времени на полу читаются
+         ТЁМНЫЕ линии, а не бледные). Без свечения: время не горит. */
+      const ang = TSL.atan(q.y, q.x);
+      const rim = smoothstep(float(0.88), float(0.93), d).mul(oneMinus(smoothstep(float(0.97), float(1.0), d)));
+      /* Двенадцать штрихов: |sin(6·угол)| у нуля — попали на штрих. */
+      const tick = oneMinus(smoothstep(float(0.0), float(0.09), tabs(tsin(ang.mul(6.0)))))
+        .mul(smoothstep(float(0.68), float(0.74), d)).mul(oneMinus(smoothstep(float(0.9), float(0.94), d)));
+      /* Стрелка: волосок от центра до 0.62 радиуса, стоит (время встало). */
+      const hand = oneMinus(smoothstep(float(0.0), float(0.045), tabs(tsin(ang.sub(float(-0.9))))))
+        .mul(oneMinus(smoothstep(float(0.5), float(0.62), d)));
+      const ink = rim.add(tick).add(hand.mul(0.8)).clamp(0, 1);
+      const face = oneMinus(smoothstep(float(0.9), float(1.0), d)).mul(0.12);
+      colour = mix(tint.mul(0.75), tint.mul(0.35), ink);
+      alpha = ink.mul(0.9).add(face).clamp(0, 1);
+    } else if (type === 'acid') {
+      /* КИСЛОТА: глянцевая лужа. Край РВАНЫЙ по шуму (порог 0.45), чтобы ни
+         одна лужа не была диском; по внешним 18 % радиуса — тёмный мокрый
+         обод в `P[2]` (он и держит форму на белом полу, P3); внутри тело
+         луже-зелёное; один HDR-блик вдоль `rot` в одном квадранте — от него
+         лужа читается ЖИДКОЙ, а не пятном краски. */
+      const edge = d.add(mx_fractal_noise_float(p3.mul(3.5), 3, 2.0, 0.5, 1).mul(0.45));
+      const core = oneMinus(smoothstep(float(0.45), float(0.95), edge));
+      const rim = smoothstep(float(0.62), float(0.82), edge).mul(oneMinus(smoothstep(float(0.95), float(1.05), edge)));
+      const grain = mx_noise_float(p3.mul(7.0).add(2.2)).mul(0.5).add(0.5);
+      const body = mix(tint.mul(0.7), vec3(0.62, 0.91, 0.23), 0.55);
+      /* Блик: узкая полоса 0.08 радиуса в одном квадранте. */
+      const spec = oneMinus(smoothstep(float(0.0), float(0.08), tabs(q.y.sub(q.x.mul(0.45)))))
+        .mul(smoothstep(float(0.0), float(0.3), q.x)).mul(core).mul(grain.mul(0.4).add(0.6));
+      colour = mix(mix(body, vec3(2.6, 2.8, 2.4), spec.mul(0.8)), tint.mul(0.55), rim.clamp(0, 1));
+      alpha = core.mul(grain.mul(0.2).add(0.75)).mul(0.85).add(rim.mul(0.95)).clamp(0, 1);
+      glow = spec.mul(0.3);
+    } else if (type === 'rad') {
+      /* РАДИАЦИЯ: заражённый пол — кляксы `P[1]` по тёмно-оливковой земле
+         `P[2]`, ПУЛЬСИРУЮЩИЕ цветом (не в bloom: пол не имеет права цвести,
+         §10.1). Держится и светится после того, как всё остальное погасло. */
+      const core = oneMinus(smoothstep(float(0.6), float(1.0), d.add(mx_fractal_noise_float(p3.mul(2.0), 2, 2.0, 0.5, 1).mul(0.3))));
+      const blot = smoothstep(float(0.42), float(0.62), mx_fractal_noise_float(p3.mul(4.2).add(1.7), 3, 2.0, 0.5, 1).mul(0.5).add(0.5));
+      const pulse = tsin(TIME.mul(9.4)).mul(0.5).add(0.5);
+      const hot = mix(tint, tint.mul(0.6), pulse);
+      colour = mix(tint.mul(0.32), hot, blot.mul(core));
+      alpha = core.mul(blot.mul(0.5).add(0.5)).mul(0.9);
+      /* Свечение — ТОЛЬКО по краю кляксы и слабое: ровный светящийся диск на
+         полу дал бы вуаль во весь кадр. */
+      glow = blot.mul(oneMinus(blot)).mul(core).mul(0.8).clamp(0, 0.2);
     } else {
       /* crater: тёмное кольцо с рваным краем и светлым отсыпанным валом */
       const edge = d.add(mx_fractal_noise_float(p3.mul(2.0), 2, 2.0, 0.5, 1).mul(0.25));
@@ -427,12 +506,15 @@ const decalFields = new WeakMap();
  * Оставить след. `hold` — секунды до начала затухания (по умолчанию 22),
  * `fade` — секунды затухания. Радиус — в метрах, как след умения.
  */
-export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold = 22, fade = 4, tint = null, seed = null }) {
+export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold = 22, fade = 4, tint = null, seed = null, at = 0 }) {
   let fields = decalFields.get(vfx);
   if (!fields) { fields = {}; decalFields.set(vfx, fields); }
   if (!fields[type]) fields[type] = new DecalField(vfx.scene, type);
   fields[type].place({
-    x, z, radius, rot: rot ?? ((x * 7.1 + z * 3.3) % 6.28), now: vfx.now, hold, fade,
+    /* `at` — на сколько секунд след ОПАЗДЫВАЕТ (капля кислоты ещё летит,
+       канистра ещё не упала). Шейдер и так считает будущий `born`
+       невидимым, так что достаточно сдвинуть часы рождения вперёд. */
+    x, z, radius, rot: rot ?? ((x * 7.1 + z * 3.3) % 6.28), now: vfx.now + at, hold, fade,
     seed: seed ?? (((x * 2.3 + z * 1.7) % 9) + 1), tint: tint || new THREE.Color(0.5, 0.5, 0.5),
   });
 }
@@ -475,6 +557,48 @@ export function heat(vfx, { x, y = 1.2, z, size = 3, life = 1.5, strength = 1 })
   vfx.spawnMesh(mesh, life, (o, t) => {
     o.material.userData.fade.value = strength * (1 - t) * (1 - t);
     o.scale.setScalar(size * (1 + t * 0.4));
+  });
+  return mesh;
+}
+
+/* ── линза ──────────────────────────────────────────────────────────────── */
+
+function lensMat() {
+  return pooled('lens', () => {
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending });
+    const fade = withFade(m);
+    /* Смещение РАДИАЛЬНОЕ К ЦЕНТРУ (у марева — шумовое): картинка за линзой
+       стягивается внутрь, как у гравитационного колодца. Сила падает от
+       центра к краю по (1 − r)^1.5, иначе край проксивного квадрата виден
+       ступенькой. */
+    const q = uv().sub(vec2(0.5, 0.5)).mul(2);
+    const mask = oneMinus(q.length()).clamp(0, 1).pow(1.5);
+    m.colorNode = vec3(0, 0, 0);
+    m.opacityNode = float(0);
+    markDistort(m, q.negate().mul(mask), mask.mul(fade));
+    const { cameraProjectionMatrix, modelViewMatrix, vec4 } = TSL;
+    m.vertexNode = cameraProjectionMatrix.mul(modelViewMatrix.mul(vec4(0, 0, 0, 1)).add(vec4(positionLocal.xy, 0, 0)));
+    return m;
+  }, 6);
+}
+
+let LENS_GEO = null;
+/**
+ * ЛИНЗА: искажение к центру. В отличие от марева (`heat`), которое гаснет от
+ * рождения, линза ДЕРЖИТ силу всю жизнь и отпускает за последние 0.3 с —
+ * гравитационный колодец не «остывает», он выключается.
+ */
+export function lens(vfx, { x, y = 1.0, z, size = 3, life = 1.5, strength = 1 }) {
+  if (!LENS_GEO) LENS_GEO = shared(new THREE.PlaneGeometry(1, 1));
+  const m = lensMat();
+  const mesh = new THREE.Mesh(LENS_GEO, m);
+  mesh.position.set(x, y, z);
+  mesh.scale.setScalar(size);
+  mesh.renderOrder = 12;
+  mesh.frustumCulled = false;
+  vfx.spawnMesh(mesh, life, (o, t) => {
+    const s = t * life;
+    o.material.userData.fade.value = strength * (s < life - 0.3 ? 1 : Math.max(0, (life - s) / 0.3));
   });
   return mesh;
 }
