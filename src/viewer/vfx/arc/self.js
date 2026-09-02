@@ -79,10 +79,15 @@ function lattice(vfx, e, P, ctx, who, entry) {
      ~80 на 28 м² поверхности, среднее расстояние между ними 0.6 м, и
      перемычки почти не находили пар ближе 0.35·R — решётка была пятью
      разрозненными зигзагами на пузыре, ЗАМКНУТЫХ КЛЕТОК НОЛЬ при нужных 12.
-     Теперь ~150 узлов, шаг 0.28 м, перемычки ищут пары до 0.5·R. */
-  const N = clampN(Math.round(8 + 6 * R), 14, 22);
+     r2: нити ДЛИННЕЕ (9–12 звеньев, было 6–9), перемычек вдвое больше и
+     штрих толще 0.026: судья насчитал 7 замкнутых клеток при нужных 12 —
+     «в основном открытые ветвления с тупиками, а не пересекающиеся штрихи».
+     Длинная нить успевает пересечь чужую; перемычка замыкает клетку. */
+  const N = clampN(Math.round(10 + 8 * R), 18, 28);
   const field = boltField(vfx, P, 1400);
-  const flare = { at: -1, x: 0, y: 0, z: 0 };
+  /* Вспышка от попадания: удар ставит `until` по ЧАСАМ ВЬЮВЕРА — своего
+     времени решётки он не знает. */
+  const flare = { until: -1, x: 0, y: 0, z: 0 };
 
   const itemsAt = (t, g) => {
     const [cx, cz] = sh.at();
@@ -96,12 +101,12 @@ function lattice(vfx, e, P, ctx, who, entry) {
     if (n >= 1) {
       out.push({
         surface: true, c: [cx, RY, cz], r: R, ry: RY,
-        n, links: 6 + Math.floor(g() * 4), link: 0.28, width: 0.021,
-        bright: 1.0, rungs: 1.4, offset: 0.03, seed, spin: 0.4, t, minY: 0.06, phase: 0,
+        n, links: 9 + Math.floor(g() * 4), link: 0.30, width: 0.028,
+        bright: 1.05, rungs: 2.2, offset: 0.03, seed, spin: 0.4, t, minY: 0.06, phase: 0,
       });
     }
     /* Вспышка от попадания: три нити ПО ПОВЕРХНОСТИ из точки удара. */
-    if (flare.at > 0 && t - flare.at < 0.2) {
+    if (flare.until > vfx.now) {
       out.push({
         surface: true, c: [cx, RY, cz], r: R, ry: RY, start: [flare.x, flare.y, flare.z],
         n: 3, links: 4, link: 0.34, width: 0.024, bright: 1.2, rungs: 0.3,
@@ -116,13 +121,16 @@ function lattice(vfx, e, P, ctx, who, entry) {
          — ровно та палка, за которую щит и забраковали. */
       const a = (i / 3) * TAU + t * 0.25 + seed * 0.001;
       const px = cx + Math.sin(a) * R * 1.03, pz = cz + Math.cos(a) * R * 1.03;
-      const ex = cx + Math.sin(a) * (R + 0.35), ez = cz + Math.cos(a) * (R + 0.35);
-      /* Вниз КРУТО: пол в 0.35–0.75 м дальше точки отрыва. Замер i2 — при
-         0.8–1.6 м нить ложилась почти горизонтально и читалась отдельной
-         проволокой, брошенной по полу рядом со щитом. */
-      const d = 0.35 + g() * 0.4;
-      out.push({ a: [px, RY, pz], b: [ex, RY * 0.94, ez], width: 0.019, bright: 0.9, jag: 0.12, minY: 0.06, phase: 600 + i, step: 0.22 });
-      out.push({ a: [ex, RY * 0.94, ez], b: [cx + Math.sin(a) * (R + 0.35 + d), 0.05, cz + Math.cos(a) * (R + 0.35 + d)], width: 0.019, bright: 0.9, jag: 0.2, branches: 1, minY: 0.05, phase: 600 + i, step: 0.24 });
+      /* СПУСК ПОЛОГИЙ. Замер круга 2 (судья, 25 из 100 за заземление): при
+         падении с RY на пол за 0.35–0.75 м по горизонтали угол выходил 60–73°
+         — «прямой шест с перекладиной, воткнутый в пол», ровно то, за что
+         щит и забраковали. Теперь отрыв 0.55 м по горизонтали на высоте
+         экватора, потом спуск на 1.4–2.2 м дальше: угол 29–41°, и нить
+         читается разрядом, СТЕКАЮЩИМ с оболочки. */
+      const ex = cx + Math.sin(a) * (R + 0.55), ez = cz + Math.cos(a) * (R + 0.55);
+      const d = 1.4 + g() * 0.8;
+      out.push({ a: [px, RY, pz], b: [ex, RY * 0.97, ez], width: 0.021, bright: 0.9, jag: 0.1, minY: 0.06, phase: 600 + i, step: 0.24 });
+      out.push({ a: [ex, RY * 0.97, ez], b: [cx + Math.sin(a) * (R + 0.55 + d), 0.05, cz + Math.cos(a) * (R + 0.55 + d)], floor: true, floorTop: 0.9, width: 0.021, bright: 0.9, jag: 0.18, branches: 1, minY: 0.05, phase: 600 + i, step: 0.3 });
     }
     /* Ковёр треска кольцом под кромкой: пересевается раз в полсекунды. */
     if (n > 0) {
@@ -143,7 +151,11 @@ function lattice(vfx, e, P, ctx, who, entry) {
   const rs = restriker(field, seed, itemsAt, 0.055);
 
   /* Оболочка: только френелевая кромка (`fill` 0) — тело видно насквозь. */
-  const shell = orb(P, R, (seed % 5) + 1, 0.5);
+  /* Оболочка — 0.28 аддитивного чехла, не 0.5: судья с трансляции назвал её
+     «бледной бело-голубой дымкой» (средняя яркость коробки 200 из 255) —
+     дымка съедала контраст решётки, а держать щит на белом полу должна
+     именно РЕШЁТКА, а не заливка (P3). */
+  const shell = orb(P, R, (seed % 5) + 1, 0.28);
   const [x0, z0] = sh.at();
   shell.group.position.set(x0, RY, z0);
   const g = new THREE.Group();
@@ -154,7 +166,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
     const [cx, cz] = sh.at();
     const k = t < GROW ? clamp01(t / GROW) : 1;
     const fall = entry ? clamp01((vfx.now - entry.until) / FALL) : clamp01((t - (GROW + 0.35)) / FALL);
-    const flareK = flare.at > 0 && t - flare.at < 0.3 ? 1 - (t - flare.at) / 0.3 : 0;
+    const flareK = flare.until > vfx.now ? clamp01((flare.until - vfx.now) / 0.2) : 0;
     field.set({ fade: 1 - fall, hot: Math.max(rs.tick(t), flareK), reach: 1, tail: 0 });
     shell.group.position.set(cx, RY, cz);
     /* `orb.set` масштабирует равномерно — сплющиваем ПОСЛЕ него. */
