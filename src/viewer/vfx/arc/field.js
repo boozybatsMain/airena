@@ -38,8 +38,8 @@
 
 import * as THREE from 'three';
 import * as TSL from 'three/tsl';
-import { TIME, col, markGlow, pooled, withFade } from '../core.js';
-import { TAU, clampN, hex } from './util.js';
+import { TIME, col, markGlow, mulberry, pooled, withFade } from '../core.js';
+import { TAU, clampN, hex, rotateAroundNormal, tangent } from './util.js';
 
 const {
   float, vec3, vec4, uniform, mix, smoothstep, oneMinus, attribute,
@@ -127,8 +127,8 @@ function makeBoltMat(layer, P) {
     transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: L.blend,
   });
   const fade = withFade(m);
-  const hot = uniform(0), reach = uniform(1), cool = uniform(0);
-  m.userData.u = { fade, hot, reach, cool };
+  const hot = uniform(0), reach = uniform(1), cool = uniform(0), tailU = uniform(0);
+  m.userData.u = { fade, hot, reach, cool, tail: tailU };
 
   const a = attribute('sa', 'vec3'), b = attribute('sb', 'vec3'), cfg = attribute('scfg', 'vec4');
   const along = positionLocal.x, across = positionLocal.y;
@@ -199,7 +199,15 @@ function makeBoltMat(layer, P) {
   const isStreak = step(float(1.5), cfg.w);
   const fore = seg.xy.length().div(lenW.max(1e-4));
   const keep = mix(float(1), step(float(0.8), fore), isStreak);
-  const base = fade.mul(on).mul(keep);
+  /* ХВОСТ (A0.1, план §3): нижняя граница освещённого окна. Разряд стоит в
+     пространстве целиком, а горит только полоса `tail`..`reach` вдоль пути —
+     из этого и складывается болт с НЕПОДВИЖНЫМ НАЧАЛОМ (P1): голова растёт
+     вперёд, хвост отпускает руку. Растушёвка 0.08 доли пути (у болта 9 м это
+     0.7 м): резкий срез читался обрубленной палкой с бокового глаза.
+     `tail` ≤ 0 — окно выключено, светится всё; так ведут себя луч, конус,
+     зона и второе (головное) поле. */
+  const onTail = select(tailU.lessThanEqual(0), float(1), smoothstep(tailU, tailU.add(0.08), cfg.w));
+  const base = fade.mul(on).mul(keep).mul(onTail);
   /* Остывание: у нити с ядром — треть от униформы; у метки без ядра — ещё
      и собственный жар из модуля яркости (1.0 → 0.6 = синяя → тёмно-синяя). */
   const heat = smoothstep(float(0.6), float(1.0), bright);
@@ -302,11 +310,13 @@ const STRIDE = 10;
  * Поле: одна инстансированная геометрия сегментов и три меша на ней (три
  * слоя). Нити переписываются целиком на каждой перестройке — `write(items,
  * rng)`; элемент списка — нить (`a`, `b`, см. `strandSegs`), явная ломаная
- * (`pts`, см. `polySegs`), пучок (`bundle: true`, см. `bundleSegs`), глиф
- * треска (`glyph: true`, см. `glyphSegs`) или ковёр треска (`crackle: true`,
- * см. `crackleSegs`). У элемента может быть свой генератор `rng` — так след
- * на полу держит форму между перестройками. `set({fade, hot, reach, cool})`
- * — униформы слоёв.
+ * (`pts`, см. `polySegs`), пучок (`bundle: true`, см. `bundleSegs`), сетка по
+ * поверхности (`surface: true`, см. `surfaceSegs`), глиф треска (`glyph:
+ * true`, см. `glyphSegs`) или ковёр треска (`crackle: true`, см.
+ * `crackleSegs`). У элемента может быть свой генератор `rng` — так след
+ * на полу держит форму между перестройками. `set({fade, hot, reach, cool,
+ * tail})` — униформы слоёв (`tail` — нижняя граница освещённого окна, 0 =
+ * светится всё; см. `makeBoltMat`).
  *
  * `opts.mats` — материалы ДРУГОГО поля того же каста: второе поле рисует
  * своей геометрией с теми же униформами (шипы удара переписываются каждый
@@ -355,6 +365,7 @@ function boltField(vfx, P, maxSeg = 1400, opts = {}) {
       for (const s of items) {
         const r = s.rng || rng;
         if (s.bundle) bundleSegs(s, r, put);
+        else if (s.surface) surfaceSegs(s, r, put);
         else if (s.glyph) glyphSegs(s, r, put);
         else if (s.crackle) crackleSegs(s, r, put);
         else if (s.pts) polySegs(s, put);
@@ -365,10 +376,11 @@ function boltField(vfx, P, maxSeg = 1400, opts = {}) {
       if (ibuf.clearUpdateRanges) ibuf.clearUpdateRanges();
       if (ibuf.addUpdateRange) ibuf.addUpdateRange(0, Math.max(1, n) * STRIDE);
     },
-    set({ fade = 1, hot = 0, reach = 1, cool = 0 }) {
+    set({ fade = 1, hot = 0, reach = 1, cool = 0, tail = 0 }) {
       for (const m of mats) {
         const u = m.userData.u;
         u.fade.value = fade; u.hot.value = hot; u.reach.value = reach; u.cool.value = cool;
+        u.tail.value = tail;
       }
     },
     /** Сколько сегментов легло в последнюю запись (для подбора бюджета). */
@@ -479,12 +491,16 @@ function bundleSegs(s, rng, put) {
   const R = (t) => r0 + (r1 - r0) * Math.pow(t, cone);
   const wAt = (t) => width * (taper + (1 - taper) * t);
   const kAt = (t) => bright * (ramp + (1 - ramp) * t);
+  /* `lift(t)` (A0.2) — добавка к высоте на доле пути `t`: парабола навеса.
+     Ось `a`→`b` уже даёт линейную высоту (рука 1.1 м → пол 0.25 м), так что
+     от подъёма нужна только дуга сверх неё. */
+  const lift = s.lift || null;
   const at = (t, p, q) => {
     const bow = Math.sin(Math.PI * t);
     const lx = p + bc1 * bow, ly = q + bc2 * bow;
     return [
       ax + ux * L * t + e1x * lx + e2x * ly,
-      Math.max(minY, ay + uy * L * t + e1y * lx + e2y * ly),
+      Math.max(minY, ay + uy * L * t + e1y * lx + e2y * ly + (lift ? lift(t) : 0)),
       az + uz * L * t + e1z * lx + e2z * ly,
     ];
   };
@@ -749,6 +765,119 @@ function crackleSegs(s, rng, put) {
   }
 }
 
+/* ── нити ПО ПОВЕРХНОСТИ ────────────────────────────────────────────────── */
+
+/**
+ * СЕТКА НА ОБОЛОЧКЕ (A0.3, план §3 · принцип P2 «сплетено, а не приклеено»).
+ * Приговор основателя щиту: дуги были палками, воткнутыми в шар наугад.
+ * Здесь нить — случайное блуждание ПО поверхности эллипсоида (`c`, радиусы
+ * `r`, `ry`, `rz`): каждый узел проецируется обратно на оболочку и лежит на
+ * `offset` (3 см) над ней, а поворот между звеньями — поворот Родрига вокруг
+ * МЕСТНОЙ нормали, так что излом остаётся касательным. С бокового глаза
+ * каждый штрих идёт по силуэту, ни один не пересекает нутро.
+ *
+ * ЯЧЕЙКИ ДЕРЖАТСЯ МЕЖДУ ПЕРЕСТРОЙКАМИ, и это главное отличие от `strandSegs`.
+ * У каждой нити свой генератор `gi = mulberry(seed ^ (i+1)·0x9e3779b1)`: он
+ * задаёт точку старта, начальный курс, длины звеньев и стороны зигзага —
+ * то есть саму клетку. Общий `rng` перестройки только дрожит узлами на
+ * ±0.04 м и переворачивает четверть зигзагов: решётка живёт, но остаётся той
+ * же решёткой. Перестроить всё целиком (как делает пучок) — значит мигать
+ * новой случайной паутиной 20 раз в секунду; кадры на 0.11 с врозь должны
+ * показывать ТЕ ЖЕ многоугольники.
+ *
+ * Поля: `c` [x,y,z] центр · `r`, `ry`, `rz` радиусы (по умолчанию `rz = r`)
+ * · `n` нитей · `links` звеньев в нити (4–8) · `link` длина звена в метрах
+ * · `width` полуширина ядра · `bright` яркость · `phase` фаза мерцания
+ * · `rungs` перемычки между близкими узлами разных нитей (доля) · `offset`
+ * подъём над оболочкой · `seed` · `start` точка старта всех нитей (вспышка
+ * от места попадания) · `spin` рад/с вращения начального курса (нужен `t`)
+ * · `minY` не уходить под пол.
+ *
+ * Охрана в первой строке не косметическая: проекция делит на радиусы, и
+ * плоская стена (`ry = 0`) дала бы NaN во всём буфере поля.
+ */
+function surfaceSegs(s, rng, put) {
+  const [cx, cy, cz] = s.c, r = s.r, ry = s.ry ?? r, rz = s.rz ?? r, off = s.offset ?? 0.03;
+  if (!(r > 0.2) || !(ry > 0.2) || !(rz > 0.2)) return;
+  const n = clampN(Math.round(s.n ?? 10), 1, 40);
+  const links = clampN(Math.round(s.links ?? 6), 1, 24);
+  const link = s.link ?? 0.3, minY = s.minY ?? 0.06;
+  const width = s.width ?? 0.021, bright = s.bright ?? 1, phase = s.phase ?? 0;
+  const u = s.u ?? 1;
+  const spin = (s.spin ?? 0) * (s.t ?? 0);
+  const seed = s.seed ?? 1;
+  const proj = (p) => {
+    let qx = (p[0] - cx) / r, qy = (p[1] - cy) / ry, qz = (p[2] - cz) / rz;
+    const l = Math.hypot(qx, qy, qz) || 1;
+    qx /= l; qy /= l; qz /= l;
+    return [cx + qx * r * (1 + off), Math.max(minY, cy + qy * ry * (1 + off)), cz + qz * rz * (1 + off)];
+  };
+  const normal = (p) => [(p[0] - cx) / (r * r), (p[1] - cy) / (ry * ry), (p[2] - cz) / (rz * rz)];
+
+  const nodes = new Array(n);
+  for (let i = 0; i < n; i++) {
+    /* Свой генератор на нить: форма клетки переживает перестройку. */
+    const gi = mulberry((seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0);
+    let p = s.start
+      ? proj(s.start)
+      : proj([cx + (gi() - 0.5) * 2 * r, cy + (gi() - 0.5) * 2 * ry, cz + (gi() - 0.5) * 2 * rz]);
+    let hd = rotateAroundNormal(tangent(gi, normal(p)), normal(p), spin);
+    let zig = gi() < 0.5 ? -1 : 1;
+    /* Ход строится ТОЛЬКО по `gi`: дрожь перестройки не входит обратно в
+       курс. Замер: при повороте зигзага от общего `rng` (четверть звеньев,
+       как в первом наброске плана) один перевёрнутый знак уводил весь
+       остаток нити — узлы гуляли на 0.23 м в среднем и на 1.23 м в худшем
+       случае между двумя перестройками, и решётка была каждый раз новой.
+       Теперь клетка — функция сида нити, а `rng` только дрожит узлом на
+       ±0.04 м ПОСЛЕ хода: снос ограничен этими 4 см, кадры на 0.11 с врозь
+       показывают те же многоугольники. Жизнь между перестройками дают
+       перемычки, вспышка `hot` и мерцание ядра. */
+    const walk = [p];
+    for (let k = 0; k < links; k++) {
+      const stepL = link * (0.7 + gi() * 0.6);
+      p = proj([p[0] + hd[0] * stepL, p[1] + hd[1] * stepL, p[2] + hd[2] * stepL]);
+      walk.push(p);
+      if (gi() < 0.75) zig = -zig;
+      /* 50–110° вокруг нормали: зигзаг по поверхности, а не дуга. */
+      hd = rotateAroundNormal(hd, normal(p), zig * (0.9 + gi() * 1.0));
+    }
+    const pts = walk.map((w, k) => (k === 0 && s.start ? w : proj([
+      w[0] + (rng() - 0.5) * 0.08, w[1] + (rng() - 0.5) * 0.08, w[2] + (rng() - 0.5) * 0.08,
+    ])));
+    for (let k = 0; k < links; k++) {
+      const a0 = pts[k], b0 = pts[k + 1];
+      put(a0[0], a0[1], a0[2], b0[0], b0[1], b0[2], width, bright, phase + i, u);
+    }
+    nodes[i] = pts;
+  }
+
+  /* Перемычки между узлами РАЗНЫХ нитей ближе 0.35·r: они и замыкают
+     многоугольники. Пересчитываются каждую перестройку (могут мигать —
+     клетки от этого не меняются), излом посередине, ширина ×0.6. */
+  const rungs = s.rungs ?? 1.0;
+  if (rungs > 0 && n > 1) {
+    const near = r * 0.35;
+    for (let i = 0; i < n; i++) {
+      for (let k = 1; k < nodes[i].length; k++) {
+        if (rng() >= rungs * 0.5) continue;
+        const j = Math.floor(rng() * n);
+        if (j === i) continue;
+        const q0 = nodes[j][1 + Math.floor(rng() * (nodes[j].length - 1))];
+        const p0 = nodes[i][k];
+        const d = Math.hypot(q0[0] - p0[0], q0[1] - p0[1], q0[2] - p0[2]);
+        if (d < 0.06 || d > near) continue;
+        const m = proj([
+          (p0[0] + q0[0]) * 0.5 + (rng() - 0.5) * 0.1,
+          (p0[1] + q0[1]) * 0.5 + (rng() - 0.5) * 0.1,
+          (p0[2] + q0[2]) * 0.5 + (rng() - 0.5) * 0.1,
+        ]);
+        put(p0[0], p0[1], p0[2], m[0], m[1], m[2], width * 0.6, bright * 0.85, phase + 60 + i, u);
+        put(m[0], m[1], m[2], q0[0], q0[1], q0[2], width * 0.6, bright * 0.85, phase + 60 + i, u);
+      }
+    }
+  }
+}
+
 /* ── нить ───────────────────────────────────────────────────────────────── */
 
 /**
@@ -834,4 +963,4 @@ function strandSegs(s, rng, put, depth) {
   }
 }
 
-export { LAYER, STRIDE, boltMat, boltField, strandSegs, polySegs, bundleSegs, glyphSegs, crackleSegs };
+export { LAYER, STRIDE, boltMat, boltField, strandSegs, polySegs, bundleSegs, surfaceSegs, glyphSegs, crackleSegs };

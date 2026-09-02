@@ -79,7 +79,7 @@ Materials are pooled by `boltMat(layer, P)` (ring 6 per layer). `boltField(vfx, 
 
 ```
 LAYER, STRIDE, boltMat(layer, P), boltField(vfx, P, maxSeg = 1400, opts = {}),
-strandSegs, polySegs, bundleSegs, glyphSegs, crackleSegs
+strandSegs, polySegs, bundleSegs, surfaceSegs, glyphSegs, crackleSegs
 ```
 
 ### `boltField(vfx, P, maxSeg, opts)` → `{ group, mats, write(items, rng), set({...}), count() }`
@@ -94,11 +94,49 @@ slot from the ring). `write(items, rng)` rewrites all segments; each item picks 
 | `{a, b, ...}` | `strandSegs` | one jagged filament with optional branches |
 | `{pts: [[x,y,z],...]}` | `polySegs` | explicit polyline (streak segments use two points) |
 | `{bundle: true, a, b, ...}` | `bundleSegs` | the cage bundle (main bolt) |
+| `{surface: true, c, r, ry, ...}` | `surfaceSegs` | a lattice woven on an ellipsoid (shield, victim, wall) |
 | `{glyph: true, x, z, ...}` | `glyphSegs` | one floor crackle mark |
 | `{crackle: true, a, b, ...}` | `crackleSegs` | a carpet of marks along a→b |
 
 An item may carry its own `rng`. Budget: beam uses 3000 for the main field (≈ 300–350 bundle
 segments at n 14 / 9 m, ≤ 560 marks × 1–6 links, rays) and 320 for the spike field.
+
+### `set({ fade = 1, hot = 0, reach = 1, cool = 0, tail = 0 })` — the uniforms
+
+`fade` overall, `hot` restrike flash (1 at the restrike, 0 ~35 ms later), `reach` the fraction of
+the path the discharge has grown to (≥ 1 = all lit), `cool` 0..1 cooling of the whole field.
+
+**`tail` (03.09, A0.1) — the lower edge of the lit window.** The discharge stands in space whole;
+only the band `tail`..`reach` of `u` is lit, feathered over 0.08 of the path (0.7 m on a 9 m bolt;
+a hard cut read as a chopped stick from the side camera). `tail ≤ 0` switches the window off, so
+beam / cone / zone / the head field are unchanged by default. This is what makes a bolt a bolt
+under P1: the origin at the hand is lit while `tail = 0`, then the tail leaves it behind the head.
+**Always pass `hot: rs.tick(t)` in the same `set` call** — the destructuring defaults zero every
+field you omit.
+
+### `surfaceSegs(s, rng, put)` — a lattice woven on an ellipsoid (03.09, A0.3)
+
+`{surface: true, c: [x,y,z], r, ry = r, rz = r, n = 10, links = 6, link = 0.3, width = 0.021,
+bright = 1, phase = 0, rungs = 1.0, offset = 0.03, seed, start = null, spin = 0, t = 0,
+minY = 0.06, u = 1}`. Filaments are random walks **on the shell**: every node is projected back
+onto the ellipsoid and lifted `offset` above it, and each turn is a Rodrigues rotation of 50–110°
+around the local normal, so no stroke leaves the surface (P2). Guard: returns for any radius
+≤ 0.2 m (the projection divides by them; a flat wall with `ry = 0` would NaN the whole buffer).
+
+**Cells persist between restrikes and that is the point.** Each filament has its own generator
+`gi = mulberry(seed ^ (i+1)·0x9e3779b1)` that fixes the start point, the initial heading, the link
+lengths and the zig-zag signs — the cell is a function of the filament's seed. The restrike `rng`
+only jitters each node by ±0.04 m **after** the walk, and rebuilds the rungs.
+
+*Measured 03.09 (`docs/vfx-notes/t-surface.mjs`, shell r 1.475 / ry 1.24, n 12, links 6, two restrikes):*
+feeding the restrike `rng` back into the walk (flipping a quarter of the zig-zag signs, the first
+sketch of the plan) drifted nodes **0.23 m on average and 1.23 m worst case** — a new web every
+45 ms. With the walk deterministic and the jitter applied afterwards: **0.038 m mean, 0.092 m
+worst**. Zero NaN, zero segment midpoints diving under 0.86 of the shell radius, and the flat
+guard writes nothing.
+
+`start` forces every filament to begin at one point (the shield's hit flare). `spin` (rad/s, needs
+`t`) turns the initial heading so the lattice rotates without changing its cells.
 
 ### `strandSegs(s, rng, put, depth)` — one filament (unchanged)
 
@@ -108,6 +146,10 @@ floorTop=0.4, minY, phase, u0=0, u1=1}` — midpoint-displacement polyline, self
 branches 2, step 0.26, floorTop 0.5`), `radialArcs`, `crawl`, cone/zone/self/ball/impact strands.
 
 ### `bundleSegs(s, rng, put)` — the cage bundle
+
+**`lift(t)` (03.09, A0.2)**: an optional function added to the y of every node at path fraction
+`t` — the lob's parabola. `at(t, p, q)` already interpolates y linearly from `a.y` to `b.y`, so
+`lift` carries only the arc over that line (`lift(t) = 4·apex·t·(1 − t)`).
 
 `{a, b, n=12, step=0.5, r0=0.03, r1=0.6, cone=0.8, minY=0.08, width=0.03, bright=1, phase=0,
 u0, u1, wander=1, turn=0.9, heroes=3, taper=0.6, ramp=0.85, roots=round(0.45·n), subkink=0.35,

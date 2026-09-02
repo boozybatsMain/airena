@@ -36,23 +36,14 @@
  * комплект.
  */
 
-import * as THREE from 'three';
 import { clamp01, mulberry, rnd, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { TAU, clampN, env } from './util.js';
+import { BURN, TAU, clampN, env } from './util.js';
 import { boltField } from './field.js';
 import { restriker, arcSparks, cloud, hotCore, spikes, streakItems, floorRing } from './common.js';
 
 /** Тайминги, секунды от каста (см. шапку). */
 const T = { orb: 0.3, orbEnd: 0.42, out0: 0.02, out1: 0.1, full: 0.9, decay: 1.15, cool0: 1.15, cool1: 1.4, decal: 0.9, residue: 2.1 };
-
-/**
- * Тон ожога: HDR-синий (0, 0.45, 1.5), не P[2]. Декаль `arc` из набора
- * остывает за 2.5 с к нейтральному тёмному с долей тона 0.2–0.32; при P[2]
- * это выходило серо-стальным (61,94,136) — сажа под обоими бойцами во всех
- * поздних кадрах (замер r2), при HDR-синем — (50,122,196), синий ожог.
- */
-const BURN = new THREE.Color(0.0, 0.45, 1.5);
 
 export function beam(vfx, e, P, ctx) {
   const seed = seedOf(e);
