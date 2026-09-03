@@ -301,6 +301,34 @@ discarding it, and found it largely honest — the void agent reproduced "130 px
 exactly 130/58, and "(137,129,150)" as exactly (137,129,150) over 4198 changed pixels. **When you
 inherit uncommitted work, look for its frames before you decide what it is worth.**
 
+## `reports/vfx/after4` is CONTAMINATED as a quantitative reference
+
+The ten-element gallery everyone has been comparing against — "above the ten-element median", "second
+lowest of ten" — is **one flat directory of 130 frames** (10 elements x 13 kinds), captured in a single
+run on a single page. Floor decals hold up to 20 s, so each frame carries the previous kinds' marks.
+Verified: `find reports/vfx/after4 -maxdepth 1 -type d` returns only the directory itself.
+
+The void round-2 judge measured how big the error is by reshooting siblings **alone**:
+
+| element, `charge` at t0.30 broadcast | from `after4` | reshot alone | inflation |
+|---|---|---|---|
+| ember | 7645 | 4431 | +73% |
+| gravity | 4181 | 1740 | +140% |
+
+**Consequences for numbers already written down this session.** Comparisons *against* the after4 median
+were measured against an inflated bar, so:
+
+- Claims of the form "beats the ten-element median" are **stronger** than they read (kinetic's charge,
+  which was scored against a median of 3890).
+- Claims of the form "55% below the median" were **unfairly harsh**. Void's charge is the clearest
+  case: against contaminated after4 it ranked mid-pack, but against four siblings reshot in one clean
+  session it was the **strongest** (void 2764 px >60, ember 2077, arc 1804, gravity 1157). Round 1
+  scored void 68 partly on the inflated comparison; round 2 scored 83.
+
+**Do not quote an after4 figure as a per-element measurement.** Reshoot the sibling you want to compare
+against, alone, in the same session, against `nil/charge`, restricted to arena rows 120-790. The
+gallery is still fine for what it was built for — looking at ten elements side by side.
+
 ## A measurement trap that will produce a false verdict if you miss it
 
 **The judges' crop boxes are not stable across shoots.** The kinetic judge found that the original
