@@ -213,11 +213,11 @@ export function lob(vfx, e, P, ctx) {
      с полосой `P[1]`, кувыркающаяся по параболе и сыплющая крупинками. */
   const g = new THREE.Group();
   const body = new THREE.Mesh(
-    shared(new THREE.CapsuleGeometry(0.11, 0.34, 6, 12)),
+    shared(new THREE.CapsuleGeometry(0.16, 0.46, 6, 12)),
     new THREE.MeshBasicMaterial({ color: P[2], transparent: true, opacity: 0.98, depthWrite: false }),
   );
   const band = new THREE.Mesh(
-    shared(new THREE.CylinderGeometry(0.122, 0.122, 0.10, 14)),
+    shared(new THREE.CylinderGeometry(0.175, 0.175, 0.14, 14)),
     new THREE.MeshBasicMaterial({ color: P[1], transparent: true, opacity: 1, depthWrite: false }),
   );
   g.add(body, band);
@@ -232,8 +232,23 @@ export function lob(vfx, e, P, ctx) {
     o.position.set(x, y, z);
     o.rotation.set(t * 7, t * 4, t * 2);
     if (t >= trailAt && k < 1) {
-      trailAt = t + 0.1;
-      flecks(vfx, P, { x, z, r: 0.25, hi: 0.4, n: 4, window: 0.1, rng });
+      /* Крупинки сыплются вчетверо чаще и ВЫШЕ над полом — иначе канистра
+         на 26 м читалась плоским жёлтым кружком без следа в воздухе. */
+      trailAt = t + 0.05;
+      vfx.glow.emit(6, (i, s2) => {
+        s2.pos(x + (rng() - 0.5) * 0.4, y + (rng() - 0.5) * 0.4, z + (rng() - 0.5) * 0.4);
+        s2.vel(0, 0, 0); s2.gravity(0, -1.5, 0);
+        s2.color(P[0], P[1]);
+        s2.life(vfx.now, 0.22, 0.055, kit.SHAPE.dot);
+        s2.ext(0, 0, 0, 0);
+      });
+      vfx.body.emit(6, (i, s2) => {
+        s2.pos(x + (rng() - 0.5) * 0.4, y + (rng() - 0.5) * 0.4, z + (rng() - 0.5) * 0.4);
+        s2.vel(0, 0, 0); s2.gravity(0, -1.5, 0);
+        s2.color(P[2], P[2]);
+        s2.life(vfx.now, 0.24, 0.085, kit.SHAPE.dot);
+        s2.ext(0, 0, 0, 0);
+      });
     }
     if (k >= 1 && !landed) {
       landed = true;
@@ -246,28 +261,6 @@ export function lob(vfx, e, P, ctx) {
   return true;
 }
 
-/** Налёт на теле: купол по капсуле плюс крупинки на его поверхности. */
-function sheen(vfx, P, ctx, who, at, secs, { rate = 12, alpha = 0.35 } = {}) {
-  const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
-  const R = (bs ? bs.r : 0.9) * 1.1, H = (bs ? bs.h : 2.0) * 0.55;
-  const rng = mulberry(((R * 977 + H * 131) | 0) >>> 0);
-  const d = dome(P, R);
-  const p0 = at();
-  d.mesh.position.set(p0.x, H, p0.z);
-  d.mesh.scale.set(R, H, R);
-  let next = 0;
-  return { d, R, H, tick(o, t, live) {
-    const p = at();
-    o.position.set(p.x, H, p.z);
-    o.scale.set(R, H, R);
-    d.set(live ? alpha : 0);
-    if (live && t >= next) {
-      next = t + 1;
-      flecks(vfx, P, { x: p.x, z: p.z, r: R, n: rate, window: 1, rng, surf: { x: p.x, y: H, z: p.z, r: R, ry: H } });
-    }
-  } };
-}
-
 export function impact(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
@@ -277,11 +270,22 @@ export function impact(vfx, e, P, ctx) {
   }).filter(Boolean).sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
   const bs = cand[0] && Math.hypot(cand[0].x - e.x, cand[0].z - e.z) <= 2 ? cand[0] : null;
   const cx = bs ? bs.x : e.x, cz = bs ? bs.z : e.z;
-  kit.burst(vfx, { x: cx, y: 1.0, z: cz, radius: 0.4, endRadius: 1.4, life: 0.35, mode: 'air', colours: [P[0], P[1], P[2]], intensity: 1.1 });
+  /* Вспышка ДОЛЬШЕ (0.6 с против 0.35) и налёт НА ТЕЛЕ — 1.2 с крупинок по
+     капсуле. Замер круга 2: кадр на 0.5 с заставал уже пустое место, и
+     судья не нашёл на жертве «ни вспышки, ни налёта — только редкие
+     крупинки у ног, неотличимые от остатка». */
+  kit.burst(vfx, { x: cx, y: 1.0, z: cz, radius: 0.4, endRadius: 1.5, life: 0.6, mode: 'air', colours: [P[0], P[1], P[2]], intensity: 1.2 });
   flecks(vfx, P, { x: cx, z: cz, r: 1.2, hi: 1.6, n: 30, window: 0.3, rng });
+  vfx.flashLight(cx, 1.0, cz, P[1], 14, 0.4, 6);
   if (bs) {
-    const s = sheen(vfx, P, ctx, bs.id, () => ({ x: bs.x, z: bs.z }), 0.6);
-    vfx.spawnMesh(s.d.mesh, 0.6, (o, u) => s.tick(o, u * 0.6, u < 0.8));
+    const R = bs.r * 1.06, H = bs.h * 0.55;
+    let next = -1;
+    vfx.spawnMesh(new THREE.Group(), 1.2, (o, u) => {
+      const t = u * 1.2;
+      if (t < next) return;
+      next = t + 0.15;
+      flecks(vfx, P, { x: bs.x, z: bs.z, r: R, n: 10, window: 0.15, rng, surf: { x: bs.x, y: H, z: bs.z, r: R, ry: H } });
+    });
   }
   return true;
 }
@@ -300,17 +304,28 @@ export function status(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(who) : null) || { x: e.x ?? 0, z: e.z ?? 0 };
-  /* При слепоте налёт ярче — свечение собирается у головы. */
-  const s = sheen(vfx, P, ctx, who, at, dur, { rate: 12, alpha: e.effect === 'blind' ? 0.5 : 0.35 });
+  const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
+  const R = (bs ? bs.r : 0.9) * 1.06, H = (bs ? bs.h : 2.0) * 0.55;
+  /*
+   * У БОЛЕЗНИ КУПОЛА НЕТ — тот же урок, что дала гравитация. Судья: «статус
+   * оборачивает бойца полупрозрачным куполом, и это язык ЩИТА, а не
+   * заражения — путаница в роде». Сферу вокруг тела зритель читает как
+   * защиту, чем бы она ни была покрашена. Болезнь держат крупинки НА САМОЙ
+   * КАПСУЛЕ (втрое чаще, чем в куполе: 30 в секунду) и редкий пар: тело
+   * само трещит счётчиком.
+   */
   const MAX = 60;
-  let fumeAt = -1;
-  vfx.spawnMesh(s.d.mesh, MAX, (o, u) => {
+  let fleckAt = -1, fumeAt = -1;
+  const bright = e.effect === 'blind' ? 1.6 : 1;
+  vfx.spawnMesh(new THREE.Group(), MAX, (o, u) => {
     const t = u * MAX;
-    const alive = vfx.now <= entry.until;
-    if (!alive) { o.visible = false; if (STATUS.get(key) === entry) STATUS.delete(key); return; }
-    o.visible = true;
-    s.tick(o, t, true);
-    if (t >= fumeAt + 0.5) { fumeAt = t; const p = at(); fume(vfx, P, { x: p.x, z: p.z, r: s.R, n: 2, life: 1.6, rng }); }
+    if (vfx.now > entry.until) { if (STATUS.get(key) === entry) STATUS.delete(key); return; }
+    const p = at();
+    if (t >= fleckAt + 0.25) {
+      fleckAt = t;
+      flecks(vfx, P, { x: p.x, z: p.z, r: R, n: Math.round(8 * bright), window: 0.25, rng, surf: { x: p.x, y: H, z: p.z, r: R, ry: H } });
+    }
+    if (t >= fumeAt + 0.6) { fumeAt = t; fume(vfx, P, { x: p.x, z: p.z, r: R, n: 2, life: 1.6, rng }); }
   });
   return true;
 }

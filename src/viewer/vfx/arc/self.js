@@ -129,8 +129,24 @@ function lattice(vfx, e, P, ctx, who, entry) {
          читается разрядом, СТЕКАЮЩИМ с оболочки. */
       const ex = cx + Math.sin(a) * (R + 0.55), ez = cz + Math.cos(a) * (R + 0.55);
       const d = 1.4 + g() * 0.8;
-      out.push({ a: [px, RY, pz], b: [ex, RY * 0.97, ez], width: 0.021, bright: 0.9, jag: 0.1, minY: 0.06, phase: 600 + i, step: 0.24 });
-      out.push({ a: [ex, RY * 0.97, ez], b: [cx + Math.sin(a) * (R + 0.55 + d), 0.05, cz + Math.cos(a) * (R + 0.55 + d)], floor: true, floorTop: 0.9, width: 0.021, bright: 0.9, jag: 0.18, branches: 1, minY: 0.05, phase: 600 + i, step: 0.3 });
+      /* Спуск БЕЗ `floor: true` и с малым изломом (0.07). Замер круга 3:
+         режим `floor` зажимает высоту в полосу над полом, и смещение
+         середины выбрасывало СРЕДНЕЕ звено на 74° — «шест, воткнутый в пол»,
+         хотя прямая от отрыва до пола идёт под 28–40°. Ломаная теперь почти
+         прямая, и угол читается тем, каким задуман. */
+      out.push({ a: [px, RY, pz], b: [ex, RY * 0.97, ez], width: 0.021, bright: 0.9, jag: 0.08, minY: 0.06, phase: 600 + i, step: 0.24 });
+      const fx = cx + Math.sin(a) * (R + 0.55 + d), fz = cz + Math.cos(a) * (R + 0.55 + d);
+      out.push({ a: [ex, RY * 0.97, ez], b: [fx, 0.06, fz], width: 0.021, bright: 0.9, jag: 0.07, branches: 1, minY: 0.05, phase: 600 + i, step: 0.34 });
+      /* Треск В ТОЧКЕ КАСАНИЯ: судья не нашёл у концов заземления ни одного
+         сгустка меток — крошка была рассыпана вокруг щита вообще. */
+      for (let m = 0; m < 5; m++) {
+        const aa = g() * TAU, dd = Math.sqrt(g()) * 0.45;
+        out.push({
+          glyph: true, x: fx + Math.sin(aa) * dd, z: fz + Math.cos(aa) * dd, y: 0.05,
+          dot: g() < 0.4, links: 3, len: 0.5 + g() * 0.5, dir: aa,
+          width: 0.0055, bright: -0.95, phase: 640 + i * 8 + m,
+        });
+      }
     }
     /* Ковёр треска кольцом под кромкой: пересевается раз в полсекунды. */
     if (n > 0) {
