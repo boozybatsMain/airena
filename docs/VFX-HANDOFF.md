@@ -56,6 +56,21 @@ Gravity went **down** from 61 to 28 on a re-judge. The cause was a real bug in r
 - **C · frost and ember.** Five forms each, on their own primitives. Ice wall is a hemisphere sunk into the floor (a box has constant fresnel per face and reads as three flat plates).
 - **D · four elements.** Registry (`forms` per element, rule `E1`, `unreleased` + `releasedElements()`, `element_unreleased` at the HTTP edge, `readingCount` by enumeration — still 495), kit additions (`lens`, sector `shockwave`, decal `at`, four decal types), four modules, six seed creatures into **`data/vfx-stand.db`**, and gates in `checkgrammar`/`checkforge`/`checkspec`. The forge prompt now names the closed form lists and, on an `E1`-only violation, keeps the player's skill and swaps its element to kinetic instead of substituting a preset.
 
+## Where this session's work actually landed (commit-message correction)
+
+Commit `2bf035e` («Настраиваемая форма, проявление следов, красный лазер, пустота и кинетика»)
+carries MORE than its message describes. It was staged with `git add -A src` while eight per-module
+agents were still finishing, so it also swept in their work: the `kit.tune` conversions across
+`arc/*.js`, `ice.js`, `fire.js`, `gravity.js`, `acid.js`, `radiation.js`, `novabeam.js`, and the
+whole rebuild of `time.js` (344 → 1207 lines: instanced clock geometry, a live floor dial, cast and
+expiry beats, the `wall` form, and every time decal converted to a projection whose hold is its own
+effect's duration).
+
+Commit `95bc6a8` then fixed the four blockers an adversarial review pass found in that work.
+
+If you are looking for "when did time.js get rich" or "when did the tune opis appear", the answer is
+`2bf035e`, not a commit named after them.
+
 ## Known issues and blockers
 
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
