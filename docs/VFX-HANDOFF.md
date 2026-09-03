@@ -22,7 +22,7 @@ Nine elements × thirteen forms = **117 frames, zero console errors**, in one sw
 | A0 | primitive additions (`tail`, `lift`, `surfaceSegs`, `BURN`) | — | verified numerically, `docs/vfx-notes/t-surface.mjs` |
 | A1 | lightning beam | 45 → 47 → **58** | three rounds; the "diamond lattice" defect is fixed, the jacket is opaque |
 | A2/A3 | bolt and lob | **63** | the founder's verdict is lifted (rule 1 scored 78, branching 85, bundle 85, wake 90) |
-| A4 | shield | **46** | round 3 built (denser lattice, shallow grounding, thinner shell) but not re-judged |
+| A4 | shield | 46 → **64** | round 4 built (even lattice coverage, shallow grounding with crackle) but not re-judged |
 | A5/A7/A8 | cone, impact, charge | — | not judged; verified by eye and by smoke run |
 | A9 | dash, blink, jump, wall | **64** | round 2 built (blink span, even wall lattice) but not re-judged |
 | B | laser | — | round 3 built (pool budget, ribbon variety, narrow core) but not re-judged |
@@ -30,15 +30,19 @@ Nine elements × thirteen forms = **117 frames, zero console errors**, in one sw
 | D1 | gravity | 61 → **28** → round 4 built | see "the gravity lesson" below |
 | D2 | time | **76** | passes |
 | D3 | acid | **76** | passes |
-| D4 | radiation | **43** | round 2 built (sparser blotches, longer flecks, fainter dome) but not re-judged |
+| D4 | radiation | 43 → **61** | round 3 built (no dome on status, longer impact, bigger canister) but not re-judged |
 
-The 70 threshold is met by time and acid. Everything else has had at least one more round built against its judge's list; those rounds were not re-judged before the session ended, so **treat every score above as the score of the round BEFORE the last commit**.
+The 70 threshold is met by time and acid; the shield, part C and the bolt sit at 63–68. Everything else has had at least one more round built against its judge's list; those rounds were not re-judged before the session ended, so **treat every score above as the score of the round BEFORE the last commit**.
 
 ### The gravity lesson (worth reading before touching any element)
 
 Gravity went **down** from 61 to 28 on a re-judge. The cause was a real bug in reasoning, not judge noise: the identity asks for "a near-black core with a thin pale rim", and I gave the shell a `fres^4.5` rim. On a body-sized sphere that exponent covers a **wide crescent** in screen space — and against a dark background (the cover boxes, the fighter's own dark hull) a near-black fill at 50 % alpha does nothing at all, so the only thing left is the pale crescent. The effect read as a glossy glass dome: the exact opposite of the intent.
 
 **The rule that follows: on this arena, dark elements can only be carried by the WHITE FLOOR.** A dark overlay over a dark body is invisible by construction. Round 4 narrowed the rim to `fres^11`, **removed the shell from `status` entirely**, and moved the whole "weighed down" read onto floor rings that follow the body plus dust falling twice as often. That is the same lesson as P3, applied in the other direction.
+
+**And a second rule the judges taught twice: a translucent sphere around a fighter reads as a SHIELD, whatever colour it is.** Radiation's "sickness" used a body-scaled dome and was scored as a kind confusion ("this is the language of a shield ability"); gravity's "weighed down" had exactly the same problem. Both now carry their status with particles on the capsule and marks on the floor, and the shell stays a cast-only signature.
+
+**A third, measured:** picking a filament's start point uniformly inside the bounding box and projecting it outward is *not* uniform on a sphere — the diagonals get up to 40 % more density, which is why the shield's lattice bunched into one octant. Measured on 200 000 points across 24 equal-area sectors (`docs/vfx-notes/t-startlaw.mjs`): box law min/max **0.712** and worst sector **+11.2 %** over expected; sphere law **0.963** and **+1.8 %**.
 
 ## What was built, by part
 
