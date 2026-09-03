@@ -138,10 +138,48 @@ Verified live in headless Chrome: panel renders, both creatures move and fight, 
 retunes the hold distance in real time, fire-now casts on the same frame, solo fired 4 casts from the
 edited fighter and 0 from the other over 9 s, both stay inside the arena, 60 fps, zero console errors.
 
+## Owner decisions taken during the session (these override the plan)
+
+- **The time element's concept is FROZEN** (03.09, founder: *"time concept freeze for now"*). Asked what
+  to do with the round that was in flight when he said it, he chose **keep the read fixes, no more
+  rounds**. So: the dome/motes/impact/opening-beat work stays if it verifies, and **nobody opens
+  time.js for design work again** without him reopening it. Time's judged 65 is now a closed number,
+  not a backlog item. Polish that changes what time *is* is out of scope; repairing outright breakage
+  is not.
+- The founder demoed the sandbox from a frozen worktree on port 8824 while agents were rewriting four
+  modules on 8823. If you do that again: `git worktree add .claude/worktrees/demo HEAD --detach`, symlink
+  `node_modules`, `PORT=8824 node src/server/index.js`.
+
+## The determinism hole in `kit.charge` (fixed, but read this)
+
+`kit.charge` drew its spark angles and birth times straight from `Math.random()`. The charge beat
+belongs to **all ten elements**, so the same seed produced a different frame across the whole game —
+against the plan's own §9 ("no `Math.random`, all randomness from `mulberry(seedOf(e))`").
+
+It surfaced while reading judge reports, not while reading code: three separate judges had measured
+`charge` frames **pixel-wise against a ten-element median**. Against a partly-random effect that
+metric is counting noise. Every charge number in the 61/65/60 verdicts is suspect for that reason,
+and the round after the fix was told so explicitly.
+
+Fixed in `7ea7297`: `kit.charge` takes `r`, falling back to `mulberry` seeded from the cast point
+(the same `x, z` combination that already feeds the core's `seed`). `fire.js`, `ice.js` and
+`arc/impact.js` now pass their own `rng`. **There is no live `Math.random()` call left anywhere in
+`src/viewer/vfx/`**; the remaining hits are `r = Math.random` parameter defaults, which are the
+repo's idiom (core, kit, fire, ice, time) and are only safe because every call site passes a seeded
+generator — if you add a call site, pass one.
+
+A caution about how this was *not* proved: capturing the same cast twice and diffing pixels proves
+nothing here, because the effect animates continuously and two captures drift by frame timing
+regardless of seeding. The non-determinism was a **fact read off the source** (a `Math.random()` call
+per particle), not a measurement. What was measured is that the fix did not break anything: the
+charge of the three affected elements still draws and animates (frames at 0.15 s and 0.30 s differ by
+2056 / 1273 / 1761 px), zero console errors, 60 fps.
+
 ## Known issues and blockers
 
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
 - **Gravity's lens is unverified.** `kit.lens` writes into the distortion output; no pinching of the background is visible in any frame. Either this pipeline has no MRT distortion pass, or the proxy is being culled. Check on a build with MRT before assuming the code is wrong.
+- **The `crater` decal now carries its element.** Its branch in `kit.js` ignored the `tint` argument entirely, so all 14 call sites (void and kinetic, seven each) passed a colour that was thrown away and both elements left the same brown gravel — measured (160,151,142) against (152,145,137). The bowl now takes the element tint and the ejecta rim is tinted by it; fixed in `1fd9af4`.
 - **Captures pollute each other.** The capture tool reuses one page across kinds and decals hold 20 s, so a form's frames can contain another form's floor marks. One judge mistook leftover soot for a jump's landing. Either clear decals between kinds or shoot one kind per page.
 - **The broadcast camera looks along the cast** (both fighters and the camera are on the same diagonal), so on `beam`/`bolt` frames the far fighter hides behind the near one and the effect is foreshortened into a column. This is deliberate (the plan calls broadcast "26 m along the cast"), but judges read it as a defect every time; tell them, or move the fixture's fighters off the camera diagonal.
 - **Radiation has no beam.** It is the plan's phase-2 form and is deliberately absent from `forms` and from the module.
