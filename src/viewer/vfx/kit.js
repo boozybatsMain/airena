@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import * as TSL from 'three/tsl';
 import {
-  TIME, basic, col, easeOutCubic, markGlow, markDistort, pooled, rnd, shared, withFade,
+  TIME, basic, col, easeOutCubic, markGlow, markDistort, mulberry, pooled, rnd, shared, withFade,
 } from './core.js';
 
 const {
@@ -833,9 +833,22 @@ export function mist(vfx, { x, y = 0.3, z, n = 24, radius = 1.5, colour, colour2
  * Заряд у кастера в замахе: сходящиеся к точке искры и растущее ядро.
  * Группа следует за телом (`ctx.bodyPos`), живёт ровно `secs`.
  */
-export function charge(vfx, { who, x, z, y = 1.2, secs = 0.4, colours, mode = 'fire', ctx, n = 40, radius = 1.8 }) {
+export function charge(vfx, { who, x, z, y = 1.2, secs = 0.4, colours, mode = 'fire', ctx, n = 40, radius = 1.8, r = null }) {
   const P = colours;
   const born = vfx.now;
+  /*
+   * СЛУЧАЙ — ОТ КАСТА, А НЕ ОТ `Math.random`. Искры замаха брали угол и
+   * момент рождения прямо из `Math.random()`, и это не мелочь: замах есть у
+   * всех десяти стихий, то есть ОДИН И ТОТ ЖЕ ПОСЕВ ДАВАЛ РАЗНЫЙ КАДР во
+   * всей игре, вопреки §9 («никакого `Math.random`, весь случай — от
+   * `mulberry(seedOf(e))`»). Нашлось 03.09 при разборе замеров: судьи
+   * сравнивали формы `charge` лазера, пустоты и кинетики попиксельно против
+   * общей медианы десяти стихий — по недетерминированному замаху такая
+   * мерка считает шум, а не эффект. Генератор теперь либо приходит от модуля
+   * (`r: rng`), либо строится от точки каста — той же связкой `x, z`, что
+   * уже кормит `seed` ядра строкой ниже.
+   */
+  const rr = r || mulberry((Math.round(x * 97.3 + z * 31.7) ^ 0x5bd1e995) >>> 0);
   const core = burstMat(mode);
   core.userData.u.cA.value.copy(P[0]); core.userData.u.cB.value.copy(P[1]); core.userData.u.cC.value.copy(P[1]);
   core.userData.u.displace.value = 0.25; core.userData.u.intensity.value = 1.2;
@@ -855,15 +868,15 @@ export function charge(vfx, { who, x, z, y = 1.2, secs = 0.4, colours, mode = 'f
   });
   /* Искры, летящие ВНУТРЬ: рождаются на радиусе и летят к ядру. */
   vfx.add.emit(n, (i, s) => {
-    const a = Math.random() * Math.PI * 2, e = rnd(-0.4, 0.9);
-    const d = rnd(radius * 0.5, radius);
+    const a = rr() * Math.PI * 2, e = rnd(-0.4, 0.9, rr);
+    const d = rnd(radius * 0.5, radius, rr);
     const ox = Math.sin(a) * Math.cos(e) * d, oy = Math.sin(e) * d, oz = Math.cos(a) * Math.cos(e) * d;
-    const life = rnd(secs * 0.5, secs * 0.95);
+    const life = rnd(secs * 0.5, secs * 0.95, rr);
     s.pos(x + ox, y + oy, z + oz);
     s.vel(-ox / life, -oy / life, -oz / life);
     s.gravity(0, 0, 0);
     s.color(P[1], P[0]);
-    s.life(born + Math.random() * secs * 0.3, life, rnd(0.1, 0.2), SHAPE.spark);
+    s.life(born + rr() * secs * 0.3, life, rnd(0.1, 0.2, rr), SHAPE.spark);
     s.ext(0, 0.3, 1, 1);
   });
   return g;

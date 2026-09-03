@@ -143,7 +143,7 @@ export function charge(vfx, e, P, ctx) {
     const p = bodyAt(ctx, e.who);
     return p ? [p.x, p.y + CY, p.z] : [e.x, CY, e.z];
   };
-  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y: CY, secs, colours: [P[1], P[2], P[2]], mode: 'storm', ctx, n: S.dots, radius: S.radius });
+  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y: CY, secs, colours: [P[1], P[2], P[2]], mode: 'storm', ctx, n: S.dots, radius: S.radius, r: rng });
 
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
   const BR = (bs ? bs.r : 0.9) * 1.1, BH = (bs ? bs.h : 2.0) * 0.55;

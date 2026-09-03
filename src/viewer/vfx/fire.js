@@ -1073,7 +1073,7 @@ export function charge(vfx, e, P, ctx) {
   });
   const secs = Math.max(0.15, S.windup);
   const y = S.y;
-  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y, secs, colours: [P[0], P[1], P[2]], mode: 'fire', ctx, n: 56, radius: S.gather });
+  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y, secs, colours: [P[0], P[1], P[2]], mode: 'fire', ctx, n: 56, radius: S.gather, r: rng });
   const heatM = kit.heat(vfx, { x: e.x, y, z: e.z, size: 3.0, life: secs + 0.1, strength: 0.8 });
   const pos = () => (ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null);
   /* Своё ядро поверх набора: шар набора живёт на «возрасте» сферы взрыва и с

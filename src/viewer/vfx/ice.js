@@ -1282,7 +1282,7 @@ export function charge(vfx, e, P, ctx) {
     ring: 1.4,          /* насколько разрастается кольцо инея, доли */
   });
   const secs = Math.max(0.2, S.windup || 0.5);
-  kit.charge(vfx, { who, x: e.x, z: e.z, y: S.y, secs, colours: P, mode: 'frost', ctx, n: 36, radius: S.radius });
+  kit.charge(vfx, { who, x: e.x, z: e.z, y: S.y, secs, colours: P, mode: 'frost', ctx, n: 36, radius: S.radius, r: rng });
   const born = vfx.now;
   vfx.body.emit(28, (i, s) => {
     const a = rng() * Math.PI * 2, r = rnd(S.radius * 0.8, S.radius * 1.3, rng);
