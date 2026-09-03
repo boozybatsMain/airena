@@ -275,6 +275,47 @@ Still open on the laser (the owner accepts it and hands these back):
    core itself), and status embers that measure (77,31,28) — reading as dirt or dried blood at
    broadcast rather than as fire.
 
+## A measurement trap that will produce a false verdict if you miss it
+
+**The judges' crop boxes are not stable across shoots.** The kinetic judge found that the original
+judge's boxes — 720,540,880,650 for `charge` and 880,420,1120,570 for `status` — contain **zero**
+changed pixels in the current round, and it is not because the effects vanished. **The caster in that
+shoot is the other robot.** Charge had moved to bbox 695,377,884,458.
+
+Anyone re-measuring against an older report's crop box, without first checking where the effect
+actually is, will conclude a working form draws nothing and score it 0. Locate the effect's bounding
+box in *your own* frame first, then measure. This nearly cost a passing element its score.
+
+Related, and the reason the same judge could trust its own numbers: it verified its `nil` baseline was
+pixel-identical to the builder's (max channel diff 0) and re-shot the tree to confirm the builder's
+frames reproduced (0 px on two forms, 175 px of 1.44 M on a third). That is the standard to hold —
+reproduce the frames before arguing with the conclusions drawn from them.
+
+## Judged: kinetic 70/100 — met
+
+Accepted at the floor of the band, with a punch list. Two forms of ten (beam, impact) would still draw
+a comment from the owner; eight would not.
+
+Still open on kinetic:
+
+1. **The Mach cones are not fixed at broadcast** — the one item from the original list that survives.
+   Box 815,420,860,470 averages (220,214,210), luminance 215 against a bare floor of 221: **six levels,
+   i.e. invisible**. The cones were tuned on the diagnostic side camera, where the mouth rims are solid
+   blue bars; broadcast looks *down the beam axis*, the shell is seen through its own fresnel-transparent
+   body (`kinetic.js:423`), and the mouth ellipses collapse. A general lesson, not a kinetic one.
+2. **Late-life debris are pale grey rectangles**, breaking the file's own "nothing below 0.95" rule.
+   The five largest non-crater pieces at lob t1.20 measure 206 px (183,190,197) sat 15, then 100/94/85/81
+   px in the same range, on a floor of 221. The round's fix for pale particles was to make the crumbs
+   *bigger*, which enlarged the pale smudge instead of removing it.
+3. **The wall is a frozen prop** — wall t0.60 vs t1.20 differ by max channel 10 and **zero** pixels over
+   25. Nothing moves for the last 0.9 s of a 4 s wall, while every sibling wall (arc, ember, frost, void,
+   time) animates through the same window.
+4. Impact is the thinnest form and is occluded by its own caster (2842 px, below the ten-element median
+   ~5330 and below its own pre-round self at 6128). The wall's base skirt reads as a hard-edged blue
+   floor stain butted against the base rather than as debris.
+5. Minor: hue separation from arc is thin — median saturated hue 204° against arc's 213°, nine degrees
+   apart. Separation rests on lightness and silhouette, not colour.
+
 ## The pending `kit.js` pass (four items, all measured, none applied yet)
 
 These are deliberately batched: `kit.js` is shared, and changing it while agents are measuring against
