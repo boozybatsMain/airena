@@ -275,6 +275,25 @@ Still open on the laser (the owner accepts it and hands these back):
    core itself), and status embers that measure (77,31,28) — reading as dirt or dried blood at
    broadcast rather than as fire.
 
+## Correction: "the killed agents never measured anything" was my assumption, not a fact
+
+When the API storm killed 17 of 19 agents mid-round, I told the replacement agents that the edits they
+inherited "were NEVER captured, NEVER measured and NEVER judged". **The first two thirds of that were
+wrong**, and the void agent caught it and pushed back with evidence rather than accepting the framing:
+`reports/vfx/r70/void/{r0,r1,imp,base,smoke}` holds **215 frames** timestamped 16:13–16:42, and the
+module kept being edited past its last capture. Counting the whole tree, the killed agents had left
+**503 frames**: void 215, time 148, kinetic 102, laser 38.
+
+So the accurate statement was only ever "never **judged**". I inferred "never measured" from "the agent
+died" and asserted it as fact without looking in `reports/`, which is exactly the failure mode this
+handoff keeps warning about — and the cost is not academic: it invites a replacement agent to throw
+away real measurements, or to re-derive them at the price of another GPU hour.
+
+Two agents spot-checked the inherited prose against those surviving frames instead of trusting or
+discarding it, and found it largely honest — the void agent reproduced "130 px >25 и 58 px >60" as
+exactly 130/58, and "(137,129,150)" as exactly (137,129,150) over 4198 changed pixels. **When you
+inherit uncommitted work, look for its frames before you decide what it is worth.**
+
 ## A measurement trap that will produce a false verdict if you miss it
 
 **The judges' crop boxes are not stable across shoots.** The kinetic judge found that the original
