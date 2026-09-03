@@ -393,7 +393,20 @@ class DecalField {
   constructor(scene, type, palette) {
     this.type = type;
     this.head = 0;
-    const geo = new THREE.PlaneGeometry(2, 2);
+    /*
+     * КВАД ШИРЕ ФОРМЫ. Жалоба основателя 04.09: «лужи обрезаются квадратом, в
+     * который вписаны, видно границы». Так и было, и это чистая арифметика.
+     * `q` шёл от −1 до 1, то есть `d` доходил до 1.0 по стороне квада, а
+     * форма живёт до `d = порог + амплитуда шума`: копоть 1.0+0.42 = 1.42,
+     * кислота 0.95+0.45 = 1.40, радиация 1.30, воронка 1.25. Всё, что дальше
+     * 1.0, срезала ГЕОМЕТРИЯ — отсюда прямая грань поперёк рваного края.
+     *
+     * Лечится не формой, а полем: квад расширен множителем `DECAL_PAD`, и `q`
+     * домножен на него же, поэтому в МИРЕ след остаётся ровно того же
+     * размера и с той же частотой шума — прибавляется только пустота вокруг.
+     * Цена — площадь квада в PAD² раз больше, заливка там прозрачная.
+     */
+    const geo = new THREE.PlaneGeometry(2 * DECAL_PAD, 2 * DECAL_PAD);
     geo.rotateX(-Math.PI / 2);
     /* born, hold, fade, seed */
     this.cfg = new THREE.InstancedBufferAttribute(new Float32Array(MAX_DECALS * 4), 4);
@@ -436,9 +449,12 @@ class DecalField {
     const tIn = age.div(rise).clamp(0, 1);
     const inK = tIn.mul(tIn).mul(tIn.mul(-2.0).add(3.0));
     const life = born.select(k.mul(inK), float(0));
-    const q = uv().sub(vec2(0.5, 0.5)).mul(2);
+    const q = uv().sub(vec2(0.5, 0.5)).mul(2 * DECAL_PAD);
     const d = q.length();
     const p3 = vec3(q.mul(3.0), seed);
+    /* Страховка от среза: к границе квада альфа обязана прийти в ноль. Порог
+       1.44 выше самой длинной формы (1.42), так что ни одну ветку не режет. */
+    const inQuad = oneMinus(smoothstep(float(1.44), float(DECAL_PAD - 0.02), d));
 
     let colour, alpha, glow = float(0);
     if (type === 'soot') {
@@ -590,7 +606,7 @@ class DecalField {
       alpha = bowl.mul(0.75).add(rim.mul(0.55)).clamp(0, 1);
     }
     m.colorNode = colour;
-    m.opacityNode = alpha.mul(life).clamp(0, 1);
+    m.opacityNode = alpha.mul(life).mul(inQuad).clamp(0, 1);
     markGlow(m, glow.mul(life).clamp(0, 1));
 
     this.mesh = new THREE.InstancedMesh(geo, m, MAX_DECALS);
@@ -617,6 +633,12 @@ class DecalField {
     this.tint.needsUpdate = true;
   }
 }
+
+/*
+ * ЗАПАС КВАДА вокруг следа: больше самой длинной формы (копоть, 1.42) с
+ * зазором под страховочную маску.
+ */
+const DECAL_PAD = 1.6;
 
 /*
  * ВРЕМЯ ПРОЯВЛЕНИЯ по типу следа, секунды. Это не украшение: скорость, с
