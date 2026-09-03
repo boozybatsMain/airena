@@ -1353,6 +1353,31 @@ if (new URLSearchParams(location.search).get('vfx')) {
         } catch { /* тело без позы — стоит как есть */ }
       }
     },
+    /*
+     * ДВИЖЕНИЕ ТЕЛА ДЛЯ ПЕСОЧНИЦЫ. `place` ставит бойца и бьёт позу «стоит»;
+     * песочнице нужно, чтобы он ШЁЛ — с походкой, разворотом и той же
+     * анатомией, что в бою. Считать шаг здесь, а не в песочнице, незачем:
+     * `stride` копится по ПРОЙДЕННОМУ ПУТИ и несёт знак хода против взгляда
+     * (см. шапку файла), и это ровно то, что уже умеет боевой цикл, — поэтому
+     * песочница передаёт готовые `speed`/`stride`/`turn`, а тут только
+     * прикладывается поза и тело ставится на пол.
+     */
+    move: (id, v) => {
+      const b = bodies[id];
+      if (!b || !v) return;
+      b.root.position.set(v.x, 0, v.z);
+      b.root.rotation.set(0, v.h || 0, 0, 'YXZ');
+      b.root.visible = true;
+      if (!b.root.parent) scene.add(b.root);
+      try {
+        b.inner.userData.pose({
+          t: v.t || 0, dt: v.dt || 1 / 60, speed: v.speed || 0, stride: v.stride || 0,
+          turn: v.turn || 0, grounded: true, health: 1, action: v.action || 'idle', phase: v.phase || 0,
+        });
+        b.root.updateMatrixWorld(true);
+        b.root.position.y = Math.max(0, -spanY(b).min);
+      } catch { /* тело без позы — стоит как есть */ }
+    },
     cast: (e) => { playFx(e); },
     bodies: () => Object.fromEntries(['blue', 'orange'].map((id) => [id, bodies[id] ? { x: bodies[id].root.position.x, z: bodies[id].root.position.z, h: bodies[id].root.rotation.y, height: bodies[id].height } : null])),
     stats: () => ({ backend: window.__airenaBackend, bloom: window.__airenaBloom, fps: fps.last, draws: renderer.info?.render?.drawCalls ?? null }),
