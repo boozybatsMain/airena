@@ -402,7 +402,16 @@ class DecalField {
      * лужа набегает за секунду, ожог вспыхивает за десятую долю.
      */
     const rise = tintRise.w.max(0.001);
-    const inK = smoothstep(float(0), rise, age);
+    /*
+     * Огибающая входа СЧИТАЕТСЯ ВРУЧНУЮ, а не через `smoothstep` с узловыми
+     * краями. Замер: при `smoothstep(float(0), rise, age)` след выходил на
+     * полную непрозрачность в первом же кадре — проба в браузере показала
+     * возраст 0.216 с при `rise` 3.5 (то есть 1.1 % по формуле), а на экране
+     * лужа лежала целиком. Полином тот же (3t²−2t³), но по явно зажатой доле
+     * `age/rise`, и он ведёт себя предсказуемо.
+     */
+    const tIn = age.div(rise).clamp(0, 1);
+    const inK = tIn.mul(tIn).mul(tIn.mul(-2.0).add(3.0));
     const life = born.select(k.mul(inK), float(0));
     const q = uv().sub(vec2(0.5, 0.5)).mul(2);
     const d = q.length();

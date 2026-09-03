@@ -205,7 +205,12 @@ export function zone(vfx, e, P, ctx) {
     lensScale: 2.2,       /* размер линзы, доли радиуса */
     lensStrength: 1,      /* сила линзы, 0..1 */
     decalScale: 1.1,      /* след на полу, доли радиуса */
-    decalHold: DUR + 6,   /* стойкость следа, с */
+    /* 20 с, а не `DUR + 6`: продавленный пол — ОСТАТОК, и план прямо задаёт
+       ему «hold ~20 s» (docs/VFX-PLAN.md §6.2 и чек-лист §0.2). Короткий след
+       нужен только воронке навеса — она и передаёт своё значение сюда через
+       запись (см. `lob`). Кольца сжатия под ЖИВЫМ колодцем — другое дело: это
+       проекция работающего эффекта, и они уже живут ровно `DUR` (`rings`). */
+    decalHold: 20,        /* стойкость следа, с */
     dust: 120,            /* пыль на эталонную площадь зоны, штук */
     dustEvery: 0.3,       /* период подсева пыли, с */
     debrisY: 0.5,         /* высота вылета обломков, м */
@@ -347,6 +352,7 @@ export function lob(vfx, e, P, ctx) {
     trailN: 10,           /* пыли за срыв, штук */
     blastRadius: 1.6,     /* радиус воронки, м */
     blastDuration: 1.6,   /* жизнь воронки, с */
+    blastDecalHold: 8,    /* стойкость следа воронки, с */
     blastCoreY: 0.22,     /* куда осаживается ядро воронки, м */
     blastCoreR: 0.8,      /* до чего оно разбухает, м */
     blastLensY: 0.6,      /* высота линзы воронки, м */
@@ -402,7 +408,10 @@ export function lob(vfx, e, P, ctx) {
       zone(vfx, {
         ...e, kind: 'zone', x: B[0], z: B[2], r: S.blastRadius, duration: S.blastDuration,
         coreFrom: B[1], coreTo: S.blastCoreY, coreR0: S.coreRadius, coreR1: S.blastCoreR,
-        lensY: S.blastLensY, waveAt: 0,
+        /* Воронке от брошенной массы — КОРОТКИЙ след: она вдвое меньше зоны
+           и живёт полторы секунды, а не три, и двадцатисекундное пятно после
+           неё читалось бы как настоящий колодец, которого уже нет. */
+        lensY: S.blastLensY, waveAt: 0, decalHold: S.blastDecalHold,
       }, P, ctx);
       vfx.screen.shake(S.shake);
     }
