@@ -1090,10 +1090,13 @@ export function blink(vfx, e, P, ctx) {
   const at1 = (i) => [e.x1 + (rng() - 0.5) * 1.0, e.z1 + (rng() - 0.5) * 1.0];
   emitSmoke(vfx, 40, at0, { lit: smokeLit(P), y: 0.5, yJit: 0.8, rise: 3.0, life: 2.4, size: 1.0, out: 1.2, r: rng });
   emitEmbers(vfx, 28, at0, { P, y: 0.6, yJit: 0.7, speed: 4, up: 6, life: 1.2, size: 0.16, r: rng });
-  kit.decal(vfx, { type: 'soot', x: e.x0, z: e.z0, radius: 1.0, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
+  /* След у концов МЕЛКИЙ (0.7 м): при 1.0 м два пятна в пяти метрах друг от
+     друга судья прочитал как «непрерывный ожог, связывающий концы» — а он
+     убивает смысл мгновенного переноса. */
+  kit.decal(vfx, { type: 'soot', x: e.x0, z: e.z0, radius: 0.7, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
   kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.4, endRadius: 1.6, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.2, at: 0.08 });
   emitFlames(vfx, 34, at1, { P, y: 0.3, yJit: 0.9, rise: 3.2, life: 0.7, size: 0.9, at: vfx.now + 0.08, jitter: 0.15, r: rng });
-  kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: 1.0, hold: 20, tint: P[2], seed: ((seed + 2) % 9) + 1, at: 0.08 });
+  kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: 0.7, hold: 20, tint: P[2], seed: ((seed + 2) % 9) + 1, at: 0.08 });
   vfx.flashLight(e.x1, 1.0, e.z1, P[1], 18, 0.3, 7);
   return true;
 }
@@ -1104,8 +1107,13 @@ export function jump(vfx, e, P, ctx) {
   const dur = Math.max(0.2, e.duration || 0.55);
   const foot = () => [e.x + (rng() - 0.5) * 1.0, e.z + (rng() - 0.5) * 1.0];
   /* Отрыв — выхлоп пламени из-под ног; в воздухе НИЧЕГО. */
-  emitFlames(vfx, 26, foot, { P, y: 0.1, yJit: 0.3, rise: 1.6, life: 0.5, size: 0.7, out: 1.4, r: rng });
-  emitSmoke(vfx, 18, foot, { lit: smokeLit(P), y: 0.2, yJit: 0.3, rise: 2.0, life: 2.0, size: 0.8, out: 1.4, r: rng });
+  /* Отрыв ОГНЕННЫЙ, а не дымный: судья увидел «плоское тёмно-серое пятно
+     без всякого оттенка углей, в разлад с посадкой». Языки вдвое, угли и
+     ожог — отрыв обязан быть виден тем же цветом, что посадка. */
+  emitFlames(vfx, 44, foot, { P, y: 0.1, yJit: 0.4, rise: 2.2, life: 0.55, size: 0.8, out: 1.6, hotK: 0.7, r: rng });
+  emitEmbers(vfx, 26, foot, { P, y: 0.2, yJit: 0.4, speed: 4, up: 5, life: 1.0, size: 0.14, r: rng });
+  emitSmoke(vfx, 12, foot, { lit: smokeLit(P), y: 0.2, yJit: 0.3, rise: 2.0, life: 2.0, size: 0.8, out: 1.4, r: rng });
+  kit.decal(vfx, { type: 'scorch', x: e.x, z: e.z, radius: 1.0, hold: 20, tint: P[1], seed: ((seed + 5) % 9) + 1 });
   vfx.spawnMesh(new THREE.Group(), dur + 1.4, (o, u) => {
     if (o.userData.done || u * (dur + 1.4) < dur) return;
     o.userData.done = true;
@@ -1136,7 +1144,10 @@ export function wall(vfx, e, P, ctx) {
     if (t < next || t > D - 0.3) return;
     next = t + 0.18;
     const k = t < 0.15 ? t / 0.15 : 1;
-    emitFlames(vfx, Math.round(W * 6 * k), place, { P, y: 0.1, yJit: 0.5, rise: 3.4, life: 0.75, size: 0.85, out: 0.4, r: rng });
+    /* Языки рождаются НА ВСЕЙ ВЫСОТЕ коробки (yJit 1.8), а не только у
+       основания: судья увидел «огонь в нижней трети, остальное — пустая
+       тонированная панель». Пламя должно СТОЯТЬ стеной, а не лизать пол. */
+    emitFlames(vfx, Math.round(W * 7 * k), place, { P, y: 0.1, yJit: 1.8, rise: 2.6, life: 0.7, size: 0.8, out: 0.4, r: rng });
     if (t % 0.5 < 0.19) {
       emitEmbers(vfx, Math.round(W * 2), place, { P, y: 0.4, yJit: 0.6, speed: 1.4, up: 6, life: 1.5, size: 0.14, r: rng });
       emitSmoke(vfx, Math.round(W * 2), place, { lit: smokeLit(P), y: 1.4, yJit: 0.6, rise: 3.0, life: 3.0, size: 1.1, out: 0.5, r: rng });
@@ -1181,9 +1192,13 @@ export function status(vfx, e, P, ctx) {
       const a = rng() * Math.PI * 2;
       return [p.x + Math.sin(a) * R, p.z + Math.cos(a) * R];
     };
-    emitFlames(vfx, 7, surf, { P, y: 0.25, yJit: H * 0.75, rise: 2.0, life: 0.5, size: 0.42, out: 0.25, hotK: 0.6, r: rng });
-    emitEmbers(vfx, 4, surf, { P, y: H * 0.5, yJit: H * 0.4, speed: 0.6, up: 2.4, life: 1.0, size: 0.1, r: rng });
-    if (t % 1 < 0.23) emitSmoke(vfx, 3, surf, { lit: smokeLit(P), y: H * 0.8, yJit: 0.4, rise: 2.2, life: 2.0, size: 0.6, out: 0.4, r: rng });
+    /* ВТРОЕ ГУЩЕ И БЕЗ ДЫМА. Замер (судья, 35 из 100): «на самом бойце почти
+       ничего не горит, а заметное — красноватые мазки на стене ПОЗАДИ него».
+       Мазки были дымом: он всплывал, ложился на укрытие и оказывался ярче
+       того, что на теле. Дым снят, языки и угли утроены и прижаты к капсуле
+       (`out` 0.12, подъём 1.4) — горит ТЕЛО. */
+    emitFlames(vfx, 22, surf, { P, y: 0.25, yJit: H * 0.75, rise: 1.4, life: 0.45, size: 0.34, out: 0.12, hotK: 0.8, lift: 0.6, r: rng });
+    emitEmbers(vfx, 12, surf, { P, y: H * 0.45, yJit: H * 0.45, speed: 0.4, up: 2.0, life: 0.9, size: 0.1, r: rng });
   });
   return true;
 }

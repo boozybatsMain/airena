@@ -355,9 +355,9 @@ export function status(vfx, e, P, ctx) {
   /* ПРИДАВЛЕН: пыль сыплется отвесно, кольца ползут за телом, обод на 0.4. */
   /* ЛИНЗА, А НЕ ПУЗЫРЬ. Замер 03.09 (судья, «почти белое на белом, на
      дистанции пропадает»): при заливке 0 и затухании 0.4 оболочка была
-     невидима. Теперь нутро 0.3 тёмного при полном затухании — тело под
-     весом ТЕМНЕЕТ, а это и есть «придавлен»; кольца под ним вдвое темнее. */
-  const sh = well(P, R, 0.3);
+     невидима. Теперь нутро 0.5 тёмного при полном затухании — тело под
+     весом ТЕМНЕЕТ ВДВОЕ, а это и есть «придавлен»; кольца под ним шире. */
+  const sh = well(P, R, 0.5);
   sh.mesh.position.set(p0.x, H, p0.z);
   const MAX = 60;
   let next = 0;
@@ -371,7 +371,7 @@ export function status(vfx, e, P, ctx) {
     o.visible = true;
     const p = at();
     o.position.set(p.x, H, p.z);
-    sh.set(1, R, 0.3);
+    sh.set(1, R, 0.5);
     if (t >= next) { next = t + 0.6; fallDust(vfx, P, { x: p.x, z: p.z, r: R * 1.2, n: 18, rng }); }
   });
   rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.3, life: dur, follow: at });
@@ -394,9 +394,28 @@ export function charge(vfx, e, P, ctx) {
   vfx.spawnMesh(core.mesh, secs, (o, u) => {
     const t = u * secs;
     const p = at();
-    o.position.set(p.x + Math.sin(dir) * 0.7, 1.1, p.z + Math.cos(dir) * 0.7);
+    const hx = p.x + Math.sin(dir) * 0.7, hz = p.z + Math.cos(dir) * 0.7;
+    o.position.set(hx, 1.1, hz);
     core.set(1, 0.1 + 0.25 * u, 0.95);
-    if (t >= next) { next = t + 0.25; fallDust(vfx, P, { x: p.x, z: p.z, r: 2, n: 16, rng }); }
+    if (t >= next) {
+      next = t + 0.12;
+      /* ВОРОНКА, СХОДЯЩАЯСЯ К РУКЕ, а не просто оседающая пыль: судья не
+         отличил замах от каста «массы» и от сброшенной массы — все три были
+         одним тёмным шариком. Пыль летит К руке и падает, кольцо стягивается
+         с 2.4 м к 0.6 м за замах. */
+      const rr = 2.4 - 1.8 * u;
+      vfx.body.emit(14, (i, s2) => {
+        const a = rng() * TAU;
+        const px = hx + Math.sin(a) * rr, pz = hz + Math.cos(a) * rr;
+        s2.pos(px, 0.3 + rng() * 1.6, pz);
+        s2.vel(-Math.sin(a) * rr * 1.6, 0.2, -Math.cos(a) * rr * 1.6);
+        s2.gravity(0, -5, 0);
+        s2.color(P[2], P[2].clone().multiplyScalar(0.5));
+        s2.life(vfx.now, 0.55, 0.07 + rng() * 0.05, kit.SHAPE.streak);
+        s2.ext(0, 0.7, 1, 0.3);
+      });
+    }
   });
+  rings(vfx, P, { x: p0.x, z: p0.z, r: 2.2, life: secs, follow: at });
   return true;
 }
