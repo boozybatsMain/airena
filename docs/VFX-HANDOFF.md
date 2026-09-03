@@ -180,6 +180,26 @@ charge of the three affected elements still draws and animates (frames at 0.15 s
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
 - **Gravity's lens is unverified.** `kit.lens` writes into the distortion output; no pinching of the background is visible in any frame. Either this pipeline has no MRT distortion pass, or the proxy is being culled. Check on a build with MRT before assuming the code is wrong.
 - **The `crater` decal now carries its element.** Its branch in `kit.js` ignored the `tint` argument entirely, so all 14 call sites (void and kinetic, seven each) passed a colour that was thrown away and both elements left the same brown gravel — measured (160,151,142) against (152,145,137). The bowl now takes the element tint and the ejecta rim is tinted by it; fixed in `1fd9af4`.
+- **`kit.footprint` makes projectile density unable to respond to range** (verified 03.09, not yet fixed).
+  The `bolt`/`lob` branch returns `area: Math.PI * IMPACT_RADIUS * IMPACT_RADIUS` — a constant 6.158 m²,
+  whatever the skill's `range`. And `REF_AREA.impact` is *the same expression*. So
+  `countFor(base, fp.area, REF_AREA.impact, cap)` reduces to `base` for **every projectile ever cast**:
+  a trail's density is constant by force, not by choice. This is the same silent-bug class as the `self`
+  branch that returned 1.5 m for every body, whose fix is documented four lines below it in `kit.js` —
+  and it breaks decision 11 ("skill size is a parameter, the effect adapts") for a whole delivery class.
+
+  The fix (proposed by the laser agent, which correctly declined to make it in shared code): give
+  bolt/lob a path-shaped area mirroring `beam`'s — `area: range * IMPACT_RADIUS * 2` — and add
+  `REF_AREA.bolt = 10 * IMPACT_RADIUS * 2` (10 m being the registry default range) so counts at default
+  range are unchanged.
+
+  **The trap:** the new area is 28 against `REF_AREA.impact`'s 6.158, so any call site left pointing at
+  `REF_AREA.impact` jumps to 4.55× its current density. Only **three** sites actually take a bolt/lob
+  footprint and must be repointed at `REF_AREA.bolt`:
+  `kinetic.js:1102-1103` (`slug`), `laser.js:489` (`bolt`), `fire.js:910` (`fireball`).
+  The other `REF_AREA.impact` uses are genuine impact discs (`void.js:744-745`, `kinetic.js:1179-1180`)
+  or pass an area they compute themselves (`kinetic.js:1555`, `novabeam.js:922`, `novabeam.js:1018`) and
+  must be left alone. Re-shoot bolt and lob for kinetic, laser and ember after the change.
 - **Captures pollute each other.** The capture tool reuses one page across kinds and decals hold 20 s, so a form's frames can contain another form's floor marks. One judge mistook leftover soot for a jump's landing. Either clear decals between kinds or shoot one kind per page.
 - **The broadcast camera looks along the cast** (both fighters and the camera are on the same diagonal), so on `beam`/`bolt` frames the far fighter hides behind the near one and the effect is foreshortened into a column. This is deliberate (the plan calls broadcast "26 m along the cast"), but judges read it as a defect every time; tell them, or move the fixture's fighters off the camera diagonal.
 - **Radiation has no beam.** It is the plan's phase-2 form and is deliberately absent from `forms` and from the module.
