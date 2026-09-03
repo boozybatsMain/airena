@@ -193,6 +193,35 @@ I put the wrong version of this advice into two agents' prompts before the laser
 treat any build-agent baseline numbers from that run with suspicion unless the agent says which nil
 form it used.
 
+Measured across all thirteen forms (`reports/vfx/nilbase`, broadcast, t0.30, each shot in its own
+Chrome so no page is shared), diffed against `nil/charge`:
+
+| form | px differing from `nil/charge` | reading |
+|---|---|---|
+| `charge`, `bolt`, `jump` | **0** | mutually pixel-identical — genuinely empty, safe baselines |
+| `status` | 144 | near-empty |
+| `dash` | 344 | |
+| `cone` | 861 | |
+| `lob` | 899 | |
+| `impact` | 1111 | |
+| `wall` | 15617 | stock grey grid (judge-confirmed visually) |
+| `self` | 68065 | |
+| `zone` | 77266 | |
+| `beam` | **517016** | stock five-ribbon beam (judge-confirmed visually) — 36% of the frame |
+
+**Caveat on this table, which matters as much as the table.** It diffs *different forms against each
+other*, and the fixture aims and poses the two fighters differently per form — so every non-zero
+number mixes "the stock path drew something" with "the bodies are standing differently". The numbers
+are an **upper bound on stock drawing**, not a measurement of it. What is solid: `charge`, `bolt` and
+`jump` are mutually pixel-identical at 0 px, so those three both draw nothing *and* share a pose,
+which is what makes `nil/charge` a valid baseline for any form. And `beam` and `wall` were confirmed
+visually by the judge to be drawing the stock effect, so those two are certainly not empty. For the
+mid-range forms this measurement cannot separate the two causes; do not quote them as stock-draw
+areas.
+
+The judges' own method avoids this trap by construction: they diff **the same form** with and without
+the effect, which holds the pose constant. Do that.
+
 ## Correction to commit `b878cd7` (the laser round)
 
 That commit's message says defects 1, 2, 3, 4 and 6 were closed by the inherited edits. **Defect 4 was
