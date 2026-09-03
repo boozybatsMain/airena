@@ -275,6 +275,38 @@ Still open on the laser (the owner accepts it and hands these back):
    core itself), and status embers that measure (77,31,28) — reading as dirt or dried blood at
    broadcast rather than as fire.
 
+## The pending `kit.js` pass (four items, all measured, none applied yet)
+
+These are deliberately batched: `kit.js` is shared, and changing it while agents are measuring against
+it invalidates their before/after numbers. Do them together, then re-shoot the affected elements.
+
+1. **`footprint` makes projectile density unable to respond to range.** Full write-up below under
+   Known issues, including the three call sites that must move to `REF_AREA.bolt` and the five that
+   must not.
+
+2. **The `crater` bowl cannot be made opaque — and my 03.09 tint fix only half-solved this.** The bowl
+   is `mix(vec3(0.11,0.1,0.09), tint*0.5, 0.7)` with alpha capped at `bowl*0.75 + rim*0.55`. So the
+   tint contributes 0.35 of its value at most, the rest being a grey constant, and the alpha ceiling
+   guarantees a pale result on the 224 HDR floor. Measured on kinetic's bolt at t1.20 broadcast, box
+   735,595,840,700: **(139,153,165) at saturation 0.19 *after* my fix**, against (161,166,169) at 0.06
+   before it, and void's (171,166,178) at 0.08 — so the fix did move it (0.06 → 0.19) but nowhere near
+   far enough, and the "identical gravel" complaint is only partly answered. Add an optional `alpha` /
+   `dense` and let the bowl reach `tint` without the grey constant. Every no-glow dark-palette element
+   pays this tax; kinetic had to build a private `pit()` to escape it, duplicating kit work.
+
+3. **`kit.shockwave` has no opt-out for its additive ring.** The `hot` branch always builds a second
+   additive ring with `markGlow(m, alpha)` and nothing turns it off — which is why kinetic carries its
+   own `wave()`, ~40 lines duplicated from the kit's idea. A `glow: 0` / `hot: false` option would let
+   the no-glow element use the shared one and delete the copy.
+
+4. **Particle alpha is `mask * fadeIn * (1-age)^1.3` with no opt-out** (`vfx.js`). Every crumb spends
+   the back half of its life translucent, which on the white floor means grey whatever its colour —
+   the measured reason kinetic's beam still shows 4766 grey pixels of 10996 at 0.30 s. `SHAPE.chip` is
+   angular, hard-edged matter rather than smoke and wants a squarer curve, or a per-emit flag in
+   `s.ext`. Smaller and related: `countFor`'s floor of `base*0.35` makes it impossible to ask for
+   genuinely few particles, so an element that wants a handful of large pieces instead of a cloud of
+   small ones has to fight it with its own clamp.
+
 ## Known issues and blockers
 
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
