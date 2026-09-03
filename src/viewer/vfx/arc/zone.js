@@ -12,23 +12,50 @@ export function zone(vfx, e, P, ctx) {
   const rng = mulberry(seed);
   const fp = kit.footprint(e, ctx);
   const r = fp.radius;
-  const D = Math.max(0.8, e.duration || 3);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 3,       /* жизнь зоны, с */
+    collapse: 0.32,    /* закрывающий беат, с (не длиннее четверти жизни) */
+    land: 0.12,        /* когда столб встаёт на пол, с */
+    sky: 9.5,          /* высота, с которой падают разряды, м */
+    strikeEvery: 0.3,  /* период ударов с неба, с */
+    colH: 2.4,         /* высота колонн на эталонном радиусе, м */
+    colVary: 2.0,      /* разброс высоты колонн, м */
+    colRef: 3,         /* радиус, на котором колонны ровно `colH`, м */
+    dir: e.h || 0,     /* курс кастера при постановке: куда смотрит веер щупалец, рад */
+    burnRadius: 1.1,   /* большой ожог, доли радиуса диска */
+    strikeBurn: 0.85,  /* ожог одного удара с неба, м */
+    burnAfter: 6,      /* ожог переживает зону на столько, с */
+  });
+  const D = Math.max(0.8, S.duration);
   const cx = e.x, cz = e.z;
-  const SKY = 9.5;
-  const LAND = 0.12;
-  const COLLAPSE = 0.32;
+  const SKY = S.sky;
+  const LAND = S.land;
+  /* Закрывающий беат — ДОЛЯ жизни, а не константа. При D = 0.8 плоские 0.32 с
+     съедали 40 % зоны, а расписание ударов (`t < D - COLLAPSE - 0.15`) не
+     пускало в зону короче 0.92 с НИ ОДНОГО удара с неба. */
+  const COLLAPSE = Math.min(S.collapse, D * 0.25);
 
   const nCol = clampN(kit.countFor(10, fp.area, kit.REF_AREA.zone, 28), 4, 28);
   const nRim = clampN(Math.round((TAU * r) / 1.4), 4, 20);
   const nTend = clampN(kit.countFor(7, fp.area, kit.REF_AREA.zone, 18), 3, 18);
+  /* Высота колонн — ОТ РАДИУСА ДИСКА. Всё остальное здесь считается от
+     `fp.radius` (кромка, свет, ожог, ударный набор, волна), и только силуэт
+     столба — то, чем зона и читается, — стоял плоскими 2.4–4.4 м: на диске
+     6 м он был ровно такой же, как на 1.5 м. Эталон 3 м — тот же радиус, что
+     зашит в `kit.REF_AREA.zone`, так что на нём высота прежняя. */
+  const hk = clampN(r / S.colRef, 0.6, 1.6);
   const cols = [];
-  for (let i = 0; i < nCol; i++) cols.push({ h: 2.4 + rng() * 2.0, phase: 100 + i, w: i < 3 ? 0.06 : 0.04 + rng() * 0.015 });
+  for (let i = 0; i < nCol; i++) cols.push({ h: (S.colH + rng() * S.colVary) * hk, phase: 100 + i, w: i < 3 ? 0.06 : 0.04 + rng() * 0.015 });
   const tend = [];
-  for (let i = 0; i < nTend; i++) tend.push({ phi: (i / nTend) * TAU + rng() * 0.4, spin: (rng() - 0.5) * 0.9, phase: 200 + i });
+  /* Щупальца стелются от курса кастера: `h` в записи зоны — единственное,
+     чем «направление зоны» вообще можно задать (сим пишет его с 03.09). */
+  for (let i = 0; i < nTend; i++) tend.push({ phi: S.dir + (i / nTend) * TAU + rng() * 0.4, spin: (rng() - 0.5) * 0.9, phase: 200 + i });
 
   /* Удары с неба по случайным точкам диска, каждые ~0.34 с. */
   const strikes = [];
-  for (let k = 0, t = 0.45 + rng() * 0.2; t < D - COLLAPSE - 0.15; k++, t += 0.3 + rng() * 0.12) {
+  for (let k = 0, t = 0.45 + rng() * 0.2; t < D - COLLAPSE - 0.15; k++, t += S.strikeEvery + rng() * 0.12) {
     const [x, z] = kit.inDisc(cx, cz, r * 0.85, rng);
     strikes.push({ t, x, z, fired: false, phase: 300 + k, until: t + 0.14 });
   }
@@ -76,7 +103,10 @@ export function zone(vfx, e, P, ctx) {
     }
     for (const s of strikes) {
       if (t < s.t || t >= s.until) continue;
-      for (let i = 0; i < 3; i++) out.push({ a: [s.x + (g() - 0.5) * 0.3, 7.5, s.z + (g() - 0.5) * 0.3], b: [s.x, 0.08, s.z], width: i === 0 ? 0.075 : 0.04, bright: 1, jag: 0.06, branches: 2, minY: 0.06, phase: s.phase + i, step: 0.4 });
+      /* Повторные удары падают с той же высоты, что и первый (0.79 от неё —
+         они бьют чуть ниже): раньше `SKY` и 7.5 были двумя числами про одно
+         и то же, и поднять столб значило развести их. */
+      for (let i = 0; i < 3; i++) out.push({ a: [s.x + (g() - 0.5) * 0.3, SKY * 0.79, s.z + (g() - 0.5) * 0.3], b: [s.x, 0.08, s.z], width: i === 0 ? 0.075 : 0.04, bright: 1, jag: 0.06, branches: 2, minY: 0.06, phase: s.phase + i, step: 0.4 });
     }
     return out;
   };
@@ -92,7 +122,7 @@ export function zone(vfx, e, P, ctx) {
       if (s.fired || t < s.t) continue;
       s.fired = true;
       stormBurst(vfx, P, { x: s.x, y: 0.45, z: s.z, radius: 0.4, endRadius: 1.3, life: 0.32, intensity: 1.0, squash: 0.7 });
-      kit.decal(vfx, { type: 'arc', x: s.x, z: s.z, radius: 0.85, hold: 20, tint: P[1], seed: (s.phase % 9) + 1 });
+      kit.decal(vfx, { type: 'arc', x: s.x, z: s.z, radius: S.strikeBurn, hold: D + S.burnAfter, tint: P[1], seed: (s.phase % 9) + 1 });
       vfx.flashLight(s.x, 1.2, s.z, P[0], 22, 0.25, 7);
       arcSparks(vfx, P, { x: s.x, y: 0.2, z: s.z, n: 24, speed: 7, life: 0.45, gravity: -7, r: rng });
       vfx.screen.shake(0.12);
@@ -105,7 +135,9 @@ export function zone(vfx, e, P, ctx) {
   /* Посадка: гроза, веер дуг, волна, большой ожог под всем диском. */
   stormBurst(vfx, P, { x: cx, y: 0.6, z: cz, radius: 0.7, endRadius: r * 0.9, life: 0.5, intensity: 1.2, squash: 0.75 });
   radialArcs(vfx, P, seed, cx, cz, 8, r * 1.1, 0.5, 0.35);
-  kit.decal(vfx, { type: 'arc', x: cx, z: cz, radius: r * 1.1, hold: 20 + D, tint: P[1], seed: (seed % 7) + 1 });
+  /* Ожог — ОСТАТОК: переживает зону, но ровно на `burnAfter`. Прежние
+     `20 + D` держали двадцать секунд минимум при любой настройке. */
+  kit.decal(vfx, { type: 'arc', x: cx, z: cz, radius: r * S.burnRadius, hold: D + S.burnAfter, tint: P[1], seed: (seed % 7) + 1 });
   kit.impactKit(vfx, { x: cx, z: cz, y: 0.8, radius: r * 0.6, colours: P, strength: 1.3 });
   vfx.screen.aberration(0.6);
   arcSparks(vfx, P, { x: cx, y: 0.3, z: cz, n: 56, speed: 9, life: 0.55, gravity: -7, at: vfx.now + LAND, r: rng });

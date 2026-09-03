@@ -30,6 +30,41 @@ const {
   positionViewDirection, positionWorld, attribute, sin: tsin, cos: tcos, step: tstep,
 } = TSL;
 
+/* ── настраиваемые параметры формы ──────────────────────────────────────── */
+
+/**
+ * НАСТРОЙКА ФОРМЫ: `kit.tune(e, defaults)` возвращает копию `defaults`, в
+ * которой каждое поле перекрыто одноимённым полем записи, если оно там есть.
+ *
+ * ЗАЧЕМ. Заказ основателя: «главные параметры каждой формы должны быть
+ * настраиваемыми, чтобы потом можно было легко перенастроить практически
+ * любую из них». До этого размеры, направления и длительности сидели в
+ * модулях числами: высота колонн зоны, подъём параболы навеса, время роста
+ * стены, стойкость следа. Изменить их можно было только правкой кода, и
+ * ревизия нашла 194 таких числа.
+ *
+ * ПОЧЕМУ ИМЕННО ТАК, а не «читать `e.foo ?? 0.35` на каждой строке». Объект
+ * `defaults` — это ОПИСЬ того, что у формы вообще можно крутить: он стоит
+ * одним куском в начале функции, его видно целиком, и он не расходится с
+ * тем, что читает код ниже. Значение по умолчанию — ровно сегодняшнее число,
+ * поэтому подключение параметра НИКОГДА не меняет картинку: пока запись поля
+ * не несёт, кадр байт в байт прежний.
+ *
+ * Запись формы приходит из сима (`src/core/deliver.js`) и несёт только то,
+ * что сим про неё знает (зона — `x z r duration h`, конус — `range halfAngle`
+ * и так далее). Всё остальное — чисто визуальные ручки: их кладёт стойка
+ * (`src/viewer/vfxfixture.js`) или будущий редактор. Поэтому проверка на
+ * `!= null`, а не на истинность: ноль — законное значение подъёма параболы.
+ */
+export function tune(e, defaults) {
+  const out = {};
+  for (const k of Object.keys(defaults)) {
+    const v = e ? e[k] : undefined;
+    out[k] = v == null ? defaults[k] : v;
+  }
+  return out;
+}
+
 /* ── след умения → площадь → плотность ─────────────────────────────────── */
 
 /** Радиус луча из сима (`BEAM_RADIUS` в `config.js`); здесь только для площади. */
@@ -48,8 +83,11 @@ export function footprint(e, ctx = {}) {
       return { x: e.x, z: e.z, dir: e.h || 0, range, half, radius: range, span: range, area: half * range * range };
     }
     case 'zone': {
+      /* `dir` больше не ноль: сим начал писать курс кастера в момент постановки
+         (`deliver.js`), и без него внутри зоны нечего было ориентировать —
+         «направление зоны» было нечем настроить (заказ основателя). */
       const r = e.r || 3;
-      return { x: e.x, z: e.z, dir: 0, radius: r, span: r * 2, area: Math.PI * r * r };
+      return { x: e.x, z: e.z, dir: e.h || 0, radius: r, span: r * 2, area: Math.PI * r * r };
     }
     case 'beam': case 'dash': {
       const len = Math.hypot((e.x1 ?? e.x0) - e.x0, (e.z1 ?? e.z0) - e.z0);
@@ -60,8 +98,16 @@ export function footprint(e, ctx = {}) {
       return { x: e.x, z: e.z, dir: e.h || 0, range, x1: e.x + Math.sin(e.h) * range, z1: e.z + Math.cos(e.h) * range, radius: IMPACT_RADIUS, span: range, area: Math.PI * IMPACT_RADIUS * IMPACT_RADIUS };
     }
     case 'self': {
-      const r = ctx.radius || 1.5;
-      return { x: e.x, z: e.z, dir: 0, radius: r, span: r * 2, area: Math.PI * r * r };
+      /*
+       * РАЗМЕР ЩИТА — ОТ ТЕЛА, а не от `ctx.radius`, которого не существует.
+       * Мост в `main.js` отдаёт `bodyPos` и `bodyShape`; поля `radius` там нет
+       * и не было никогда, так что эта ветка ВСЕГДА возвращала запасные 1.5 м:
+       * щит гориллы и щит осьминога выходили одного размера, а «размер —
+       * параметр» (решение 11) молча не работало для целой доставки.
+       */
+      const bs = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+      const r = (bs ? bs.r * 1.25 + 0.35 : null) || ctx.radius || 1.5;
+      return { x: e.x, z: e.z, dir: e.h || 0, radius: r, span: r * 2, area: Math.PI * r * r };
     }
     default: {
       const r = 1.2;
@@ -329,20 +375,35 @@ class DecalField {
     /* born, hold, fade, seed */
     this.cfg = new THREE.InstancedBufferAttribute(new Float32Array(MAX_DECALS * 4), 4);
     this.cfg.setUsage(THREE.DynamicDrawUsage);
-    /* тон следа: три цвета от элемента, чтобы поле было одно на тип */
-    this.tint = new THREE.InstancedBufferAttribute(new Float32Array(MAX_DECALS * 3), 3);
+    /* Тон следа плюс ВРЕМЯ ПРОЯВЛЕНИЯ: (r, g, b, rise). Четвёртая компонента
+       подсажена сюда, а не заведена своим буфером, нарочно — WebGPU даёт
+       восемь вершинных буферов на геометрию, и тратить один на единственное
+       число нельзя (§10.1). */
+    this.tint = new THREE.InstancedBufferAttribute(new Float32Array(MAX_DECALS * 4), 4);
     this.tint.setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('dcfg', this.cfg);
     geo.setAttribute('dtint', this.tint);
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending });
 
     const cfg = attribute('dcfg', 'vec4');
-    const tint = attribute('dtint', 'vec3');
+    const tintRise = attribute('dtint', 'vec4');
+    const tint = tintRise.xyz;
     const age = TIME.sub(cfg.x);
     const hold = cfg.y, fadeS = cfg.z, seed = cfg.w;
     const born = age.greaterThanEqual(float(0));
     const k = oneMinus(age.sub(hold).div(fadeS.max(0.01))).clamp(0, 1);
-    const life = born.select(k, float(0));
+    /*
+     * ПРОЯВЛЕНИЕ. Прежде след ВСПЫХИВАЛ на полную непрозрачность в первом же
+     * кадре своей жизни: `k` при `age` 0 равен 1 + hold/fade и обрезался в 1
+     * на всё время выдержки, так что никакого входа не было вовсе. Основатель
+     * про кислоту: «след появляется почти мгновенно и очень резко, вместо
+     * того чтобы плавно проявиться». Теперь вход — своя длительность `rise`
+     * на каждый след (четвёртая компонента тона), сглаженная `smoothstep`:
+     * лужа набегает за секунду, ожог вспыхивает за десятую долю.
+     */
+    const rise = tintRise.w.max(0.001);
+    const inK = smoothstep(float(0), rise, age);
+    const life = born.select(k.mul(inK), float(0));
     const q = uv().sub(vec2(0.5, 0.5)).mul(2);
     const d = q.length();
     const p3 = vec3(q.mul(3.0), seed);
@@ -499,25 +560,42 @@ class DecalField {
     this.mat = new THREE.Matrix4();
   }
 
-  place({ x, z, radius, rot, now, hold, fade, seed, tint }) {
+  place({ x, z, radius, rot, now, hold, fade, seed, tint, rise }) {
     const i = this.head; this.head = (this.head + 1) % MAX_DECALS;
     this.mat.makeRotationY(rot).scale(new THREE.Vector3(radius, 1, radius)).setPosition(x, 0, z);
     this.mesh.setMatrixAt(i, this.mat);
     this.mesh.instanceMatrix.needsUpdate = true;
     this.cfg.setXYZW(i, now, hold, fade, seed);
     this.cfg.needsUpdate = true;
-    this.tint.setXYZ(i, tint.r, tint.g, tint.b);
+    this.tint.setXYZW(i, tint.r, tint.g, tint.b, rise);
     this.tint.needsUpdate = true;
   }
 }
+
+/*
+ * ВРЕМЯ ПРОЯВЛЕНИЯ по типу следа, секунды. Это не украшение: скорость, с
+ * которой метка набегает, — часть её вещества. Ожог, копоть и воронка
+ * возникают в момент удара (0.05–0.12 с); иней нарастает (0.35); лужа
+ * кислоты РАСТЕКАЕТСЯ, и ей нужна почти секунда — с неё и начался разговор.
+ */
+const DECAL_RISE = { soot: 0.10, scorch: 0.08, frost: 0.35, arc: 0.06, crater: 0.05, laser: 0.12, grav: 0.30, time: 0.45, acid: 0.90, rad: 0.55 };
 
 const decalFields = new WeakMap();
 
 /**
  * Оставить след. `hold` — секунды до начала затухания (по умолчанию 22),
- * `fade` — секунды затухания. Радиус — в метрах, как след умения.
+ * `fade` — секунды затухания, `rise` — секунды ПРОЯВЛЕНИЯ (по умолчанию своё
+ * у каждого типа, см. `DECAL_RISE`), `at` — на сколько секунд след опаздывает.
+ * Радиус — в метрах, как след умения.
+ *
+ * СЛЕД-ОСТАТОК И СЛЕД-ПРОЕКЦИЯ — это разные вещи, и путать их нельзя.
+ * Ожог, копоть, лужа — ОСТАТОК: их дело пережить эффект, и `hold` у них
+ * большой. Циферблат времени, кольца сжатия под живым колодцем — ПРОЕКЦИЯ
+ * работающего эффекта на пол: они обязаны умереть вместе с ним, иначе на полу
+ * остаётся часовой циферблат от пузыря, которого давно нет (жалоба
+ * основателя). Проекции передают `hold` от собственной длительности умения.
  */
-export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold = 22, fade = 4, tint = null, seed = null, at = 0 }) {
+export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold = 22, fade = 4, tint = null, seed = null, at = 0, rise = null }) {
   let fields = decalFields.get(vfx);
   if (!fields) { fields = {}; decalFields.set(vfx, fields); }
   if (!fields[type]) fields[type] = new DecalField(vfx.scene, type);
@@ -527,6 +605,7 @@ export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold =
        невидимым, так что достаточно сдвинуть часы рождения вперёд. */
     x, z, radius, rot: rot ?? ((x * 7.1 + z * 3.3) % 6.28), now: vfx.now + at, hold, fade,
     seed: seed ?? (((x * 2.3 + z * 1.7) % 9) + 1), tint: tint || new THREE.Color(0.5, 0.5, 0.5),
+    rise: rise ?? DECAL_RISE[type] ?? 0.12,
   });
 }
 

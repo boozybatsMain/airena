@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { clamp01, mulberry, seedOf } from '../core.js';
+import * as kit from '../kit.js';
 import { clampN } from './util.js';
 import { boltField } from './field.js';
 import { restriker, arcSparks } from './common.js';
@@ -51,16 +52,27 @@ export function status(vfx, e, P, ctx) {
   /* Одноразовые (лечение, очищение) живут 0.6 с — у них нет длительности ни
      в записи, ни в реестре (§P10). */
   const oneShot = e.duration == null && EFFECTS[e.effect]?.duration == null;
-  const PERIOD = shock ? 0.4 : 0.8;
-  const FLASH = oneShot ? 0.6 : 0.15;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`). Срок статуса сюда не
+     входит — его несёт сама запись (`durationOf`, §P10). */
+  const S = kit.tune(e, {
+    period: shock ? 0.4 : 0.8,   /* через сколько бьёт следующая вспышка, с */
+    flash: oneShot ? 0.6 : 0.15, /* сколько горит одна вспышка, с */
+    threads: null,               /* нитей по капсуле; null — от радиуса тела */
+    radius: 1.1,                 /* обхват разряда, доли радиуса тела */
+    height: 0.55,                /* полувысота разряда, доли высоты тела */
+    dots: 6,                     /* искр на вспышку */
+  });
+  const PERIOD = S.period;
+  const FLASH = S.flash;
   const MAX = oneShot ? 0.7 : 60;
 
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
   const shape = () => {
     const b = ctx && ctx.bodyShape ? ctx.bodyShape(who) : bs;
     const p = ctx && ctx.bodyPos ? ctx.bodyPos(who) : null;
-    const r = (b ? b.r : 0.9) * 1.1;
-    const ry = (b ? b.h : 2.0) * 0.55;
+    const r = (b ? b.r : 0.9) * S.radius;
+    const ry = (b ? b.h : 2.0) * S.height;
     const x = b ? b.x : (p ? p.x : e.x ?? 0);
     const z = b ? b.z : (p ? p.z : e.z ?? 0);
     return { c: [x, ry, z], r, ry };
@@ -76,7 +88,7 @@ export function status(vfx, e, P, ctx) {
     const sp = shape();
     return [{
       surface: true, c: sp.c, r: sp.r, ry: sp.ry,
-      n: clampN(Math.round(2 + 2 * sp.r), 3, 6), links: 4, link: 0.24,
+      n: S.threads ?? clampN(Math.round(2 + 2 * sp.r), 3, 6), links: 4, link: 0.24,
       width: 0.019, bright: shock ? 1.0 : 0.9, rungs: 0.5, offset: 0.04,
       seed: (seed ^ Math.imul(win + 1, 0x9e3779b1)) >>> 0, minY: 0.06, phase: 0,
     }];
@@ -101,7 +113,7 @@ export function status(vfx, e, P, ctx) {
     if (o.userData.win !== win && phase < FLASH) {
       o.userData.win = win;
       const sp = shape();
-      arcSparks(vfx, P, { x: sp.c[0], y: sp.c[1], z: sp.c[2], n: 6, speed: 4, life: 0.35, r: rng, spread: sp.r });
+      arcSparks(vfx, P, { x: sp.c[0], y: sp.c[1], z: sp.c[2], n: S.dots, speed: 4, life: 0.35, r: rng, spread: sp.r });
     }
   });
   rs.tick(0);

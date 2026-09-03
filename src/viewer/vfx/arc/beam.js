@@ -51,13 +51,26 @@ export function beam(vfx, e, P, ctx) {
   const fp = kit.footprint(e, ctx);
   const len = fp.len;
   if (!(len > 0.3)) return false;
-  const A = [e.x0, 1.15, e.z0];
-  const B = [e.x1, 1.1, e.z1];
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: T.residue,  /* жизнь эффекта: к этому сроку гаснет ковёр треска, с */
+    y: 1.15,              /* высота ствола у руки, м */
+    yEnd: 1.1,            /* высота у цели, м */
+    filaments: null,      /* нитей в пучке; null — от длины */
+    width: 0.032,         /* ядро нити, м */
+    spread: 1,            /* толщина пучка, доли (радиус луча из сима уже учтён) */
+    marks: 85,            /* меток треска на метр пути */
+    burnRadius: 0.6,      /* ожог у цели при попадании, м (промах — на 0.1 меньше) */
+    burnAfter: 8,         /* ожог переживает разряд на столько, с */
+  });
+  const A = [e.x0, S.y, e.z0];
+  const B = [e.x1, S.yEnd, e.z1];
   const ux = (B[0] - A[0]) / len, uz = (B[2] - A[2]) / len;
   const sx = -uz, sz = ux;
   const dir = fp.dir;
   const hit = e.hit !== false;
-  const LIFE = T.residue;
+  const LIFE = S.duration;
   const now0 = vfx.now;
 
   /* Нитей — по длине: 8 на коротком, 14 на 9 м, 18 на длинном (эталон
@@ -73,8 +86,13 @@ export function beam(vfx, e, P, ctx) {
      9 м различимо 5–8 отдельных нитей с крупным изломом и ореолом в
      3–4 ядра — счёт нитей был взят из подписи к эталону, а не из того, что
      на нём ВИДНО. */
-  const nFil = clampN(Math.round(4 + len * 0.65), 6, 12);
-  const r1 = clampN(0.25 + len * 0.045, 0.42, 0.68);
+  const nFil = S.filaments ?? clampN(Math.round(4 + len * 0.65), 6, 12);
+  /* Толщина пучка ведётся РАДИУСОМ ЛУЧА ИЗ СИМА (`BEAM_RADIUS`, kit.js:35 —
+     он берётся из `config.js`). Это единственная ширина, которую сим про луч
+     знает, и до сих пор она считалась (в площади следа) и нигде не читалась:
+     картинка выводила толщину только из длины. При сегодняшних 0.4 м
+     множитель равен единице — кадр прежний, но теперь он ходит за симом. */
+  const r1 = clampN(0.25 + len * 0.045, 0.42, 0.68) * (fp.radius / 0.4) * S.spread;
 
   /* Треск по полу: глифы под путём (±0.9 м, |s|^1.6 — жмутся к оси), в
      круге ~1.5 м вокруг цели (25 %) и в круге 1.2 м у руки (15 %). Плотность вдоль пути `f = rng^0.9` — почти
@@ -90,7 +108,7 @@ export function beam(vfx, e, P, ctx) {
      r2.2: меток 85 на метр (было 65), ширина 0.0045 (было 0.0055 — с
      трансляции 2 px «кубики», замер r2.1), разброс ±0.75 м по |s|^1.8 (было
      0.9 по ^1.6): эталон на 1.5 с — тонкая крошка, жмущаяся к оси. */
-  const nMark = clampN(Math.round(len * 85), 120, 760);
+  const nMark = clampN(Math.round(len * S.marks), 120, 760);
   const marks = [];
   for (let i = 0; i < nMark; i++) {
     let x, z, f;
@@ -158,7 +176,7 @@ export function beam(vfx, e, P, ctx) {
     const n = Math.round(nFil * Math.pow(k, 0.8));
     if (n >= 2) {
       out.push({
-        bundle: true, a: A, b: B, n, r0: 0.03, r1, step: 0.5, width: 0.032,
+        bundle: true, a: A, b: B, n, r0: 0.03, r1, step: 0.5, width: S.width,
         bright: k < 0.15 ? k / 0.15 : 1, minY: 0.1, phase: 0,
         rungs: 0.5 + 0.8 * k, stubs: 0.2 + 0.4 * k, tangle: hit ? k : k * 0.4, bend: 0.04,
         conv: Math.round((hit ? 5 : 2) * k), cross: 0.2,
@@ -225,7 +243,7 @@ export function beam(vfx, e, P, ctx) {
     const el = (rng() * 2 - 1) * 0.26;
     const streak = i % 3 !== 0;
     along.push({
-      x: A[0] + ux * len * f + sx * Math.cos(a) * rr, y: 1.15 + Math.sin(a) * rr, z: A[2] + uz * len * f + sz * Math.cos(a) * rr,
+      x: A[0] + ux * len * f + sx * Math.cos(a) * rr, y: S.y + Math.sin(a) * rr, z: A[2] + uz * len * f + sz * Math.cos(a) * rr,
       vx: (sx * side * Math.cos(el) * v) + ux * rnd(-1, 1, rng), vy: Math.sin(el) * v, vz: (sz * side * Math.cos(el) * v) + uz * rnd(-1, 1, rng), gy: 0,
       born: now0 + T.out1 + rng() * (T.full - T.out1), life: rnd(0.2, 0.4, rng),
       size: streak ? rnd(0.12, 0.2, rng) : rnd(0.06, 0.1, rng), streak,
@@ -250,8 +268,11 @@ export function beam(vfx, e, P, ctx) {
      на кольцо прицела и на 1.5 с читался серо-сиреневой пылью (замер
      r2.1 с трёх судей). Шейдер декали подмешивает белое по жару первые
      2.5 с — из `beam.js` это не убрать, только спрятать под мехом. */
+  /* Стойкость — от ЖИЗНИ РАЗРЯДА, а не плоские двадцать секунд: шейдер
+     декали подмешивает белое по её возрасту первые 2.5 с (kit.js), так что
+     долгий след — это и есть та грязь, на которую жалуется абзац выше. */
   const onDecal = () => {
-    kit.decal(vfx, { type: 'arc', x: B[0], z: B[2], radius: hit ? 0.6 : 0.5, hold: 20, tint: BURN, seed: (seed % 7) + 1 });
+    kit.decal(vfx, { type: 'arc', x: B[0], z: B[2], radius: S.burnRadius - (hit ? 0 : 0.1), hold: LIFE + S.burnAfter, tint: BURN, seed: (seed % 7) + 1 });
   };
   const state = { hit: false, decal: false, spikesWritten: false };
   const spikeItems = [];
@@ -259,7 +280,7 @@ export function beam(vfx, e, P, ctx) {
     const t = u * LIFE;
     const hot = rs.tick(t);
     const reach = clamp01((t - T.out0) / (T.out1 - T.out0)) + 0.001;
-    const fade = t < T.residue - 0.35 ? 1 : clamp01((T.residue - t) / 0.35);
+    const fade = t < LIFE - 0.35 ? 1 : clamp01((LIFE - t) / 0.35);
     const cool = clamp01((t - T.cool0) / (T.cool1 - T.cool0));
     field.set({ fade, hot, reach, cool });
     if (!state.hit && t >= T.out1) { state.hit = true; onHit(); }
@@ -286,10 +307,10 @@ export function beam(vfx, e, P, ctx) {
 
   /* Шар каста у руки (аддитивный, голубовато-белый с синим ободом) и
      горячее ядро на выходе пучка. */
-  cloud(vfx, P, { x: A[0], y: 1.15, z: A[2], at: 0, r0: 0.25, r1: 0.6, grow: 0.07, hold: T.orb, life: T.orbEnd, seed: (seed % 5) + 2, dense: 1.2, kind: 'orb' });
-  hotCore(vfx, P, { x: A[0] + ux * 0.3, y: 1.15, z: A[2] + uz * 0.3, r: 0.22, life: 0.5, hold: 0.32 });
+  cloud(vfx, P, { x: A[0], y: S.y, z: A[2], at: 0, r0: 0.25, r1: 0.6, grow: 0.07, hold: T.orb, life: T.orbEnd, seed: (seed % 5) + 2, dense: 1.2, kind: 'orb' });
+  hotCore(vfx, P, { x: A[0] + ux * 0.3, y: S.y, z: A[2] + uz * 0.3, r: 0.22, life: 0.5, hold: 0.32 });
   vfx.flashLight(A[0], 1.4, A[2], P[1], 16, 0.35, 7);
-  kit.sparks(vfx, { x: A[0], y: 1.15, z: A[2], n: 18, colour: P[0], tail: P[1], speed: 8, life: 0.35, cone: { dir, half: 0.5 }, gravity: -4, size: 0.12, r: rng });
+  kit.sparks(vfx, { x: A[0], y: S.y, z: A[2], n: 18, colour: P[0], tail: P[1], speed: 8, life: 0.35, cone: { dir, half: 0.5 }, gravity: -4, size: 0.12, r: rng });
 
   /* Удар: аддитивное облако, кольцо, искры — всё от `T.out1`. */
   /* Облако удара РЕДКОЕ (`dense` 0.6, было 1) и на четверть меньше: замер

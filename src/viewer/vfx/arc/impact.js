@@ -32,7 +32,7 @@ import { shieldOf } from './self.js';
  * Тело, по которому бить: ближайшее к точке удара из двух, но не дальше 2 м.
  * `null` — бить не по кому, рисуем шар в точке.
  */
-function victimShape(e, ctx) {
+function victimShape(e, ctx, reach) {
   if (!ctx || !ctx.bodyShape) return null;
   const cand = ['blue', 'orange'].map((id) => {
     const b = ctx.bodyShape(id);
@@ -41,15 +41,27 @@ function victimShape(e, ctx) {
   if (!cand.length) return null;
   cand.sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
   const best = cand[0];
-  return Math.hypot(best.x - e.x, best.z - e.z) > 2 ? null : best;
+  return Math.hypot(best.x - e.x, best.z - e.z) > reach ? null : best;
 }
 
 export function impact(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 0.4,     /* жизнь разряда по телу, с */
+    full: 0.22,        /* полная сила, с */
+    reach: 2,          /* дальше этого тело считается непричастным, м */
+    y: 1.1,            /* высота шара, когда бить не по кому, м */
+    blastR: 2.0,       /* гроза удара, м */
+    arcLen: 2.4,       /* веер дуг по полу, м */
+    kitR: 1.5,         /* ударный набор, м */
+    burnRadius: 1.2,   /* ожог, м */
+    burnHold: 20,      /* стойкость ожога, с */
+  });
   const victim = bodyAt(ctx, e.who === 'blue' ? 'orange' : 'blue');
   const cx = victim ? victim.x : e.x, cz = victim ? victim.z : e.z;
-  const cy = (victim ? victim.y : 0) + 1.1;
+  const cy = (victim ? victim.y : 0) + S.y;
 
   if (e.blocked) {
     stormBurst(vfx, P, { x: e.x, y: 1.0, z: e.z, radius: 0.4, endRadius: 1.1, life: 0.3, intensity: 0.9 });
@@ -57,8 +69,8 @@ export function impact(vfx, e, P, ctx) {
     return true;
   }
 
-  const LIFE = 0.4;
-  const bs = victimShape(e, ctx);
+  const LIFE = S.duration;
+  const bs = victimShape(e, ctx, S.reach);
   /* Щит перехватывает: разряд ползёт по решётке, и она вспыхивает. */
   const sh = bs ? shieldOf(bs.id) : null;
   const surf = sh
@@ -71,7 +83,7 @@ export function impact(vfx, e, P, ctx) {
   const field = boltField(vfx, P, 700);
   const strandsAt = (t, g) => {
     const out = [];
-    const k = env(t, 0.22, LIFE);
+    const k = env(t, S.full, LIFE);
     if (k <= 0) return out;
     if (surf) {
       /* ПО ПОВЕРХНОСТИ: клетки держатся всю жизнь удара (~10 перестроек). */
@@ -95,15 +107,15 @@ export function impact(vfx, e, P, ctx) {
   vfx.spawnMesh(field.group, LIFE, (o, u) => {
     const t = u * LIFE;
     const hot = rs.tick(t);
-    field.set({ fade: env(t, 0.22, LIFE), hot, reach: 1, tail: 0 });
+    field.set({ fade: env(t, S.full, LIFE), hot, reach: 1, tail: 0 });
   });
   rs.tick(0);
 
-  stormBurst(vfx, P, { x: e.x, y: 1.0, z: e.z, radius: 0.6, endRadius: 2.0, life: 0.42, intensity: 1.1 });
+  stormBurst(vfx, P, { x: e.x, y: 1.0, z: e.z, radius: 0.6, endRadius: S.blastR, life: 0.42, intensity: 1.1 });
   spikes(vfx, P, { x: e.x, y: 1.0, z: e.z, n: 24, speed: 9, life: 0.3, r: rng });
-  radialArcs(vfx, P, seed, e.x, e.z, 6, 2.4, 0.4, 0.5);
-  kit.decal(vfx, { type: 'arc', x: e.x, z: e.z, radius: 1.2, hold: 20, tint: BURN, seed: (seed % 9) + 1 });
-  kit.impactKit(vfx, { x: e.x, z: e.z, y: 1.0, radius: 1.5, colours: P, strength: 0.9 });
+  radialArcs(vfx, P, seed, e.x, e.z, 6, S.arcLen, 0.4, 0.5);
+  kit.decal(vfx, { type: 'arc', x: e.x, z: e.z, radius: S.burnRadius, hold: S.burnHold, tint: BURN, seed: (seed % 9) + 1 });
+  kit.impactKit(vfx, { x: e.x, z: e.z, y: 1.0, radius: S.kitR, colours: P, strength: 0.9 });
   arcSparks(vfx, P, { x: e.x, y: 1.0, z: e.z, n: 36, speed: 9, life: 0.45, r: rng });
   return true;
 }
@@ -113,13 +125,25 @@ export function impact(vfx, e, P, ctx) {
 export function charge(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const secs = Math.max(0.15, e.windup || 0.4);
-  const CY = 1.2;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    windup: 0.4,     /* замах, с */
+    y: 1.2,          /* высота, на которой собирается заряд, м */
+    reach: 2.6,      /* откуда приходят нити в начале замаха, м */
+    close: 1.1,      /* на сколько круг стягивается к концу замаха, м */
+    threads: 3,      /* нитей в начале (к концу +6) */
+    dots: 30,        /* крошек в круге сбора */
+    radius: 2.2,     /* радиус круга сбора, м */
+    orbAt: 0.15,     /* за сколько до конца загорается шар в руке, с */
+    orbReach: 0.7,   /* вынос шара от тела, м */
+  });
+  const secs = Math.max(0.15, S.windup);
+  const CY = S.y;
   const centre = () => {
     const p = bodyAt(ctx, e.who);
     return p ? [p.x, p.y + CY, p.z] : [e.x, CY, e.z];
   };
-  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y: CY, secs, colours: [P[1], P[2], P[2]], mode: 'storm', ctx, n: 30, radius: 2.2 });
+  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y: CY, secs, colours: [P[1], P[2], P[2]], mode: 'storm', ctx, n: S.dots, radius: S.radius });
 
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
   const BR = (bs ? bs.r : 0.9) * 1.1, BH = (bs ? bs.h : 2.0) * 0.55;
@@ -127,8 +151,8 @@ export function charge(vfx, e, P, ctx) {
   const strandsAt = (t, g) => {
     const [x, y, z] = centre();
     const k = clamp01(t / secs);
-    const n = 3 + Math.round(6 * k);
-    const R = 2.6 - 1.1 * k;
+    const n = S.threads + Math.round(6 * k);
+    const R = S.reach - S.close * k;
     const out = [];
     /* Нити кончаются НА ПОВЕРХНОСТИ тела, а не в его центре: точка на
        капсуле в направлении прихода нити (P2 — энергия садится на тело, а
@@ -162,8 +186,8 @@ export function charge(vfx, e, P, ctx) {
      болта: у каста должно быть НАЧАЛО, а не мгновенное появление. */
   const dir = e.h ?? 0;
   cloud(vfx, P, {
-    x: x0 + Math.sin(dir) * 0.7, y: 1.1, z: z0 + Math.cos(dir) * 0.7,
-    at: Math.max(0, secs - 0.15), kind: 'orb', r0: 0.1, r1: 0.3, grow: 0.12, hold: 0.03, life: 0.18, seed: (seed % 5) + 1,
+    x: x0 + Math.sin(dir) * S.orbReach, y: 1.1, z: z0 + Math.cos(dir) * S.orbReach,
+    at: Math.max(0, secs - S.orbAt), kind: 'orb', r0: 0.1, r1: 0.3, grow: 0.12, hold: 0.03, life: 0.18, seed: (seed % 5) + 1,
   });
   /* Свет 8 → 14 по замаху, возобновляемый: пул круговой, вспышка гаснет
      квадратично за ~0.3 с. */

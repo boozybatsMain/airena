@@ -61,7 +61,7 @@ src/viewer/vfx/fire.js     огонь: те же семь
 src/viewer/vfx/arc.js      молния: вход модуля; тело — в arc/ (util, field — поле
                            разрядов, common — шар/облако/штрихи/кольцо, и по файлу
                            на доставку: beam cone zone self ball impact)
-src/viewer/vfx/laser.js    лазер: штатный луч для стихий без модуля (kinetic, void),
+src/viewer/vfx/novabeam.js штатный луч Nova для стихий без модуля (kinetic, void),
                            эталон Nova Beam; `Vfx.beam` зовёт его первым
 docs/vfx-notes/            брифы, карта API примитива молнии, скрипты прогонов
                            агентов и замеров (см. docs/VFX-HANDOFF.md)

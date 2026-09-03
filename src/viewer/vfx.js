@@ -40,11 +40,14 @@ import * as kit from './vfx/kit.js';
 import * as iceFx from './vfx/ice.js';
 import * as fireFx from './vfx/fire.js';
 import * as arcFx from './vfx/arc.js';
-import * as laserFx from './vfx/laser.js';
+import * as novaBeamFx from './vfx/novabeam.js';
 import * as gravityFx from './vfx/gravity.js';
 import * as timeFx from './vfx/time.js';
 import * as acidFx from './vfx/acid.js';
 import * as radiationFx from './vfx/radiation.js';
+import * as laserElFx from './vfx/laser.js';
+import * as voidFx from './vfx/void.js';
+import * as kineticFx from './vfx/kinetic.js';
 
 /*
  * Метка свечения, часы, затухание и пул материалов живут в `vfx/core.js`
@@ -595,7 +598,7 @@ export class Particles {
  * побитово тот же лог. Проверяемо и проверяется.
  */
 /** Элемент → модуль с функциями `cone zone self beam bolt lob impact charge`. */
-const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx, gravity: gravityFx, time: timeFx, acid: acidFx, radiation: radiationFx };
+const MODULES = { frost: iceFx, ember: fireFx, arc: arcFx, gravity: gravityFx, time: timeFx, acid: acidFx, radiation: radiationFx, laser: laserElFx, void: voidFx, kinetic: kineticFx };
 
 /**
  * Кто рисует доставку `kind` стихии `element` — зеркало порядка в `play()`:
@@ -774,10 +777,12 @@ export class Vfx {
 
   // ── луч: цилиндр + искры вдоль ствола ────────────────────────────────
   beam(e, P, ctx) {
-    /* Штатный луч — лазер (`vfx/laser.js`, эталон Nova Beam) для элементов
-       без своего модуля; труба ниже — запасной путь, если модуль отказался
-       (слишком короткий луч) или упал: эффект не имеет права уносить кадр. */
-    try { if (laserFx.beam(this, e, P, ctx)) return true; } catch (err) { console.warn('vfx laser', err); }
+    /* Штатный луч — Nova (`vfx/novabeam.js`) для стихий без своего модуля;
+       труба ниже — запасной путь, если он отказался (слишком короткий луч)
+       или упал: эффект не имеет права уносить кадр. Файл переименован из
+       `laser.js`: это ШТАТНЫЙ силуэт луча, а не модуль стихии, и имя `laser`
+       понадобилось настоящей стихии «лазер». */
+    try { if (novaBeamFx.beam(this, e, P, ctx)) return true; } catch (err) { console.warn('vfx novabeam', err); }
     const a = new THREE.Vector3(e.x0, 1.15, e.z0);
     const b = new THREE.Vector3(e.x1, 1.15, e.z1);
     const len = a.distanceTo(b);
@@ -1084,15 +1089,22 @@ export class Vfx {
        модуля, а плита остаётся только показанием коллизионной коробки. */
     const OP = e.__elemental ? 0.15 : 0.25;
     const box = new THREE.Mesh(
-      new THREE.BoxGeometry(e.w, 2.2, e.d),
+      /* Высота — из записи: сим начал писать её (`effects.js`), и повторять
+         2.2 числом в четырёх местах больше не нужно. */
+      new THREE.BoxGeometry(e.w, e.height ?? 2.2, e.d),
       inkMat(P[2], OP),
     );
-    box.position.set(e.x, 1.1, e.z);
+    box.position.set(e.x, (e.height ?? 2.2) / 2, e.z);
     /* Живёт ровно столько, сколько живёт настоящая стена. */
-    this.spawnMesh(box, e.duration || 5, (o, u) => {
-      const rise = Math.min(1, u * 12);
+    /* Подъём плиты — за ФИКСИРОВАННОЕ ВРЕМЯ (`rise` секунд), а не за долю
+       жизни: прежний `u * 12` растягивал подъём вместе с длительностью, и
+       пятисекундная стена вставала впятеро медленнее секундной. */
+    const LIFE = e.duration || 5;
+    const RISE = e.rise ?? 0.18;
+    this.spawnMesh(box, LIFE, (o, u) => {
+      const rise = Math.min(1, (u * LIFE) / Math.max(0.001, RISE));
       o.scale.set(1, rise, 1);
-      o.position.y = 1.1 * rise;
+      o.position.y = ((e.height ?? 2.2) / 2) * rise;
       o.material.opacity = OP * (u > 0.85 ? (1 - u) / 0.15 : 1);
     });
     return true;

@@ -191,8 +191,12 @@ export function resolveDelivery(world, id, def, act, deps) {
         x: round3(at.x), z: round3(at.z), r: def.radius,
         until: world.t + def.duration, nextTick: world.t,
       });
+      /* `h` — курс кастера в момент постановки зоны. Симу он не нужен (зона
+         круглая), но без него вьювер не может ориентировать НИЧЕГО внутри неё,
+         и «направление зоны» нечем настроить (заказ основателя). Запись
+         обрастает полем, сим пишет — вьювер читает: инвариант §9 цел. */
       world.fx.push({ kind: 'zone', who: id, t, skill: def.id, element: def.element,
-        x: round3(at.x), z: round3(at.z), r: def.radius, duration: def.duration });
+        x: round3(at.x), z: round3(at.z), r: def.radius, duration: def.duration, h: round3(me.heading) });
       /* WORLD-атомы (стена) срабатывают сразу; остальные — по тикам зоны. */
       for (const atom of def.effects) if (atom.klass === 'world') applyEffect(world, id, youId, atom, def, deps);
       return;

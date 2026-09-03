@@ -70,31 +70,35 @@ export const STATUSES = ['burn', 'stun', 'root', 'shield', 'heal', 'cleanse', 'b
  * эффект статуса, `t` — время каста (входит в сид: другой `t` — другой
  * рисунок того же эффекта).
  */
-export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'burn', who = null, t = 0 } = {}) {
+export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'burn', who = null, t = 0, tune = null } = {}) {
+  /* `tune` — произвольные поля поверх записи: ими стойка и съёмка крутят
+     настраиваемые параметры формы (`kit.tune` в модулях). Кладутся ПОСЛЕДНИМИ
+     и потому перекрывают всё, включая то, что пишет сим. */
   const base = { kind, element, who: 'blue', t, skill: 'k1' };
   const h = Math.atan2(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
   const dist = Math.hypot(ORANGE.x - BLUE.x, ORANGE.z - BLUE.z);
+  const out = (r) => (tune ? { ...r, ...tune } : r);
   switch (kind) {
-    case 'beam': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x, z1: ORANGE.z, hit };
-    case 'cone': return { ...base, x: BLUE.x, z: BLUE.z, h, range: 3.4, halfAngle: 0.96, hit };
-    case 'bolt': return { ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 22 };
-    case 'lob': return { ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 12 };
-    case 'zone': return { ...base, x: ORANGE.x, z: ORANGE.z, r: 3.0, duration: 3 };
-    case 'dash': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x - 1.5, z1: ORANGE.z - 1, hit };
-    case 'blink': return { ...base, x0: BLUE.x, z0: BLUE.z, x1: BLUE.x + 4, z1: BLUE.z + 3 };
-    case 'self': return { ...base, x: BLUE.x, z: BLUE.z };
-    case 'jump': return { ...base, x: BLUE.x, z: BLUE.z, h, height: 2.2, duration: 0.55 };
-    case 'wall': return { ...base, x: 1, z: 1, w: 4, d: 1, duration: 4 };
+    case 'beam': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x, z1: ORANGE.z, hit });
+    case 'cone': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: 3.4, halfAngle: 0.96, hit });
+    case 'bolt': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 22 });
+    case 'lob': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 12 });
+    case 'zone': return out({ ...base, x: ORANGE.x, z: ORANGE.z, r: 3.0, duration: 3, h });
+    case 'dash': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x - 1.5, z1: ORANGE.z - 1, hit });
+    case 'blink': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: BLUE.x + 4, z1: BLUE.z + 3 });
+    case 'self': return out({ ...base, x: BLUE.x, z: BLUE.z });
+    case 'jump': return out({ ...base, x: BLUE.x, z: BLUE.z, h, height: 2.2, duration: 0.55 });
+    case 'wall': return out({ ...base, x: 1, z: 1, w: 4, d: 1, height: 2.2, duration: 4 });
     /* `who` удара — КАСТЕР, как пишет `pushImpact` в deliver.js; жертву вьювер
        выводит сам (другой боец). У статуса наоборот: `who` — цель
        (`effects.js` пишет `to.id`). `channel` нужен усилению и ослаблению. */
-    case 'impact': return { ...base, x: ORANGE.x, z: ORANGE.z, effects: [atom] };
+    case 'impact': return out({ ...base, x: ORANGE.x, z: ORANGE.z, effects: [atom] });
     /* Цель статуса по умолчанию — оранжевый (`effects.js` пишет `to.id`), но
        SELF-эффекты (щит, лечение, очищение, усиление) сим кладёт на самого
        кастера: их надо уметь заказать на синего — `who: 'blue'`. */
-    case 'status': return { ...base, who: who || (effect === 'shield' || effect === 'heal' || effect === 'cleanse' || effect === 'boost' ? 'blue' : 'orange'), effect, duration: 4, ...(effect === 'boost' || effect === 'weaken' ? { channel: 'speed' } : {}) };
+    case 'status': return out({ ...base, who: who || (effect === 'shield' || effect === 'heal' || effect === 'cleanse' || effect === 'boost' ? 'blue' : 'orange'), effect, duration: 4, ...(effect === 'boost' || effect === 'weaken' ? { channel: 'speed' } : {}) });
     /* Заряд в замахе — запись только вьювера (см. docs/VFX.md §4). */
-    case 'charge': return { ...base, x: BLUE.x, z: BLUE.z, h, windup: 0.9, for: 'cone' };
+    case 'charge': return out({ ...base, x: BLUE.x, z: BLUE.z, h, windup: 0.9, for: 'cone' });
     default: return null;
   }
 }

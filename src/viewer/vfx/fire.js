@@ -17,6 +17,18 @@
  *     кадре спавна), геометрия общая (`shared`);
  *   · случай — от `seedOf(e)` через `mulberry`: повтор боя выглядит так же.
  *
+ * НАСТРОЙКА. Каждая форма начинается с описи `kit.tune(e, {...})`: размеры,
+ * направления и времена собраны одним куском, значения по умолчанию равны
+ * сегодняшним, поэтому запись без этих полей даёт прежний кадр. Опись — и
+ * есть список того, что можно крутить снаружи (стойка `vfxfixture.js` кладёт
+ * поля поверх записи).
+ *
+ * СЛЕД ЖИВЁТ ПО ЧАСАМ УМЕНИЯ. Ожог и сажа — ОСТАТОК, они переживают огонь,
+ * но не бессмертны: там, где сим несёт длительность (зона, стена, прыжок),
+ * стойкость считается от неё плюс хвост, а не глухими 20 с для пожара любой
+ * длины (жалоба основателя: «след обязан подстраиваться под реальный тайминг
+ * умения»). Где длительности в записи нет, стойкость — ручка описи.
+ *
  * Грамматика каста (§4): `charge` в замахе → `muzzle` у руки при выходе →
  * полёт/фронт → удар (сфера взрыва, волна, свет, тряска) → удержание (горящий
  * пол, лава) → затухание (остывание трещин, дым, сажа остаётся).
@@ -446,9 +458,9 @@ function lavaPlate(vfx, { x, z, dir = 0, range, half = 4, life, seed, P, open = 
 /* ══ конус: волна пламени по сектору ═══════════════════════════════════════ */
 
 /**
- * Фронт огня бежит от кастера к дальнему краю за `TRAVEL`, за ним пол
+ * Фронт огня бежит от кастера к дальнему краю за `travel`, за ним пол
  * раскалывается лавой (плита-сектор), поднимаются угли и чёрный дым, у
- * дальнего края — сфера взрыва и толчок. Ожоги на полу остаются на 20 с.
+ * дальнего края — сфера взрыва и толчок. Ожоги держатся `decalHold`.
  */
 export function cone(vfx, e, P, ctx) {
   const fp = footprint(e, ctx);
@@ -457,25 +469,38 @@ export function cone(vfx, e, P, ctx) {
   const dx = Math.sin(fp.dir), dz = Math.cos(fp.dir);
   const N = (base, cap) => countFor(base, fp.area, REF_AREA.cone, cap);
   const now = vfx.now;
-  const TRAVEL = 0.2 + range * 0.075;
-  const LIFE = 3.8;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Дальность и полуугол сюда не входят: их несёт сим
+     (`range`, `halfAngle`), и читает их `footprint`. */
+  const S = kit.tune(e, {
+    duration: 3.8,               /* сколько живёт лава в секторе, с */
+    travel: 0.2 + range * 0.075, /* за сколько фронт добегает до края, с */
+    plate: 1.04,                 /* плита лавы шире сектора, доли дальности */
+    packs: 8,                    /* пачек языков вдоль хода фронта */
+    muzzleAhead: 0.9,            /* выброс у руки впереди тела, м */
+    muzzleY: 1.1,                /* высота выброса у руки, м */
+    tipAt: 0.9,                  /* где рвётся дальний край, доли дальности */
+    tipRadius: 0.75,             /* сфера у дальнего края, доли дальности */
+    decalHold: 20,               /* стойкость ожога и сажи, с */
+  });
+  const TRAVEL = Math.max(0.05, S.travel);
+  const LIFE = Math.max(0.5, S.duration);
   const cols = burstCols(P);
 
-  kit.muzzle(vfx, { x: e.x + dx * 0.9, z: e.z + dz * 0.9, y: 1.1, dir: fp.dir, colours: cols, mode: 'fire', size: 1.6 });
+  kit.muzzle(vfx, { x: e.x + dx * S.muzzleAhead, z: e.z + dz * S.muzzleAhead, y: S.muzzleY, dir: fp.dir, colours: cols, mode: 'fire', size: 1.6 });
 
   /* Поражающее ядро — плита лавы — совпадает с сектором; декорация (языки,
      сфера у края, дым) выходит за него, как разрешено решением 8. */
   lavaPlate(vfx, {
-    x: e.x, z: e.z, dir: fp.dir, range: range * 1.04, half, life: LIFE, seed: rng() * 9 + 1, P,
+    x: e.x, z: e.z, dir: fp.dir, range: range * S.plate, half, life: LIFE, seed: rng() * 9 + 1, P,
     open: (s) => clamp01(s / TRAVEL),
-    heat: (s) => (s < 1.1 ? 1 : clamp01(1 - (s - 1.1) / (LIFE - 1.4)) ** 1.4),
+    heat: (s) => (s < 1.1 ? 1 : clamp01(1 - (s - 1.1) / Math.max(0.2, LIFE - 1.4)) ** 1.4),
     fade: (s) => (s > LIFE - 0.6 ? clamp01((LIFE - s) / 0.6) : 1),
   });
 
   /* Языки — пачками вдоль хода фронта: каждая пачка рождается там и тогда,
      где фронт. Плотность от площади сектора; рост языков — метры, а не
      сантиметры: с трансляционной дистанции меньшее не читается. */
-  const K = 8;
+  const K = Math.max(1, Math.round(S.packs));
   const per = Math.max(8, Math.round(N(210, 800) / K));
   const band = Math.max(0.35, range / K);
   for (let k = 0; k < K; k++) {
@@ -500,9 +525,9 @@ export function cone(vfx, e, P, ctx) {
   kit.heat(vfx, { x: e.x + dx * range * 0.55, y: 1.2, z: e.z + dz * range * 0.55, size: range * 1.3, life: 3.0, strength: 1 });
 
   /* Дальний край: сфера взрыва, стена языков по дуге, толчок. */
-  const tipX = e.x + dx * range * 0.9, tipZ = e.z + dz * range * 0.9;
+  const tipX = e.x + dx * range * S.tipAt, tipZ = e.z + dz * range * S.tipAt;
   later(vfx, TRAVEL * 0.9, () => {
-    kit.burst(vfx, { x: tipX, y: 0.5 + range * 0.18, z: tipZ, radius: range * 0.3, endRadius: range * 0.75, life: 0.75, mode: 'fire', colours: cols, displace: 0.6, squash: 0.8 });
+    kit.burst(vfx, { x: tipX, y: 0.5 + range * 0.18, z: tipZ, radius: range * 0.3, endRadius: range * S.tipRadius, life: 0.75, mode: 'fire', colours: cols, displace: 0.6, squash: 0.8 });
     kit.impactKit(vfx, { x: tipX, z: tipZ, radius: range * 0.45, colours: cols, strength: 1.1 });
     const arcAt = () => {
       const a = fp.dir + (rng() * 2 - 1) * half * 0.9;
@@ -518,9 +543,9 @@ export function cone(vfx, e, P, ctx) {
      читаются клином и держатся, когда лава остыла. */
   const wide = Math.min(1.3, Math.max(0.7, half / 0.96));
   for (const [kd, kr] of [[0.3, 0.33], [0.56, 0.45], [0.8, 0.54]]) {
-    kit.decal(vfx, { type: 'scorch', x: e.x + dx * range * kd, z: e.z + dz * range * kd, radius: range * kr * wide, tint: P[2], hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'scorch', x: e.x + dx * range * kd, z: e.z + dz * range * kd, radius: range * kr * wide, tint: P[2], hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   }
-  kit.decal(vfx, { type: 'soot', x: e.x + dx * range * 0.82, z: e.z + dz * range * 0.82, radius: range * 0.6 * wide, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+  kit.decal(vfx, { type: 'soot', x: e.x + dx * range * 0.82, z: e.z + dz * range * 0.82, radius: range * 0.6 * wide, hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   return true;
 }
 
@@ -530,26 +555,43 @@ export function cone(vfx, e, P, ctx) {
  * Базальтовая глыба падает с ~9 м со стороны кастера, тянет за собой шлейф
  * огня и углей; удар — сфера взрыва в полтора радиуса зоны, вспышка, волна в
  * два с половиной, обломки, фонтан углей, столб дыма, воронка. Дальше пол
- * горит `e.duration`: лава в трещинах, языки и угли по всему диску; гаснет,
+ * горит `duration` из записи: лава в трещинах, языки и угли по диску; гаснет,
  * оставляя ожог и сажу. Камень остаётся лежать и остывает, потом уходит.
  */
 export function zone(vfx, e, P, ctx) {
   const fp = footprint(e, ctx);
   const rng = mulberry(seedOf(e) ^ 0x2e0);
-  const r = fp.radius, D = e.duration || 3;
+  const r = fp.radius;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Радиус зоны сюда не входит: его несёт сим (`r`), и
+     читает его `footprint`. Длительность несёт сим — она и правит пожаром. */
+  const S = kit.tune(e, {
+    duration: 3,           /* сколько горит пол, с (несёт запись) */
+    dir: e.h || 0,         /* курс кастера, рад: с этой стороны идёт глыба */
+    fall: 0.42,            /* падение глыбы, с */
+    height: 9.5 + r * 0.5, /* с какой высоты падает глыба, м */
+    rock: 0.4 + r * 0.3,   /* радиус глыбы, м */
+    plate: 1.08,           /* плита лавы, доли радиуса зоны */
+    burstRadius: 2.1,      /* сфера взрыва, доли радиуса зоны */
+    waveRadius: 2.6,       /* ударная волна, доли радиуса зоны */
+    decalTail: 6,          /* насколько след переживает пожар, с */
+  });
+  const D = Math.max(0.5, S.duration);
   const N = (base, cap) => countFor(base, fp.area, REF_AREA.zone, cap);
   const cols = burstCols(P);
   const now = vfx.now;
   /* Падение короткое: удар — на «пике» прогона (0.7 с), а не после него. */
-  const FALL = 0.42, H = 9.5 + r * 0.5;
+  const FALL = Math.max(0.08, S.fall), H = S.height;
 
-  /* Откуда летит: с той стороны, где кастер, под углом к вертикали. */
+  /* Откуда летит: с той стороны, где кастер, под углом к вертикали. Тела в
+     кадре может не быть (`bodyPos` — null), и тогда сторону даёт курс из
+     записи: зона легла перед кастером, значит глыба идёт ему навстречу, а не
+     по случайной диагонали. */
   const from = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
-  let ax = from ? from.x - e.x : -1, az = from ? from.z - e.z : -1;
+  let ax = from ? from.x - e.x : -Math.sin(S.dir), az = from ? from.z - e.z : -Math.cos(S.dir);
   const al = Math.hypot(ax, az) || 1; ax /= al; az /= al;
   const back = H * 0.5;
   const sx = e.x + ax * back, sz = e.z + az * back;
-  const rockR = 0.4 + r * 0.3;
+  const rockR = S.rock;
 
   const rocks = rockGeos();
   const rm = rockMat(); const ru = rm.userData.u;
@@ -611,9 +653,9 @@ export function zone(vfx, e, P, ctx) {
      секунды. Поражающее ядро (лава) остаётся в радиусе зоны. */
   later(vfx, FALL, () => {
     const y = 0.6 + r * 0.25;
-    kit.burst(vfx, { x: e.x, y, z: e.z, radius: r * 0.7, endRadius: r * 2.1, life: 0.9, mode: 'fire', colours: cols, displace: 0.65, squash: 0.8 });
+    kit.burst(vfx, { x: e.x, y, z: e.z, radius: r * 0.7, endRadius: r * S.burstRadius, life: 0.9, mode: 'fire', colours: cols, displace: 0.65, squash: 0.8 });
     kit.burst(vfx, { x: e.x, y: y * 0.8, z: e.z, radius: r * 0.35, endRadius: r * 1.5, life: 0.38, mode: 'flash', colours: cols, displace: 0.3, intensity: 1.5, flash: false });
-    kit.shockwave(vfx, { x: e.x, z: e.z, radius: r * 2.6, r0: r * 0.3, life: 0.8, colour: P[1], intensity: 1.2 });
+    kit.shockwave(vfx, { x: e.x, z: e.z, radius: r * S.waveRadius, r0: r * 0.3, life: 0.8, colour: P[1], intensity: 1.2 });
     kit.impactKit(vfx, { x: e.x, z: e.z, radius: r, colours: cols, strength: 1.6, shock: false });
     kit.debris(vfx, { x: e.x, y: 0.5, z: e.z, n: N(60, 220), radius: r * 0.5, colour: BASALT, glowColour: P[1], speed: 7 + r * 1.5, up: 9 + r * 2, life: 2.0, size: 0.22 + r * 0.05, r: rng });
     emitEmbers(vfx, N(200, 700), discAt(e.x, e.z, r * 0.5, rng), { P, y: 0.4, yJit: 0.8, speed: 5 + r, up: 10 + r * 2.5, life: 1.9, size: 0.19, gravity: -8, r: rng });
@@ -623,14 +665,16 @@ export function zone(vfx, e, P, ctx) {
     emitFlames(vfx, N(80, 260), discAt(e.x, e.z, r * 0.95, rng), { P, y: 0.05, yJit: 0.6, rise: 4.5, life: 0.9, size: 1.6, out: 2.4, lift: 2.2, r: rng });
     emitSmoke(vfx, N(90, 300), discAt(e.x, e.z, r * 0.6, rng), { lit: smokeLit(P), y: 0.5, yJit: 1.2, rise: 4.2, life: 4.0, size: 1.8 + r * 0.4, jitter: 0.7, out: 1.4, r: rng });
     kit.heat(vfx, { x: e.x, y: 2.0, z: e.z, size: r * 3.0, life: D + 0.8, strength: 1 });
-    kit.decal(vfx, { type: 'crater', x: e.x, z: e.z, radius: r * 0.75, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
-    kit.decal(vfx, { type: 'scorch', x: e.x, z: e.z, radius: r * 1.25, tint: P[2], hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
-    kit.decal(vfx, { type: 'soot', x: e.x, z: e.z, radius: r * 1.5, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    /* Воронка, ожог и сажа — ОСТАТОК: живут дольше пожара, но по его часам.
+       Зона на секунду и зона на десять оставляли одинаковые 20 с. */
+    kit.decal(vfx, { type: 'crater', x: e.x, z: e.z, radius: r * 0.75, hold: D + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'scorch', x: e.x, z: e.z, radius: r * 1.25, tint: P[2], hold: D + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'soot', x: e.x, z: e.z, radius: r * 1.5, hold: D + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
 
     /* Пол горит `D` секунд: лава в трещинах и языки пачками по диску. */
     const BURN = D + 0.6;
     lavaPlate(vfx, {
-      x: e.x, z: e.z, range: r * 1.08, half: 4, life: BURN, seed: rng() * 9 + 1, P,
+      x: e.x, z: e.z, range: r * S.plate, half: 4, life: BURN, seed: rng() * 9 + 1, P,
       open: (s) => clamp01(s / 0.3),
       heat: (s) => (s < D - 0.6 ? 1 : clamp01(1 - (s - (D - 0.6)) / 1.1)),
       fade: (s) => (s > BURN - 0.5 ? clamp01((BURN - s) / 0.5) : 1),
@@ -662,11 +706,19 @@ export function zone(vfx, e, P, ctx) {
 export function self(vfx, e, P, ctx) {
   const fp = footprint(e, ctx);
   const rng = mulberry(seedOf(e) ^ 0x5e1f);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Радиус тела сюда не входит: его даёт `ctx`. */
+  const S = kit.tune(e, {
+    duration: 2.4,   /* жизнь короны, с */
+    ring: 1.8,       /* корона шире тела, доли радиуса */
+    height: 2.6,     /* базовая высота короны, м */
+    heightK: 0.7,    /* прибавка к высоте от радиуса короны, доли */
+    decalTail: 6,    /* насколько сажа переживает корону, с */
+  });
   /* Корона шире тела почти вдвое и выше его вдвое: с двадцати шести метров
      тело должно быть ВИДИМО обёрнуто огнём, а не подсвечено снизу. */
-  const R = Math.max(1.2, fp.radius) * 1.8;
-  const HGT = 2.6 + R * 0.7;
-  const LIFE = 2.4;
+  const R = Math.max(1.2, fp.radius) * S.ring;
+  const HGT = S.height + R * S.heightK;
+  const LIFE = Math.max(0.8, S.duration);
   const N = (base, cap) => countFor(base, fp.area, REF_AREA.self, cap);
   const cols = burstCols(P);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null);
@@ -719,10 +771,12 @@ export function self(vfx, e, P, ctx) {
   kit.burst(vfx, { x: e.x, y: 1.2, z: e.z, radius: 0.6, endRadius: R * 1.3, life: 0.55, mode: 'fire', colours: cols, displace: 0.5, intensity: 0.9 });
   kit.shockwave(vfx, { x: e.x, z: e.z, radius: R * 2.2, r0: R * 0.5, life: 0.55, colour: P[1], intensity: 0.9, dust: false });
   vfx.flashLight(e.x, 1.6, e.z, P[1], 26, 0.6, R * 6);
-  later(vfx, 0.7, () => { const p = at(); vfx.flashLight(p ? p.x : e.x, 1.4, p ? p.z : e.z, P[1], 12, LIFE - 0.7, R * 5); });
+  later(vfx, 0.7, () => { const p = at(); vfx.flashLight(p ? p.x : e.x, 1.4, p ? p.z : e.z, P[1], 12, Math.max(0.1, LIFE - 0.7), R * 5); });
   vfx.screen.flash(P[0], 0.06);
   vfx.screen.shake(0.25);
-  kit.decal(vfx, { type: 'soot', x: e.x, z: e.z, radius: R * 1.15, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+  /* Сажа держится по часам короны: 20 с на оболочку в 2.4 с — след жил
+     вдесятеро дольше того, что его оставило. */
+  kit.decal(vfx, { type: 'soot', x: e.x, z: e.z, radius: R * 1.15, hold: LIFE + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   return true;
 }
 
@@ -741,7 +795,20 @@ export function beam(vfx, e, P, ctx) {
   const dx = (e.x1 - e.x0) / len, dz = (e.z1 - e.z0) / len;
   const N = (base, cap) => countFor(base, fp.area, REF_AREA.beam, cap);
   const cols = burstCols(P);
-  const LIFE = 0.62, Y = 1.15;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Радиусы заданы долями ХИТБОКСА луча (`fp.radius`,
+     он же `BEAM_RADIUS` = 0.4 м): струя должна расти вместе с ним, а не
+     читаться одной шириной для луча любой толщины. */
+  const S = kit.tune(e, {
+    duration: 0.62,                /* жизнь струи, с */
+    y: 1.15,                       /* высота струи над полом, м */
+    coreRadius: fp.radius * 1.25,  /* радиус ядра, м */
+    plumeRadius: fp.radius * 2.75, /* радиус шлейфа, м */
+    coreFlare: 0.7,                /* раскрытие ядра к цели, доли */
+    plumeFlare: 1.4,               /* раскрытие шлейфа к цели, доли */
+    hitRadius: fp.radius * 3.5,    /* удар у дальнего края, м */
+    decalHold: 20,                 /* стойкость ожога и сажи, с */
+  });
+  const LIFE = Math.max(0.1, S.duration), Y = S.y;
   const now = vfx.now;
   const g = geo();
 
@@ -759,10 +826,12 @@ export function beam(vfx, e, P, ctx) {
     group.add(mesh);
     return { mesh, rad };
   };
-  /* Ядро в полметра, шлейф — метр у руки и два с половиной у цели: струя, а
-     не нитка. Хитбокс луча (`BEAM_RADIUS`) остаётся ядром, шлейф — декорация. */
-  const core = mk('core', 0.5, 0.7, 1.15, 8);
-  const plume = mk('plume', 1.1, 1.4, 0.9, 7);
+  /* Ядро на четверть шире хитбокса (0.4 → 0.5 м), шлейф — метр у руки и два
+     с половиной у цели: струя, а не нитка. Ядро ПЕРЕКРЫВАЕТ линию поражения,
+     а не совпадает с ней: попадание должно быть внутри огня, а не по кромке.
+     Шлейф — декорация, решение 8 её разрешает. */
+  const core = mk('core', S.coreRadius, S.coreFlare, 1.15, 8);
+  const plume = mk('plume', S.plumeRadius, S.plumeFlare, 0.9, 7);
   vfx.spawnMesh(group, LIFE, (o, t) => {
     const thin = (1 - t) ** 0.8;
     core.mesh.scale.set(core.rad * thin, len, core.rad * thin);
@@ -782,8 +851,8 @@ export function beam(vfx, e, P, ctx) {
   vfx.flashLight(e.x0 + dx * len * 0.5, Y + 0.3, e.z0 + dz * len * 0.5, P[1], 22, 0.65, Math.max(6, len * 0.9));
   kit.muzzle(vfx, { x: e.x0, z: e.z0, y: Y, dir: fp.dir, colours: cols, mode: 'fire', size: 1.5 });
 
-  /* Дальний край. */
-  const R = 1.4;
+  /* Дальний край: всё здесь — от радиуса луча, а не от числа 1.4. */
+  const R = S.hitRadius;
   if (e.hit) {
     kit.burst(vfx, { x: e.x1, y: 1.2, z: e.z1, radius: R * 0.7, endRadius: R * 2.6, life: 0.7, mode: 'fire', colours: cols, displace: 0.55, squash: 0.9 });
     kit.impactKit(vfx, { x: e.x1, z: e.z1, radius: R * 1.2, colours: cols, strength: 1.25 });
@@ -791,13 +860,13 @@ export function beam(vfx, e, P, ctx) {
     emitFlames(vfx, N(50, 180), discAt(e.x1, e.z1, R * 0.7, rng), { P, y: 0.05, yJit: 0.8, rise: 5.0, life: 0.85, size: 1.4, out: 1.0, lift: 2.2, r: rng });
     emitSmoke(vfx, N(40, 140), discAt(e.x1, e.z1, R * 0.5, rng), { lit: smokeLit(P), y: 0.5, yJit: 1.0, rise: 3.8, life: 3.8, size: 2.0, at: now + 0.15, jitter: 0.5, out: 1.0, r: rng });
     kit.heat(vfx, { x: e.x1, y: 1.4, z: e.z1, size: R * 3.0, life: 1.8, strength: 1 });
-    kit.decal(vfx, { type: 'scorch', x: e.x1, z: e.z1, radius: R * 1.4, tint: P[2], hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
-    kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: R * 1.8, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'scorch', x: e.x1, z: e.z1, radius: R * 1.4, tint: P[2], hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: R * 1.8, hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   } else {
     kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.5, endRadius: 2.0, life: 0.45, mode: 'fire', colours: cols, displace: 0.5 });
     kit.sparks(vfx, { x: e.x1, y: 1.0, z: e.z1, n: N(30, 110), colour: WHITE_HOT, tail: P[1], speed: 8, life: 0.4, r: rng });
     emitSmoke(vfx, N(16, 60), discAt(e.x1, e.z1, 0.6, rng), { lit: smokeLit(P), y: 0.6, rise: 2.4, life: 2.6, size: 1.2, at: now + 0.15, out: 0.8, r: rng });
-    kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: 1.4, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: R, hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   }
   return true;
 }
@@ -813,19 +882,34 @@ export function beam(vfx, e, P, ctx) {
 function fireball(vfx, e, P, ctx, arc) {
   const fp = footprint(e, ctx);
   const rng = mulberry(seedOf(e) ^ (arc ? 0x10b : 0xb01));
-  const range = fp.range, speed = e.speed || 20;
+  const range = fp.range;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Болт и навес — одна функция, поэтому подъём
+     параболы и высота падения зависят от `arc`; у болта подъёма нет вовсе, и
+     ноль здесь законен — `tune` перекрывает только тем, что есть в записи. */
+  const S = kit.tune(e, {
+    speed: 20,             /* скорость снаряда, м/с (несёт запись) */
+    muzzleAhead: 0.7,      /* точка вылета впереди тела, м */
+    y0: 1.15,              /* высота вылета, м */
+    y1: arc ? 0.3 : 1.0,   /* высота в точке падения, м */
+    apex: arc ? 0.35 : 0,  /* подъём параболы, доли дальности */
+    core: 0.6 + Math.min(0.3, range * 0.015), /* радиус ядра, м */
+    burstRadius: 3.4,      /* сфера взрыва, доли радиуса удара */
+    waveRadius: 3.6,       /* ударная волна, доли радиуса удара */
+    decalTail: 8,          /* насколько след переживает полёт, с */
+  });
+  const speed = Math.max(0.5, S.speed);
   const travel = range / speed;
   const dx = Math.sin(fp.dir), dz = Math.cos(fp.dir);
-  const x0 = e.x + dx * 0.7, z0 = e.z + dz * 0.7;
+  const x0 = e.x + dx * S.muzzleAhead, z0 = e.z + dz * S.muzzleAhead;
   const x1 = x0 + dx * range, z1 = z0 + dz * range;
-  const Y0 = 1.15, Y1 = arc ? 0.3 : 1.0;
-  const apex = arc ? range * 0.35 : 0;
+  const Y0 = S.y0, Y1 = S.y1;
+  const apex = range * S.apex;
   const yAt = (f) => lerp(Y0, Y1, f) + 4 * apex * f * (1 - f);
   const posAt = (f) => [x0 + dx * range * f, yAt(f), z0 + dz * range * f];
   const cols = burstCols(P);
   const N = (base, cap) => countFor(base, fp.area, REF_AREA.impact, cap);
   const now = vfx.now;
-  const CR = 0.6 + Math.min(0.3, range * 0.015);
+  const CR = S.core;
 
   kit.muzzle(vfx, { x: x0, z: z0, y: Y0, dir: fp.dir, colours: cols, mode: 'fire', size: 1.4 });
 
@@ -910,8 +994,8 @@ function fireball(vfx, e, P, ctx, arc) {
   later(vfx, travel, () => {
     const R = fp.radius;
     const y = arc ? 0.8 : 1.2;
-    kit.burst(vfx, { x: x1, y, z: z1, radius: R * 0.9, endRadius: R * 3.4, life: 0.9, mode: 'fire', colours: cols, displace: 0.6, squash: 0.85 });
-    kit.shockwave(vfx, { x: x1, z: z1, radius: R * 3.6, r0: R * 0.3, life: 0.7, colour: P[1], intensity: 1.1 });
+    kit.burst(vfx, { x: x1, y, z: z1, radius: R * 0.9, endRadius: R * S.burstRadius, life: 0.9, mode: 'fire', colours: cols, displace: 0.6, squash: 0.85 });
+    kit.shockwave(vfx, { x: x1, z: z1, radius: R * S.waveRadius, r0: R * 0.3, life: 0.7, colour: P[1], intensity: 1.1 });
     kit.impactKit(vfx, { x: x1, z: z1, radius: R * 1.3, colours: cols, strength: 1.35, shock: false });
     emitEmbers(vfx, N(130, 440), discAt(x1, z1, R * 0.4, rng), { P, y: 0.5, yJit: 0.8, speed: 6, up: 9, life: 1.6, size: 0.17, gravity: -8, r: rng });
     kit.sparks(vfx, { x: x1, y, z: z1, n: N(70, 240), colour: WHITE_HOT, tail: P[1], speed: 13, life: 0.5, gravity: -13, r: rng });
@@ -921,8 +1005,10 @@ function fireball(vfx, e, P, ctx, arc) {
     emitSmoke(vfx, N(60, 220), discAt(x1, z1, R * 0.5, rng), { lit: smokeLit(P), y: 0.5, yJit: 1.0, rise: 4.0, life: 3.8, size: 2.2, jitter: 0.5, out: 1.4, r: rng });
     emitAsh(vfx, N(16, 60), discAt(x1, z1, R * 0.8, rng), { y: 0.2, jitter: 0.5, r: rng });
     kit.heat(vfx, { x: x1, y: 1.6, z: z1, size: R * 3.2, life: 1.8, strength: 1 });
-    kit.decal(vfx, { type: 'scorch', x: x1, z: z1, radius: R * 1.5, tint: P[2], hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
-    kit.decal(vfx, { type: 'soot', x: x1, z: z1, radius: R * 2.0, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    /* Ожог живёт по часам умения: полёт плюс хвост. Снаряд на два метра и
+       снаряд на тридцать оставляли одинаковые 20 с. */
+    kit.decal(vfx, { type: 'scorch', x: x1, z: z1, radius: R * 1.5, tint: P[2], hold: travel + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'soot', x: x1, z: z1, radius: R * 2.0, hold: travel + S.decalTail, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   });
   return true;
 }
@@ -940,19 +1026,29 @@ export const lob = (vfx, e, P, ctx) => fireball(vfx, e, P, ctx, true);
 export function impact(vfx, e, P, ctx) {
   const rng = mulberry(seedOf(e) ^ 0x1a7);
   const cols = burstCols(P);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Запись удара длительности не несёт — удар
+     мгновенный, поэтому стойкость сажи здесь ручка описи, а не часы умения. */
+  const S = kit.tune(e, {
+    burstRadius: 2.4,   /* сфера всплеска, м */
+    sootRadius: 1.4,    /* сажа под ногами, м */
+    decalHold: 20,      /* стойкость сажи, с */
+    blockRadius: 0.9,   /* плеск об укрытие, м */
+    blockSoot: 0.7,     /* сажа у укрытия, м */
+    blockHold: 14,      /* стойкость сажи у укрытия, с */
+  });
   const x = e.x, z = e.z;
   if (e.blocked) {
-    kit.burst(vfx, { x, y: 1.0, z, radius: 0.35, endRadius: 0.9, life: 0.32, mode: 'fire', colours: cols, displace: 0.4 });
+    kit.burst(vfx, { x, y: 1.0, z, radius: 0.35, endRadius: S.blockRadius, life: 0.32, mode: 'fire', colours: cols, displace: 0.4 });
     kit.sparks(vfx, { x, y: 1.0, z, n: 18, colour: WHITE_HOT, tail: P[1], speed: 7, life: 0.35, r: rng });
-    kit.decal(vfx, { type: 'soot', x, z, radius: 0.7, hold: 14, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+    kit.decal(vfx, { type: 'soot', x, z, radius: S.blockSoot, hold: S.blockHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
     return true;
   }
-  kit.burst(vfx, { x, y: 1.1, z, radius: 0.7, endRadius: 2.4, life: 0.6, mode: 'fire', colours: cols, displace: 0.5, intensity: 1.2 });
+  kit.burst(vfx, { x, y: 1.1, z, radius: 0.7, endRadius: S.burstRadius, life: 0.6, mode: 'fire', colours: cols, displace: 0.5, intensity: 1.2 });
   emitEmbers(vfx, 44, discAt(x, z, 0.35, rng), { P, y: 0.6, yJit: 0.8, speed: 4.5, up: 6.5, life: 1.1, size: 0.15, gravity: -8, r: rng });
   kit.sparks(vfx, { x, y: 1.1, z, n: 26, colour: WHITE_HOT, tail: P[1], speed: 9, life: 0.4, r: rng });
   emitFlames(vfx, 18, discAt(x, z, 0.5, rng), { P, y: 0.3, yJit: 0.9, rise: 2.6, life: 0.55, size: 0.8, out: 0.6, r: rng });
   emitSmoke(vfx, 10, discAt(x, z, 0.4, rng), { lit: smokeLit(P), y: 0.8, yJit: 0.6, rise: 2.0, life: 2.0, size: 0.9, out: 0.6, r: rng });
-  kit.decal(vfx, { type: 'soot', x, z, radius: 1.4, hold: 20, seed: rng() * 9 + 1, rot: rng() * 6.28 });
+  kit.decal(vfx, { type: 'soot', x, z, radius: S.sootRadius, hold: S.decalHold, seed: rng() * 9 + 1, rot: rng() * 6.28 });
   kit.impactKit(vfx, { x, z, radius: 1.2, colours: cols, strength: 0.85 });
   return true;
 }
@@ -965,16 +1061,25 @@ export function impact(vfx, e, P, ctx) {
  * ровно `windup`; тело не светится — это §10.1.
  */
 export function charge(vfx, e, P, ctx) {
-  const secs = Math.max(0.15, e.windup || 0.4);
   const rng = mulberry(seedOf(e) ^ 0xc4a);
-  const y = 1.2;
-  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y, secs, colours: [P[0], P[1], P[2]], mode: 'fire', ctx, n: 56, radius: 2.4 });
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Замах несёт запись вьювера: заряд обязан кончиться
+     ровно тогда, когда умение выходит из руки. */
+  const S = kit.tune(e, {
+    windup: 0.4,   /* замах, с (несёт запись) */
+    y: 1.2,        /* высота ядра у руки, м */
+    orb0: 0.2,     /* ядро в начале замаха, м */
+    orb1: 0.85,    /* ядро к выходу, м */
+    gather: 2.4,   /* с какого радиуса стягиваются угли, м */
+  });
+  const secs = Math.max(0.15, S.windup);
+  const y = S.y;
+  kit.charge(vfx, { who: e.who, x: e.x, z: e.z, y, secs, colours: [P[0], P[1], P[2]], mode: 'fire', ctx, n: 56, radius: S.gather });
   const heatM = kit.heat(vfx, { x: e.x, y, z: e.z, size: 3.0, life: secs + 0.1, strength: 0.8 });
   const pos = () => (ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null);
   /* Своё ядро поверх набора: шар набора живёт на «возрасте» сферы взрыва и с
      быстрым растворением почти прозрачен большую часть замаха, а с двадцати
      шести метров заряд обязан читаться. Ядро огненного шара, растущее до
-     0.8 м, и мягкий ореол в свечении. */
+     `orb1`, и мягкий ореол в свечении. */
   const cm = coreMat(); const cu = cm.userData.u;
   cu.seed.value = rng() * 9; cu.cHot.value.copy(WHITE_HOT); cu.cMid.value.copy(P[1]); cu.cDeep.value.copy(P[2]);
   const orb = new THREE.Mesh(geo().ico, cm);
@@ -989,7 +1094,7 @@ export function charge(vfx, e, P, ctx) {
     o.position.set(cx, y, cz);
     if (heatM) heatM.position.set(cx, y, cz);
     const s = t * secs;
-    orb.scale.setScalar(0.2 + 0.65 * easeOutCubic(t));
+    orb.scale.setScalar(S.orb0 + (S.orb1 - S.orb0) * easeOutCubic(t));
     orb.rotation.y = s * 4; orb.rotation.x = s * 2.5;
     setFade(orb, Math.min(1, t * 4));
     /* Ореол: мягкие точки в свечении, каждые 60 мс — сплошное сияние. */
@@ -1007,7 +1112,7 @@ export function charge(vfx, e, P, ctx) {
       const left = Math.min(0.6, secs - s);
       const born = vfx.now;
       vfx.add.emit(8, (i, q) => {
-        const a = rng() * Math.PI * 2, d = rnd(1.8, 3.0, rng);
+        const a = rng() * Math.PI * 2, d = rnd(S.gather * 0.75, S.gather * 1.25, rng);
         const px = cx + Math.sin(a) * d, py = rnd(0.05, 0.5, rng), pz = cz + Math.cos(a) * d;
         const life = rnd(left * 0.6, left, rng);
         q.pos(px, py, pz);
@@ -1040,11 +1145,20 @@ const FIRE_DASH_T = (len) => Math.min(0.4, Math.max(0.18, len / 22));
 export function dash(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const S = [e.x0, e.z0], E = [e.x1, e.z1];
-  const len = Math.hypot(E[0] - S[0], E[1] - S[1]);
+  /* Концы трассы — `A` и `B`: имя `S` занято описью настраиваемого. */
+  const A = [e.x0, e.z0], B = [e.x1, e.z1];
+  const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
   if (len < 0.5) return false;
-  const T = FIRE_DASH_T(len);
-  const ux = (E[0] - S[0]) / len, uz = (E[1] - S[1]) / len;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Длина рывка сюда не входит: её несут концы. */
+  const S = kit.tune(e, {
+    span: FIRE_DASH_T(len), /* сколько длится прочерк, с */
+    spread: 1.2,            /* разброс следа поперёк трассы, м */
+    marks: 3,               /* следов сажи вдоль трассы */
+    hitRadius: 1.2,         /* ожог в точке удара, м */
+    decalTail: 8,           /* насколько след переживает рывок, с */
+  });
+  const T = Math.max(0.05, S.span);
+  const ux = (B[0] - A[0]) / len, uz = (B[1] - A[1]) / len;
   const sx = -uz, sz = ux;
   const now = vfx.now;
 
@@ -1052,14 +1166,14 @@ export function dash(vfx, e, P, ctx) {
      `born = f·T`. Кладка вдоль трассы, а не облако у бойца. */
   const place = (i) => {
     const f = ((i * 0.618) % 1);
-    const lat = (rng() - 0.5) * 1.2;
-    return [S[0] + ux * len * f + sx * lat, S[1] + uz * len * f + sz * lat];
+    const lat = (rng() - 0.5) * S.spread;
+    return [A[0] + ux * len * f + sx * lat, A[1] + uz * len * f + sz * lat];
   };
   const N = Math.min(220, Math.max(60, Math.round(len * 22)));
   vfx.body.emit(N, (i, s) => {
     const f = rng();
-    const lat = (rng() - 0.5) * 1.2;
-    s.pos(S[0] + ux * len * f + sx * lat, 0.15 + rng() * 0.5, S[1] + uz * len * f + sz * lat);
+    const lat = (rng() - 0.5) * S.spread;
+    s.pos(A[0] + ux * len * f + sx * lat, 0.15 + rng() * 0.5, A[1] + uz * len * f + sz * lat);
     s.vel((rng() - 0.5) * 0.8, rnd(1.4, 3.0, rng), (rng() - 0.5) * 0.8);
     s.gravity(0, rnd(0.6, 1.6, rng), 0);
     s.color(i % 3 ? P[1] : P[0], flameEnd(P));
@@ -1068,15 +1182,17 @@ export function dash(vfx, e, P, ctx) {
   });
   emitEmbers(vfx, Math.round(N * 0.5), place, { P, y: 0.15, yJit: 0.4, speed: 2.5, up: 5, life: 1.3, size: 0.15, at: now, jitter: T, gravity: -7, r: rng });
   emitSmoke(vfx, Math.round(N * 0.3), place, { lit: smokeLit(P), y: 0.4, yJit: 0.5, rise: 2.4, life: 2.6, size: 0.9, at: now + 0.1, jitter: T, out: 0.8, r: rng });
-  /* Полоса сажи вдоль трассы: три следа, чтобы длинный рывок не был диском. */
-  for (let i = 0; i < 3; i++) {
-    const f = 0.2 + i * 0.3;
-    kit.decal(vfx, { type: 'soot', x: S[0] + ux * len * f, z: S[1] + uz * len * f, radius: len * 0.22 + 0.4, hold: 20, tint: P[2], seed: ((seed + i) % 9) + 1, at: f * T });
+  /* Полоса сажи вдоль трассы: три следа, чтобы длинный рывок не был диском.
+     Держится по часам рывка (`T` плюс хвост), а не глухие 20 с. */
+  const MK = Math.max(1, Math.round(S.marks));
+  for (let i = 0; i < MK; i++) {
+    const f = (i + 0.5) / MK * 0.9 + 0.05;
+    kit.decal(vfx, { type: 'soot', x: A[0] + ux * len * f, z: A[1] + uz * len * f, radius: len * 0.22 + 0.4, hold: T + S.decalTail, tint: P[2], seed: ((seed + i) % 9) + 1, at: f * T });
   }
   if (e.hit) {
-    kit.burst(vfx, { x: E[0], y: 1.0, z: E[1], radius: 0.5, endRadius: 1.7, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.1, at: T });
-    kit.decal(vfx, { type: 'scorch', x: E[0], z: E[1], radius: 1.2, hold: 20, tint: P[1], seed: (seed % 9) + 1, at: T });
-    vfx.flashLight(E[0], 1.0, E[1], P[1], 16, 0.3, 7);
+    kit.burst(vfx, { x: B[0], y: 1.0, z: B[1], radius: 0.5, endRadius: 1.7, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.1, at: T });
+    kit.decal(vfx, { type: 'scorch', x: B[0], z: B[1], radius: S.hitRadius, hold: T + S.decalTail, tint: P[1], seed: (seed % 9) + 1, at: T });
+    vfx.flashLight(B[0], 1.0, B[1], P[1], 16, 0.3, 7);
   }
   return true;
 }
@@ -1084,19 +1200,27 @@ export function dash(vfx, e, P, ctx) {
 export function blink(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. У блинка нет длительности: он мгновенный, и его
+     след — чистый остаток, поэтому стойкость здесь ручка. */
+  const S = kit.tune(e, {
+    lag: 0.08,      /* насколько конец опаздывает за стартом, с */
+    puff: 1.0,      /* разброс хлопка у концов, м */
+    mark: 0.7,      /* след у концов, м */
+    decalHold: 20,  /* стойкость сажи, с */
+  });
   /* У СТАРТА — хлопок сажи и углей (тело выгорело из точки), у КОНЦА —
      вспышка пламени (оно там появилось). */
-  const at0 = (i) => [e.x0 + (rng() - 0.5) * 1.0, e.z0 + (rng() - 0.5) * 1.0];
-  const at1 = (i) => [e.x1 + (rng() - 0.5) * 1.0, e.z1 + (rng() - 0.5) * 1.0];
+  const at0 = (i) => [e.x0 + (rng() - 0.5) * S.puff, e.z0 + (rng() - 0.5) * S.puff];
+  const at1 = (i) => [e.x1 + (rng() - 0.5) * S.puff, e.z1 + (rng() - 0.5) * S.puff];
   emitSmoke(vfx, 40, at0, { lit: smokeLit(P), y: 0.5, yJit: 0.8, rise: 3.0, life: 2.4, size: 1.0, out: 1.2, r: rng });
   emitEmbers(vfx, 28, at0, { P, y: 0.6, yJit: 0.7, speed: 4, up: 6, life: 1.2, size: 0.16, r: rng });
   /* След у концов МЕЛКИЙ (0.7 м): при 1.0 м два пятна в пяти метрах друг от
      друга судья прочитал как «непрерывный ожог, связывающий концы» — а он
      убивает смысл мгновенного переноса. */
-  kit.decal(vfx, { type: 'soot', x: e.x0, z: e.z0, radius: 0.7, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
-  kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.4, endRadius: 1.6, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.2, at: 0.08 });
-  emitFlames(vfx, 34, at1, { P, y: 0.3, yJit: 0.9, rise: 3.2, life: 0.7, size: 0.9, at: vfx.now + 0.08, jitter: 0.15, r: rng });
-  kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: 0.7, hold: 20, tint: P[2], seed: ((seed + 2) % 9) + 1, at: 0.08 });
+  kit.decal(vfx, { type: 'soot', x: e.x0, z: e.z0, radius: S.mark, hold: S.decalHold, tint: P[2], seed: (seed % 9) + 1 });
+  kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.4, endRadius: 1.6, life: 0.45, mode: 'fire', colours: burstCols(P), intensity: 1.2, at: S.lag });
+  emitFlames(vfx, 34, at1, { P, y: 0.3, yJit: 0.9, rise: 3.2, life: 0.7, size: 0.9, at: vfx.now + S.lag, jitter: 0.15, r: rng });
+  kit.decal(vfx, { type: 'soot', x: e.x1, z: e.z1, radius: S.mark, hold: S.decalHold, tint: P[2], seed: ((seed + 2) % 9) + 1, at: S.lag });
   vfx.flashLight(e.x1, 1.0, e.z1, P[1], 18, 0.3, 7);
   return true;
 }
@@ -1104,7 +1228,21 @@ export function blink(vfx, e, P, ctx) {
 export function jump(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const dur = Math.max(0.2, e.duration || 0.55);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Запись несёт и время в воздухе, и ВЫСОТУ прыжка
+     (`height` — `jumpHeight` бойца): волна посадки считается от неё, иначе
+     низкий подскок бьёт по полу так же, как прыжок с трёх метров. */
+  const S = kit.tune(e, {
+    duration: 0.55,     /* время в воздухе, с (несёт запись) */
+    height: 2.2,        /* высота прыжка, м (несёт запись) */
+    heightRef: 2.2,     /* высота, на которой волна равна `landRadius`, м */
+    landRadius: 3.0,    /* волна посадки на эталонной высоте, м */
+    landMin: 1.6,       /* нижний предел волны, м */
+    takeoffMark: 1.0,   /* ожог отрыва, м */
+    landMark: 1.6,      /* ожог посадки, м */
+    decalTail: 6,       /* насколько ожог переживает прыжок, с */
+  });
+  const dur = Math.max(0.2, S.duration);
+  const wave = Math.max(S.landMin, S.landRadius * (S.height / Math.max(0.2, S.heightRef)));
   const foot = () => [e.x + (rng() - 0.5) * 1.0, e.z + (rng() - 0.5) * 1.0];
   /* Отрыв — выхлоп пламени из-под ног; в воздухе НИЧЕГО. */
   /* Отрыв ОГНЕННЫЙ, а не дымный: судья увидел «плоское тёмно-серое пятно
@@ -1113,17 +1251,17 @@ export function jump(vfx, e, P, ctx) {
   emitFlames(vfx, 44, foot, { P, y: 0.1, yJit: 0.4, rise: 2.2, life: 0.55, size: 0.8, out: 1.6, hotK: 0.7, r: rng });
   emitEmbers(vfx, 26, foot, { P, y: 0.2, yJit: 0.4, speed: 4, up: 5, life: 1.0, size: 0.14, r: rng });
   emitSmoke(vfx, 12, foot, { lit: smokeLit(P), y: 0.2, yJit: 0.3, rise: 2.0, life: 2.0, size: 0.8, out: 1.4, r: rng });
-  kit.decal(vfx, { type: 'scorch', x: e.x, z: e.z, radius: 1.0, hold: 20, tint: P[1], seed: ((seed + 5) % 9) + 1 });
+  kit.decal(vfx, { type: 'scorch', x: e.x, z: e.z, radius: S.takeoffMark, hold: dur + S.decalTail, tint: P[1], seed: ((seed + 5) % 9) + 1 });
   vfx.spawnMesh(new THREE.Group(), dur + 1.4, (o, u) => {
     if (o.userData.done || u * (dur + 1.4) < dur) return;
     o.userData.done = true;
     const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
     const lx = p ? p.x : e.x, lz = p ? p.z : e.z;
     const land = () => [lx + (rng() - 0.5) * 2.0, lz + (rng() - 0.5) * 2.0];
-    kit.shockwave(vfx, { x: lx, z: lz, radius: 3.0, r0: 0.3, life: 0.55, colour: P[1], intensity: 1.2 });
+    kit.shockwave(vfx, { x: lx, z: lz, radius: wave, r0: 0.3, life: 0.55, colour: P[1], intensity: 1.2 });
     emitEmbers(vfx, 54, land, { P, y: 0.2, yJit: 0.5, speed: 5, up: 7, life: 1.4, size: 0.17, r: rng });
     emitFlames(vfx, 30, land, { P, y: 0.15, yJit: 0.4, rise: 2.6, life: 0.6, size: 0.9, out: 1.2, r: rng });
-    kit.decal(vfx, { type: 'scorch', x: lx, z: lz, radius: 1.6, hold: 20, tint: P[1], seed: (seed % 9) + 1 });
+    kit.decal(vfx, { type: 'scorch', x: lx, z: lz, radius: S.landMark, hold: dur + S.decalTail, tint: P[1], seed: (seed % 9) + 1 });
     vfx.flashLight(lx, 0.8, lz, P[1], 16, 0.35, 7);
     vfx.screen.shake(0.22);
   });
@@ -1133,8 +1271,25 @@ export function jump(vfx, e, P, ctx) {
 export function wall(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const D = Math.max(0.6, e.duration || 5);
-  const W = Math.max(0.6, e.w || 4), Dd = Math.max(0.5, e.d || 1);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Коробку целиком несёт сим: ширину, глубину, ВЫСОТУ
+     (`height` — то самое третье измерение, которое раньше повторялось числом
+     2.2 в четырёх местах) и длительность. */
+  const S = kit.tune(e, {
+    duration: 5,     /* сколько стоит стена, с (несёт запись) */
+    w: 4,            /* ширина коробки, м (несёт запись) */
+    d: 1,            /* глубина коробки, м (несёт запись) */
+    height: 2.2,     /* высота коробки, м (несёт запись) */
+    base: 0.15,      /* низ языков над полом, м */
+    period: 0.18,    /* шаг подсева языков, с */
+    grow: 0.15,      /* рост стены до полной силы, с */
+    marks: 3,        /* следов сажи вдоль стены */
+    decalTail: 6,    /* насколько сажа переживает стену, с */
+  });
+  const D = Math.max(0.6, S.duration);
+  const W = Math.max(0.6, S.w), Dd = Math.max(0.5, S.d);
+  /* Языки рождаются НА ВСЮ ВЫСОТУ КОРОБКИ, а не на зашитые 2.15 м: высота
+     теперь в записи, и стена в три метра обязана гореть до своего верха. */
+  const HJit = Math.max(0.4, S.height - S.base);
   /* СТЕНА ОГНЯ: языки по всей длине коробки, марево над ней, угли, полоса
      сажи. Плиту коллизии рисует штатный силуэт под нами (§7.3). */
   const place = () => [e.x + (rng() - 0.5) * W * 0.96, e.z + (rng() - 0.5) * Dd * 0.9];
@@ -1142,24 +1297,27 @@ export function wall(vfx, e, P, ctx) {
   vfx.spawnMesh(new THREE.Group(), D, (o, u) => {
     const t = u * D;
     if (t < next || t > D - 0.3) return;
-    next = t + 0.18;
-    const k = t < 0.15 ? t / 0.15 : 1;
-    /* Языки рождаются НА ВСЕЙ ВЫСОТЕ коробки (yJit 1.8), а не только у
-       основания: судья увидел «огонь в нижней трети, остальное — пустая
-       тонированная панель». Пламя должно СТОЯТЬ стеной, а не лизать пол. */
-    /* Языки ЖИВУТ ВЫШЕ: рождаются на всей высоте (yJit 2.0), поднимаются
-       медленно (rise 1.2) и живут дольше (0.95 с) — при подъёме 2.6 они
-       вылетали за верх коробки за полжизни, и масса огня оседала в нижней
-       половине («огонь в нижней половине, верх — голый дым», замер круга 2). */
-    emitFlames(vfx, Math.round(W * 8 * k), place, { P, y: 0.15, yJit: 2.0, rise: 1.2, life: 0.95, size: 0.75, out: 0.35, lift: 0.5, r: rng });
-    if (t % 0.5 < 0.19) {
+    next = t + S.period;
+    const k = t < S.grow ? t / S.grow : 1;
+    /* Языки рождаются НА ВСЕЙ ВЫСОТЕ коробки, а не только у основания: судья
+       увидел «огонь в нижней трети, остальное — пустая тонированная панель».
+       Пламя должно СТОЯТЬ стеной, а не лизать пол. */
+    /* Языки ЖИВУТ ВЫШЕ: рождаются на всей высоте, поднимаются медленно
+       (rise 1.2) и живут дольше (0.95 с) — при подъёме 2.6 они вылетали за
+       верх коробки за полжизни, и масса огня оседала в нижней половине
+       («огонь в нижней половине, верх — голый дым», замер круга 2). */
+    emitFlames(vfx, Math.round(W * 8 * k), place, { P, y: S.base, yJit: HJit, rise: 1.2, life: 0.95, size: 0.75, out: 0.35, lift: 0.5, r: rng });
+    if (t % 0.5 < S.period + 0.01) {
       emitEmbers(vfx, Math.round(W * 2), place, { P, y: 0.4, yJit: 0.6, speed: 1.4, up: 6, life: 1.5, size: 0.14, r: rng });
       emitSmoke(vfx, Math.round(W * 2), place, { lit: smokeLit(P), y: 1.4, yJit: 0.6, rise: 3.0, life: 3.0, size: 1.1, out: 0.5, r: rng });
     }
   });
   kit.heat(vfx, { x: e.x, y: 1.6, z: e.z, size: Math.max(W, 2.2), life: D, strength: 0.9 });
-  for (let i = 0; i < 3; i++) {
-    kit.decal(vfx, { type: 'soot', x: e.x + ((i - 1) * W) / 3, z: e.z, radius: W * 0.22 + 0.4, hold: 20, tint: P[2], seed: ((seed + i) % 9) + 1 });
+  /* Сажа держится по часам стены, а не глухие 20 с: стена на секунду и стена
+     на десять оставляли одинаковый след. */
+  const MK = Math.max(1, Math.round(S.marks));
+  for (let i = 0; i < MK; i++) {
+    kit.decal(vfx, { type: 'soot', x: e.x + ((i - (MK - 1) / 2) * W) / MK, z: e.z, radius: W * 0.22 + 0.4, hold: D + S.decalTail, tint: P[2], seed: ((seed + i) % 9) + 1 });
   }
   vfx.flashLight(e.x, 1.0, e.z, P[1], 12, 0.4, W + 2);
   return true;
@@ -1170,7 +1328,16 @@ const FIRE_STATUS = new Map();
 
 export function status(vfx, e, P, ctx) {
   const who = e.who || 'orange';
-  const dur = e.duration ?? 1.5;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Длительность несёт сим и продлевает её тиками
+     пожара, поэтому носитель живёт `maxHold`, а гаснет по `until`. */
+  const S = kit.tune(e, {
+    duration: 1.5,   /* сколько тлеет после последнего тика, с (несёт запись) */
+    maxHold: 60,     /* потолок жизни носителя, с */
+    period: 0.22,    /* шаг подсева языков, с */
+    ring: 1.0,       /* языки на радиусе капсулы, доли */
+    flame: 0.52,     /* размер языка, м */
+  });
+  const dur = S.duration;
   const key = `${who}:${e.effect}`;
   const live = FIRE_STATUS.get(key);
   if (live && live.until > vfx.now) { live.until = vfx.now + dur; return true; }
@@ -1181,16 +1348,16 @@ export function status(vfx, e, P, ctx) {
   const rng = mulberry(seed);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(who) : null) || { x: e.x ?? 0, z: e.z ?? 0 };
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
-  const R = (bs ? bs.r : 0.9) * 1.0, H = (bs ? bs.h : 2.0);
+  const R = (bs ? bs.r : 0.9) * S.ring, H = (bs ? bs.h : 2.0);
   /* ТЛЕНИЕ НА ТЕЛЕ: языки и угли рождаются НА КАПСУЛЕ (§7.1) и всплывают —
      это горит само тело, а не костёр рядом с ним. */
-  const MAX = 60;
+  const MAX = Math.max(1, S.maxHold);
   let next = 0;
   vfx.spawnMesh(new THREE.Group(), MAX, (o, u) => {
     const t = u * MAX;
     if (vfx.now > entry.until) { if (FIRE_STATUS.get(key) === entry) FIRE_STATUS.delete(key); return; }
     if (t < next) return;
-    next = t + 0.22;
+    next = t + S.period;
     const p = at();
     const surf = () => {
       const a = rng() * Math.PI * 2;
@@ -1204,7 +1371,7 @@ export function status(vfx, e, P, ctx) {
     /* Языки КРУПНЕЕ (0.52 против 0.34) и живут дольше: судья круга 2 увидел
        «горстку тонких оранжевых искр, а не пламя, обнимающее тело» — на
        капсуле оказалось много мелких точек и ни одного языка размером с неё. */
-    emitFlames(vfx, 26, surf, { P, y: 0.25, yJit: H * 0.7, rise: 1.2, life: 0.6, size: 0.52, out: 0.1, hotK: 0.8, lift: 0.5, r: rng });
+    emitFlames(vfx, 26, surf, { P, y: 0.25, yJit: H * 0.7, rise: 1.2, life: 0.6, size: S.flame, out: 0.1, hotK: 0.8, lift: 0.5, r: rng });
     emitEmbers(vfx, 12, surf, { P, y: H * 0.45, yJit: H * 0.45, speed: 0.4, up: 2.0, life: 0.9, size: 0.12, r: rng });
   });
   return true;

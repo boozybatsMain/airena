@@ -22,6 +22,17 @@
  *   · всё случайное — от `mulberry(seedOf(e))`: повтор боя выглядит так же (A2);
  *   · каждый каст оставляет след на полу (`kit.decal` типа `frost`).
  *
+ * НАСТРОЙКА. Каждая форма начинается с описи `kit.tune(e, {...})`: размеры,
+ * направления и длительности читаются оттуда, а не сидят числами по телу
+ * функции. Значения по умолчанию равны сегодняшним, поэтому запись, не
+ * несущая поля, даёт прежний кадр; опись же и есть список того, что вообще
+ * можно крутить со стойки (`vfxfixture.js`, поле `tune`).
+ *
+ * СЛЕД ЖИВЁТ ПО ЧАСАМ СВОЕГО УМЕНИЯ. Иней зоны, стены, прыжка и рывка держится
+ * от их собственной длительности (`D + decalAfter`), а не общей простынёй в
+ * 14/16/18/20 с: жалоба основателя была именно про это — «след обязан
+ * подстраиваться под реальную длительность умения».
+ *
  * TSL, ни строки GLSL (§9.1).
  */
 
@@ -519,11 +530,22 @@ export function cone(vfx, e, P, ctx) {
   /* Вектор «вбок» в сторону растущего угла: положительный угол уводит к нему. */
   const sx = dz, sz = -dx;
   const REF = kit.REF_AREA.cone;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    /* Фронт идёт ~17 м/с на стенде; не короче трети секунды, иначе его не
+       прочитать и на клине в три метра. */
+    travel: clamp(0.22 + range * 0.045, 0.3, 0.75), /* ход фронта до края, с */
+    stand: 1.55,        /* клин стоит после фронта до шаттера, с */
+    sink: 0.75,         /* оседание кристаллов в пол, с */
+    spill: 1.6,         /* наледь выплёскивается за сектор, доли дальности */
+    wallPerM: 7.5,      /* клинков стены на метр дальней дуги */
+    heroH: 3.6,         /* рост героев-клинков в середине дуги, м */
+    decalHold: 20,      /* стойкость инея на полу, с */
+  });
 
-  /* Фронт идёт ~17 м/с на стенде; здесь — не короче трети секунды, чтобы
-     его можно было прочитать и на клине в три метра. */
-  const TRAVEL = clamp(0.22 + range * 0.045, 0.3, 0.75);
-  const SHATTER = TRAVEL + 1.55, SINK = 0.75, LIFE = SHATTER + SINK + 0.1;
+  const TRAVEL = S.travel;
+  const SHATTER = TRAVEL + S.stand, SINK = S.sink, LIFE = SHATTER + SINK + 0.1;
   const dMin = Math.min(1.3, range * 0.3);   // не из-под собственного тела
 
   const items = [];
@@ -543,7 +565,7 @@ export function cone(vfx, e, P, ctx) {
   }
   /* Стена у дальней дуги — плотность на метр дуги, как на стенде. */
   const arcLen = 2 * half * range;
-  const nWall = Math.max(6, Math.round(arcLen * 7.5));
+  const nWall = Math.max(6, Math.round(arcLen * S.wallPerM));
   const wallRow = (n, dk, dj, hk, hj, bk, wk) => {
     for (let i = 0; i < n; i++) {
       const u = ((i + rng() * 0.6) / n - 0.5) * 2;
@@ -571,7 +593,7 @@ export function cone(vfx, e, P, ctx) {
     items.push({
       x: e.x + ax * d, z: e.z + az * d, v: Math.floor(rng() * 3), yaw: rng() * Math.PI * 2,
       lx: ax * (0.2 + rng() * 0.2) + sx * u * 0.2, lz: az * (0.2 + rng() * 0.2) + sz * u * 0.2,
-      h: 3.6 + rng() * 0.6, w: 1.25 + rng() * 0.35, born: TRAVEL * (0.9 + rng() * 0.08),
+      h: S.heroH + rng() * 0.6, w: 1.25 + rng() * 0.35, born: TRAVEL * (0.9 + rng() * 0.08),
     });
   }
 
@@ -579,8 +601,8 @@ export function cone(vfx, e, P, ctx) {
   const slab = new THREE.Mesh(geo().slab, slabMat(P));
   const su = slab.material.userData.u;
   su.half.value = half; su.span.value = range; su.seed.value = Math.floor(rng() * 9); su.front.value = 0;
-  su.reach.value = 1 / 1.6;
-  slab.scale.set(range * 1.6, 1, range * 1.6);
+  su.reach.value = 1 / S.spill;
+  slab.scale.set(range * S.spill, 1, range * S.spill);
   slab.position.set(e.x, 0.032, e.z);
   slab.rotation.y = fp.dir + Math.PI;
   slab.renderOrder = 3;
@@ -593,11 +615,11 @@ export function cone(vfx, e, P, ctx) {
   });
 
   /* Стойкий след: иней с тёмными трещинами по сектору (решение 7). */
-  kit.decal(vfx, { type: 'frost', x: e.x + dx * range * 0.55, z: e.z + dz * range * 0.55, radius: range * 0.75, tint: P[1], hold: 20 });
+  kit.decal(vfx, { type: 'frost', x: e.x + dx * range * 0.55, z: e.z + dz * range * 0.55, radius: range * 0.75, tint: P[1], hold: S.decalHold });
   if (half > 0.45) {
     for (const sgn of [-1, 1]) {
       const a = fp.dir + sgn * half * 0.6, d = range * 0.85;
-      kit.decal(vfx, { type: 'frost', x: e.x + Math.sin(a) * d, z: e.z + Math.cos(a) * d, radius: range * 0.6, tint: P[1], hold: 20 });
+      kit.decal(vfx, { type: 'frost', x: e.x + Math.sin(a) * d, z: e.z + Math.cos(a) * d, radius: range * 0.6, tint: P[1], hold: S.decalHold });
     }
   }
 
@@ -669,18 +691,31 @@ export function cone(vfx, e, P, ctx) {
  */
 export function zone(vfx, e, P, ctx) {
   const fp = kit.footprint(e, ctx);
-  const R = fp.radius, area = fp.area, D = Math.max(1.2, e.duration || 3);
   const REF = kit.REF_AREA.zone;
   const rng = mulberry(seedOf(e) ^ 0xa1d);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 3,        /* жизнь зоны, с (снизу подпёрта 1.2) */
+    dropH: 9,           /* с какой высоты идут сосульки, м */
+    fall: 0.36,         /* падение одной сосульки, с */
+    sink: 0.7,          /* оседание наростов в пол, с */
+    columnR: 0.96,      /* столб света, доли радиуса */
+    discR: 1.08,        /* наледь на полу, доли радиуса */
+    decalAfter: 6,      /* насколько иней переживает зону, с */
+  });
+  const R = fp.radius, area = fp.area, D = Math.max(1.2, S.duration || 3);
   const N = kit.countFor(26, area, REF, 140);
-  const H = 9;
+  /* Одна высота на всё: столб света, устье взвеси и точка рождения сосульки.
+     Разойдутся — и капли посыплются мимо столба, из которого они идут. */
+  const H = S.dropH;
 
   const items = [];
   const spreadT = Math.max(0.5, D - 0.7);
   for (let i = 0; i < N; i++) {
     const [x, z] = kit.inDisc(e.x, e.z, Math.max(0.3, R - 0.35), rng);
     const delay = (i / N) * spreadT + rng() * (spreadT / N);
-    const fall = 0.36 + rng() * 0.1;
+    const fall = S.fall + rng() * 0.1;
     items.push({
       x, z, v: i % 3, yaw: rng() * Math.PI * 2, lx: (rng() - 0.5) * 0.5, lz: (rng() - 0.5) * 0.5,
       h: 1.2 + rng() * 1.5, w: 0.8 + rng() * 0.7, born: delay + fall,
@@ -694,13 +729,13 @@ export function zone(vfx, e, P, ctx) {
   drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   drops.frustumCulled = false;
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(),
-    S = new THREE.Vector3(), Pp = new THREE.Vector3();
+    SC = new THREE.Vector3(), Pp = new THREE.Vector3();
   let revealed = 0;
   const hitFx = (i, d) => {
     shards(vfx, P, { x: d.x, y: 0.25, z: d.z, n: 9, radius: 0.2, speed: 3.5, up: 3.5, life: 0.7, size: 0.15, r: rng });
     motes(vfx, P, { x: d.x, y: 0.3, z: d.z, n: 4, radius: 0.4, r: rng, rise: 1.2 });
     /* Следы — не на каждый удар: бюджет декалей общий на бой. */
-    if (i % 3 === 0) kit.decal(vfx, { type: 'frost', x: d.x, z: d.z, radius: 0.85, tint: P[1], hold: 14 });
+    if (i % 3 === 0) kit.decal(vfx, { type: 'frost', x: d.x, z: d.z, radius: 0.85, tint: P[1], hold: D + S.decalAfter });
     if (i % 4 === 0) { vfx.flashLight(d.x, 1.0, d.z, P[1], 16, 0.2, 6); vfx.screen.shake(0.06); }
   };
   const DROPS_LIFE = D + 0.6;
@@ -716,9 +751,9 @@ export function zone(vfx, e, P, ctx) {
       const stretch = 1.45 - 0.45 * fc;
       E.set(Math.PI, d.yaw, 0.06);
       Q.setFromEuler(E);
-      S.set(1.0 * k, Math.max(0.001, d.len * stretch * k), 1.0 * k);
+      SC.set(1.0 * k, Math.max(0.001, d.len * stretch * k), 1.0 * k);
       Pp.set(d.x, H * (1 - fc * fc) + d.len * stretch, d.z);
-      M.compose(Pp, Q, S);
+      M.compose(Pp, Q, SC);
       o.setMatrixAt(i, M);
       if (ft >= 1) { seen++; if (!d.hit) { d.hit = true; hitFx(i, d); } }
     }
@@ -728,15 +763,15 @@ export function zone(vfx, e, P, ctx) {
 
   /* Наросты: рождаются ударом, лопаются в конце зоны. */
   field(vfx, P, items, {
-    key: 'rain', life: D + 0.9, shatterAt: D + 0.02, sink: 0.7, growEnd: D, rng,
+    key: 'rain', life: D + S.sink + 0.2, shatterAt: D + 0.02, sink: S.sink, growEnd: D, rng,
     shardN: kit.countFor(80, area, REF, 400), mistN: kit.countFor(20, area, REF, 100),
-    hooks: [{ at: D, fn: () => kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: R * 1.05, tint: P[1], hold: 20 }) }],
+    hooks: [{ at: D, fn: () => kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: R * 1.05, tint: P[1], hold: D + S.decalAfter }) }],
   });
 
   /* Столб света. */
   const column = new THREE.Mesh(geo().column, columnMat(P));
-  column.scale.set(R * 0.96, 9.5, R * 0.96);
-  column.position.set(e.x, 4.75, e.z);
+  column.scale.set(R * S.columnR, H + 0.5, R * S.columnR);
+  column.position.set(e.x, (H + 0.5) / 2, e.z);
   column.renderOrder = 1;
   column.frustumCulled = false;
   const core = new THREE.Mesh(geo().column, column.material);
@@ -753,7 +788,7 @@ export function zone(vfx, e, P, ctx) {
   const disc = new THREE.Mesh(geo().disc, zoneDiscMat(P));
   const du = disc.material.userData.u;
   du.span.value = R; du.seed.value = Math.floor(rng() * 9); du.reveal.value = 0;
-  disc.scale.set(R * 1.08, 1, R * 1.08);
+  disc.scale.set(R * S.discR, 1, R * S.discR);
   disc.position.set(e.x, 0.034, e.z);
   disc.renderOrder = 3;
   disc.frustumCulled = false;
@@ -770,7 +805,7 @@ export function zone(vfx, e, P, ctx) {
   for (let k = 0; k < nb; k++) {
     const at = vfx.now + k * 0.35;
     frostMist(vfx, P, { x: e.x, y: 0.25, z: e.z, n: per, radius: R * 0.9, at, r: rng, size: 1.0, rise: 0.5 });
-    motes(vfx, P, { x: e.x, y: 9.0, z: e.z, n: 3, radius: R * 0.7, at, r: rng, rise: -0.6, life: 0.7, size: 0.16 });
+    motes(vfx, P, { x: e.x, y: H, z: e.z, n: 3, radius: R * 0.7, at, r: rng, rise: -0.6, life: 0.7, size: 0.16 });
   }
   vfx.flashLight(e.x, 3.5, e.z, P[1], 10, 0.5, R * 3);
   return true;
@@ -808,30 +843,34 @@ function crackDome(vfx, st, x, z, P) {
   st.u.crack.value = Math.min(1, st.u.crack.value + 0.36);
   st.hits++;
   const px = st.x + dir.x * st.R, py = st.CY + dir.y * st.R, pz = st.z + dir.z * st.R;
-  shards(vfx, P, { x: px, y: py - 0.2, z: pz, n: 24, radius: 0.3, speed: 3.5, up: 2.5, life: 0.8, size: 0.17 });
+  shards(vfx, P, { x: px, y: py - 0.2, z: pz, n: 24, radius: 0.3, speed: 3.5, up: 2.5, life: 0.8, size: 0.17, r: st.rng });
   kit.burst(vfx, { x: px, y: py, z: pz, radius: 0.3, endRadius: 0.9, life: 0.35, mode: 'frost', colours: P, intensity: 0.9, displace: 0.4 });
   vfx.flashLight(px, py, pz, P[0], 18, 0.25, 7);
   vfx.screen.shake(0.1);
-  if (st.hits >= 3) { st.ended = true; st.shattered = true; st.endAt = vfx.now + 0.12; }
+  if (st.hits >= st.toBreak) { st.ended = true; st.shattered = true; st.endAt = vfx.now + 0.12; }
   return true;
 }
 
 function domeShatterFx(vfx, st, P) {
-  const { x, z, R, CY } = st;
+  /* Случай — от сида купола, а не от `Math.random`: повтор боя обязан дать
+     тот же разлёт осколков (A2). */
+  const { x, z, R, CY, rng } = st;
   vfx.add.emit(96, (i, s) => {
-    const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2;
+    const u = rng() * 2 - 1, a = rng() * Math.PI * 2;
     const rxz = Math.sqrt(1 - u * u);
     const d = [rxz * Math.cos(a), u, rxz * Math.sin(a)];
     s.pos(x + d[0] * R, Math.max(0.15, CY + d[1] * R), z + d[2] * R);
     s.vel(d[0] * 4.4, Math.abs(d[1]) * 2.6 + 0.8, d[2] * 4.4);
     s.gravity(0, -11, 0);
     s.color(i % 3 === 0 ? P[0] : P[1], P[2]);
-    s.life(vfx.now, rnd(0.6, 1.2), rnd(0.12, 0.3), kit.SHAPE.shard);
-    s.ext(rnd(-9, 9), 0.7, 0, 0.8);
+    s.life(vfx.now, rnd(0.6, 1.2, rng), rnd(0.12, 0.3, rng), kit.SHAPE.shard);
+    s.ext(rnd(-9, 9, rng), 0.7, 0, 0.8);
   });
   kit.burst(vfx, { x, y: CY, z, radius: R * 0.45, endRadius: R * 1.35, life: 0.5, mode: 'frost', colours: P, intensity: 0.9, displace: 0.5 });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 22, radius: R * 0.9, size: 1.2, rise: 0.8 });
-  kit.decal(vfx, { type: 'frost', x, z, radius: st.RR * 1.15, tint: P[1], hold: 18 });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 22, radius: R * 0.9, size: 1.2, rise: 0.8, r: rng });
+  /* Иней после шаттера — ОСТАТОК: он переживает купол, и стойкость его
+     собственная (`st.hold`), а не общая простыня в 18 с на все касты. */
+  kit.decal(vfx, { type: 'frost', x, z, radius: st.RR * 1.15, tint: P[1], hold: st.hold });
   kit.impactKit(vfx, { x, z, y: CY, radius: R * 0.8, colours: P, strength: 0.8 });
 }
 
@@ -839,12 +878,23 @@ export function self(vfx, e, P, ctx) {
   const who = e.who || 'blue';
   const old = DOMES.get(who);
   if (old) { old.alive = false; old.group.visible = false; }
+  const rng = mulberry(seedOf(e) ^ 0x5e1);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    radius: ctx && ctx.radius ? ctx.radius * 1.35 + 0.8 : 2.4, /* радиус купола, м */
+    duration: 6.0,      /* сколько купол стоит до таяния, с */
+    melt: 0.7,          /* таяние, с */
+    grow: 0.4,          /* упругий рост купола, с */
+    hits: 3,            /* ударов до шаттера */
+    decalHold: 18,      /* стойкость инея после шаттера, с */
+  });
 
-  const R = ctx && ctx.radius ? ctx.radius * 1.35 + 0.8 : 2.4;
+  const R = S.radius;
   const CY = R * 0.42;
   /* Кольцо контакта — сечение сферы полом, а не декоративная константа. */
   const RR = Math.sqrt(Math.max(0.2, R * R - CY * CY));
-  const LIFE = 6.0, MELT = 0.7;
+  const LIFE = S.duration, MELT = S.melt, GROW = Math.max(0.001, S.grow);
 
   const mat = domeMat(P);
   const u = mat.userData.u;
@@ -859,13 +909,14 @@ export function self(vfx, e, P, ctx) {
   group.add(dome, ring);
 
   const st = {
-    who, group, R, CY, RR, u, hits: 0, born: vfx.now, x: e.x, z: e.z,
+    who, group, R, CY, RR, u, rng, hits: 0, toBreak: S.hits, hold: S.decalHold,
+    born: vfx.now, x: e.x, z: e.z,
     ended: false, endAt: 0, shattered: false, burstDone: false, hitAt: -9, alive: true, nextMist: vfx.now,
   };
   DOMES.set(who, st);
 
   kit.burst(vfx, { x: e.x, y: CY, z: e.z, radius: R * 0.3, endRadius: R * 0.95, life: 0.45, mode: 'frost', colours: P, intensity: 0.8, displace: 0.35 });
-  frostMist(vfx, P, { x: e.x, y: 0.2, z: e.z, n: 16, radius: RR, size: 1.0, rise: 0.6 });
+  frostMist(vfx, P, { x: e.x, y: 0.2, z: e.z, n: 16, radius: RR, size: 1.0, rise: 0.6, r: rng });
   vfx.flashLight(e.x, CY, e.z, P[1], 14, 0.4, R * 3);
 
   vfx.spawnMesh(group, LIFE + MELT + 0.2, () => {
@@ -873,7 +924,7 @@ export function self(vfx, e, P, ctx) {
     const p = ctx && ctx.bodyPos ? ctx.bodyPos(who) : null;
     st.x = p ? p.x : e.x; st.z = p ? p.z : e.z;
     if (!st.alive) return;
-    const born = clamp01(t / 0.4);
+    const born = clamp01(t / GROW);
     const grow = born <= 0 ? 0 : easeOutBack(born);
     if (!st.ended && t >= LIFE) { st.ended = true; st.endAt = now; }
     const melt = st.ended && !st.shattered ? clamp01(1 - (now - st.endAt) / MELT) : 1;
@@ -891,14 +942,14 @@ export function self(vfx, e, P, ctx) {
     /* Морозная взвесь сползает по куполу, пока он жив. */
     if (!st.ended && now >= st.nextMist) {
       st.nextMist = now + 0.22;
-      const a = Math.random() * Math.PI * 2;
+      const a = rng() * Math.PI * 2;
       vfx.glow.emit(2, (i, s) => {
         const b = a + i * 2.1;
-        s.pos(st.x + Math.cos(b) * RR * 0.96, 0.3 + Math.random() * 0.9, st.z + Math.sin(b) * RR * 0.96);
+        s.pos(st.x + Math.cos(b) * RR * 0.96, 0.3 + rng() * 0.9, st.z + Math.sin(b) * RR * 0.96);
         s.vel(-Math.sin(b) * 1.2, 0.2, Math.cos(b) * 1.2);
         s.gravity(0, -0.3, 0);
         s.color(P[0], P[1]);
-        s.life(now, rnd(0.7, 1.2), rnd(0.06, 0.12), kit.SHAPE.dot);
+        s.life(now, rnd(0.7, 1.2, rng), rnd(0.06, 0.12, rng), kit.SHAPE.dot);
         s.ext(0, 0.4, 0, 1);
       });
       vfx.body.emit(1, (i, s) => {
@@ -906,8 +957,8 @@ export function self(vfx, e, P, ctx) {
         s.vel(Math.cos(a) * 0.5, 0.35, Math.sin(a) * 0.5);
         s.gravity(0, -0.1, 0);
         s.color(P[1], MIST);
-        s.life(now, rnd(1.2, 1.8), rnd(0.7, 1.1), kit.SHAPE.smoke);
-        s.ext(rnd(-0.5, 0.5), 1.8, 0, 0.1);
+        s.life(now, rnd(1.2, 1.8, rng), rnd(0.7, 1.1, rng), kit.SHAPE.smoke);
+        s.ext(rnd(-0.5, 0.5, rng), 1.8, 0, 0.1);
       });
     }
     if (st.ended && now - st.endAt > (st.shattered ? 0.25 : MELT)) {
@@ -935,8 +986,20 @@ export function beam(vfx, e, P, ctx) {
   const dx = (e.x1 - e.x0) / len, dz = (e.z1 - e.z0) / len;
   const sx = dz, sz = -dx;
   const REF = kit.REF_AREA.beam;
-  const TRAVEL = clamp(len / 30, 0.14, 0.6);
-  const SHATTER = TRAVEL + 1.5, SINK = 0.7, LIFE = SHATTER + SINK + 0.1;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    frontSpeed: 30,     /* фронт разлома бежит к цели, м/с */
+    stand: 1.5,         /* полоса стоит после фронта до шаттера, с */
+    sink: 0.7,          /* оседание кристаллов в пол, с */
+    y: 1.15,            /* высота ствола копья над полом, м */
+    coreR: 0.675,       /* ядро копья, доли радиуса луча */
+    sheathR: 1.75,      /* аддитивная оболочка, доли радиуса луча */
+    hitRadius: 2.0,     /* ударный набор у цели, м */
+    decalHold: 20,      /* стойкость инея у цели, с */
+  });
+  const TRAVEL = clamp(len / S.frontSpeed, 0.14, 0.6);
+  const SHATTER = TRAVEL + S.stand, SINK = S.sink, LIFE = SHATTER + SINK + 0.1;
 
   const items = [];
   const n = kit.countFor(120, fp.area, REF, 400);
@@ -965,14 +1028,20 @@ export function beam(vfx, e, P, ctx) {
     }
   }
 
-  /* Ядро копья. */
-  const g = new THREE.CylinderGeometry(0.27, 0.27, len, 12, 1, true);
+  /* Ядро копья. Толщина — от РАДИУСА ЛУЧА следа (`kit.footprint`), а не два
+     независимых числа: копьё обязано быть той же толщины, что хитбокс, иначе
+     тонкий луч рисуется бревном (и наоборот). */
+  const coreR = fp.radius * S.coreR;
+  const g = new THREE.CylinderGeometry(coreR, coreR, len, 12, 1, true);
   g.translate(0, len / 2, 0);
   const core = new THREE.Mesh(g, lanceMat(P));
   core.material.userData.u.span.value = len;
-  core.position.set(e.x0, 1.15, e.z0);
+  core.position.set(e.x0, S.y, e.z0);
   core.quaternion.setFromUnitVectors(Y_AXIS, new THREE.Vector3(dx, 0, dz));
-  const sheathG = new THREE.CylinderGeometry(0.7, 0.7, len, 10, 1, true);
+  /* Видимую толщину копья даёт именно оболочка — ей следовать за радиусом
+     важнее всего. */
+  const sheathR = fp.radius * S.sheathR;
+  const sheathG = new THREE.CylinderGeometry(sheathR, sheathR, len, 10, 1, true);
   sheathG.translate(0, len / 2, 0);
   const sheath = new THREE.Mesh(sheathG, sheathMat(P, 'beam', 0.35));
   core.add(sheath);
@@ -1008,8 +1077,8 @@ export function beam(vfx, e, P, ctx) {
         kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.8, endRadius: 2.2, life: 0.6, mode: 'frost', colours: P, intensity: 1.1 });
         shards(vfx, P, { x: e.x1, y: 0.6, z: e.z1, n: 48, radius: 0.6, speed: 6, up: 6, life: 0.9, size: 0.22, r: rng });
         frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 18, radius: 1.6, r: rng, size: 1.5 });
-        kit.decal(vfx, { type: 'frost', x: e.x1, z: e.z1, radius: 1.8, tint: P[1], hold: 20 });
-        kit.impactKit(vfx, { x: e.x1, z: e.z1, radius: 2.0, colours: P, strength: 1.2 });
+        kit.decal(vfx, { type: 'frost', x: e.x1, z: e.z1, radius: S.hitRadius * 0.9, tint: P[1], hold: S.decalHold });
+        kit.impactKit(vfx, { x: e.x1, z: e.z1, radius: S.hitRadius, colours: P, strength: 1.2 });
       } else {
         frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 8, radius: 0.8, r: rng });
         vfx.flashLight(e.x1, 1.0, e.z1, P[1], 10, 0.2, 6);
@@ -1031,16 +1100,33 @@ export function beam(vfx, e, P, ctx) {
  * прибытия — взрыв, куст кристаллов, осколки, след, ударный набор.
  */
 function projectile(vfx, e, P, ctx, arc) {
-  const range = e.range || 10, speed = e.speed || 20;
-  const travel = clamp(range / speed, 0.15, 2.5);
+  const fp = kit.footprint(e, ctx);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    range: e.range || 10,   /* дальность полёта, м */
+    speed: e.speed || 20,   /* скорость снаряда, м/с */
+    minTravel: 0.15,        /* короче не читается броском, с */
+    apex: 0.35,             /* подъём параболы навеса, доли дальности */
+    y: arc ? 1.5 : 1.2,     /* высота вылета, м */
+    spin: 14,               /* вращение осколка, рад/с */
+    arrival: 1,             /* общий масштаб прибытия, доли следа */
+    decalHold: 20,          /* стойкость инея у цели, с */
+  });
+  const range = S.range, speed = S.speed;
+  /* Потолка нет. `deliver.js` даёт снаряду жизнь `range/speed` без всякого
+     потолка, и с прежними 2.5 с медленный навес РИСОВАЛСЯ прилетевшим
+     раньше, чем прилетал в симе. Остаётся только пол: короче 0.15 с бросок
+     не читается вовсе. */
+  const travel = Math.max(S.minTravel, range / speed);
   const rng = mulberry(seedOf(e) ^ (arc ? 0x10b : 0xb01));
   const dx = Math.sin(e.h || 0), dz = Math.cos(e.h || 0);
   const x0 = e.x + dx * 0.9, z0 = e.z + dz * 0.9;
-  const y0 = arc ? 1.5 : 1.2, apex = range * 0.35;
+  const y0 = S.y, apex = range * S.apex;
   const x1 = e.x + dx * range, z1 = e.z + dz * range;
   const posAt = (f) => [
     x0 + dx * (range - 0.9) * f,
-    arc ? y0 * (1 - f) + 0.35 * f + apex * 4 * f * (1 - f) : 1.2,
+    arc ? y0 * (1 - f) + 0.35 * f + apex * 4 * f * (1 - f) : y0,
     z0 + dz * (range - 0.9) * f,
   ];
 
@@ -1075,13 +1161,13 @@ function projectile(vfx, e, P, ctx, arc) {
     const [qx, qy, qz] = posAt(Math.min(1, f + 0.02));
     TAN.set(qx - px, qy - py, qz - pz);
     if (TAN.lengthSq() > 1e-6) o.quaternion.setFromUnitVectors(Y_AXIS, TAN.normalize());
-    spin.rotation.y = t * 14;
+    spin.rotation.y = t * S.spin;
     if (light && !landed) { light.position.set(px, py, pz); light.userData.born = vfx.now; }
     if (!landed && t >= travel) {
       landed = true;
       o.visible = false;
       if (light) light.userData.born = vfx.now - 0.05;
-      landing(vfx, e, P, x1, z1, arc ? 0.35 : 1.0, rng);
+      landing(vfx, P, { x: x1, z: z1, y: arc ? 0.35 : 1.0, rng, R: fp.radius * S.arrival, hold: S.decalHold });
     }
   });
 
@@ -1111,13 +1197,19 @@ function projectile(vfx, e, P, ctx, arc) {
   return true;
 }
 
-/** Прибытие снаряда: взрыв, куст кристаллов, осколки, след, ударный набор. */
-function landing(vfx, e, P, x, z, y, rng) {
-  kit.burst(vfx, { x, y: Math.max(0.8, y), z, radius: 0.8, endRadius: 2.1, life: 0.6, mode: 'frost', colours: P, squash: 0.85, intensity: 1.1 });
-  shards(vfx, P, { x, y: 0.4, z, n: 44, radius: 0.6, speed: 6, up: 6, life: 0.9, size: 0.22, r: rng });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 16, radius: 1.5, r: rng, size: 1.4 });
-  kit.decal(vfx, { type: 'frost', x, z, radius: 1.7, tint: P[1], hold: 20 });
-  kit.impactKit(vfx, { x, z, radius: 2.0, colours: P, strength: 1.15 });
+/**
+ * Прибытие снаряда: взрыв, куст кристаллов, осколки, след, ударный набор.
+ *
+ * ВСЕ ПЯТЬ РАЗМЕРОВ — от одного `R` (радиуса следа снаряда, `kit.footprint`),
+ * а не пять независимых чисел: иначе взрыв, осколки, пар и иней спорят о том,
+ * какого размера был удар. Так же считает `fire.js`.
+ */
+function landing(vfx, P, { x, z, y, rng, R, hold }) {
+  kit.burst(vfx, { x, y: Math.max(0.8, y), z, radius: R * 0.57, endRadius: R * 1.5, life: 0.6, mode: 'frost', colours: P, squash: 0.85, intensity: 1.1 });
+  shards(vfx, P, { x, y: 0.4, z, n: 44, radius: R * 0.43, speed: 6, up: 6, life: 0.9, size: 0.22, r: rng });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 16, radius: R * 1.07, r: rng, size: 1.4 });
+  kit.decal(vfx, { type: 'frost', x, z, radius: R * 1.21, tint: P[1], hold });
+  kit.impactKit(vfx, { x, z, radius: R * 1.43, colours: P, strength: 1.15 });
   const items = [];
   for (let i = 0; i < 11; i++) {
     const a = rng() * Math.PI * 2, d = 0.25 + Math.sqrt(rng()) * 1.15;
@@ -1143,21 +1235,31 @@ export function lob(vfx, e, P, ctx) { return projectile(vfx, e, P, ctx, true); }
  */
 export function impact(vfx, e, P, ctx) {
   const x = e.x, z = e.z;
+  const rng = mulberry(seedOf(e) ^ 0x11c);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    burstR: 0.55,       /* ядро вспышки попадания, м */
+    burstEnd: 1.4,      /* куда вспышка расходится, м */
+    hitRadius: 1.3,     /* ударный набор, м */
+    decalR: 1.05,       /* иней на полу, м */
+    decalHold: 16,      /* стойкость инея, с */
+  });
   const selfOnly = Array.isArray(e.effects) && e.effects.length > 0 && e.effects.every((id) => SELF_ATOMS.has(id));
   const dome = selfOnly ? null : (domeNear(x, z, e.who) || (e.blocked ? domeNear(x, z, null) : null));
   if (dome) crackDome(vfx, dome, x, z, P);
   if (e.blocked) {
     if (!dome) {
       kit.burst(vfx, { x, y: 1.05, z, radius: 0.3, endRadius: 0.8, life: 0.3, mode: 'frost', colours: P, intensity: 0.8 });
-      shards(vfx, P, { x, y: 0.9, z, n: 10, speed: 3, up: 3, life: 0.6, size: 0.14 });
+      shards(vfx, P, { x, y: 0.9, z, n: 10, speed: 3, up: 3, life: 0.6, size: 0.14, r: rng });
     }
     return true;
   }
-  kit.burst(vfx, { x, y: 1.05, z, radius: 0.55, endRadius: 1.4, life: 0.5, mode: 'frost', colours: P });
-  shards(vfx, P, { x, y: 0.9, z, n: 24, speed: 4.5, up: 4, life: 0.75, size: 0.17 });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 8, radius: 0.8, life: 1.3, size: 0.9, rise: 0.5 });
-  kit.decal(vfx, { type: 'frost', x, z, radius: 1.05, tint: P[1], hold: 16 });
-  kit.impactKit(vfx, { x, z, radius: 1.3, colours: P, strength: 0.8 });
+  kit.burst(vfx, { x, y: 1.05, z, radius: S.burstR, endRadius: S.burstEnd, life: 0.5, mode: 'frost', colours: P });
+  shards(vfx, P, { x, y: 0.9, z, n: 24, speed: 4.5, up: 4, life: 0.75, size: 0.17, r: rng });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 8, radius: 0.8, life: 1.3, size: 0.9, rise: 0.5, r: rng });
+  kit.decal(vfx, { type: 'frost', x, z, radius: S.decalR, tint: P[1], hold: S.decalHold });
+  kit.impactKit(vfx, { x, z, radius: S.hitRadius, colours: P, strength: 0.8 });
   return true;
 }
 
@@ -1169,20 +1271,29 @@ export function impact(vfx, e, P, ctx) {
  * Выброс при выходе рисуют cone/beam/bolt/lob сами (`kit.muzzle`).
  */
 export function charge(vfx, e, P, ctx) {
-  const secs = Math.max(0.2, e.windup || 0.5);
   const who = e.who;
-  kit.charge(vfx, { who, x: e.x, z: e.z, y: 1.3, secs, colours: P, mode: 'frost', ctx, n: 36, radius: 2.0 });
+  const rng = mulberry(seedOf(e) ^ 0xc4a);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    windup: 0.5,        /* замах, с */
+    y: 1.3,             /* высота ядра набора над полом, м */
+    radius: 2.0,        /* откуда сходится морозный пар, м */
+    ring: 1.4,          /* насколько разрастается кольцо инея, доли */
+  });
+  const secs = Math.max(0.2, S.windup || 0.5);
+  kit.charge(vfx, { who, x: e.x, z: e.z, y: S.y, secs, colours: P, mode: 'frost', ctx, n: 36, radius: S.radius });
   const born = vfx.now;
   vfx.body.emit(28, (i, s) => {
-    const a = Math.random() * Math.PI * 2, r = rnd(1.6, 2.6);
-    const ox = Math.sin(a) * r, oz = Math.cos(a) * r, oy = rnd(-0.6, 0.9);
-    const life = rnd(secs * 0.55, secs * 0.95);
-    s.pos(e.x + ox, 1.3 + oy, e.z + oz);
+    const a = rng() * Math.PI * 2, r = rnd(S.radius * 0.8, S.radius * 1.3, rng);
+    const ox = Math.sin(a) * r, oz = Math.cos(a) * r, oy = rnd(-0.6, 0.9, rng);
+    const life = rnd(secs * 0.55, secs * 0.95, rng);
+    s.pos(e.x + ox, S.y + oy, e.z + oz);
     s.vel(-ox / life, -oy / life, -oz / life);
     s.gravity(0, 0, 0);
     s.color(P[1], MIST);
-    s.life(born + Math.random() * secs * 0.3, life, rnd(0.35, 0.7), kit.SHAPE.smoke);
-    s.ext(rnd(-1, 1), 0.5, 0, 0.1);
+    s.life(born + rng() * secs * 0.3, life, rnd(0.35, 0.7, rng), kit.SHAPE.smoke);
+    s.ext(rnd(-1, 1, rng), 0.5, 0, 0.1);
   });
   const ring = new THREE.Mesh(geo().ring, rimeRingMat(P));
   ring.position.set(e.x, 0.035, e.z);
@@ -1191,7 +1302,7 @@ export function charge(vfx, e, P, ctx) {
   vfx.spawnMesh(ring, secs, (o, u) => {
     const p = ctx && ctx.bodyPos ? ctx.bodyPos(who) : null;
     if (p) { o.position.x = p.x; o.position.z = p.z; }
-    o.scale.setScalar(0.6 + u * 1.4);
+    o.scale.setScalar(0.6 + u * S.ring);
     setFade(o, Math.min(1, u * 4) * (1 - u * u));
   });
   return true;
@@ -1213,46 +1324,55 @@ export function charge(vfx, e, P, ctx) {
  * прыжка и коллизионная плита стены рисуются всегда, они не эффект.
  */
 
-/** Скорость рывка: 22 м/с читается броском (то же число, что у молнии). */
-const DASH_T = (len) => clamp(len / 22, 0.18, 0.4);
-
 export function dash(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const S = [e.x0, e.z0], E = [e.x1, e.z1];
-  const len = Math.hypot(E[0] - S[0], E[1] - S[1]);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    speed: 22,          /* скорость рывка: 22 м/с читается броском, м/с */
+    stand: 0.5,         /* лента стоит после броска до шаттера, с */
+    sink: 0.6,          /* оседание ленты в пол, с */
+    lat: 1.3,           /* разброс кристаллов поперёк трассы, м */
+    marks: 4,           /* сколько следов ложится вдоль трассы */
+    decalAfter: 8,      /* насколько иней переживает рывок, с */
+  });
+  const A = [e.x0, e.z0], B = [e.x1, e.z1];
+  const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
   if (len < 0.5) return false;
-  const T = DASH_T(len);
-  const ux = (E[0] - S[0]) / len, uz = (E[1] - S[1]) / len;
+  const T = clamp(len / S.speed, 0.18, 0.4);
+  const ux = (B[0] - A[0]) / len, uz = (B[1] - A[1]) / len;
   const sx = -uz, sz = ux;
 
   /* ИНЕЕВЫЙ СЛЕД: кристаллы поднимаются вдоль ПРОЙДЕННОЙ части — `born` от
-     доли пути, а не все сразу. Это и есть «origin S» принципа P1: лента
-     нарастает от начала, а не летит следом за телом. */
+     доли пути, а не все сразу. Это и есть неподвижное начало принципа P1
+     (точка `A`): лента нарастает от начала, а не летит следом за телом. */
   const n = clamp(Math.round(len * 5), 10, 40);
   const items = [];
   for (let i = 0; i < n; i++) {
     const f = (i + rng() * 0.6) / n;
-    const lat = (rng() - 0.5) * 1.3;
+    const lat = (rng() - 0.5) * S.lat;
     items.push({
-      x: S[0] + ux * len * f + sx * lat, z: S[1] + uz * len * f + sz * lat,
+      x: A[0] + ux * len * f + sx * lat, z: A[1] + uz * len * f + sz * lat,
       yaw: rng() * Math.PI * 2, lx: (rng() - 0.5) * 0.5, lz: (rng() - 0.5) * 0.5,
       h: 0.35 + rng() * 0.5, w: 0.1 + rng() * 0.1, born: f * T, v: i % 3,
     });
   }
-  field(vfx, P, items, { key: 'dash', life: T + 1.1, shatterAt: T + 0.5, sink: 0.6, rng, shardN: 12, mistN: 8 });
+  field(vfx, P, items, { key: 'dash', life: T + S.stand + S.sink, shatterAt: T + S.stand, sink: S.sink, rng, shardN: 12, mistN: 8 });
   /* Пар и след — ПОЛОСОЙ вдоль трассы, а не одним круглым облаком в
      середине: судья не отличил рывок от блинка — «то же пятно льда пиксель
      в пиксель». Круглое облако радиусом в полдлины и есть то пятно. */
-  for (let i = 0; i < 4; i++) {
-    const f = (i + 0.5) / 4;
-    frostMist(vfx, P, { x: S[0] + ux * len * f, y: 0.4, z: S[1] + uz * len * f, n: 6, radius: 0.7, at: vfx.now + f * T, r: rng });
-    kit.decal(vfx, { type: 'frost', x: S[0] + ux * len * f, z: S[1] + uz * len * f, radius: len * 0.16 + 0.4, hold: 20, tint: P[2], seed: ((seed + i) % 9) + 1, at: f * T });
+  for (let i = 0; i < S.marks; i++) {
+    const f = (i + 0.5) / S.marks;
+    frostMist(vfx, P, { x: A[0] + ux * len * f, y: 0.4, z: A[1] + uz * len * f, n: 6, radius: 0.7, at: vfx.now + f * T, r: rng });
+    /* Иней рывка — ОСТАТОК, но привязанный к самому рывку: держится его
+       бросок плюс `decalAfter`, а не общую простыню в 20 с. */
+    kit.decal(vfx, { type: 'frost', x: A[0] + ux * len * f, z: A[1] + uz * len * f, radius: len * 0.16 + 0.4, hold: T + S.decalAfter, tint: P[2], seed: ((seed + i) % 9) + 1, at: f * T });
   }
   if (e.hit) {
-    shards(vfx, P, { x: E[0], y: 0.9, z: E[1], n: 22, radius: 0.5, speed: 6, up: 6, life: 0.9, at: vfx.now + T, r: rng });
-    frostMist(vfx, P, { x: E[0], y: 0.9, z: E[1], n: 12, radius: 1.2, at: vfx.now + T, r: rng });
-    vfx.flashLight(E[0], 1.0, E[1], P[1], 14, 0.3, 6);
+    shards(vfx, P, { x: B[0], y: 0.9, z: B[1], n: 22, radius: 0.5, speed: 6, up: 6, life: 0.9, at: vfx.now + T, r: rng });
+    frostMist(vfx, P, { x: B[0], y: 0.9, z: B[1], n: 12, radius: 1.2, at: vfx.now + T, r: rng });
+    vfx.flashLight(B[0], 1.0, B[1], P[1], 14, 0.3, 6);
   }
   return true;
 }
@@ -1260,14 +1380,23 @@ export function dash(vfx, e, P, ctx) {
 export function blink(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  for (const [x, z, at] of [[e.x0, e.z0, 0], [e.x1, e.z1, 0.08]]) {
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    gap: 0.08,          /* насколько точка прибытия отстаёт от точки ухода, с */
+    burstR: 0.5,        /* ядро выброса, м */
+    burstEnd: 1.4,      /* куда выброс расходится, м */
+    decalR: 0.8,        /* иней в точке, м */
+    decalHold: 20,      /* стойкость инея, с */
+  });
+  for (const [x, z, at] of [[e.x0, e.z0, 0], [e.x1, e.z1, S.gap]]) {
     /* Морозный выброс, осколки и иней — БЕЗ статуи: у модуля нет сетки тела,
        и лепить её из кристаллов значило бы поставить рядом с бойцом чужой
        силуэт. */
-    kit.burst(vfx, { x, y: 1.0, z, radius: 0.5, endRadius: 1.4, life: 0.4, mode: 'frost', colours: [P[0], P[1], P[2]], intensity: 1.0, at });
+    kit.burst(vfx, { x, y: 1.0, z, radius: S.burstR, endRadius: S.burstEnd, life: 0.4, mode: 'frost', colours: [P[0], P[1], P[2]], intensity: 1.0, at });
     kit.debris(vfx, { x, y: 0.8, z, n: 18, radius: 0.6, colour: P[1], glowColour: P[0], speed: 6, up: 6, life: 1.0, size: 0.2, at: vfx.now + at, r: rng });
     frostMist(vfx, P, { x, y: 0.7, z, n: 14, radius: 1.0, at: vfx.now + at, r: rng });
-    kit.decal(vfx, { type: 'frost', x, z, radius: 0.8, hold: 20, tint: P[2], seed: (seed % 9) + 1, at });
+    kit.decal(vfx, { type: 'frost', x, z, radius: S.decalR, hold: S.decalHold, tint: P[2], seed: (seed % 9) + 1, at });
   }
   vfx.flashLight(e.x1, 1.0, e.z1, P[0], 16, 0.3, 6);
   return true;
@@ -1276,10 +1405,25 @@ export function blink(vfx, e, P, ctx) {
 export function jump(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const dur = Math.max(0.2, e.duration || 0.55);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 0.55,     /* сколько тело в воздухе, с */
+    height: 2.2,        /* высота прыжка, м (её несёт запись сима) */
+    wave: 2.6,          /* морозная волна посадки при высоте 2.2, м */
+    crown: 1.3,         /* венец кристаллов при высоте 2.2, м */
+    takeoffR: 1.2,      /* иней на отрыве, м */
+    landR: 1.6,         /* иней на посадке при высоте 2.2, м */
+    decalAfter: 6,      /* насколько иней переживает прыжок, с */
+  });
+  const dur = Math.max(0.2, S.duration || 0.55);
+  /* Посадка растёт ВМЕСТЕ с высотой прыжка: чем выше падал, тем шире бьёт.
+     2.2 — прыжок реестра по умолчанию, поэтому запись со своей высотой не
+     трогает картинку, а запись без неё даёт прежние 2.6 и 1.3. */
+  const hk = S.height / 2.2;
   /* Отрыв — иневое кольцо; в воздухе НИЧЕГО; посадка — морозная волна и
      венец кристаллов. */
-  kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: 1.2, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
+  kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: S.takeoffR, hold: dur + S.decalAfter, tint: P[2], seed: (seed % 9) + 1 });
   frostMist(vfx, P, { x: e.x, y: 0.3, z: e.z, n: 14, radius: 1.0, r: rng });
   /* КОЛЬЦО ИНЕЯ на отрыве: судья увидел «крошечное бесцветное серое пятно
      без всякой морозной приметы» — отрыв обязан быть морозным, иначе он
@@ -1297,12 +1441,12 @@ export function jump(vfx, e, P, ctx) {
     o.userData.done = true;
     const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
     const lx = p ? p.x : e.x, lz = p ? p.z : e.z;
-    kit.shockwave(vfx, { x: lx, z: lz, radius: 2.6, r0: 0.3, life: 0.5, colour: P[1], intensity: 1.1 });
+    kit.shockwave(vfx, { x: lx, z: lz, radius: Math.max(1.5, S.wave * hk), r0: 0.3, life: 0.5, colour: P[1], intensity: 1.1 });
     const items = [];
     for (let i = 0; i < 12; i++) {
-      /* Ровно по кругу (±0.12 рад, радиус 1.3±0.2), а не вразброс: венец
+      /* Ровно по кругу (±0.12 рад, радиус `crown`±0.2), а не вразброс: венец
          читается кольцом только если он кольцо. */
-      const a = (i / 12) * Math.PI * 2 + (rng() - 0.5) * 0.24, d = 1.3 + (rng() - 0.5) * 0.4;
+      const a = (i / 12) * Math.PI * 2 + (rng() - 0.5) * 0.24, d = S.crown * hk + (rng() - 0.5) * 0.4;
       items.push({
         x: lx + Math.sin(a) * d, z: lz + Math.cos(a) * d, yaw: a,
         lx: Math.sin(a) * 0.4, lz: Math.cos(a) * 0.4,
@@ -1310,7 +1454,7 @@ export function jump(vfx, e, P, ctx) {
       });
     }
     field(vfx, P, items, { key: 'jump', life: 1.1, shatterAt: 0.55, sink: 0.55, rng, shardN: 16, mistN: 10 });
-    kit.decal(vfx, { type: 'frost', x: lx, z: lz, radius: 1.6, hold: 20, tint: P[2], seed: ((seed + 3) % 9) + 1 });
+    kit.decal(vfx, { type: 'frost', x: lx, z: lz, radius: S.landR * hk, hold: dur + S.decalAfter, tint: P[2], seed: ((seed + 3) % 9) + 1 });
     vfx.flashLight(lx, 0.8, lz, P[1], 14, 0.3, 7);
     vfx.screen.shake(0.2);
   });
@@ -1320,7 +1464,18 @@ export function jump(vfx, e, P, ctx) {
 export function wall(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const D = Math.max(0.6, e.duration || 5);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 5,        /* сколько стена стоит, с */
+    height: 2.2,        /* высота коробки стены, м (её несёт `effects.js`) */
+    grow: 0.2,          /* проявление оболочки, с */
+    fade: 0.4,          /* уход оболочки, с */
+    pad: 0.2,           /* оболочка шире коробки, м */
+    crestPerM: 2.5,     /* сосулек гребня на метр ширины */
+    decalAfter: 6,      /* насколько иней переживает стену, с */
+  });
+  const D = Math.max(0.6, S.duration || 5);
   const W = Math.max(0.6, e.w || 4), Dd = Math.max(0.5, e.d || 1);
   /*
    * ЛЕДЯНАЯ СТЕНА — ПОЛУСФЕРА, УТОПЛЕННАЯ В ПОЛ, а не коробка. У коробки
@@ -1330,26 +1485,30 @@ export function wall(vfx, e, P, ctx) {
    */
   const dome = new THREE.Mesh(geo().dome, domeMat(P));
   dome.position.set(e.x, 0, e.z);
-  dome.scale.set(W / 2 + 0.2, 1.1, Dd / 2 + 0.2);
+  /* Третье измерение коробки берётся из записи (`height`), а не повторяется
+     здесь числом: полусфера ровно в полвысоты стены — это её оболочка. */
+  dome.scale.set(W / 2 + S.pad, S.height / 2, Dd / 2 + S.pad);
   dome.renderOrder = 7;
   dome.frustumCulled = false;
+  const gIn = Math.max(0.001, S.grow), gOut = Math.max(0.001, S.fade);
   vfx.spawnMesh(dome, D, (o, u) => {
     const t = u * D;
-    setFade(o, t < 0.2 ? t / 0.2 : (t > D - 0.4 ? Math.max(0, (D - t) / 0.4) : 1));
+    setFade(o, t < gIn ? t / gIn : (t > D - gOut ? Math.max(0, (D - t) / gOut) : 1));
   });
   /* Гребень сосулек по верхней кромке — стена ЛЕДЯНАЯ, а не стеклянная. */
-  const n = clamp(Math.round(W * 2.5), 5, 14);
+  const n = clamp(Math.round(W * S.crestPerM), 5, 14);
   const items = [];
   for (let i = 0; i < n; i++) {
     const f = (i + 0.5) / n;
     items.push({
       x: e.x + (f - 0.5) * W * 0.94, z: e.z + (rng() - 0.5) * Dd * 0.6,
       yaw: rng() * Math.PI * 2, lx: (rng() - 0.5) * 0.3, lz: (rng() - 0.5) * 0.3,
-      h: 0.9 + rng() * 0.7, w: 0.14 + rng() * 0.12, born: f * 0.12, v: i % 3,
+      h: (0.9 + rng() * 0.7) * (S.height / 2.2), w: 0.14 + rng() * 0.12, born: f * 0.12, v: i % 3,
     });
   }
-  field(vfx, P, items, { key: 'wall', life: D, shatterAt: D - 0.4, sink: 0.4, rng, shardN: 18, mistN: 10 });
-  kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: Math.max(W, Dd) * 0.6, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
+  /* Гребень лопается ровно тогда, когда уходит оболочка: две части одной стены. */
+  field(vfx, P, items, { key: 'wall', life: D, shatterAt: D - gOut, sink: 0.4, rng, shardN: 18, mistN: 10 });
+  kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: Math.max(W, Dd) * 0.6, hold: D + S.decalAfter, tint: P[2], seed: (seed % 9) + 1 });
   frostMist(vfx, P, { x: e.x, y: 0.4, z: e.z, n: 16, radius: W * 0.5, r: rng });
   return true;
 }
@@ -1359,7 +1518,15 @@ const ICE_STATUS = new Map();
 
 export function status(vfx, e, P, ctx) {
   const who = e.who || 'orange';
-  const dur = e.duration ?? 1.5;
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
+     поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    duration: 1.5,      /* сколько статус держится, с */
+    period: 0.35,       /* как часто подсыпается иней, с */
+    ring: 1.3,          /* кольцо под ногами, доли радиуса тела */
+    dots: 10,           /* точек инея за пачку */
+  });
+  const dur = S.duration;
   const key = `${who}:${e.effect}`;
   const live = ICE_STATUS.get(key);
   if (live && live.until > vfx.now) { live.until = vfx.now + dur; return true; }
@@ -1386,11 +1553,11 @@ export function status(vfx, e, P, ctx) {
     o.visible = true;
     const p = at();
     o.position.set(p.x, 0.035, p.z);
-    o.scale.setScalar(R * 1.3);
+    o.scale.setScalar(R * S.ring);
     setFade(o, 0.85);
     if (t >= next) {
-      next = t + 0.35;
-      vfx.glow.emit(10, (i, s) => {
+      next = t + S.period;
+      vfx.glow.emit(S.dots, (i, s) => {
         const a = rng() * Math.PI * 2, hh = rng();
         s.pos(p.x + Math.sin(a) * R, 0.15 + hh * H, p.z + Math.cos(a) * R);
         s.vel(0, 0.1, 0); s.gravity(0, 0, 0);

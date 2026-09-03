@@ -42,13 +42,13 @@ import { orb, restriker, arcSparks, stormBurst, heldLight, radialArcs } from './
 const SHIELDS = new Map();
 
 /** Капсула тела: радиус оболочки, полувысота, центр. */
-function shapeOf(vfx, e, ctx, who) {
+function shapeOf(vfx, e, ctx, who, S) {
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
   const p = ctx && ctx.bodyPos ? ctx.bodyPos(who) : null;
   const br = bs ? bs.r : 0.9, h = bs ? bs.h : 2.0;
   return {
-    r: br * 1.25 + 0.35,
-    ry: h * 0.62,
+    r: S.radius ?? (br * S.shellR + S.shellPad),
+    ry: h * S.shellY,
     at: () => {
       const q = ctx && ctx.bodyPos ? ctx.bodyPos(who) : p;
       return q ? [q.x, q.z] : [e.x ?? 0, e.z ?? 0];
@@ -66,13 +66,13 @@ export function shieldOf(who) {
  * Решётка на оболочке. `hold` — держать до `entry.until` (щит) или прожить
  * `LIFE` и схлопнуться (беат каста).
  */
-function lattice(vfx, e, P, ctx, who, entry) {
+function lattice(vfx, e, P, ctx, who, entry, S) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const sh = shapeOf(vfx, e, ctx, who);
+  const sh = shapeOf(vfx, e, ctx, who, S);
   const R = sh.r, RY = sh.ry;
-  const GROW = 0.25, FALL = entry ? 0.5 : 0.4;
-  const LIFE = entry ? 60 : GROW + 0.35 + FALL;
+  const GROW = S.grow, FALL = S.fall;
+  const LIFE = entry ? 60 : GROW + S.hold + FALL;
 
   /* Нитей — от размера оболочки: 14 на мелком бойце, 22 на крупном. Замер
      i1 (8–14 нитей по 5–8 звеньев на оболочке радиуса 1.5 м): узлов выходило
@@ -83,7 +83,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
      штрих толще 0.026: судья насчитал 7 замкнутых клеток при нужных 12 —
      «в основном открытые ветвления с тупиками, а не пересекающиеся штрихи».
      Длинная нить успевает пересечь чужую; перемычка замыкает клетку. */
-  const N = clampN(Math.round(10 + 8 * R), 18, 28);
+  const N = S.threads ?? clampN(Math.round(10 + 8 * R), 18, 28);
   const field = boltField(vfx, P, 1400);
   /* Вспышка от попадания: удар ставит `until` по ЧАСАМ ВЬЮВЕРА — своего
      времени решётки он не знает. */
@@ -94,7 +94,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
     const k = t < GROW ? clamp01(t / GROW) : 1;
     const fall = entry
       ? clamp01((vfx.now - entry.until) / FALL)
-      : clamp01((t - (GROW + 0.35)) / FALL);
+      : clamp01((t - (GROW + S.hold)) / FALL);
     /* Схлопывание ЧИСЛОМ НИТЕЙ, а не прозрачностью: щит рвётся, а не тает. */
     const n = Math.max(0, Math.round(N * (2 / N + (1 - 2 / N) * k) * (1 - fall)));
     const out = [];
@@ -127,7 +127,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
          щит и забраковали. Теперь отрыв 0.55 м по горизонтали на высоте
          экватора, потом спуск на 1.4–2.2 м дальше: угол 29–41°, и нить
          читается разрядом, СТЕКАЮЩИМ с оболочки. */
-      const ex = cx + Math.sin(a) * (R + 0.55), ez = cz + Math.cos(a) * (R + 0.55);
+      const ex = cx + Math.sin(a) * (R + S.ground), ez = cz + Math.cos(a) * (R + S.ground);
       const d = 1.4 + g() * 0.8;
       /* Спуск БЕЗ `floor: true` и с малым изломом (0.07). Замер круга 3:
          режим `floor` зажимает высоту в полосу над полом, и смещение
@@ -135,7 +135,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
          хотя прямая от отрыва до пола идёт под 28–40°. Ломаная теперь почти
          прямая, и угол читается тем, каким задуман. */
       out.push({ a: [px, RY, pz], b: [ex, RY * 0.97, ez], width: 0.021, bright: 0.9, jag: 0.08, minY: 0.06, phase: 600 + i, step: 0.24 });
-      const fx = cx + Math.sin(a) * (R + 0.55 + d), fz = cz + Math.cos(a) * (R + 0.55 + d);
+      const fx = cx + Math.sin(a) * (R + S.ground + d), fz = cz + Math.cos(a) * (R + S.ground + d);
       out.push({ a: [ex, RY * 0.97, ez], b: [fx, 0.06, fz], width: 0.021, bright: 0.9, jag: 0.07, branches: 1, minY: 0.05, phase: 600 + i, step: 0.34 });
       /* Треск В ТОЧКЕ КАСАНИЯ: судья не нашёл у концов заземления ни одного
          сгустка меток — крошка была рассыпана вокруг щита вообще. */
@@ -171,7 +171,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
      «бледной бело-голубой дымкой» (средняя яркость коробки 200 из 255) —
      дымка съедала контраст решётки, а держать щит на белом полу должна
      именно РЕШЁТКА, а не заливка (P3). */
-  const shell = orb(P, R, (seed % 5) + 1, 0.28);
+  const shell = orb(P, R, (seed % 5) + 1, S.shell);
   const [x0, z0] = sh.at();
   shell.group.position.set(x0, RY, z0);
   const g = new THREE.Group();
@@ -181,7 +181,7 @@ function lattice(vfx, e, P, ctx, who, entry) {
     const t = u * LIFE;
     const [cx, cz] = sh.at();
     const k = t < GROW ? clamp01(t / GROW) : 1;
-    const fall = entry ? clamp01((vfx.now - entry.until) / FALL) : clamp01((t - (GROW + 0.35)) / FALL);
+    const fall = entry ? clamp01((vfx.now - entry.until) / FALL) : clamp01((t - (GROW + S.hold)) / FALL);
     const flareK = flare.until > vfx.now ? clamp01((flare.until - vfx.now) / 0.2) : 0;
     field.set({ fade: 1 - fall, hot: Math.max(rs.tick(t), flareK), reach: 1, tail: 0 });
     shell.group.position.set(cx, RY, cz);
@@ -203,12 +203,28 @@ function lattice(vfx, e, P, ctx, who, entry) {
 export function self(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const who = e.who || 'blue';
-  const st = lattice(vfx, e, P, ctx, who, null);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    grow: 0.25,        /* рост оболочки и разгон решётки, с */
+    hold: 0.35,        /* сколько решётка стоит до схлопывания, с */
+    fall: 0.4,         /* схлопывание числом нитей, с */
+    radius: null,      /* радиус оболочки, м; null — от капсулы тела */
+    shellR: 1.25,      /* радиус оболочки, доли радиуса тела */
+    shellPad: 0.35,    /* прибавка к радиусу оболочки, м */
+    shellY: 0.62,      /* полувысота оболочки, доли высоты тела */
+    shell: 0.28,       /* плотность аддитивного чехла, доли */
+    threads: null,     /* нитей решётки; null — от радиуса оболочки */
+    ground: 0.55,      /* отрыв заземления по горизонтали от кромки, м */
+    burnRadius: 1.1,   /* ожог, доли радиуса оболочки */
+    burnHold: 20,      /* стойкость ожога, с */
+  });
+  const st = lattice(vfx, e, P, ctx, who, null, S);
   const [x0, z0] = st.at();
   /* Беат каста: выброс, веер по полу, ожог и вспышка. */
   stormBurst(vfx, P, { x: x0, y: st.ry, z: z0, radius: 0.6, endRadius: st.r * 1.6, life: 0.4, intensity: 0.9 });
   radialArcs(vfx, P, seed, x0, z0, 6, 2.4, 0.4, 0.3);
-  kit.decal(vfx, { type: 'arc', x: x0, z: z0, radius: st.r * 1.1, hold: 20, tint: BURN, seed: (seed % 7) + 1 });
+  kit.decal(vfx, { type: 'arc', x: x0, z: z0, radius: st.r * S.burnRadius, hold: S.burnHold, tint: BURN, seed: (seed % 7) + 1 });
   vfx.flashLight(x0, st.ry, z0, P[0], 20, 0.25, 8);
   vfx.screen.flash(P[0], 0.06);
   return true;
@@ -225,7 +241,21 @@ export function shield(vfx, e, P, ctx, duration) {
   if (prev && prev.until > vfx.now) { prev.until = vfx.now + duration; return true; }
   const entry = { until: vfx.now + duration, vfx, who };
   SHIELDS.set(who, entry);
-  const st = lattice(vfx, e, P, ctx, who, entry);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Срок держится записью `status` (§7.7) и приходит
+     параметром — здесь только форма (см. `kit.tune`). */
+  const S = kit.tune(e, {
+    grow: 0.25,      /* рост оболочки, с */
+    hold: 0.35,      /* к держащемуся щиту не относится: он стоит до срока, с */
+    fall: 0.5,       /* схлопывание после срока, с */
+    radius: null,    /* радиус оболочки, м; null — от капсулы тела */
+    shellR: 1.25,    /* радиус оболочки, доли радиуса тела */
+    shellPad: 0.35,  /* прибавка к радиусу оболочки, м */
+    shellY: 0.62,    /* полувысота оболочки, доли высоты тела */
+    shell: 0.28,     /* плотность аддитивного чехла, доли */
+    threads: null,   /* нитей решётки; null — от радиуса оболочки */
+    ground: 0.55,    /* отрыв заземления по горизонтали от кромки, м */
+  });
+  const st = lattice(vfx, e, P, ctx, who, entry, S);
   entry.st = st;
   return true;
 }

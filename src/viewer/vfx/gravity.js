@@ -22,6 +22,13 @@
  *
  * Свет НЕ ЗОВЁТСЯ вовсе: у гравитации нечему светить. Четыре источника пула
  * достаются тем, кому они нужны.
+ *
+ * НАСТРОЙКА. Все размеры, высоты и времена идут через `kit.tune(e, {...})`:
+ * опись в начале каждой формы — это и есть список того, что можно крутить, а
+ * значения по умолчанию равны сегодняшним числам, так что запись без полей
+ * даёт прежний кадр. Отсюда же лечится и главная жалоба на навес: воронка
+ * принимает ядро на высоте касания (`coreFrom`), а не рождает своё в четырёх
+ * метрах над целью.
  */
 
 import * as THREE from 'three';
@@ -168,48 +175,110 @@ function fallDust(vfx, P, { x, z, r, n, rng, y0 = 1.5, y1 = 2.5, at = 0 }) {
 
 /* ── формы ──────────────────────────────────────────────────────────────── */
 
+/**
+ * ЗОНА — колодец. Ядро ПРИХОДИТ СВЕРХУ (`coreFrom` → `coreTo` за `grow`),
+ * стоит, и в конце уходит в ноль за `end`. Под ним — кольца сжатия ровно на
+ * его жизнь, вокруг — отвесная пыль, поверх — линза.
+ *
+ * `coreFrom` — та самая ручка, из-за которой воронка от навеса перестала
+ * «появляться заново»: навес ставит её в высоту касания (см. `lob`), и там,
+ * где снаряд тронул пол, колодец и начинается — а не в четырёх метрах над
+ * ним.
+ */
 export function zone(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
   const fp = kit.footprint(e, ctx);
-  const r = fp.radius;
-  const D = Math.max(0.8, e.duration || 3);
-  const GROW = 0.25, END = 0.35;
+  /* Жизнь зоны из сима — она же мера для следа и для схлопывания. */
+  const DUR = Math.max(0.8, e.duration || 3);
+  const S = kit.tune(e, {
+    duration: DUR,        /* жизнь колодца, с */
+    radius: fp.radius,    /* радиус зоны, м */
+    grow: 0.25,           /* спуск и рост ядра, с */
+    end: 0.35,            /* схлопывание в конце, с */
+    coreFrom: 4,          /* высота, С КОТОРОЙ приходит ядро, м */
+    coreTo: 1.6,          /* высота, на которой оно повисает, м */
+    coreR0: 0.35,         /* радиус ядра при рождении, м */
+    coreR1: 0.9,          /* радиус ядра после спуска, м */
+    ringScale: 0.95,      /* кольца сжатия, доли радиуса */
+    lensY: 1.1,           /* высота линзы над полом, м */
+    lensScale: 2.2,       /* размер линзы, доли радиуса */
+    lensStrength: 1,      /* сила линзы, 0..1 */
+    decalScale: 1.1,      /* след на полу, доли радиуса */
+    decalHold: DUR + 6,   /* стойкость следа, с */
+    dust: 120,            /* пыль на эталонную площадь зоны, штук */
+    dustEvery: 0.3,       /* период подсева пыли, с */
+    debrisY: 0.5,         /* высота вылета обломков, м */
+    debrisSpeed: 1.2,     /* разлёт обломков, м/с */
+    debrisUp: 1.6,        /* подброс обломков, м/с */
+    debrisLife: 1.4,      /* жизнь обломка, с */
+    debrisSize: 0.22,     /* размер обломка, м */
+    waveScale: 1.3,       /* выдох наружу, доли радиуса */
+    waveLife: 0.5,        /* жизнь выдоха, с */
+    waveAt: null,         /* когда выдох, с от начала (null — на схлопывании) */
+  });
+  const r = S.radius;
+  const D = Math.max(0.8, S.duration);
+  /* Обе фазы не длиннее половины жизни: у зоны в 0.8 с рост и схлопывание
+     иначе перекрываются и колодец не успевает ПОСТОЯТЬ. */
+  const GROW = Math.max(0.001, Math.min(S.grow, D * 0.5));
+  const END = Math.max(0.001, Math.min(S.end, D * 0.5));
 
-  /* След — первым делом: он размечает площадь и держится двадцать секунд. */
-  kit.decal(vfx, { type: 'grav', x: e.x, z: e.z, radius: r * 1.1, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
-  rings(vfx, P, { x: e.x, z: e.z, r: r * 0.95, life: D });
+  /* След — первым делом: он размечает площадь. Это ОСТАТОК (вмятина в полу),
+     а не проекция живого колодца, поэтому он колодец переживает — но ровно на
+     шесть секунд, а не на двадцать: у воронки от навеса жизнь 1.6 с, и общая
+     двадцатисекундная стойкость оставляла на полу отметину, к которой в кадре
+     давно ничего не относится (жалоба основателя: след обязан считаться с
+     настоящей длительностью умения). */
+  kit.decal(vfx, { type: 'grav', x: e.x, z: e.z, radius: r * S.decalScale, hold: S.decalHold, tint: P[2], seed: (seed % 9) + 1 });
+  /* Кольца — ПРОЕКЦИЯ живого колодца на пол: живут ровно его жизнь. */
+  rings(vfx, P, { x: e.x, z: e.z, r: r * S.ringScale, life: D });
   /* Линза на всю жизнь зоны: она ОТПУСКАЕТ за 0.3 с, а не гаснет от рождения. */
-  kit.lens(vfx, { x: e.x, y: 1.1, z: e.z, size: r * 2.2, life: D, strength: 1 });
+  kit.lens(vfx, { x: e.x, y: S.lensY, z: e.z, size: r * S.lensScale, life: D, strength: S.lensStrength });
 
-  const core = well(P, 0.35);
-  core.mesh.position.set(e.x, 4, e.z);
-  const nDust = clampN(kit.countFor(120, fp.area, kit.REF_AREA.zone, 400), 40, 400);
-  let next = 0;
+  const core = well(P, S.coreR0);
+  core.mesh.position.set(e.x, S.coreFrom, e.z);
+  /* Состояние ставится ДО первого кадра. Материал взят из кольца пула и несёт
+     затухание прошлого владельца, а `updateFx` не обходит то, что родилось
+     внутри его же цикла, — без этой строки на кадре передачи «навес →
+     воронка» ядро мигнёт чужой прозрачностью. */
+  core.set(1, S.coreR0, 0.95);
+  /* Плотность — от ПЕРЕНАСТРОЕННОГО радиуса, а не от следа умения: иначе
+     раскрученная ручкой зона сеет пыль по старой площади. */
+  const nDust = clampN(kit.countFor(S.dust, Math.PI * r * r, kit.REF_AREA.zone, 400), 40, 400);
+  /* Выдох — на схлопывании, как и сказано ниже: раньше он уходил в кадре
+     рождения, то есть за целую жизнь зоны ДО того, чему он итог. Воронка от
+     навеса передаёт `waveAt` 0 — там выдох и есть удар о пол. */
+  const waveAt = S.waveAt == null ? Math.max(0, D - END) : S.waveAt;
+  let next = 0, waved = false;
   vfx.spawnMesh(core.mesh, D, (o, u) => {
     const t = u * D;
-    /* Ядро ПАДАЕТ с 4 м до 1.2 м за первые 0.25 с и растёт 0.35 → 0.7 м:
-       колодец не появляется, он опускается. */
     const k = clamp01(t / GROW);
-    /* Ядро опускается с 4 м до 1.6 м и растёт 0.35 → 0.9 м: на 0.7 м оно
-       тонуло за телом жертвы, стоящим в зоне (замер i1 с бокового глаза). */
-    const drop = 4 - 2.4 * k * k;
-    const cr = 0.35 + 0.55 * k;
+    /* Ядро ОПУСКАЕТСЯ с `coreFrom` до `coreTo` и растёт `coreR0` → `coreR1`:
+       колодец не появляется, он приходит. Высота 1.6, а не 0.7 м — на 0.7 м
+       ядро тонуло за телом жертвы, стоящей в зоне (замер i1 с бокового
+       глаза). У воронки от навеса `coreFrom` равен высоте касания, и тогда
+       эта же формула не роняет ядро, а осаживает его в пол. */
+    const drop = S.coreFrom - (S.coreFrom - S.coreTo) * k * k;
+    const cr = S.coreR0 + (S.coreR1 - S.coreR0) * k;
     const end = t > D - END ? clamp01((D - t) / END) : 1;
     o.position.y = drop;
     core.set(1, cr * end, 0.95);
     if (t >= next && t < D - END) {
-      next = t + 0.3;
+      next = t + S.dustEvery;
       fallDust(vfx, P, { x: e.x, z: e.z, r, n: Math.round(nDust * 0.3), rng });
+    }
+    if (!waved && t >= waveAt) {
+      waved = true;
+      /* Один выдох наружу — колодец схлопнулся. */
+      kit.shockwave(vfx, { x: e.x, z: e.z, radius: r * S.waveScale, r0: 0.3, life: S.waveLife, colour: P[0], intensity: 0.5, dust: true });
     }
   });
   /* Обломки: подняты на 0.3–0.8 м и ТОНУТ обратно. */
   kit.debris(vfx, {
-    x: e.x, y: 0.5, z: e.z, n: clampN(Math.round(6 + r * 2), 6, 12), radius: r * 0.8,
-    colour: P[2], speed: 1.2, up: 1.6, life: 1.4, size: 0.22, r: rng,
+    x: e.x, y: S.debrisY, z: e.z, n: clampN(Math.round(6 + r * 2), 6, 12), radius: r * 0.8,
+    colour: P[2], speed: S.debrisSpeed, up: S.debrisUp, life: S.debrisLife, size: S.debrisSize, r: rng,
   });
-  /* Один выдох наружу в конце — колодец схлопнулся. */
-  kit.shockwave(vfx, { x: e.x, z: e.z, radius: r * 1.3, r0: 0.3, life: 0.5, colour: P[0], intensity: 0.5, dust: true });
   return true;
 }
 
@@ -218,56 +287,103 @@ export function self(vfx, e, P, ctx) {
   const rng = mulberry(seed);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null) || { x: e.x, z: e.z };
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
-  const R = (bs ? bs.r : 0.9) * 1.4, H = (bs ? bs.h : 2.0) * 0.55;
+  const S = kit.tune(e, {
+    shellLife: 1.2,       /* сколько держится оболочка, с */
+    shellScale: 1.4,      /* оболочка, доли радиуса тела */
+    shellY: 0.55,         /* центр оболочки, доли роста тела */
+    shellFill: 0.35,      /* заливка оболочки, 0..1 */
+    shellIn: 0.25,        /* нарастание, доли жизни */
+    shellHold: 0.6,       /* плато до гашения, доли жизни */
+    ringScale: 1.2,       /* кольца на полу, доли радиуса оболочки */
+    ringLife: 0.7,        /* жизнь колец, с */
+    decalScale: 1.2,      /* след, доли радиуса оболочки */
+    decalHold: 20,        /* стойкость следа, с */
+    dust: 30,             /* пыль вокруг бойца, штук */
+    dustScale: 1.3,       /* посев пыли, доли радиуса оболочки */
+  });
+  const R = (bs ? bs.r : 0.9) * S.shellScale, H = (bs ? bs.h : 2.0) * S.shellY;
   const p0 = at();
   /* БЕАТ КАСТА: обод нарастает 0.3 → 1.0 и одно кольцо на полу. */
   /* ОБОЛОЧКА ПО ТЕЛУ, 1.2 с и с плато: судья не отличил каст «массы» от
      сброшенной массы и от замаха — все три были одинаковым тёмным шариком у
      бойца. Здесь оболочка РАЗМЕРОМ С ТЕЛО, стоит полсекунды на полной
      непрозрачности и только потом гаснет. */
-  const sh = well(P, R, 0.35);
+  const sh = well(P, R, S.shellFill);
   sh.mesh.position.set(p0.x, H, p0.z);
-  vfx.spawnMesh(sh.mesh, 1.2, (o, u) => {
-    const k = u < 0.25 ? u / 0.25 : (u > 0.6 ? Math.max(0, (1 - u) / 0.4) : 1);
-    sh.set(k, R * (0.55 + 0.45 * Math.min(1, u / 0.25)), 0.35);
+  sh.set(0, R * 0.55, S.shellFill);
+  vfx.spawnMesh(sh.mesh, S.shellLife, (o, u) => {
+    const k = u < S.shellIn ? u / S.shellIn : (u > S.shellHold ? Math.max(0, (1 - u) / Math.max(0.001, 1 - S.shellHold)) : 1);
+    sh.set(k, R * (0.55 + 0.45 * Math.min(1, u / S.shellIn)), S.shellFill);
     const p = at(); o.position.set(p.x, H, p.z);
   });
-  rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.2, life: 0.7, follow: at });
-  kit.decal(vfx, { type: 'grav', x: p0.x, z: p0.z, radius: R * 1.2, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
-  fallDust(vfx, P, { x: p0.x, z: p0.z, r: R * 1.3, n: 30, rng });
+  rings(vfx, P, { x: p0.x, z: p0.z, r: R * S.ringScale, life: S.ringLife, follow: at });
+  kit.decal(vfx, { type: 'grav', x: p0.x, z: p0.z, radius: R * S.decalScale, hold: S.decalHold, tint: P[2], seed: (seed % 9) + 1 });
+  fallDust(vfx, P, { x: p0.x, z: p0.z, r: R * S.dustScale, n: S.dust, rng });
   return true;
 }
 
+/**
+ * НАВЕС — сброшенная масса. Ядро летит по параболе и НЕ ИСЧЕЗАЕТ на посадке:
+ * в том же кадре, где летящее ядро прячется, воронка ставит своё — той же
+ * величины (`coreR0` = `coreRadius`) и на той же высоте (`coreFrom` = высота
+ * касания). Раньше воронка звалась с высотой рождения по умолчанию, и снаряд
+ * пропадал у пола, чтобы через кадр возникнуть в четырёх метрах над целью и
+ * оттуда опуститься, — «вылетел, исчез, появился на цели» (жалоба
+ * основателя). Передача склеена по трём величинам: место, радиус, заливка.
+ */
 export function lob(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
+  const S = kit.tune(e, {
+    range: 10,            /* длина броска, м */
+    speed: 12,            /* скорость полёта, м/с */
+    arc: 0.35,            /* подъём параболы, доли длины */
+    muzzle: 0.7,          /* вынос точки схода вперёд, м */
+    launchY: 1.1,         /* высота схода, м */
+    landY: 0.3,           /* высота касания, м */
+    coreRadius: 0.55,     /* радиус летящего ядра, м */
+    lensSize: 2,          /* линза вокруг ядра, м */
+    trailEvery: 0.03,     /* период срыва пыли, с */
+    trailN: 10,           /* пыли за срыв, штук */
+    blastRadius: 1.6,     /* радиус воронки, м */
+    blastDuration: 1.6,   /* жизнь воронки, с */
+    blastCoreY: 0.22,     /* куда осаживается ядро воронки, м */
+    blastCoreR: 0.8,      /* до чего оно разбухает, м */
+    blastLensY: 0.6,      /* высота линзы воронки, м */
+    shake: 0.2,           /* тряска на посадке */
+  });
   const ux = Math.sin(e.h), uz = Math.cos(e.h);
-  const len = Math.max(1.5, e.range || 10);
-  const speed = Math.max(4, e.speed || 12);
-  const travel = len / speed;
-  const S = [e.x + ux * 0.7, 1.1, e.z + uz * 0.7];
-  const E = [S[0] + ux * len, 0.3, S[2] + uz * len];
-  const apex = 0.35 * len;
+  const len = Math.max(1.5, S.range);
+  const travel = len / Math.max(4, S.speed);
+  const A = [e.x + ux * S.muzzle, S.launchY, e.z + uz * S.muzzle];
+  const B = [A[0] + ux * len, S.landY, A[2] + uz * len];
+  const apex = S.arc * len;
 
   /* БРОШЕННЫЙ ПРЕДМЕТ — P1 к нему не применяется: ядро действительно летит. */
   /* Ядро 0.55 м и ШЛЕЙФ ПЫЛИ за ним: сброшенная масса обязана отличаться от
      замаха и от каста «массы» — судья видел один и тот же тёмный шарик. */
-  const core = well(P, 0.55);
-  const lensMesh = kit.lens(vfx, { x: S[0], y: S[1], z: S[2], size: 2.0, life: travel, strength: 0.8 });
+  const core = well(P, S.coreRadius);
+  const lensMesh = kit.lens(vfx, { x: A[0], y: A[1], z: A[2], size: S.lensSize, life: travel, strength: 0.8 });
+  const LIFE = travel + 0.1;
   let trailAt = 0;
   let landed = false;
-  vfx.spawnMesh(core.mesh, travel + 0.1, (o, u) => {
-    const f = Math.min(1, (u * (travel + 0.1)) / travel);
-    const x = S[0] + (E[0] - S[0]) * f;
-    const z = S[2] + (E[2] - S[2]) * f;
-    const y = Math.max(0.3, S[1] + (E[1] - S[1]) * f + 4 * apex * f * (1 - f));
+  vfx.spawnMesh(core.mesh, LIFE, (o, u) => {
+    /* После посадки ядро больше не трогаем: колодец воронки уже ведёт свою
+       униформу, а материал у них общий, если в кадре живёт больше четырёх
+       колодцев (кольцо пула). */
+    if (landed) return;
+    const t = u * LIFE;
+    const f = Math.min(1, t / travel);
+    const x = A[0] + (B[0] - A[0]) * f;
+    const z = A[2] + (B[2] - A[2]) * f;
+    const y = Math.max(S.landY, A[1] + (B[1] - A[1]) * f + 4 * apex * f * (1 - f));
     o.position.set(x, y, z);
-    core.set(1, 0.55, 0.95);
+    core.set(1, S.coreRadius, 0.95);
     if (lensMesh) lensMesh.position.set(x, y, z);
-    if (u * (travel + 0.1) >= trailAt && f < 1) {
-      trailAt = u * (travel + 0.1) + 0.03;
+    if (t >= trailAt && f < 1) {
+      trailAt = t + S.trailEvery;
       /* Пыль СРЫВАЕТСЯ с ядра и падает: масса тянет за собой воздух. */
-      vfx.body.emit(10, (i, s2) => {
+      vfx.body.emit(S.trailN, (i, s2) => {
         s2.pos(x + (rng() - 0.5) * 0.9, y + (rng() - 0.5) * 0.9, z + (rng() - 0.5) * 0.9);
         s2.vel(0, 0, 0); s2.gravity(0, -9, 0);
         s2.color(P[2], P[2].clone().multiplyScalar(0.5));
@@ -278,9 +394,17 @@ export function lob(vfx, e, P, ctx) {
     if (f >= 1 && !landed) {
       landed = true;
       o.visible = false;
-      /* Посадка: мини-колодец на 1.6 с по рецепту зоны. */
-      zone(vfx, { ...e, x: E[0], z: E[2], r: 1.6, duration: 1.6, kind: 'zone' }, P, ctx);
-      vfx.screen.shake(0.2);
+      /* ПЕРЕДАЧА, А НЕ ПОДМЕНА. Воронка принимает ядро таким, каким снаряд
+         пришёл: `coreFrom` — высота касания, `coreR0` — его же радиус, — и
+         дальше ОСАЖИВАЕТ его в пол (`blastCoreY`), разбухая до `blastCoreR`.
+         Выдох у воронки в кадре посадки (`waveAt` 0): здесь это удар о пол, а
+         не схлопывание. */
+      zone(vfx, {
+        ...e, kind: 'zone', x: B[0], z: B[2], r: S.blastRadius, duration: S.blastDuration,
+        coreFrom: B[1], coreTo: S.blastCoreY, coreR0: S.coreRadius, coreR1: S.blastCoreR,
+        lensY: S.blastLensY, waveAt: 0,
+      }, P, ctx);
+      vfx.screen.shake(S.shake);
     }
   });
   return true;
@@ -289,6 +413,22 @@ export function lob(vfx, e, P, ctx) {
 export function impact(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
+  const S = kit.tune(e, {
+    crushRadius: 0.6,     /* шар хруста, м */
+    crushLife: 0.25,      /* жизнь хруста, с */
+    lensSize: 1.6,        /* линза на месте удара, м */
+    lensLife: 0.3,        /* жизнь линзы, с */
+    decalRadius: 0.9,     /* след удара, м */
+    decalHold: 20,        /* стойкость следа, с */
+    ringRadius: 2.6,      /* кольца сжатия, м */
+    ringLife: 0.7,        /* жизнь колец, с */
+    ringSqueeze: 0.7,     /* насколько кольца стягиваются, доли */
+    dust: 30,             /* точек, придавливающих жертву, штук */
+    dustRadius: 1,        /* кольцо, с которого они падают, м */
+    dustY: 2,             /* высота, с которой они падают, м */
+    pull: 16,             /* тёмных штрихов схождения, штук */
+    shake: 0.15,          /* тряска */
+  });
   /* Тело — БЛИЖАЙШЕЕ к точке удара: `who` записи это кастер, а удар
      SELF-атомов прилетает к нему самому (`pushImpact`). */
   const cand = ['blue', 'orange'].map((id) => {
@@ -299,25 +439,28 @@ export function impact(vfx, e, P, ctx) {
   const cx = bs ? bs.x : e.x, cz = bs ? bs.z : e.z, cy = bs ? bs.h * 0.55 : 1.0;
 
   /* ХРУСТ: тёмная вспышка — шар 0.6 м с ободом, схлопывающийся в ноль. */
-  const w = well(P, 0.6, 0.9);
+  const w = well(P, S.crushRadius, 0.9);
   w.mesh.position.set(cx, cy, cz);
-  vfx.spawnMesh(w.mesh, 0.25, (o, u) => w.set(1, 0.6 * (1 - u), 0.9 * (1 - u * 0.5)));
-  kit.lens(vfx, { x: cx, y: cy, z: cz, size: 1.6, life: 0.3, strength: 0.8 });
-  kit.decal(vfx, { type: 'grav', x: cx, z: cz, radius: 0.9, hold: 20, tint: P[2], seed: (seed % 9) + 1 });
-  /* ХРУСТ ЧИТАЕТСЯ СЖАТИЕМ: кольца на полу СХОДЯТСЯ к жертве за 0.35 с.
+  w.set(1, S.crushRadius, 0.9);
+  vfx.spawnMesh(w.mesh, S.crushLife, (o, u) => w.set(1, S.crushRadius * (1 - u), 0.9 * (1 - u * 0.5)));
+  kit.lens(vfx, { x: cx, y: cy, z: cz, size: S.lensSize, life: S.lensLife, strength: 0.8 });
+  kit.decal(vfx, { type: 'grav', x: cx, z: cz, radius: S.decalRadius, hold: S.decalHold, tint: P[2], seed: (seed % 9) + 1 });
+  /* ХРУСТ ЧИТАЕТСЯ СЖАТИЕМ: кольца на полу СХОДЯТСЯ к жертве за `ringLife`.
      Судья увидел на месте удара «плоскую красную вспышку и белое сияние под
      ногами — обычный урон, а не вес». Расходящееся кольцо у гравитации было
      бы враньём: её удар давит внутрь. */
   {
     /* 0.7 с и с плато: при 0.35 с кольца успевали только проявиться и уже
-       гасли — судья не нашёл на месте удара НИКАКИХ колец. */
-    const rr = rings(vfx, P, { x: cx, z: cz, r: 2.6, life: 0.7 });
-    vfx.spawnMesh(new THREE.Group(), 0.7, (o, u) => { rr.scale.setScalar(2.6 * 2 * (1 - 0.7 * u)); });
+       гасли — судья не нашёл на месте удара НИКАКИХ колец. Радиус и жизнь
+       нужны в двух местах — кольцу и его стягиванию, — поэтому взяты один
+       раз: разъехавшись, они дают кольцо, стягивающееся мимо своей жизни. */
+    const rr = rings(vfx, P, { x: cx, z: cz, r: S.ringRadius, life: S.ringLife });
+    vfx.spawnMesh(new THREE.Group(), S.ringLife, (o, u) => { rr.scale.setScalar(S.ringRadius * 2 * (1 - S.ringSqueeze * u)); });
   }
   /* Тридцать точек падают на тело с кольца 1.4 м — вес, придавивший жертву. */
-  vfx.body.emit(30, (i, s) => {
-    const a = rng() * TAU, d = 1.0 + rng() * 0.4;
-    s.pos(cx + Math.sin(a) * d, 2.0 + rng() * 0.6, cz + Math.cos(a) * d);
+  vfx.body.emit(S.dust, (i, s) => {
+    const a = rng() * TAU, d = S.dustRadius + rng() * 0.4;
+    s.pos(cx + Math.sin(a) * d, S.dustY + rng() * 0.6, cz + Math.cos(a) * d);
     s.vel(-Math.sin(a) * 1.6, 0, -Math.cos(a) * 1.6);
     s.gravity(0, -9, 0);
     s.color(P[2], P[2].clone().multiplyScalar(0.5));
@@ -340,11 +483,11 @@ export function impact(vfx, e, P, ctx) {
         s.life(vfx.now, 0.35, 0.14 + rng() * 0.08, kit.SHAPE.streak);
         s.ext(0, 0.8, 1, 0.4);
       });
-      emit(vfx.body, P[2], 16);
-      emit(vfx.glow, P[0], 8);
+      emit(vfx.body, P[2], S.pull);
+      emit(vfx.glow, P[0], Math.round(S.pull * 0.5));
     }
   }
-  vfx.screen.shake(0.15);
+  vfx.screen.shake(S.shake);
   return true;
 }
 const rnd0 = (rng) => (rng() - 0.5) * 1.2;
@@ -354,7 +497,18 @@ const STATUS = new Map();
 
 export function status(vfx, e, P, ctx) {
   const who = e.who || 'orange';
-  const dur = e.duration ?? EFFECTS[e.effect]?.duration ?? 1.5;
+  const S = kit.tune(e, {
+    duration: EFFECTS[e.effect]?.duration ?? 1.5, /* жизнь статуса, с (запись перебивает) */
+    ringScale: 1.6,       /* кольца под телом, доли радиуса тела */
+    lensScale: 2,         /* линза, доли радиуса тела */
+    lensRise: 0.55,       /* центр линзы, доли роста тела */
+    lensStrength: 0.6,    /* сила линзы, 0..1 */
+    dust: 26,             /* пыль за подсев, штук */
+    dustEvery: 0.3,       /* период подсева, с */
+    dustScale: 1.35,      /* посев пыли, доли радиуса тела */
+    bodyScale: 1.3,       /* мера «под весом», доли радиуса тела */
+  });
+  const dur = S.duration;
   const key = `${who}:${e.effect}`;
   const live = STATUS.get(key);
   if (live && live.until > vfx.now) { live.until = vfx.now + dur; return true; }
@@ -365,7 +519,7 @@ export function status(vfx, e, P, ctx) {
   const rng = mulberry(seed);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(who) : null) || { x: e.x ?? 0, z: e.z ?? 0 };
   const bs = ctx && ctx.bodyShape ? ctx.bodyShape(who) : null;
-  const R = (bs ? bs.r : 0.9) * 1.3, H = (bs ? bs.h : 2.0) * 0.55;
+  const R = (bs ? bs.r : 0.9) * S.bodyScale, H = (bs ? bs.h : 2.0) * S.lensRise;
   const p0 = at();
   /* ПРИДАВЛЕН: пыль сыплется отвесно, кольца ползут за телом, обод на 0.4. */
   /* ЛИНЗА, А НЕ ПУЗЫРЬ. Замер 03.09 (судья, «почти белое на белом, на
@@ -388,39 +542,52 @@ export function status(vfx, e, P, ctx) {
       return;
     }
     const p = at();
-    if (t >= next) { next = t + 0.3; fallDust(vfx, P, { x: p.x, z: p.z, r: R * 1.35, n: 26, rng }); }
+    if (t >= next) { next = t + S.dustEvery; fallDust(vfx, P, { x: p.x, z: p.z, r: R * S.dustScale, n: S.dust, rng }); }
   });
-  rings(vfx, P, { x: p0.x, z: p0.z, r: R * 1.6, life: dur, follow: at });
-  kit.lens(vfx, { x: p0.x, y: H, z: p0.z, size: R * 2, life: dur, strength: 0.6 });
+  rings(vfx, P, { x: p0.x, z: p0.z, r: R * S.ringScale, life: dur, follow: at });
+  kit.lens(vfx, { x: p0.x, y: H, z: p0.z, size: R * S.lensScale, life: dur, strength: S.lensStrength });
   return true;
 }
 
 export function charge(vfx, e, P, ctx) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
-  const secs = Math.max(0.15, e.windup || 0.4);
+  const S = kit.tune(e, {
+    windup: 0.4,          /* замах, с */
+    hand: 0.7,            /* вынос ядра вперёд от тела, м */
+    handY: 1.1,           /* высота руки, м */
+    coreR0: 0.18,         /* ядро в начале замаха, м */
+    coreR1: 0.6,          /* ядро к концу замаха, м */
+    funnelR0: 2.4,        /* воронка в начале, м */
+    funnelR1: 0.6,        /* воронка к концу, м */
+    funnelEvery: 0.12,    /* период подсева воронки, с */
+    funnelN: 14,          /* пыли за подсев, штук */
+    ringRadius: 2.2,      /* кольца под замахом, м */
+  });
+  const secs = Math.max(0.15, S.windup);
   const at = () => (ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null) || { x: e.x, z: e.z };
   const p0 = at();
   /* Пыль в двух метрах вокруг кастера начинает ОСЕДАТЬ, а в руке набухает
-     ядро 0.1 → 0.35 м: замах гравитации — не разгон, а сгущение. */
-  const core = well(P, 0.18);
+     ядро 0.18 → 0.6 м: замах гравитации — не разгон, а сгущение. */
+  const core = well(P, S.coreR0);
   const dir = e.h ?? 0;
-  core.mesh.position.set(p0.x + Math.sin(dir) * 0.7, 1.1, p0.z + Math.cos(dir) * 0.7);
+  core.mesh.position.set(p0.x + Math.sin(dir) * S.hand, S.handY, p0.z + Math.cos(dir) * S.hand);
+  core.set(1, S.coreR0, 0.95);
   let next = 0;
   vfx.spawnMesh(core.mesh, secs, (o, u) => {
     const t = u * secs;
     const p = at();
-    const hx = p.x + Math.sin(dir) * 0.7, hz = p.z + Math.cos(dir) * 0.7;
-    o.position.set(hx, 1.1, hz);
-    core.set(1, 0.18 + 0.42 * u, 0.95);
+    const hx = p.x + Math.sin(dir) * S.hand, hz = p.z + Math.cos(dir) * S.hand;
+    o.position.set(hx, S.handY, hz);
+    core.set(1, S.coreR0 + (S.coreR1 - S.coreR0) * u, 0.95);
     if (t >= next) {
-      next = t + 0.12;
+      next = t + S.funnelEvery;
       /* ВОРОНКА, СХОДЯЩАЯСЯ К РУКЕ, а не просто оседающая пыль: судья не
          отличил замах от каста «массы» и от сброшенной массы — все три были
          одним тёмным шариком. Пыль летит К руке и падает, кольцо стягивается
          с 2.4 м к 0.6 м за замах. */
-      const rr = 2.4 - 1.8 * u;
-      vfx.body.emit(14, (i, s2) => {
+      const rr = S.funnelR0 + (S.funnelR1 - S.funnelR0) * u;
+      vfx.body.emit(S.funnelN, (i, s2) => {
         const a = rng() * TAU;
         const px = hx + Math.sin(a) * rr, pz = hz + Math.cos(a) * rr;
         s2.pos(px, 0.3 + rng() * 1.6, pz);
@@ -432,6 +599,6 @@ export function charge(vfx, e, P, ctx) {
       });
     }
   });
-  rings(vfx, P, { x: p0.x, z: p0.z, r: 2.2, life: secs, follow: at });
+  rings(vfx, P, { x: p0.x, z: p0.z, r: S.ringRadius, life: secs, follow: at });
   return true;
 }

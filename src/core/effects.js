@@ -208,8 +208,12 @@ export function applyEffect(world, srcId, dstId, atom, def, deps) {
       /* Длительность едет с событием: она зависит от числа эффектов в умении
          (доля делит и её), а вьювер рисовал стену ровно пять секунд всегда —
          то есть показывал стену, которой уже нет, или убирал ту, что стоит. */
+      /* `height` — третье измерение коробки. Ширину и глубину вьювер получал,
+         а высоту приходилось повторять числом 2.2 в четырёх местах (здесь,
+         штатная плита в vfx.js и решётка молнии в arc/move.js): подвинуть её
+         в одном месте значило разойтись с остальными. Теперь она одна. */
       fx.push({ kind: 'wall', who: srcId, t: round3(t), x: box.x, z: box.z,
-        w: fullW, d: fullD, duration: round3(atom.duration), element: def.element });
+        w: fullW, d: fullD, height: box.h, duration: round3(atom.duration), element: def.element });
       return;
     }
 

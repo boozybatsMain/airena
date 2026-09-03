@@ -7,7 +7,7 @@
  * тянутся вперёд, а хвост позади гаснет». Шаровая молния с дугами на ней и
  * шлейфом — удалена целиком.
  *
- * ЧТО ЗДЕСЬ ВМЕСТО НЕЁ. Разряд от руки `S` до конца `E` стоит в пространстве
+ * ЧТО ЗДЕСЬ ВМЕСТО НЕЁ. Разряд от руки `A` до конца `B` стоит в пространстве
  * ЦЕЛИКОМ и переписывается каждые 45 мс (пучок `bundleSegs`, тот же примитив,
  * что у луча). Светится только полоса вдоль пути — окно `tail`..`reach`
  * (униформа `tail`, A0.1). Голова окна идёт вперёд со скоростью снаряда,
@@ -30,7 +30,7 @@
  * и не знает о попадании; про попадание она пишет `impact` той же парой
  * (кто, умение). `vfx.flight` (§7.2) связывает их: `state.hit` приходит с
  * точкой и моментом. Три исхода: попал (клубок, кольцо, ожог), заблокирован
- * укрытием (полклубка, без ожога и тряски), промах (голова доходит до `E` и
+ * укрытием (полклубка, без ожога и тряски), промах (голова доходит до `B` и
  * окно схлопывается — энергия, не попавшая никуда, просто кончается).
  *
  * Замеры (03.09, стойка: болт 9.2 м на 22 м/с, окно 4.8 м):
@@ -53,26 +53,45 @@ function ball(vfx, e, P, ctx, lob) {
   const seed = seedOf(e);
   const rng = mulberry(seed);
   const ux = Math.sin(e.h), uz = Math.cos(e.h);
-  const speed = Math.max(4, e.speed || 20);
-  const len = Math.max(1.5, e.range || 10);
+  const fp = kit.footprint(e, ctx);
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`).
+     Размеры посадки ведутся `fp.radius` — это `IMPACT_RADIUS` из kit.js,
+     заведённый ровно на этот случай («у болта и навеса своего радиуса нет,
+     есть точка»). Он считался и не читался: вся посадка была числами. */
+  const S = kit.tune(e, {
+    speed: 20,        /* скорость снаряда, м/с */
+    range: 10,        /* дальность, м */
+    y: 1.1,           /* высота вылета, м */
+    yEnd: lob ? 0.25 : 1.1,  /* высота конца: навес приходит в пол, болт летит ровно, м */
+    apex: 0.35,       /* подъём параболы навеса, доли длины */
+    window: 0.22,     /* окно свечения, с полёта (зажато 3–6 м) */
+    filaments: null,  /* нитей в пучке; null — от длины */
+    spread: 0.5,      /* труба пучка у конца, м */
+    ringR: fp.radius * (lob ? 1.857 : 1.571),   /* кольцо посадки, м */
+    burnRadius: fp.radius * (lob ? 1 : 0.857),  /* ожог посадки, м */
+    burnAfter: 8,     /* ожог переживает полёт на столько, с */
+  });
+  const speed = Math.max(4, S.speed);
+  const len = Math.max(1.5, S.range);
   /* Жизнь снаряда в симе — ровно `range / speed` (`deliver.js`), потолка нет:
      разряд обязан кончиться там же, где снаряд. */
   const travel = len / speed;
-  const S = [e.x + ux * 0.7, 1.1, e.z + uz * 0.7];
-  const E = [S[0] + ux * len, lob ? 0.25 : 1.1, S[2] + uz * len];
-  const apex = 0.35 * len;
+  const A = [e.x + ux * 0.7, S.y, e.z + uz * 0.7];
+  const B = [A[0] + ux * len, S.yEnd, A[2] + uz * len];
+  const apex = S.apex * len;
   /* Парабола навеса — ДОБАВКА к оси: сама ось уже сводит 1.1 м к 0.25 м. */
   const lift = lob ? (t) => 4 * apex * t * (1 - t) : null;
   const headAt = (f) => [
-    S[0] + ux * len * f,
-    Math.max(0.12, S[1] + (E[1] - S[1]) * f + (lift ? lift(f) : 0)),
-    S[2] + uz * len * f,
+    A[0] + ux * len * f,
+    Math.max(0.12, A[1] + (B[1] - A[1]) * f + (lift ? lift(f) : 0)),
+    A[2] + uz * len * f,
   ];
 
   /* ОКНО. 0.22 с полёта, но не короче 3 м и не длиннее 6: на медленном
      навесе (12 м/с) окно 2.6 м читалось обрубком, на быстром болте (22 м/с)
      окно 4.8 м — это половина пути, разряд виден весь полёт. */
-  const W = clampN(0.22 * speed, 3, 6);
+  const W = clampN(S.window * speed, 3, 6);
   const state = { hit: null };
   vfx.flight(e.who, e.skill, state);
 
@@ -84,9 +103,9 @@ function ball(vfx, e, P, ctx, lob) {
      в столбе. Болт тоньше луча по смыслу (снаряд, а не ствол), но не в
      четыре раза. */
   const bundleAt = () => [{
-    bundle: true, a: S, b: E, lift,
-    n: clampN(Math.round(6 + len * 0.6), 8, 12),
-    r0: 0.05, r1: 0.5, step: 0.4, width: 0.024, heroes: 2,
+    bundle: true, a: A, b: B, lift,
+    n: S.filaments ?? clampN(Math.round(6 + len * 0.6), 8, 12),
+    r0: 0.05, r1: S.spread, step: 0.4, width: 0.024, heroes: 2,
     rungs: 0.8, stubs: 0.5, tangle: 0, bend: 0.03, minY: lob ? 0.08 : 0.1,
   }];
   const rs = restriker(field, seed, bundleAt, 0.045);
@@ -103,7 +122,7 @@ function ball(vfx, e, P, ctx, lob) {
     const lat = (rng() - 0.5) * 1.2;
     const [sx, sz] = rotY(ux, uz, Math.PI / 2);
     marks.push({
-      x: S[0] + ux * len * f + sx * lat, z: S[2] + uz * len * f + sz * lat,
+      x: A[0] + ux * len * f + sx * lat, z: A[2] + uz * len * f + sz * lat,
       born: f * travel + 0.02, life: 0.6 + rng() * 0.4,
       dot: rng() < 0.4, links: 3 + Math.floor(rng() * 3), scale: 0.7 + rng() * 0.8,
       dir: Math.atan2(ux, uz) + (rng() - 0.5) * 1.6, g: mulberry((seed ^ Math.imul(i + 1, 0x2545f491)) >>> 0),
@@ -173,10 +192,10 @@ function ball(vfx, e, P, ctx, lob) {
   const rsHead = restriker(headF, seed ^ 0x9d1, headItems, 0.045);
 
   /* ── выброс у руки ───────────────────────────────────────────────────── */
-  cloud(vfx, P, { x: S[0], y: 1.1, z: S[2], kind: 'orb', r0: 0.2, r1: 0.45, grow: 0.06, hold: 0.10, life: 0.22, seed: (seed % 5) + 1 });
-  hotCore(vfx, P, { x: S[0], y: 1.1, z: S[2], r: 0.15, life: 0.25 });
-  kit.sparks(vfx, { x: S[0], y: 1.1, z: S[2], n: 12, colour: P[1], tail: P[2], speed: 11, life: 0.35, cone: { dir: e.h, half: 0.45 }, gravity: -6, size: 0.14, r: rng });
-  vfx.flashLight(S[0], 1.1, S[2], P[1], 12, 0.2, 7);
+  cloud(vfx, P, { x: A[0], y: S.y, z: A[2], kind: 'orb', r0: 0.2, r1: 0.45, grow: 0.06, hold: 0.10, life: 0.22, seed: (seed % 5) + 1 });
+  hotCore(vfx, P, { x: A[0], y: S.y, z: A[2], r: 0.15, life: 0.25 });
+  kit.sparks(vfx, { x: A[0], y: S.y, z: A[2], n: 12, colour: P[1], tail: P[2], speed: 11, life: 0.35, cone: { dir: e.h, half: 0.45 }, gravity: -6, size: 0.14, r: rng });
+  vfx.flashLight(A[0], S.y, A[2], P[1], 12, 0.2, 7);
 
   /* ── жизнь ───────────────────────────────────────────────────────────── */
   const root = new THREE.Group();
@@ -191,7 +210,7 @@ function ball(vfx, e, P, ctx, lob) {
     const t = u * LIFE;
     /* Попадание: сим прислала точку — считаем долю пути до неё. */
     if (state.hit && state.hit.tt == null) {
-      const d = Math.hypot(state.hit.x - S[0], state.hit.z - S[2]);
+      const d = Math.hypot(state.hit.x - A[0], state.hit.z - A[2]);
       state.hit.tt = t;
       endF = clamp01(d / len);
       endT = t;
@@ -220,7 +239,7 @@ function ball(vfx, e, P, ctx, lob) {
 
     if (done && !impactDone) {
       impactDone = true;
-      const X = state.hit ? state.hit.x : E[0], Z = state.hit ? state.hit.z : E[2];
+      const X = state.hit ? state.hit.x : B[0], Z = state.hit ? state.hit.z : B[2];
       const Y = Math.max(0.6, headAt(endF)[1]);
       const blocked = state.hit ? state.hit.blocked : false;
       /* НАВЕС ПАДАЕТ ВСЕГДА. Болт, не попавший ни во что, просто кончается
@@ -233,16 +252,18 @@ function ball(vfx, e, P, ctx, lob) {
       if (lands) { hd.tangle = blocked ? 0.5 : 1; hd.tangleUntil = t + 0.1; }
       if (lands && !blocked) {
         spikes(vfx, P, { x: X, y: Y, z: Z, n: 40, speed: 13, life: 0.34, r: rng });
-        floorRing(vfx, P, { x: X, z: Z, r0: 0.3, r1: lob ? 2.6 : 2.2, life: 0.4 });
+        floorRing(vfx, P, { x: X, z: Z, r0: 0.3, r1: S.ringR, life: 0.4 });
         arcSparks(vfx, P, { x: X, y: Y, z: Z, n: 24, speed: 11, life: 0.45, r: rng });
         vfx.flashLight(X, Y, Z, P[1], 24, 0.35, 8);
         vfx.screen.shake(lob ? 0.35 : 0.3);
         vfx.screen.aberration(0.4);
-        kit.decal(vfx, { type: 'arc', x: X, z: Z, radius: lob ? 1.4 : 1.2, hold: 20, tint: BURN, seed: (seed % 7) + 1 });
+        /* Ожог живёт от ПОЛЁТА, а не двадцать секунд всегда: разряд кончается
+           там же, где снаряд, и след обязан считаться от того же срока. */
+        kit.decal(vfx, { type: 'arc', x: X, z: Z, radius: S.burnRadius, hold: travel + S.burnAfter, tint: BURN, seed: (seed % 7) + 1 });
         if (lob) {
           stormBurst(vfx, P, { x: X, y: Math.max(0.7, Y), z: Z, radius: 0.6, endRadius: 2.2, life: 0.45, intensity: 1.2 });
-          radialArcs(vfx, P, seed, X, Z, 8, 2.4, 0.45, 0.4);
-          kit.impactKit(vfx, { x: X, z: Z, y: 0.9, radius: 1.8, colours: P, strength: 1.1 });
+          radialArcs(vfx, P, seed, X, Z, 8, fp.radius * 1.714, 0.45, 0.4);
+          kit.impactKit(vfx, { x: X, z: Z, y: 0.9, radius: fp.radius * 1.286, colours: P, strength: 1.1 });
         }
       } else if (blocked) {
         /* Об укрытие: полклубка и дюжина шипов, без ожога, кольца и тряски. */

@@ -26,13 +26,27 @@ export function cone(vfx, e, P, ctx) {
   const { range, half } = fp;
   const dir = fp.dir;
   const ux = Math.sin(dir), uz = Math.cos(dir);
-  const src = [e.x + ux * 0.6, 1.2, e.z + uz * 0.6];
+  /* ОПИСЬ НАСТРАИВАЕМОГО. Значения по умолчанию — сегодняшние: запись, не
+     несущая поля, даёт прежний кадр (см. `kit.tune`). Дальность и раскрытие
+     идут из записи через `footprint` — их крутит сим, а не картинка. */
+  const S = kit.tune(e, {
+    duration: 0.8,     /* жизнь веера, с */
+    full: 0.45,        /* полная сила, с */
+    bolts: null,       /* число разрядов; null — от площади следа */
+    spread: 0.92,      /* доля раскрытия, занятая разрядами */
+    reach: 1,          /* дальность разрядов, доли `range` */
+    grow: 0.08,        /* прорастание разряда из руки, с */
+    y: 1.2,            /* высота руки, м */
+    burnRadius: 0.55,  /* ожог: доли дальности — и радиус, и вынос центра */
+    burnHold: 20,      /* стойкость ожога, с */
+  });
+  const src = [e.x + ux * 0.6, S.y, e.z + uz * 0.6];
 
-  const nBolt = clampN(kit.countFor(5, fp.area, kit.REF_AREA.cone, 12), 3, 9);
+  const nBolt = S.bolts ?? clampN(kit.countFor(5, fp.area, kit.REF_AREA.cone, 12), 3, 9);
   const targets = [];
   for (let i = 0; i < nBolt; i++) {
-    const a = dir + (-1 + (2 * (i + 0.5)) / nBolt) * half * 0.92 + (rng() - 0.5) * (half / nBolt);
-    const d = range * (0.9 + rng() * 0.25);
+    const a = dir + (-1 + (2 * (i + 0.5)) / nBolt) * half * S.spread + (rng() - 0.5) * (half / nBolt);
+    const d = range * S.reach * (0.9 + rng() * 0.25);
     targets.push({ p: [e.x + Math.sin(a) * d, 0.1, e.z + Math.cos(a) * d], a, phase: i });
   }
   /* Ковёр глифов по сектору: у каждой метки свои сид, рождение и жизнь —
@@ -50,7 +64,7 @@ export function cone(vfx, e, P, ctx) {
     });
   }
 
-  const LIFE = 0.8, FULL = 0.45;
+  const LIFE = S.duration, FULL = S.full;
   const field = boltField(vfx, P, 2200);
   const strandsAt = (t, r) => {
     const k = env(t, FULL, LIFE);
@@ -59,7 +73,7 @@ export function cone(vfx, e, P, ctx) {
     /* Каждый разряд — свой маленький пучок; прорастает из руки за 0.08 с. */
     for (let i = 0; i < nb; i++) {
       const tg = targets[i];
-      const grow = clamp01((t - i * 0.008) / 0.08);
+      const grow = clamp01((t - i * 0.008) / S.grow);
       if (grow <= 0) continue;
       out.push({
         bundle: true, a: src, b: tg.p, n: 3, r0: 0.03, r1: 0.18, step: 0.32,
@@ -87,7 +101,7 @@ export function cone(vfx, e, P, ctx) {
   });
   rs.tick(0);
 
-  muzzle(vfx, P, { x: src[0], y: 1.2, z: src[2], dir, size: 1.1, r: rng });
+  muzzle(vfx, P, { x: src[0], y: S.y, z: src[2], dir, size: 1.1, r: rng });
   /* Гроза у дальнего края — по одной на ~0.8 рад раскрытия. */
   const nBurst = clampN(Math.round((half * 2) / 0.8), 1, 3);
   for (let i = 0; i < nBurst; i++) {
@@ -100,7 +114,7 @@ export function cone(vfx, e, P, ctx) {
   vfx.screen.aberration(0.5);
 
   /* Ожог размером с сектор плюс два поменьше по краям широкого веера. */
-  kit.decal(vfx, { type: 'arc', x: e.x + ux * range * 0.55, z: e.z + uz * range * 0.55, radius: range * 0.55, hold: 20, tint: BURN, seed: (seed % 7) + 1 });
+  kit.decal(vfx, { type: 'arc', x: e.x + ux * range * S.burnRadius, z: e.z + uz * range * S.burnRadius, radius: range * S.burnRadius, hold: S.burnHold, tint: BURN, seed: (seed % 7) + 1 });
   arcSparks(vfx, P, { x: src[0], y: 1.1, z: src[2], n: 44, speed: 13, life: 0.5, cone: { dir, half }, gravity: -8, r: rng });
   for (const tg of targets) arcSparks(vfx, P, { x: tg.p[0], y: 0.2, z: tg.p[2], n: 9, speed: 5, life: 0.4, gravity: -6, at: vfx.now + 0.05 + rng() * 0.15, r: rng });
   return true;
