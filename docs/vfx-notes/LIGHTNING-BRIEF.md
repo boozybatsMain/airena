@@ -68,22 +68,33 @@ src/viewer/vfx.js              orchestrator: Vfx, Particles pools, palettes, sto
 src/viewer/vfx/ice.js fire.js  the two other modules (ice is the quality bar the founder accepted)
 ```
 
-## Capture latency: a shot lands LATER than the moment you asked for
+## The first cast of an element is not timed correctly — warm up before shooting
 
-Measured 03.09 by instrumenting the decal shader (painting the fade-in ramp into opacity and reading
-the pixel back): a shot nominally at **0.15 s** after the cast rendered the decal at an age of about
-**1.2 s**. The viewer's own clock is honest — `main.js` drives it from `performance.now() / 1000`,
-and a browser probe confirmed a decal's `born` sits 0.216 s behind the clock 160 ms after a cast. The
-lag is in `Page.captureScreenshot`: the tool waits for the page clock to reach the target and only
-*then* asks Chrome to render and encode a 1600×900 WebGPU frame, which on this machine costs on the
-order of a second.
+**Corrected 03.09 after a reviewer refuted the first version of this note.** The first version claimed
+`Page.captureScreenshot` returns a frame about a second late. That was wrong, and it was wrong because
+it was inferred indirectly (from an instrumented shader) instead of measured. Measured directly:
 
-**What this means for you.** Anything whose whole life is under about a second cannot be timed from
-stills — you will photograph its end and conclude it never had a beginning. Two symptoms to watch
-for: an effect that "appears fully formed" in every frame you shoot, and two frames at different
-moments that come back pixel-identical. Use `tools/vfxclip.mjs` for those: the clip is a real 60 fps
-screencast, and `castOffsetInClip` in its `.json` gives you a true time base.
+    round trip of captureScreenshot            0.158 s
+    viewer time between "before" and "after"   0.169 s
 
-This bit once already: the acid puddle's fade-in was built, verified end to end (the `rise` value
-reaches the vertex buffer, and forcing the envelope to zero visibly removes the mark), and still read
-as "instant" in every still — because every still was taken after the ramp had finished.
+So the shot is honest to within about a sixth of a second. What is *not* honest is the first cast:
+
+    acid, cast #1   the viewer clock jumps 2.062 s inside one CDP round trip
+    acid, cast #2   0.000 s
+    acid, cast #3   0.000 s
+    void, cast #1   0.000 s   (its materials were already warm)
+
+**The first cast of an element compiles its node materials and stalls the frame for about two
+seconds.** Every later cast is free. The capture tool shoots each element cold, so *early* moments of
+a cold element are measured against a clock that has already run two seconds past the cast — which is
+how an effect with a one-second fade-in can be photographed at "0.15 s" and come back fully formed.
+
+**What to do.** Warm up before shooting anything whose first second matters: cast the element two or
+three times, wait for its floor marks to expire, then shoot the real cast. A reviewer did exactly this
+to settle the acid puddle question — six warm-up casts, a 16 s wait for the marks to die, then one
+clean cast recorded as a 60 fps screencast — and got a trustworthy answer where stills had given three
+contradictory ones.
+
+The wider lesson is the one this note originally got wrong: **do not infer a measurement you can take
+directly.** The indirect route (read a shader value, reason back to a clock) produced a confident,
+specific and false number that then sat in this file telling the next person something untrue.

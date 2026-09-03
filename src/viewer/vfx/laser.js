@@ -31,7 +31,7 @@ import { clamp01, col, markGlow, mulberry, pooled, seedOf, shared, withFade } fr
 import * as kit from './kit.js';
 import { EFFECTS } from '../../skills/registry.js';
 
-const { float, vec3, uv, uniform, mix, smoothstep, oneMinus, abs: tabs } = TSL;
+const { float, vec3, uv, uniform, mix, smoothstep, oneMinus, abs: tabs, normalView, positionViewDirection } = TSL;
 
 const TAU = Math.PI * 2;
 const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -57,19 +57,47 @@ function beamMat(P) {
     m.userData.u = { fade, head };
     const d = tabs(uv().y.sub(0.5)).mul(2);
     const along = uv().x;
-    /* Жила шире (до 0.46 полуширины), чем первый набросок (0.32): при стволе
-       0.16 м с 26 м на неё приходилось меньше пикселя, и луч читался ровной
-       красной чертой без накала. Рубашка начинается сразу за ней. */
-    const core = oneMinus(smoothstep(float(0.16), float(0.46), d));
-    const jacket = oneMinus(smoothstep(float(0.48), float(1.0), d));
+    /*
+     * ЖИЛА УЗКАЯ, РУБАШКА ШИРОКАЯ — и это уже вторая попытка. Сначала жила
+     * была 0.32 полуширины и с 26 м не читалась вовсе; её расширили до 0.46,
+     * и луч стал БЕЛЫМ: замер судьи по столбу луча с трансляции — 58 %
+     * пикселей с насыщенностью ниже 0.15, то есть попросту белых, и лишь 8 %
+     * выше 0.45. «Красный лазер», у которого две трети ствола белые, красным
+     * не читается. Теперь жила 0.26 (тонкая нить накала), рубашка занимает
+     * всё остальное, и её багровое начинается сразу за жилой.
+     */
+    const core = oneMinus(smoothstep(float(0.08), float(0.26), d));
+    const jacket = oneMinus(smoothstep(float(0.28), float(1.0), d));
     /* Фронт резкий (4 % длины), корень мягкий: у руки луч рождается из
        вспышки, у цели он обрублен — так читается выстрел, а не полоса. */
     const grown = oneMinus(smoothstep(head.sub(0.04), head, along));
     const ends = smoothstep(float(0.0), float(0.02), along).mul(grown);
-    m.colorNode = mix(mix(col(P[2]), col(P[1]), jacket.pow(1.6)), vec3(3.0, 1.4, 1.3), core);
+    /* Рубашка держит НАСЫЩЕННЫЙ `P[1]` почти до края и только у самой кромки
+       уходит в глубокий `P[2]`: спад по ^0.55 вместо ^1.6 — иначе середина
+       ствола, где рубашка ещё широкая, уже выцветала к тёмному. */
+    m.colorNode = mix(mix(col(P[2]), col(P[1]), jacket.pow(0.55)), vec3(3.0, 1.15, 1.05), core);
     const alpha = jacket.mul(0.94).max(core).mul(ends).mul(fade).clamp(0, 1);
     m.opacityNode = alpha;
     return markGlow(m, core.mul(ends).mul(fade).mul(0.5));
+  }, 4);
+}
+
+/**
+ * `coreMat` — точка накала: HDR-белое ядро в багровой оболочке по френелю.
+ * Отдельный материал, а не ствол, натянутый на шар (см. `charge`).
+ */
+function coreMat(P) {
+  return pooled(`laser:core:${hex(P)}`, () => {
+    const m = new THREE.MeshBasicNodeMaterial({
+      transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.NormalBlending,
+    });
+    const fade = withFade(m);
+    m.userData.u = { fade };
+    const fres = oneMinus(tabs(TSL.dot(normalView, positionViewDirection))).clamp(0, 1);
+    const shell = fres.pow(1.7);
+    m.colorNode = mix(vec3(3.0, 1.15, 1.05), mix(col(P[1]), col(P[2]), shell), shell.clamp(0, 1));
+    m.opacityNode = float(0.97).mul(fade).clamp(0, 1);
+    return markGlow(m, oneMinus(shell).mul(fade).mul(0.6));
   }, 4);
 }
 
@@ -284,13 +312,27 @@ export function status(vfx, e, P, ctx) {
     if (t < next) return;
     next = t + S.period;
     const p = at();
-    vfx.glow.emit(S.dots, (i, s) => {
+    /*
+     * ПРОЖИГ ВИДЕН, а не только светится. Прежде статус клал точки ТОЛЬКО в
+     * пул свечения светлым `P[0]`: на белом полу и на светлом корпусе такие
+     * точки не существуют, и кадр статуса выходил ПОПИКСЕЛЬНО равен кадру
+     * формы, которой у лазера вообще нет (замер судьи). Теперь тёмные
+     * `P[2]`-точки идут в пул тел — их видно на любом фоне, — а светлые
+     * остаются сверху как накал; плюс дымок от прожжённого места.
+     */
+    const put = (pool, c1, c2, n, size, glow) => pool.emit(n, (i, s) => {
       const a = rng() * TAU, hh = rng();
       s.pos(p.x + Math.sin(a) * R, 0.2 + hh * H, p.z + Math.cos(a) * R);
-      s.vel(0, 0.25, 0); s.gravity(0, 0, 0);
-      s.color(P[0], P[1]);
-      s.life(vfx.now, 0.35, 0.06 + rng() * 0.04, kit.SHAPE.dot);
-      s.ext(0, 0.4, 0, 0.6);
+      s.vel(0, 0.3 + rng() * 0.3, 0); s.gravity(0, 0.4, 0);
+      s.color(c1, c2);
+      s.life(vfx.now, 0.5 + rng() * 0.3, size, kit.SHAPE.dot);
+      s.ext(0, 0.5, 0, glow);
+    });
+    put(vfx.body, P[2], P[2], S.dots, 0.1 + rng() * 0.06, 0);
+    put(vfx.glow, P[0], P[1], Math.max(2, Math.round(S.dots * 0.6)), 0.07 + rng() * 0.04, 0.7);
+    kit.smoke(vfx, {
+      x: p.x, y: H * 0.6, z: p.z, n: 2, radius: R, dark: P[2], lit: P[1],
+      rise: 1.1, life: 1.0, size: 0.32, spread: 0.5, r: rng,
     });
   });
   return true;
@@ -306,13 +348,17 @@ export function charge(vfx, e, P, ctx) {
   /* Точка накала в стволе: растёт и наливается, как заряжающийся конденсатор. */
   const p0 = at();
   const g = new THREE.Group();
-  const dot = new THREE.Mesh(
-    shared(new THREE.IcosahedronGeometry(1, 3)),
-    (() => {
-      const m = beamMat(P);
-      return m;
-    })(),
-  );
+  /*
+   * У НАКАЛА СВОЙ МАТЕРИАЛ, а не одолженный у ствола. Прежде здесь стоял
+   * `beamMat`, и это была настоящая поломка на два фронта. Во-первых, его
+   * сечение считается по `uv().y` ленты, а натянутое на шар оно давало
+   * полосатую бело-красную «жемчужину». Во-вторых и хуже: `pooled` держит
+   * кольцо из четырёх материалов, `charge` не писал в них ни `fade`, ни
+   * `head`, а `beam` в конце жизни гонит `fade` в ноль — после нескольких
+   * кастов накал доставал из кольца погашенный материал и не рисовался
+   * вовсе. В бою это выглядело бы как замах, который иногда исчезает.
+   */
+  const dot = new THREE.Mesh(shared(new THREE.IcosahedronGeometry(1, 3)), coreMat(P));
   dot.frustumCulled = false;
   dot.renderOrder = 10;
   g.add(dot);
@@ -323,6 +369,7 @@ export function charge(vfx, e, P, ctx) {
     const p = at();
     o.position.set(p.x + Math.sin(dir) * S.reach, 1.1, p.z + Math.cos(dir) * S.reach);
     dot.scale.setScalar(S.r0 + (S.r1 - S.r0) * u);
+    dot.material.userData.fade.value = u < 0.9 ? 1 : (1 - u) / 0.1;
     if (t - lightAt > 0.3) { vfx.flashLight(o.position.x, 1.1, o.position.z, P[1], 5 + 8 * u, 0.4, 5); lightAt = t; }
   });
   return true;

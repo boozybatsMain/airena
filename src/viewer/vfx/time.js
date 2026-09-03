@@ -204,11 +204,19 @@ function bubbleMat(P) {
     const fres = oneMinus(tabs(tdot(normalView, positionViewDirection))).clamp(0, 1);
     /* Кромка ЗЖЕ и темнее: 0.6→1.0 вместо 0.35→1.0. Волосок ^12, не ^7 —
        при ^7 HDR-белое расползалось по всей кромке и съедало умбру. */
-    const rim = smoothstep(float(0.6), float(1.0), fres);
+    /* Кромка ШИРЕ (0.32 вместо 0.6): замер судьи по кадру зоны с трансляции
+       против пустого кадра того же прогона — нутро пузыря БИТ В БИТ равно
+       пустому полу, а от всей оболочки оставался столбик в один-два пикселя.
+       Узкая кромка на большом шаре занимает считанные пиксели: у мороза в том
+       же объёме 138 крашеных пикселей на строку, у времени было ноль. */
+    const rim = smoothstep(float(0.32), float(1.0), fres);
     const hair = fres.pow(12.0);
     const tick = TICK();
     m.colorNode = mix(mix(col(P[0]).mul(0.9), col(P[2]).mul(0.8), rim), vec3(2.4, 2.2, 1.8), hair.mul(0.7).clamp(0, 1));
-    const alpha = mix(float(0.05), float(0.92), rim).add(tick.mul(rim).mul(0.25)).mul(fade).clamp(0, 1);
+    /* И НУТРО ПЕРЕСТАЁТ БЫТЬ ПРОЗРАЧНЫМ: 0.14 вместо 0.05. Пузырь обязан
+       обесцвечивать то, что за ним («внутри всё выглядит фотографией»), а при
+       0.05 он не менял пол ни на единицу яркости. */
+    const alpha = mix(float(0.14), float(0.94), rim).add(tick.mul(rim).mul(0.25)).mul(fade).clamp(0, 1);
     m.opacityNode = alpha;
     /* Преломление по кромке: сдвиг наружу по нормали, сильный только у края. */
     markDistort(m, normalView.xy.mul(0.35).mul(fres.pow(2.0)), fres.pow(2.0).mul(fade));
