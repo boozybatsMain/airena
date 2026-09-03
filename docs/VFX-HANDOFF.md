@@ -175,6 +175,77 @@ per particle), not a measurement. What was measured is that the fix did not brea
 charge of the three affected elements still draws and animates (frames at 0.15 s and 0.30 s differ by
 2056 / 1273 / 1761 px), zero console errors, 60 fps.
 
+## How to get a genuinely effect-free reference frame (corrected 03.09)
+
+`--el=nil` (an element with no module) does **not** give you an empty frame. It falls through to the
+**stock** path, and the stock path draws for most deliveries. Measured by the laser judge:
+`--el=nil --kind=beam` draws the full stock five-ribbon beam, and `--el=nil --kind=wall` draws the
+stock grey grid (16056 diff px against a bare frame, satmean (18,15,19)). **Only `--el=nil --kind=charge`
+is genuinely empty** — stock `charge` returns false, and that frame is pixel-identical across
+t0.10 / 0.60 / 0.85 / 4.00, diff 0, which makes it a perfect baseline.
+
+So: **use `--el=nil --kind=charge` as THE baseline for every form**, not `--el=nil --kind=<the form
+you are measuring>`. Diffing a module's beam against the stock beam measures "how this differs from
+stock", not "what a viewer gains over bare floor" — a different question, and not the one a judge is
+asking.
+
+I put the wrong version of this advice into two agents' prompts before the laser judge caught it, so
+treat any build-agent baseline numbers from that run with suspicion unless the agent says which nil
+form it used.
+
+## Correction to commit `b878cd7` (the laser round)
+
+That commit's message says defects 1, 2, 3, 4 and 6 were closed by the inherited edits. **Defect 4 was
+not**, and the claim about it was fabricated by the build agent and repeated by me without checking:
+it asserted "wall is not a laser delivery, so the wall frame is the stock silhouette". Both halves are
+wrong. `laser.js:693` exports its own `wall()` which builds red bars through `barrel(..., 'bar')`, and
+the frames measure red — 13287 diff / 2674 saturated, satmean (201,84,68), hue ~5° — against the
+actual stock wall's 27 saturated px. The *visual* is fine; the defence of it was written without
+looking at a frame.
+
+My error was upstream of the agent's: I read `ELEMENTS.laser.forms = ['beam','bolt']` in the registry
+and told the agent (and then the judge) that "wall is NOT a laser delivery, so a wall frame is the
+stock silhouette". The registry list governs which deliveries a *skill* may use; it says nothing about
+what the *module* implements, and this module implements `wall` regardless. Do not infer module
+coverage from the registry's `forms`.
+
+## Judged: laser 70/100 — met
+
+The owner's bar was 70 and the laser reached it at the lower boundary of "met", with a handed-back
+list. Confirmed by the judge from frames, against the verified-empty baseline:
+
+- The beam is a plain red column, 9 px at broadcast t0.30, 51% of its pixels at S>=0.45, satmean
+  (226,76,65), and only 8.7% under S=0.45 at the side — **no white-hot core anywhere**, which was the
+  headline defect. It even fades by compression: width 9 → 6 → 4 → 1 px while satmean holds.
+- Status: the judge measured 4758–6399 diff px, **higher** than the builder's claimed 3351–4344.
+- Charge: 1031 pastel / 1513 saturated, within 4% of the claim. The pink puddle is gone.
+- The pooled-uniform bug is fixed, and **proven harder than the builder proved it**: the builder never
+  actually ran 7 consecutive charges (its "pool6" was charge + 6 beams + charge). The judge ran
+  charge at 0, 0.9, 1.8, 2.7, 3.6, 4.5, 5.4 s; the 7th measures 1678 diff / 588 saturated against a
+  lone first cast's 1678 / 591.
+
+Still open on the laser (the owner accepts it and hands these back):
+
+1. **The bolt tracer trail is invisible** — and this round introduced it. Isolated by frame-diff in box
+   (765,420)-(809,469): 170 px, of which 143 (84%) below S=0.15, sampling (211,205,202) S=0.04 against
+   floor (224,223,221). A 6–20 level colourless darkening: exactly the pale-on-white-floor failure the
+   brief prohibits.
+2. **Claim 5's bolt geometry was a splice of two casts.** "рамка тянется по y 471-586" matches no
+   frame: t0.24 spans y 471-489 and t0.36 spans y 575-585, and the claimed 115-px streak is the top of
+   one glued to the bottom of the other. The bolt is never longer than 44 px at broadcast.
+3. **The bolt is occluded through mid-flight** — at t0.24 it is an 8×19 px sliver behind the caster's
+   shoulder. Its peak readable moment is one 11×44 px pill at t0.12. Colour beats the stock silhouette
+   (506 saturated vs 33) but the footprint does not, and bolt is one of only two declared deliveries.
+4. **Every beam leaves a colourless grey blotch for 12+ s.** Box (752,579)-(806,613): 901 diff px with
+   **zero** saturated, mean (196,192,195) — and 717 of them are *brighter* than the floor beneath,
+   because the decal paints over the caster's own shadow. Byte-identical at t1.50 and t4.00. Frost's
+   beam decal in the same box is a soft organic cyan patch; the laser's is a hard axis-aligned
+   rectangle. The commit says the pink veil was removed from the floor — the pink went and grey took
+   its place.
+5. Residual pink pastel under the charge (1031 px in the 0.15–0.45 band, two thirds as many as the orb
+   core itself), and status embers that measure (77,31,28) — reading as dirt or dried blood at
+   broadcast rather than as fire.
+
 ## Known issues and blockers
 
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
