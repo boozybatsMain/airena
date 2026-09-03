@@ -58,10 +58,29 @@ const CASTABLE = ['beam', 'cone', 'bolt', 'lob', 'zone', 'dash', 'blink', 'self'
 const ARENA_R = 9.5;
 
 const CSS = `
-#sbx { position: fixed; left: 14px; top: 132px; z-index: 7; width: 340px; max-height: calc(100vh - 220px);
-  overflow: auto; background: rgba(8, 14, 22, 0.92); border: 1px solid rgba(120, 170, 190, 0.3); color: #cfe6ee;
-  font-family: "Rajdhani", ui-monospace, sans-serif; font-size: 13px; letter-spacing: 0.04em; padding: 10px 12px 14px;
+/*
+ * ПАНЕЛЬ. Два решения куплены снимком 03.09 (см. reports/vfx/sandbox):
+ *
+ * 1. Скроллится ТОЛЬКО список ручек, а не вся коробка. У acid/cone ручек
+ *    пятнадцать: при общей прокрутке, чтобы дотянуться до последней,
+ *    приходилось увезти наверх выбор бойца и выбор умения — то есть ровно те
+ *    два поля, ради которых панель и открыта.
+ * 2. z-index выше боевого HUD. На том же снимке заголовок «ARENA FEED»
+ *    печатался ПОВЕРХ ползунков и съедал подпись DRIPHOLD. Лента боя и
+ *    легенда в песочнице всё равно пусты (симуляции нет вовсе — ни урона, ни
+ *    событий), поэтому они просто прячутся: пустая рамка, закрывающая
+ *    рабочий орган, хуже отсутствующей рамки.
+ */
+#sbx { position: fixed; left: 14px; top: 132px; z-index: 40; width: 340px; max-height: calc(100vh - 200px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: rgba(8, 14, 22, 0.94); border: 1px solid rgba(120, 170, 190, 0.3); color: #cfe6ee;
+  font-family: "Rajdhani", ui-monospace, sans-serif; font-size: 13px; letter-spacing: 0.04em; padding: 10px 12px 12px;
   backdrop-filter: blur(6px); scrollbar-width: thin; }
+#sbx .head { flex: 0 0 auto; }
+#sbx .body { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; min-height: 64px; scrollbar-width: thin;
+  margin-right: -6px; padding-right: 6px; }
+#sbx .foot { flex: 0 0 auto; }
+body.sbx-on #feedwrap, body.sbx-on #legend { display: none; }
 #sbx h2 { margin: 0 0 2px; font-size: 14px; letter-spacing: 0.18em; text-transform: uppercase; color: #e8fbff; font-weight: 700; }
 #sbx h3 { margin: 13px 0 6px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #7fa8b8; font-weight: 600;
   border-top: 1px solid rgba(120, 170, 190, 0.16); padding-top: 9px; }
@@ -76,10 +95,16 @@ const CSS = `
 #sbx .who { display: flex; gap: 6px; align-items: center; margin: 6px 0 2px; }
 #sbx .who b { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; width: 54px; }
 #sbx .who b.blue { color: #7fd6e8; } #sbx .who b.orange { color: #ffb072; }
-#sbx .knob { display: grid; grid-template-columns: 1fr 62px; gap: 2px 8px; align-items: center; margin: 5px 0; }
-#sbx .knob label { font-size: 11.5px; color: #9fc0cd; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#sbx .knob output { font: 600 11.5px ui-monospace, monospace; color: #e8fbff; text-align: right; }
-#sbx .knob input[type=range] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: #7fd6e8; height: 16px; }
+/* Ручка — ОДНА строка: имя, ползунок, значение. Двухстрочная раскладка
+   (подпись сверху, ползунок под ней) занимала ~40 px, и при пятнадцати ручках
+   у acid/cone в окне 900 px помещалось две штуки из пятнадцати — список
+   формально прокручивался, но пользоваться им было нельзя. Одна строка 15 px:
+   девять ручек из пятнадцати видно сразу, остальные — коротким скроллом
+   (замер reports/vfx/sandbox/panel-after-fix.png). */
+#sbx .knob { display: grid; grid-template-columns: 92px 1fr 50px; gap: 0 7px; align-items: center; margin: 2px 0; }
+#sbx .knob label { font-size: 11px; color: #9fc0cd; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sbx .knob output { font: 600 11px ui-monospace, monospace; color: #e8fbff; text-align: right; }
+#sbx .knob input[type=range] { width: 100%; margin: 0; accent-color: #7fd6e8; height: 14px; }
 #sbx .note { color: #93a9b6; font-size: 11.5px; line-height: 1.45; letter-spacing: 0; margin: 5px 0 0; }
 #sbx .stat { font: 600 11px ui-monospace, monospace; color: #8fb3c2; letter-spacing: 0.02em; margin-top: 6px; }
 #sbx .tag { font: 600 9.5px ui-monospace, monospace; letter-spacing: 0.1em; color: #7fa8b8;
@@ -89,10 +114,10 @@ const CSS = `
 /* ── состояние ───────────────────────────────────────────────────────────── */
 
 const FIGHTERS = {
-  blue: { id: 'blue', el: 'arc', kind: 'beam', x: BLUE.x, z: BLUE.z, h: BLUE.h, vx: 0, vz: 0, stride: 0, turn: 0, cd: 0.6, wander: 0, tune: {} },
-  orange: { id: 'orange', el: 'ember', kind: 'cone', x: ORANGE.x, z: ORANGE.z, h: ORANGE.h, vx: 0, vz: 0, stride: 0, turn: 0, cd: 1.4, wander: 1.7, tune: {} },
+  blue: { id: 'blue', el: 'arc', kind: 'beam', x: BLUE.x, z: BLUE.z, h: BLUE.h, vx: 0, vz: 0, stride: 0, turn: 0, cd: 0.6, wander: 0, flee: 0, tune: {} },
+  orange: { id: 'orange', el: 'ember', kind: 'cone', x: ORANGE.x, z: ORANGE.z, h: ORANGE.h, vx: 0, vz: 0, stride: 0, turn: 0, cd: 1.4, wander: 1.7, flee: 0, tune: {} },
 };
-const state = { run: true, cam: 'auto', edit: 'blue', last: 0, casts: 0, fps: 0 };
+const state = { run: true, solo: false, cam: 'auto', edit: 'blue', last: 0, casts: 0, fps: 0 };
 
 /* Значения по умолчанию доставки из реестра — стартовая точка ползунков. */
 const deliveryDefaults = (kind) => {
@@ -150,7 +175,16 @@ function steer(f, foe, dt) {
   const want = wantRange(f);
   /* Мёртвая зона в метр: без неё боец дрожит на месте вокруг идеала. */
   const err = dist - want;
-  const push = Math.abs(err) < 1 ? 0 : Math.sign(err);
+  /*
+   * ОТСКОК ПОСЛЕ ВЫСТРЕЛА. Просьба дословно: «бегали, убегали друг от друга и
+   * стреляли». Одно только удержание дистанции убеганием не читается: двое
+   * встают на идеале и вечно ходят по кругу, и по кадру не видно, что кто-то
+   * от кого-то уходит. Полсекунды после каста боец пятится независимо от
+   * того, где идеал, — и разрыв дистанции виден глазом. Дальше он снова
+   * подтягивается, потому что иначе перестанет доставать.
+   */
+  if (f.flee > 0) f.flee = Math.max(0, f.flee - dt);
+  const push = f.flee > 0 ? -1 : (Math.abs(err) < 1 ? 0 : Math.sign(err));
   f.wander += dt * 0.7;
   const strafe = Math.sin(f.wander) * 0.85;
   let mx = ux * push - uz * strafe;
@@ -214,6 +248,7 @@ function fire(vfx, f, foe, dist) {
   const e = recordFor(f, foe);
   if (!e) return;
   state.casts++;
+  f.shots = (f.shots || 0) + 1;
   window.__airenaSweep.cast(e);
   const speed = knobValue(f, 'speed', deliveryDefaults(f.kind).speed);
   const flight = (f.kind === 'bolt' || f.kind === 'lob') && speed ? Math.min(2, dist / speed) : 0.08;
@@ -248,6 +283,10 @@ function start() {
   const box = document.createElement('div');
   box.id = 'sbx';
   document.body.appendChild(box);
+  /* Лента боя и легенда — органы боевого HUD, которым в песочнице нечего
+     показать: симуляции нет, событий нет. Пустые, но непрозрачные, они
+     печатались поверх ползунков (снимок 03.09). Прячем классом на body. */
+  document.body.classList.add('sbx-on');
 
   /* Прогрев: по одному холостому касту на выбранную пару, чтобы `kit.tune`
      успел объявить опись ручек до первой отрисовки панели. Заодно снимает
@@ -257,19 +296,33 @@ function start() {
 
   const setCam = (name) => { state.cam = name; sweep.cam(name === 'auto' ? null : CAMS[name]); render(); };
 
+  /* Опись ручек: доставочные поля записи плюс всё, что модуль объявил сам
+     внутри `kit.tune`. Список берётся из кода, а не из таблицы в панели, —
+     поэтому разойтись с модулем он не может: добавили параметр в модуль, он
+     сам появился ползунком. */
+  function knobKeys(f) {
+    const all = { ...deliveryDefaults(f.kind), ...(knobsFor(f.el, f.kind) || {}) };
+    return Object.keys(all).filter((k) => typeof all[k] === 'number' && Number.isFinite(all[k])).sort();
+  }
+
+  function knobCount(f) {
+    const n = knobKeys(f).length;
+    const edited = knobKeys(f).filter((k) => f.tune[k] != null).length;
+    return edited ? `${n} · крутили ${edited}` : `${n}`;
+  }
+
   function knobRows(f) {
-    const declared = knobsFor(f.el, f.kind) || {};
-    const all = { ...deliveryDefaults(f.kind), ...declared };
-    const keys = Object.keys(all).filter((k) => typeof all[k] === 'number' && Number.isFinite(all[k]));
+    const all = { ...deliveryDefaults(f.kind), ...(knobsFor(f.el, f.kind) || {}) };
+    const keys = knobKeys(f);
     if (!keys.length) return '<p class="note">Ручки появятся после первого каста этой пары — их объявляет сам модуль.</p>';
-    keys.sort();
     return keys.map((k) => {
       const dflt = all[k];
       const v = knobValue(f, k, dflt);
       const [lo, hi, step] = rangeFor(k, dflt);
       const edited = f.tune[k] != null ? ' style="color:#7fd6e8"' : '';
-      return `<div class="knob"><label title="${k}"${edited}>${k}</label><output>${(+v).toFixed(step < 0.01 ? 3 : 2)}</output>`
-        + `<input type="range" data-knob="${k}" min="${lo}" max="${hi}" step="${step}" value="${v}"></div>`;
+      return `<div class="knob"><label title="${k}"${edited}>${k}</label>`
+        + `<input type="range" data-knob="${k}" min="${lo}" max="${hi}" step="${step}" value="${v}">`
+        + `<output>${(+v).toFixed(step < 0.01 ? 3 : 2)}</output></div>`;
     }).join('');
   }
 
@@ -277,10 +330,13 @@ function start() {
     const f = FIGHTERS[state.edit];
     const other = state.edit === 'blue' ? 'orange' : 'blue';
     box.innerHTML = `
+      <div class="head">
       <h2>Песочница</h2>
-      <p class="note">Двое дерутся сами. Крути ручки — они действуют со следующего каста, и боец сразу меняет дистанцию.</p>
+      <p class="note">Двое дерутся сами. Ручка действует с ближайшего каста — жми «выстрелить», чтобы увидеть сразу.</p>
       <div class="row" style="margin-top:8px">
         <button data-act="run" class="${state.run ? 'on' : ''}">${state.run ? '⏸ пауза' : '▶ пуск'}</button>
+        <button data-act="cast">выстрелить</button>
+        <button data-act="solo" class="${state.solo ? 'on' : ''}">соло</button>
         <button data-act="reset">развести</button>
         <span class="tag" id="sbx-stat"></span>
       </div>
@@ -293,15 +349,27 @@ function start() {
       <div class="who"><b></b>
         <select data-sel="kind">${CASTABLE.filter((k) => (REGISTRY[f.el].forms || CASTABLE).includes(k)).map((k) => `<option value="${k}" ${k === f.kind ? 'selected' : ''}>${k} · ${DELIVERIES[k] ? DELIVERIES[k].ru : k}</option>`).join('')}</select></div>
       <p class="note">рисует: <b>${drawnBy(f.el, f.kind)}</b> · держит дистанцию ${wantRange(f).toFixed(1)} м · перезарядка ${cooldownFor(f).toFixed(2)} с</p>
-      <h3>Параметры умения</h3>
-      ${knobRows(f)}
-      <div class="row" style="margin-top:9px"><button data-act="defaults">сбросить ручки</button></div>
       <h3>Глаз</h3>
       <div class="row">
         <button data-cam="auto" class="${state.cam === 'auto' ? 'on' : ''}">решатель</button>
-        ${Object.keys(CAMS).map((n) => `<button data-cam="${n}" class="${state.cam === n ? 'on' : ''}">${CAM_LABELS ? (CAM_LABELS[n] || n) : n}</button>`).join('')}
+        ${Object.keys(CAMS).map((n) => {
+          /* CAM_LABELS[n] — ПАРА [короткое имя, пояснение], а не строка. При
+             прямой подстановке массив склеивался запятой, и кнопка выезжала
+             в «broadcast,26 m, along the cast — the viewer's eye» во всю
+             ширину панели: четыре такие кнопки съедали место, отведённое под
+             ползунки (снимок 03.09). Имя — на кнопку, пояснение — в title. */
+          const L = (CAM_LABELS && CAM_LABELS[n]) || [n, ''];
+          const [name, hint] = Array.isArray(L) ? L : [L, ''];
+          return `<button data-cam="${n}" title="${hint}" class="${state.cam === n ? 'on' : ''}">${name}</button>`;
+        }).join('')}
       </div>
-      <p class="note">пробел — пауза, R — развести, 1–4 — глаза, 0 — решатель. Здоровье бесконечно, урона нет: песочница про вид и чувство параметра.</p>`;
+      <h3>Параметры умения <span class="tag">${knobCount(f)}</span></h3>
+      </div>
+      <div class="body">${knobRows(f)}</div>
+      <div class="foot">
+      <div class="row" style="margin-top:9px"><button data-act="defaults">сбросить ручки</button></div>
+      <p class="note">пробел·пауза F·выстрел S·соло R·развести 1–4·глаза 0·решатель. Здоровье бесконечно, урона нет.</p>
+      </div>`;
     const other2 = FIGHTERS[other];
     void other2;
   }
@@ -312,6 +380,8 @@ function start() {
     if (t.dataset.edit) { state.edit = t.dataset.edit; render(); }
     else if (t.dataset.cam) setCam(t.dataset.cam);
     else if (t.dataset.act === 'run') { state.run = !state.run; render(); }
+    else if (t.dataset.act === 'cast') castNow();
+    else if (t.dataset.act === 'solo') { state.solo = !state.solo; render(); }
     else if (t.dataset.act === 'reset') reset();
     else if (t.dataset.act === 'defaults') { FIGHTERS[state.edit].tune = {}; render(); }
   });
@@ -343,6 +413,21 @@ function start() {
     if (note) note.innerHTML = `рисует: <b>${drawnBy(f.el, f.kind)}</b> · держит дистанцию ${wantRange(f).toFixed(1)} м · перезарядка ${cooldownFor(f).toFixed(2)} с`;
   });
 
+  /*
+   * ВЫСТРЕЛИТЬ СЕЙЧАС. Просьба дословно: «чтобы сразу видеть, как всё
+   * меняется». Ползунок действует со следующего каста, а перезарядка у зоны
+   * и стены доходит до трёх секунд — то есть между «подвинул» и «увидел»
+   * стояла пауза, из-за которой ручку невозможно почувствовать. Кнопка (и
+   * клавиша F) стреляет настроенным бойцом немедленно и сбрасывает его
+   * перезарядку, поэтому сравнивать «до» и «после» можно подряд.
+   */
+  function castNow() {
+    const f = FIGHTERS[state.edit], foe = FIGHTERS[state.edit === 'blue' ? 'orange' : 'blue'];
+    const dist = Math.hypot(foe.x - f.x, foe.z - f.z);
+    f.cd = cooldownFor(f);
+    fire(window.__airenaVfx, f, foe, dist);
+  }
+
   function reset() {
     FIGHTERS.blue.x = BLUE.x; FIGHTERS.blue.z = BLUE.z; FIGHTERS.blue.vx = 0; FIGHTERS.blue.vz = 0;
     FIGHTERS.orange.x = ORANGE.x; FIGHTERS.orange.z = ORANGE.z; FIGHTERS.orange.vx = 0; FIGHTERS.orange.vz = 0;
@@ -352,6 +437,8 @@ function start() {
     if (ev.target && /input|select|textarea/i.test(ev.target.tagName)) return;
     if (ev.code === 'Space') { ev.preventDefault(); state.run = !state.run; render(); }
     else if (ev.key === 'r' || ev.key === 'R') reset();
+    else if (ev.key === 'f' || ev.key === 'F') castNow();
+    else if (ev.key === 's' || ev.key === 'S') { state.solo = !state.solo; render(); }
     else if (ev.key === '0') setCam('auto');
     else {
       const n = Object.keys(CAMS)[+ev.key - 1];
@@ -385,8 +472,17 @@ function start() {
          что дальность вообще на что-то влияет. */
       const reach = knobValue(f, 'range', deliveryDefaults(f.kind).range ?? wantRange(f)) * 1.25;
       const selfish = f.kind === 'self' || f.kind === 'jump' || f.kind === 'blink';
-      if (f.cd <= 0 && (selfish || dist <= reach)) {
+      /* Соло: стреляет только настраиваемый боец. Разбирать одно умение под
+         чужими вспышками нельзя — второй боец кладёт свои декали и свет в тот
+         же кадр, и непонятно, чьё что. Второй при этом продолжает бегать: без
+         движущейся цели дальность и конус не читаются. */
+      const mayCast = !state.solo || id === state.edit;
+      if (mayCast && f.cd <= 0 && (selfish || dist <= reach)) {
         f.cd = cooldownFor(f);
+        /* Отскок держится половину перезарядки, но не дольше 0.7 с: у
+           быстрых умений иначе боец пятился бы непрерывно и никогда не
+           возвращался на дистанцию. */
+        f.flee = Math.min(0.7, f.cd * 0.5);
         fire(window.__airenaVfx, f, foe, dist);
       }
     }

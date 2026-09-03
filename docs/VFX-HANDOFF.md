@@ -71,6 +71,73 @@ Commit `95bc6a8` then fixed the four blockers an adversarial review pass found i
 If you are looking for "when did time.js get rich" or "when did the tune opis appear", the answer is
 `2bf035e`, not a commit named after them.
 
+## The sandbox (`?vfx=1&sandbox=1`)
+
+The founder asked for "a scene where you can switch between different skills and view them, with
+creatures that run around and fight each other… infinite HP… primitive AI so they run around, flee
+from each other, and shoot… tweak settings for any skill — things like range and radius — whatever
+parameters a skill has… have them take effect in real time, so the creatures adapt to the new
+settings and I can immediately see how things change."
+
+`src/viewer/vfxsandbox.js` (commit `7bb7cc4`). Two fighters, **no simulation at all** — no damage, no
+HP, no resolver — because the ask was to look at effects, not to fight. `vfxdemo.js` yields when
+`sandbox=1` is present so the carousel does not fire over the fight.
+
+**The knob list is generated from the modules, not from a table in the panel.** `kit.tune(e, defaults)`
+records its own `defaults` object under `` `${element}:${kind}` `` and `kit.knobsFor()` serves it back.
+That is the whole reason the panel cannot drift from the code: add a parameter to a module and it
+appears as a slider by itself. Measured: 9 knobs for `arc/beam`, 14 for `arc/zone`, 14 for `acid/cone`.
+Sliders write on the `input` event, not `change`, so a value moves **while you drag**; the AI re-reads
+`range` on the same frame and changes its hold distance immediately.
+
+Traps worth knowing before you touch it:
+
+- **Warm up before the first render.** The knob opis exists only after a module has actually cast
+  (`kit.tune` declares it from inside the form). Rendering the panel before the warm-up cast showed
+  *one* delivery knob instead of nine. `warm(blue); warm(orange); render();` — that order is load-bearing.
+- **Clamp the preferred distance to the arena.** `wantRange` reads the skill's own `range`, and some
+  registry ranges are 18 m and 45.8 m in an arena ~19 m across; unclamped, the fighters just stood in
+  opposite corners and never closed. `Math.min(want, ARENA_R * 0.8)`.
+- Two `kit.footprint` bugs surfaced only here, because the sandbox is the first thing that casts from
+  live positions rather than a fixed bench stance: the `self` branch read `ctx.radius`, which does not
+  exist, so it always returned 1.5; the `zone` branch hardcoded `dir: 0` and ignored the cast heading.
+  Both are fixed in `kit.js`.
+- Locomotion goes through `__airenaSweep.move(id, v)` (added to `main.js`) so the creatures walk with
+  the real combat gait instead of sliding.
+
+**The AI is four rules, and one of them exists only because the founder named it.** Keep the distance
+your own skill wants (dead zone 1 m, or the fighter jitters on the ideal), strafe, get pushed off the
+arena wall, and **break off for half a cooldown after every shot**. That last one is the founder's
+"flee from each other": pure distance-keeping does not read as fleeing — two fighters settle on the
+ideal and circle forever, and nothing in frame says anyone is running away. Measured over 7 s of live
+fight, the gap now breathes between 4.08 m and 6.12 m instead of sitting flat.
+
+Three controls beyond the sliders, all keyboard-mirrored:
+
+- **выстрелить / F** — casts immediately and resets the cooldown. Without it a slider change waited up
+  to 3 s for the next zone or wall cast, which is long enough that you cannot feel what the knob does.
+- **соло / S** — only the fighter you are editing casts; the other keeps running so range and cone
+  still have a moving target. Studying one skill under the other's flashes and 20 s floor decals is
+  guesswork about whose mark is whose.
+- **развести / R**, пробел, 1–4, 0 — reset positions, pause, cameras.
+
+Panel layout, both fixed against `reports/vfx/sandbox/panel-before-fix.png`:
+
+- Only the **knob list** scrolls, not the whole box — otherwise reaching knob 15 scrolled away the two
+  selects the panel exists for. Head and footer are pinned.
+- A knob is **one row** (name · slider · value), 15 px. The two-row layout was ~40 px, which fit *two*
+  of acid/cone's fifteen knobs in a 900 px window: technically scrollable, practically unusable. Now
+  nine of fifteen are visible at once.
+- `#feedwrap` and `#legend` are hidden (`body.sbx-on`). They are match-HUD organs with nothing to show
+  here, and being opaque they printed "ARENA FEED" straight over the sliders.
+- `CAM_LABELS[n]` is a **pair** `[name, description]`, not a string. Interpolated directly it produced
+  a full-width button reading "broadcast,26 m, along the cast — the viewer's eye"; four of those ate
+  the knob list's space.
+
+Verified live in headless Chrome: panel renders, both creatures move and fight, dragging `range`
+retunes the hold distance in real time, fire-now casts on the same frame, solo fired 4 casts from the
+edited fighter and 0 from the other over 9 s, both stay inside the arena, 60 fps, zero console errors.
+
 ## Known issues and blockers
 
 - **Six stages are below 70 as last judged** (see the table). Each has one more round committed but not re-judged. Judge them first.
