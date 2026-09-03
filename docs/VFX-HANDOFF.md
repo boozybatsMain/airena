@@ -207,7 +207,14 @@ Chrome so no page is shared), diffed against `nil/charge`:
 | `wall` | 15617 | stock grey grid (judge-confirmed visually) |
 | `self` | 68065 | |
 | `zone` | 77266 | |
-| `beam` | **517016** | stock five-ribbon beam (judge-confirmed visually) — 36% of the frame |
+| `beam` | **517016** whole-frame / **339896** arena-only | stock five-ribbon beam (judge-confirmed visually) |
+
+**Measure the ARENA, not the frame — the HUD flashes on `beam`.** The void judge caught this and it
+holds up: of `nil/beam`'s 517016 whole-frame pixels, **176895 (34%) are the HUD strip in rows 0-119**,
+which lights up on a beam cast. Re-measured per form, `beam` is the *only* contaminated one — every
+other form in the table above has **exactly 0** HUD pixels. So a whole-frame count that involves any
+beam is inflated by roughly a third, and the judge found a builder figure ("beam = 169502 px") that was
+~62% artifact by this route. **Restrict every measurement to arena rows 120-790.**
 
 **Caveat on this table, which matters as much as the table.** It diffs *different forms against each
 other*, and the fixture aims and poses the two fighters differently per form — so every non-zero
