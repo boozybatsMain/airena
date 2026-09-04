@@ -32,6 +32,7 @@ import * as arena from './screens/arena.js';
 import * as creature from './screens/creature.js';
 import * as ladder from './screens/ladder.js';
 import * as create from './screens/create.js';
+import * as worker from './screens/worker.js';
 import * as wait from './screens/wait.js';
 import { claimSilently, startPlatformIdentity } from './lib/platform.js';
 import * as result from './screens/result.js';
@@ -45,7 +46,7 @@ export const state = {
   over: null,       // последнее сообщение type:'over'
   frame: null,
   route: null,
-  screens: { arena, creature, ladder, create, wait, result, tactics, fatal, watch },
+  screens: { arena, creature, ladder, create, wait, result, tactics, fatal, watch, worker },
   bus: new EventTarget(),
 };
 
@@ -157,6 +158,10 @@ const ROUTES = [
   /* `/save` был стеной аккаунта. Снят 05.09 вместе с экраном: своё
      существо создаётся без аккаунта, спрашивать не о чем. */
   [/^\/tactics\/([\w-]+)$/, (m) => ({ screen: 'tactics', tab: null, args: { matchId: m[1] } })],
+  /* Привязка воркера коллеги (D173). Вкладки нет намеренно: экран нужен
+     нескольким людям по прямой ссылке, а кнопка в панели — это вопрос
+     «что это?» у каждого остального игрока. */
+  [/^\/worker$/, () => ({ screen: 'worker', tab: null })],
 ];
 
 function parseHash() {
@@ -346,6 +351,20 @@ async function main() {
   /* Алиасы query → хеш (A3). Делается ДО первого разбора маршрута. */
   const q = new URLSearchParams(location.search);
   if (!location.hash && q.get('m')) go(`/watch/${q.get('m')}`, { replace: true });
+  /*
+   * `/worker` — НАСТОЯЩИЙ ПУТЬ, а маршрутизатор читает только хеш.
+   *
+   * Сервер отдаёт `index.html` на любой путь без расширения, поэтому
+   * `airena.genex.technology/worker` открывается — и уезжает на арену, потому
+   * что `parseHash` смотрит в `location.hash`, а там пусто.
+   *
+   * Адрес без решётки здесь обязателен: его диктуют вслух и вставляют в
+   * терминал («открой /worker»), и `#/worker` в такой строке — лишний знак,
+   * который половина людей потеряет. Псевдоним стоит рядом с тем же приёмом
+   * для `?m=`, потому что это ровно тот же случай: внешняя ссылка,
+   * приведённая к внутреннему маршруту.
+   */
+  if (!location.hash && /^\/worker\/?$/.test(location.pathname)) go('/worker', { replace: true });
 
   addEventListener('hashchange', render);
 

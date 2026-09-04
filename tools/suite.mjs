@@ -27,7 +27,7 @@ const GATES = [
   ['checkcontrast'], ['checkgrammar'], ['checkprices'], ['checkladder'],
   ['checkvfx'], ['checkdecay'], ['checkgauntlet'], ['checkcadence'],
   ['sizebalance', '--rounds=20'],
-  ['checkstages'], ['checkspec'], ['checkboot'], ['checkisolate'], ['checkidentity'],
+  ['checkstages'], ['checkspec'], ['checkboot'], ['checkisolate'], ['checkidentity'], ['checkimage'],
   ['checkbody'], ['checkbodyrace'], ['checkfaults'], ['checkfacade'], ['checkforge'], ['checkmodels'],
   ['checkpose'], ['checkselectors'], ['checkscreens'], ['checkscope'],
   ['loadtest'],
