@@ -165,6 +165,20 @@ export function buildRouter(ctx) {
   }
   /** Читающая ручка: узнать, кто пришёл, но никого не заводить. */
   const seen = (req, res) => who(req, res, { create: false });
+
+  /**
+   * Как назвать аккаунт вслух.
+   *
+   * Нужно ровно в одном месте — строке «подключён как …» в терминале коллеги.
+   * Берётся локальная часть почты, а не сама почта: заголовок висит в
+   * терминале, который коллега показывает на созвонах и в скриншотах, и
+   * печатать там чужой адрес целиком незачем.
+   */
+  const accountName = (a) => {
+    const mail = String(a?.email_norm || '');
+    if (mail.includes('@')) return mail.slice(0, mail.indexOf('@'));
+    return String(a?.id || 'аккаунт').slice(0, 12);
+  };
   ctx.who = who;
 
   /**
@@ -196,7 +210,9 @@ export function buildRouter(ctx) {
      * выбрал, и по ней же считается дневной бюджет.
      */
     const cheap = catalog.cheapestFree?.() ?? null;
-    const limitState = (!acct.is_guest && !acct.free_creature_used && cheap)
+    /* Считается ВСЕМ, включая гостя: с 05.09 он создаёт наравне, значит и
+       денежные отказы обязан видеть заранее, а не узнавать их нажатием. */
+    const limitState = cheap
       ? limits.check(db, { account: acct, bundle: cheap, kind: 'create' })
       : null;
 
@@ -205,7 +221,8 @@ export function buildRouter(ctx) {
       accountId: acct.id,
       /* Стенд без платформы: клиент вправе предложить дев-вход. См. шапку. */
       dev: DEV,
-      canCreate: !acct.is_guest && !acct.free_creature_used && (!limitState || limitState.ok),
+      /* Гость создаёт наравне с аккаунтом (05.09) — см. `limits.check`. */
+      canCreate: (!limitState || limitState.ok),
       /* D1: гость не запускает генерацию. Причина отдаётся кодом, чтобы экран
          показал стену аккаунта, а не общую ошибку. */
       /*
@@ -217,9 +234,9 @@ export function buildRouter(ctx) {
        * строку, жал «создать» и получал отказ, который можно было показать
        * заранее.
        */
-      createBlocked: acct.is_guest ? 'guest'
-        : (acct.free_creature_used ? 'free_used'
-          : (limitState && !limitState.ok ? limitState.code : null)),
+      /* Гость и «бесплатное уже создано» больше не блокируют (05.09): остаются
+         только денежные отказы, и их по-прежнему видно ДО нажатия. */
+      createBlocked: (limitState && !limitState.ok ? limitState.code : null),
       creature: mine ? card(mine, { viewerId: acct.id }) : null,
       job: activeJob ? jobView(activeJob) : null,
       nextFightAt: mine ? loop.nextFightAt(mine.id) : null,
@@ -366,13 +383,31 @@ export function buildRouter(ctx) {
   });
 
   // ── каталог моделей: тир, но НИКОГДА не сумма (D11) ────────────────────
+  /**
+   * Готов ли канал подписки ЛИЧНО ДЛЯ ЭТОГО аккаунта (D172, D175).
+   *
+   * Два условия, и оба обязательны. Аккаунт в списке допущенных — иначе связка
+   * вообще не его. И его воркер прямо сейчас на связи — иначе кнопка гарантированно
+   * повиснет, а кнопка, которая заведомо не сработает, хуже отсутствующей.
+   */
+  const subReady = (acct) => Boolean(ctx.hub?.allows(acct) && ctx.hub.isOnline(acct.id));
+
   r.get('/api/catalog', (req, res) => {
     const acct = seen(req, res);
     const cat = catalog.current();
     json(res, {
       /* Здесь нет ни одного числа в долларах. Тир, ярлык и причина блокировки —
          всё, что нужно экрану, и всё, что ему разрешено знать. */
-      bundles: cat.bundles.map((b) => ({
+      /*
+       * ── СВЯЗКИ ПОДПИСКИ ВИДЯТ НЕ ВСЕ (D175) ────────────────────────────
+       *
+       * Аккаунт вне списка допущенных не видит их ВОВСЕ — не серыми, а никак.
+       * Серая строка — это обещание «когда-нибудь откроется», и для канала,
+       * который открывается решением основателя поимённо, это обещание ложное.
+       * Для допущенного, но с выключенным воркером, строка остаётся: там
+       * обещание правдивое, и делать нужно ровно одно — запустить программу.
+       */
+      bundles: cat.bundles.filter((b) => b.tier !== 'sub' || ctx.hub?.allows(acct)).map((b) => ({
         id: b.bundle,
         label: b.label,
         think: b.thinkLabel,
@@ -382,15 +417,116 @@ export function buildRouter(ctx) {
            полезно: именно ожидание он принимает за поломку. `null` — связка
            не замерена, и экран честно молчит вместо выдумки. */
         secs: b.secs ?? null,
-        available: OPEN_TIERS.has(b.tier),
+        available: b.tier === 'sub' ? subReady(acct) : OPEN_TIERS.has(b.tier),
         /* §2.2: реальные деньги в платформу пока не заходят вообще. Подписка
-           денег игрока не трогает и потому доступна (D164). */
-        unavailableReason: OPEN_TIERS.has(b.tier) ? null : 'платежи платформы ещё не включены',
+           денег игрока не трогает и потому доступна (D164) — но только когда
+           есть кому её выполнить (D175). */
+        unavailableReason: b.tier === 'sub'
+          ? (subReady(acct) ? null : 'воркер не запущен — открой /worker')
+          : (OPEN_TIERS.has(b.tier) ? null : 'платежи платформы ещё не включены'),
       })),
-      canCreate: !acct.is_guest && !acct.free_creature_used,
+      canCreate: true,
       note: cat.bundles.some((b) => b.tier === 'paid')
         ? 'Платные авторы появятся, когда платформа включит платежи.' : null,
     });
+  });
+
+  /*
+   * ══ ВОРКЕР КОЛЛЕГИ ═══════════════════════════════════════════════════════
+   *
+   * Пять ручек, и ни одна из них не принимает учётных данных Anthropic — это
+   * не упущение, а предмет всей конструкции (см. шапку `forge/worker.js`).
+   * Единственный секрет здесь свой: токен воркера, выданный Airena, дающий
+   * право забирать задания СВОЕГО аккаунта и больше ничего.
+   *
+   * Авторизация воркера намеренно отдельна от `who`: сессия игрока живёт в
+   * куке и заголовке `x-airena-session`, воркер — по своему токену. Свести их
+   * значило бы дать программе, живущей на чужом ноутбуке месяцами, права
+   * браузерной сессии.
+   */
+  function workerAuth(req, res) {
+    const h = req.headers.authorization;
+    const token = h && h.startsWith('Bearer ') ? h.slice(7) : null;
+    const account = token ? ctx.hub?.accountByToken(token) : null;
+    /* Токен есть, аккаунта нет — токен отозван или аккаунт удалён. 401, чтобы
+       воркер сказал коллеге «привяжись заново», а не молчал в бэкоффе. */
+    if (!account) { fail(res, 401, 'bad_token', 'токен воркера недействителен'); return null; }
+    /* Допуск перепроверяется НА КАЖДОМ запросе, а не только при привязке:
+       основатель убирает аккаунт из списка правкой переменной, и токен,
+       выданный вчера, обязан перестать работать сегодня. */
+    if (!ctx.hub.allows(account)) { fail(res, 403, 'not_allowed', 'аккаунт больше не в списке'); return null; }
+    return { token, account };
+  }
+
+  /** Код привязки для экрана. Только допущенным. */
+  r.post('/api/worker/pair/start', (req, res) => {
+    const acct = who(req, res);
+    if (!ctx.hub?.allows(acct)) {
+      return fail(res, 403, 'not_allowed', 'этот аккаунт не в списке тех, кто может запускать воркер');
+    }
+    json(res, ctx.hub.startPairing(acct.id));
+  });
+
+  /** Обмен кода на токен. Без авторизации — кодом и авторизуется. */
+  r.post('/api/worker/pair/claim', async (req, res) => {
+    let body;
+    try { body = await readJson(req); } catch { body = {}; }
+    const got = ctx.hub?.claimPairing(body.code, body.hostname);
+    if (!got) return fail(res, 404, 'bad_code', 'код не подошёл или истёк');
+    const a = db.prepare('SELECT * FROM account WHERE id = ?').get(got.accountId);
+    json(res, { token: got.token, account: { name: accountName(a) } });
+  });
+
+  /** Длинный опрос: дай задание. 204 — пусто, спрашивай снова. */
+  r.get('/api/worker/next', async (req, res) => {
+    const w = workerAuth(req, res);
+    if (!w) return;
+    const job = await ctx.hub.next({
+      accountId: w.account.id,
+      hostname: String(req.headers['x-worker-host'] || ''),
+    });
+    if (!job) { res.writeHead(204); res.end(); return; }
+    json(res, job);
+  });
+
+  /** Воркер принёс ответ или отказ. */
+  r.post('/api/worker/result', async (req, res) => {
+    const w = workerAuth(req, res);
+    if (!w) return;
+    let body;
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать ответ'); }
+    const ok = ctx.hub.deliver({ accountId: w.account.id, requestId: body.requestId, body });
+    /* Неизвестный `requestId` — не ошибка воркера: задание могло умереть по
+       стене, пока он считал. Отвечаем 204 и здесь: пусть идёт за следующим. */
+    res.writeHead(ok ? 204 : 204); res.end();
+  });
+
+  /** Воркер выключается. */
+  r.post('/api/worker/bye', (req, res) => {
+    const w = workerAuth(req, res);
+    if (!w) return;
+    ctx.hub.bye(w.account.id);
+    res.writeHead(204); res.end();
+  });
+
+  /**
+   * Сам воркер, файлом.
+   *
+   * Отдаётся с сервера игры, а не из репозитория: коллеге незачем клонировать
+   * игру, чтобы одолжить ей подписку, а нам незачем давать ему доступ к
+   * репозиторию ради одного файла. Читается с диска на каждый запрос — файл
+   * маленький, а кеш означал бы, что после деплоя качается старая версия.
+   */
+  r.get('/worker.mjs', (req, res) => {
+    const p = join(root, 'src/worker/worker.mjs');
+    if (!existsSync(p)) return fail(res, 404, 'no_worker', 'воркер не собран');
+    const src = readFileSync(p);
+    res.writeHead(200, {
+      'content-type': 'text/javascript; charset=utf-8',
+      'content-disposition': 'attachment; filename="airena-worker.mjs"',
+      'cache-control': 'no-store',
+    });
+    res.end(src);
   });
 
   /**
@@ -626,7 +762,7 @@ export function buildRouter(ctx) {
     /* E6: покупок в v1 нет ни в каком виде, включая заглушку. Отказ честный
        и объясняет причину, а не предлагает несуществующую кнопку. Правило —
        общее, см. `paidRefused` ниже. */
-    if (paidRefused(res, bundle)) return;
+    if (paidRefused(res, bundle, acct)) return;
     const gate = limits.check(db, { account: acct, bundle, kind: 'create' });
     if (!gate.ok) {
       trackEvent(db, { name: 'limit_denied', accountId: acct.id, props: { code: gate.code } });
@@ -637,24 +773,25 @@ export function buildRouter(ctx) {
     if (prompt.length < 3) return fail(res, 422, 'short_prompt', 'опиши существо хотя бы несколькими словами');
 
     /*
-     * F7 — «одно бесплатное существо на аккаунт, пожизненно» — закрывается
-     * ЗДЕСЬ, атомарным UPDATE, а не проверкой в `limits.check`.
+     * F7 СНЯТО (05.09, решение основателя).
      *
-     * Проверка и постановка в очередь — два разных оператора, и между ними
-     * помещается второй запрос: два POST в одну миллисекунду проходили обе
-     * проверки и заводили два существа на один аккаунт. Условие
-     * `free_creature_used = 0` в самом UPDATE делает выигравшего ровно одним:
-     * второй получает `changes === 0` и честный отказ.
+     * Здесь стоял атомарный `UPDATE ... WHERE free_creature_used = 0` — он
+     * закрывал «одно бесплатное существо на аккаунт, пожизненно», и он же
+     * отбивал второе нажатие «создать» кодом `free_used`. Требование было
+     * прямым: промпт, кнопка, генерация — и так каждый раз.
      *
-     * Флаг снимается, если генерация не удалась, — E5: за неудачу не платят
-     * ни деньгами, ни правом на бесплатное существо.
+     * ЧТО ТЕПЕРЬ ОГРАНИЧИВАЕТ ЧИСЛО СУЩЕСТВ: счётчики на аккаунт из E3 —
+     * `AIRENA_ACCT_DAY` (по умолчанию три в сутки) и `AIRENA_ACCT_MONTH`, плюс
+     * общий дневной бюджет игры. Это денежные лимиты, они остались нетронутыми.
+     *
+     * ПОБОЧНОЕ СЛЕДСТВИЕ, которое стоит знать: «моё существо» продукт берёт как
+     * САМОЕ СВЕЖЕЕ активное у владельца. Значит второе созданное вытесняет
+     * первое с экрана — старое не удаляется и продолжает драться на лестнице,
+     * но показывается новое.
+     *
+     * Колонка `free_creature_used` оставлена: её пишет перенос существ при
+     * привязке аккаунта, и сносить её отдельной миграцией здесь незачем.
      */
-    const claimed = db.prepare(
-      'UPDATE account SET free_creature_used = 1 WHERE id = ? AND free_creature_used = 0',
-    ).run(acct.id);
-    if (claimed.changes === 0) {
-      return fail(res, 429, 'free_used', limits.DENY.free_used);
-    }
 
     /*
      * ОТ КЛИЕНТА ПРИЕЗЖАЕТ ОПИСАНИЕ, И БОЛЬШЕ НИЧЕГО.
@@ -700,8 +837,34 @@ export function buildRouter(ctx) {
    * Дело не в том, что забыли строчку, а в том, что правило жило в обработчике.
    * Обработчиков становится больше; правило одно.
    */
-  function paidRefused(res, bundle) {
-    if (!bundle || OPEN_TIERS.has(bundle.tier)) return false;
+  function paidRefused(res, bundle, acct = null) {
+    if (!bundle) return false;
+    /*
+     * ── ВТОРАЯ ГРАНИЦА, И ОНА ЖЁСТЧЕ ДЕНЕЖНОЙ (D172) ──────────────────────
+     *
+     * Связку `sub:` может назвать КТО УГОДНО: `catalog.find(body.bundle)`
+     * читает строку из тела запроса, и до этой проверки ничто не спрашивало,
+     * чья это подписка. Прошедший дальше посторонний игрок уехал бы считаться
+     * на подписку коллеги — то есть ровно «intermediate usage on end users'
+     * behalf», запрещённое Anthropic дословно.
+     *
+     * Проверка стоит ЗДЕСЬ, в общем месте, по той же причине, по которой сюда
+     * переехал денежный отказ: обработчиков становится больше, правило одно.
+     * Ровно на этой ошибке отказ уже один раз стоял в `POST /api/creature` и
+     * не стоял в рефакторе.
+     */
+    if (bundle.tier === 'sub') {
+      if (!ctx.hub?.allows(acct)) {
+        fail(res, 403, 'not_allowed', 'этот автор мозга доступен не на этом аккаунте', { bundle: bundle.bundle });
+        return true;
+      }
+      if (!ctx.hub.isOnline(acct.id)) {
+        fail(res, 409, 'worker_offline', 'воркер не запущен — запусти его и повтори', { bundle: bundle.bundle });
+        return true;
+      }
+      return false;
+    }
+    if (OPEN_TIERS.has(bundle.tier)) return false;
     fail(res, 402, 'not_free', 'платежи платформы ещё не включены', { bundle: bundle.bundle });
     return true;
   }
@@ -730,7 +893,7 @@ export function buildRouter(ctx) {
     try { body = await readJson(req); } catch { body = {}; }
     const bundle = catalog.find(body.bundle) || catalog.cheapestFree();
     if (!bundle) return fail(res, 503, 'no_catalog', 'каталог моделей недоступен');
-    if (paidRefused(res, bundle)) return;
+    if (paidRefused(res, bundle, acct)) return;
     const gate = limits.check(db, { account: acct, bundle, kind: 'refactor' });
     if (!gate.ok) {
       trackEvent(db, { name: 'limit_denied', accountId: acct.id, props: { code: gate.code } });

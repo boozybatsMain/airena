@@ -63,7 +63,7 @@ export function platformEnv() {
   return env;
 }
 
-/** Мы внутри фрейма платформы? Вне его SDK уводит страницу (см. `wall.js`). */
+/** Мы внутри фрейма платформы? Вне его SDK уводит страницу — см. `claimSilently`. */
 export const embedded = () => typeof window !== 'undefined' && window.parent !== window;
 
 /**
@@ -137,4 +137,28 @@ export async function platformToken() {
   if (state !== 'account') return { token: null, reason: state };
   const token = sdk.getEmbedToken() || null;
   return { token, reason: token ? 'account' : 'no_token' };
+}
+
+/**
+ * ПРИВЯЗАТЬ АККАУНТ ПЛАТФОРМЫ МОЛЧА.
+ *
+ * Стены аккаунта больше нет (05.09): своё существо создаётся без входа. Но
+ * личность, если платформа её даёт, всё равно нужна — на ней держится
+ * владение существом между устройствами и лестница. Поэтому вход остался, а
+ * спрашивать перестал: если игрок уже вошёл на платформе, мы это узнаём сами
+ * и тихо привязываем; если он гость платформы — ничего не происходит, и он
+ * просто играет гостем.
+ *
+ * Ошибки глотаются намеренно: это фоновая привязка, а не шаг воронки. Всё,
+ * что она может сделать плохого, — не сработать, и тогда игрок остаётся тем
+ * же гостем, каким был секунду назад.
+ */
+export async function claimSilently(post, onDone) {
+  try {
+    const { token } = await platformToken();
+    if (!token) return false;
+    await post('/api/session/claim', { embedToken: token });
+    if (onDone) await onDone();
+    return true;
+  } catch { return false; }
 }

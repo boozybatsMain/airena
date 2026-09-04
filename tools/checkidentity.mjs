@@ -338,8 +338,9 @@ if (!up) {
     .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
   const src = (f) => { try { return decomment(readFileSync(f, 'utf8')); } catch { return ''; } };
   const app = src('src/client/app.js');
-  const wall = src('src/client/screens/wall.js');
   const platform = src('src/client/lib/platform.js');
+  /* Стены аккаунта больше нет (05.09) — проверяем то, что её заменило. */
+  const create = src('src/client/screens/create.js');
 
   const SHAPE = [
     ['путь загрузки зовёт рукопожатие',
@@ -349,8 +350,14 @@ if (!up) {
       !/await\s+startPlatformIdentity\s*\(/.test(app),
       'F6 меряет время до первого кадра; ожидание платформы уводит его за бюджет'],
     ['initEmbed зовётся ровно из одного места',
-      /initEmbed\(/.test(platform) && !/initEmbed\(/.test(wall) && !/initEmbed\(/.test(app),
+      /initEmbed\(/.test(platform) && !/initEmbed\(/.test(create) && !/initEmbed\(/.test(app),
       'вторая точка входа разойдётся с первой в тот день, когда протокол сменится'],
+    ['экран создания не уводит на стену аккаунта',
+      !/ctx\.go\(['"]\/save['"]\)/.test(create),
+      'стена снята 05.09: промпт, кнопка, генерация — и никакой модалки между'],
+    ['личность привязывается молча, а не экраном',
+      /claimSilently/.test(platform) && /claimSilently/.test(app),
+      'вход остался ради владения существом, но спрашивать перестал'],
   ];
   console.log('');
   for (const [what, ok, why] of SHAPE) {
@@ -364,6 +371,6 @@ srv.kill();
 jwks.close();
 for (const f of [DB, `${DB}-wal`, `${DB}-shm`]) { try { rmSync(f, { force: true }); } catch { /* нечего убирать */ } }
 
-const TOTAL = CASES.length + 3 + 5 + 3;
+const TOTAL = CASES.length + 3 + 5 + 5;
 console.log(`\n  ${bad ? `ЛИЧНОСТЬ ПРОБИТА — ${bad} из ${TOTAL}` : `ДЕРЖИТ — ${TOTAL} проверок`}\n`);
 process.exit(bad ? 1 : 0);

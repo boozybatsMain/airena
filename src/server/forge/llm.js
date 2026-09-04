@@ -78,7 +78,7 @@ export class LlmError extends Error {
 export async function callModel({
   modelId, messages, maxTokens, thinkBudget, wallMs = WALL_MS,
   apiKey = process.env.OPENROUTER_API_KEY, fetchImpl = fetch, signal = null,
-  effort = 'high',
+  effort = 'high', worker = null,
 }) {
   /*
    * ── ВТОРАЯ ДВЕРЬ: ПОДПИСКА (D164) ───────────────────────────────────────
@@ -90,9 +90,22 @@ export async function callModel({
    * Проверка идёт ПЕРВОЙ строкой: ниже стоит требование ключа OpenRouter, и
    * подписке он не нужен вовсе.
    */
+  /*
+   * ── У ПОДПИСКИ ДВЕ МАШИНЫ, А НЕ ДВА АДРЕСА (D173) ──────────────────────
+   *
+   * `worker` задан — значит существо принадлежит коллеге, у которого сейчас
+   * запущен воркер, и `claude` зовётся на ЕГО машине ЕГО подпиской. Пусто —
+   * это локальный канал `AIRENA_SUB_MODELS`, то есть машина основателя.
+   *
+   * Развилка здесь, а не у вызывающих, по той же причине, по которой здесь
+   * стоит и предыдущая: «у продакшена ровно одна дверь». Дверей три, вход
+   * по-прежнему один.
+   */
   if (isSubscription(modelId)) {
-    const { callSubscription } = await import('./subscription.js');
-    return callSubscription({ modelId, messages, effort, signal });
+    const sub = await import('./subscription.js');
+    return worker
+      ? sub.callRemoteSubscription({ modelId, messages, effort, signal, ...worker })
+      : sub.callSubscription({ modelId, messages, effort, signal });
   }
   if (!apiKey) throw new LlmError('no_key', 'OPENROUTER_API_KEY не задан');
   if (!Number.isFinite(maxTokens) || maxTokens <= 0) {

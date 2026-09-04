@@ -18,6 +18,7 @@ import { create as createCreature, refactor as applyRefactor } from './creatures
 import { LIMITS, recordSpend } from './limits.js';
 import { record as trackEvent } from './analytics.js';
 import { forgeCreature } from './forge/pipeline.js';
+import { callWithRepair } from './forge/llm.js';
 
 /**
  * Молчание, после которого задание считается брошенным.
@@ -235,10 +236,29 @@ export class Jobs {
     });
     stage('parse', 0.05);
 
+    /*
+     * ── ЧЬЯ ПОДПИСКА СЧИТАЕТ ЭТО СУЩЕСТВО (D172, D173) ────────────────────
+     *
+     * Адресат берётся из ВЛАДЕЛЬЦА задания, а не из связки и не из запроса.
+     * Это и есть та граница, на которой держится вся схема: на подписке
+     * коллеги считается только его собственное существо, потому что другого
+     * адреса у запроса взяться неоткуда — `row.account_id` пишется при
+     * постановке в очередь и игроком не управляется.
+     *
+     * Дальше это уезжает замыканием в `call`: `callWithRepair` пробрасывает
+     * лишние поля в `callModel` через `...rest`, и развилка «локальный claude
+     * или машина коллеги» стоит там же, где стояла развилка «ключ или
+     * подписка», — в одной двери.
+     */
+    const useWorker = String(bundle.bundle || '').startsWith('sub:')
+      && row.account_id && this.ctx.hub?.isOnline(row.account_id);
+    const worker = useWorker ? { hub: this.ctx.hub, accountId: row.account_id } : null;
+
     const started = Date.now();
     const out = await forgeCreature({
       prompt: payload.prompt || (row.kind === 'refactor' ? refactorPrompt(this.db, row.creature_id) : ''),
       bundle,
+      ...(worker ? { call: (o) => callWithRepair({ ...o, worker }) } : {}),
       catalog: this.ctx.catalog.current(),
       /* Рефактор меняет мозг, а не набор (F3): отдаём конвейеру существующий,
          иначе он разберёт промпт заново и напишет мозг под другие умения. */

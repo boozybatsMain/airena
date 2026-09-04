@@ -298,9 +298,38 @@ const round4 = (x) => Math.round(x * 1e4) / 1e4;
  * любезность. Функция возвращает связку И причину, чтобы вызывающему нечем
  * было промолчать.
  */
+/*
+ * ── ОТКАТ НЕ ПЕРЕСЕКАЕТ ГРАНИЦУ КАНАЛА (D174, D172) ────────────────────────
+ *
+ * Здесь стоял один общий список, и он тёк в обе стороны — обе дорого.
+ *
+ * ВНИЗ. Сорвавшийся `sub:` откатывался на «самую дорогую замеренную
+ * бесплатную» связку, то есть на `google/gemini-3.7-flash:plain`. «Бесплатная»
+ * здесь — ярлык тира, а не ноль: $0.069 за существо с ключа OpenRouter.
+ * Канал, заведённый ровно для того, чтобы не тратить с ключа, доплачивал с
+ * ключа каждый раз, когда спотыкался, и молча.
+ *
+ * ВВЕРХ, и это хуже. Второй ветки — `catalog.bundles.find(b => b.bundle !==
+ * failedBundle)` — не касался ни один фильтр. Сорвавшийся Gemini ПУБЛИЧНОГО
+ * игрока мог откатиться на `sub:` и уехать считаться на подписку коллеги. Это
+ * ровно «intermediate usage on end users' behalf» — запрещённая схема,
+ * собранная автоматически, из запасного пути, который никто не читал.
+ *
+ * Поэтому откат теперь ищет замену ВНУТРИ того же канала и возвращает `null`,
+ * если её нет. Честный отказ здесь дешевле удачной подмены: подмена стоит либо
+ * денег, либо нарушения.
+ */
+const isSub = (b) => String(b?.bundle || '').startsWith('sub:');
+
 export function fallbackBundle(catalog, failedBundle) {
-  const cheapMeasured = catalog.bundles
-    .filter((b) => b.bundle !== failedBundle && b.tier === 'free' && b.measured)
+  const sameChannel = catalog.bundles.filter(
+    (b) => b.bundle !== failedBundle && isSub(b) === failedBundle.startsWith('sub:'),
+  );
+  /* Среди бесплатных замеренных берётся САМАЯ ДОРОГАЯ — то есть самая
+     способная из тех, что ничего не стоят. Сортировка убывающая намеренно;
+     прежнее имя `cheapMeasured` описывало обратное и врало. */
+  const bestMeasured = sameChannel
+    .filter((b) => b.tier === 'free' && b.measured)
     .sort((a, b) => b.creatureUsd - a.creatureUsd)[0];
-  return cheapMeasured || catalog.bundles.find((b) => b.bundle !== failedBundle) || null;
+  return bestMeasured || sameChannel[0] || null;
 }

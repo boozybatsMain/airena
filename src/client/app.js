@@ -33,8 +33,7 @@ import * as creature from './screens/creature.js';
 import * as ladder from './screens/ladder.js';
 import * as create from './screens/create.js';
 import * as wait from './screens/wait.js';
-import * as wall from './screens/wall.js';
-import { startPlatformIdentity } from './lib/platform.js';
+import { claimSilently, startPlatformIdentity } from './lib/platform.js';
 import * as result from './screens/result.js';
 import * as tactics from './screens/tactics.js';
 import * as fatal from './screens/fatal.js';
@@ -46,7 +45,7 @@ export const state = {
   over: null,       // последнее сообщение type:'over'
   frame: null,
   route: null,
-  screens: { arena, creature, ladder, create, wait, wall, result, tactics, fatal, watch },
+  screens: { arena, creature, ladder, create, wait, result, tactics, fatal, watch },
   bus: new EventTarget(),
 };
 
@@ -155,7 +154,8 @@ const ROUTES = [
   [/^\/ladder\/(models|season)$/, (m) => ({ screen: 'ladder', tab: 'ladder', args: { section: m[1] } })],
   [/^\/new$/, () => ({ screen: 'create', tab: null })],
   [/^\/new\/([\w-]+)$/, (m) => ({ screen: 'wait', tab: null, args: { jobId: m[1] } })],
-  [/^\/save$/, () => ({ screen: 'wall', tab: null })],
+  /* `/save` был стеной аккаунта. Снят 05.09 вместе с экраном: своё
+     существо создаётся без аккаунта, спрашивать не о чем. */
   [/^\/tactics\/([\w-]+)$/, (m) => ({ screen: 'tactics', tab: null, args: { matchId: m[1] } })],
 ];
 
@@ -380,6 +380,17 @@ async function main() {
   startPlatformIdentity();
 
   try { await refreshSession(); } catch { /* fatal уже показан */ }
+
+  /*
+   * Привязка аккаунта платформы — ФОНОМ И БЕЗ ВОПРОСА.
+   *
+   * Стены аккаунта больше нет: своё существо создаётся сразу. Но если игрок
+   * уже вошёл на платформе, существо должно принадлежать ему, а не гостю, —
+   * поэтому личность берётся молча и сессия обновляется. Без `await`: ждать
+   * платформу перед первым экраном значит вернуть ту же задержку, ради снятия
+   * которой рукопожатие и уехало в фон.
+   */
+  claimSilently(post, refreshSession);
   track('session_start', {
     returning: state.session?.creature ? 1 : 0,
     awayMs: state.session?.since ? 1 : 0,

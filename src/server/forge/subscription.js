@@ -43,8 +43,25 @@
 import { askClaude, CLAUDE_BIN } from '../../brain/claude.js';
 import { LlmError } from './llm.js';
 
-/** Включён ли канал на этой машине. Без него связок нет в каталоге. */
+/** Есть ли локальный `claude` на ЭТОЙ машине. Машина основателя, не сервер. */
 export const SUB_ENABLED = process.env.AIRENA_SUB_MODELS === '1';
+
+/**
+ * Существует ли канал подписки ХОТЬ В КАКОМ-ТО виде.
+ *
+ * Их два, и они не связаны: локальный бинарник на машине основателя
+ * (`AIRENA_SUB_MODELS=1`) и воркеры коллег (`AIRENA_WORKER_ACCOUNTS`). На
+ * сервере GENEX первого нет и быть не может — в образе нет `claude` и некуда
+ * примонтировать учётку, — поэтому канал, завязанный только на него, там
+ * молчал бы всегда.
+ *
+ * Каталог строится один на весь сервер, поэтому здесь решается лишь
+ * «существуют ли такие связки вообще». Кому именно они доступны — вопрос
+ * аккаунта, и он решается в `api.js`, где известно, кто пришёл и на связи ли
+ * его воркер.
+ */
+export const subChannelOpen = (env = process.env) => env.AIRENA_SUB_MODELS === '1'
+  || String(env.AIRENA_WORKER_ACCOUNTS || '').trim() !== '';
 
 /** Префикс идентификатора связки. `sub:opus:high` — семья и усилие. */
 export const SUB_PREFIX = 'sub:';
@@ -100,7 +117,7 @@ export const SUB_LISTED_MODES = ['plain', 'high'];
  * недоступны» не пришлось ослаблять для одного случая.
  */
 export function subscriptionBundles() {
-  if (!SUB_ENABLED) return [];
+  if (!subChannelOpen()) return [];
   const out = [];
   for (const [key, f] of Object.entries(SUB_FAMILIES)) {
     if (!f.listed) continue;
@@ -206,5 +223,73 @@ export async function callSubscription({
     generationId: r.model ?? null,
     resolvedModel: r.model ?? null,
     resolvedBy: r.modelResolvedBy ?? null,
+  };
+}
+
+/**
+ * Тот же запрос, но на машине КОЛЛЕГИ (D173).
+ *
+ * ── ЧЕМ ОТЛИЧАЕТСЯ ОТ `callSubscription` ───────────────────────────────────
+ *
+ * Ничем, кроме того, где стоит `claude`. Здесь нет ни `spawn`, ни бинарника,
+ * ни окружения: сервер отдаёт запрос брокеру, воркер коллеги приносит текст.
+ * Все острые углы CLI — чистка окружения, `is_error`, карта `modelUsage` —
+ * переехали на его сторону, в `src/worker/worker.mjs`, вместе с самим вызовом.
+ * Здесь остаётся ровно то, ради чего файл существует: ФОРМА ОТВЕТА.
+ *
+ * Форма та же, что у `callModel` и `callSubscription`, и это по-прежнему не
+ * вежливость: `callWithRepair` читает `finishReason`, `costUsd`, `usage` и
+ * `text`, и третья ветка «а если это воркер» означала бы три разных правила
+ * повтора для одной задачи.
+ *
+ * ── ПОЧЕМУ `costUsd` ЗДЕСЬ ТОЖЕ НОЛЬ ──────────────────────────────────────
+ *
+ * По той же причине, что и у локальной подписки, плюс одна своя: эти деньги
+ * не наши даже теоретически. Справочная цена приезжает от CLI коллеги и
+ * ложится в `referenceUsd` — по ней видно, во что обошёлся бы тот же ответ по
+ * счётчику, и ничего не списывается.
+ */
+export async function callRemoteSubscription({
+  modelId, messages, effort = 'high', hub, accountId, timeoutMs = 1_800_000,
+}) {
+  const key = String(modelId).slice(SUB_PREFIX.length);
+  const family = SUB_FAMILIES[key];
+  if (!family) throw new LlmError('bad_call', `неизвестная семья подписки: ${key}`);
+  if (!hub || !accountId) throw new LlmError('bad_call', 'воркер вызван без адресата');
+
+  const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+  const user = messages.filter((m) => m.role !== 'system').map((m) => m.content).join('\n\n');
+  if (!user.trim()) throw new LlmError('bad_call', 'пустой пользовательский ход');
+
+  const started = Date.now();
+  let r;
+  try {
+    r = await hub.ask({
+      accountId, system: system || '', prompt: user,
+      model: family.model, effort, timeoutMs,
+    });
+  } catch (e) {
+    /* Коды брокера намеренно совпадают с кодами `LlmError`, поэтому здесь
+       перевод, а не классификация по тексту: у воркера, в отличие от CLI,
+       код есть. `offline` — наш случай, не игрока: коллега закрыл ноутбук. */
+    const code = ['wall', 'no_key', 'http', 'offline'].includes(e.code) ? e.code : 'http';
+    throw new LlmError(code === 'offline' ? 'no_key' : code,
+      `воркер: ${String(e.message || e).slice(0, 300)}`, { elapsedMs: Date.now() - started });
+  }
+
+  const inTok = Number(r.usage?.input_tokens ?? 0);
+  const outTok = Number(r.usage?.output_tokens ?? 0);
+  return {
+    text: r.text || '',
+    costUsd: 0,
+    referenceUsd: r.costUsd ?? 0,
+    elapsedMs: r.durationMs ?? (Date.now() - started),
+    /* Потолка ответа у CLI нет ни на чьей машине — обрыва по нему не бывает. */
+    finishReason: 'stop',
+    usage: { in: inTok, out: outTok, reasoning: 0, reasoningShare: 0 },
+    provider: 'claude-worker',
+    generationId: r.model ?? null,
+    resolvedModel: r.model ?? null,
+    resolvedBy: 'worker',
   };
 }

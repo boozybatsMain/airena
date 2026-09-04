@@ -352,6 +352,12 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   try {
     raw = await call({
       modelId: bundle.modelId,
+      /* Усилие ВОЗИТСЯ ИЗ СВЯЗКИ. Оно писалось в каталог и не читалось ни
+         одним вызовом, поэтому `sub:opus:plain` и `sub:opus:high` шли
+         одинаково на `--effort high`: игрок выбирал разницу, которой нет.
+         У связок OpenRouter поля нет — там подставится умолчание, и это
+         ничего не меняет: на том канале усилие не используется вовсе. */
+      effort: bundle.effort,
       maxTokens: Math.min(bundle.maxTokens, 4000 + bundle.thinkBudget),
       thinkBudget: bundle.thinkBudget,
       messages: [
@@ -587,6 +593,7 @@ export async function forgeBrain({
 }) {
   const r = await call({
     modelId: bundle.modelId,
+    effort: bundle.effort,
     maxTokens: bundle.maxTokens,
     thinkBudget: bundle.thinkBudget,
     messages: [
@@ -633,6 +640,12 @@ export async function tacticsCard({ source, bundle, call = callWithRepair }) {
   try {
     const r = await call({
       modelId: bundle.modelId,
+      /* Усилие ВОЗИТСЯ ИЗ СВЯЗКИ. Оно писалось в каталог и не читалось ни
+         одним вызовом, поэтому `sub:opus:plain` и `sub:opus:high` шли
+         одинаково на `--effort high`: игрок выбирал разницу, которой нет.
+         У связок OpenRouter поля нет — там подставится умолчание, и это
+         ничего не меняет: на том канале усилие не используется вовсе. */
+      effort: bundle.effort,
       maxTokens: Math.min(bundle.maxTokens, 1200),
       thinkBudget: 0,
       messages: [
@@ -729,6 +742,12 @@ export async function forgeVfx({ prompt, kit, kitDefs, bundle, call = callWithRe
   try {
     const r = await call({
       modelId: bundle.modelId,
+      /* Усилие ВОЗИТСЯ ИЗ СВЯЗКИ. Оно писалось в каталог и не читалось ни
+         одним вызовом, поэтому `sub:opus:plain` и `sub:opus:high` шли
+         одинаково на `--effort high`: игрок выбирал разницу, которой нет.
+         У связок OpenRouter поля нет — там подставится умолчание, и это
+         ничего не меняет: на том канале усилие не используется вовсе. */
+      effort: bundle.effort,
       maxTokens: Math.min(bundle.maxTokens, 1400),
       thinkBudget: 0,
       messages: [

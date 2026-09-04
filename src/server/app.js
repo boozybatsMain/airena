@@ -29,6 +29,7 @@ import { buildCatalog, fallbackBundle } from './forge/models.js';
 import { cookies, corsAllows, corsHeaders, fail, json, serveStatic, crossSiteRefused } from './http.js';
 import { JWKS_URL, OUR_PROJECT, OUR_SLUG, REFUSED, identityReady, verifyPlatformToken, warmKeys } from './identity.js';
 import { Jobs } from './jobs.js';
+import { WorkerHub } from './forge/worker.js';
 import { Live } from './live.js';
 import { buildStamp, stampHtml } from './stamp.js';
 import { accountFromToken } from './session.js';
@@ -123,8 +124,15 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
   });
   const live = new Live(db, { compile: compileFor });
 
+  /*
+   * Брокер воркеров коллег (D173). Живёт один на процесс: он держит открытые
+   * длинные опросы, и второй экземпляр означал бы, что половина воркеров
+   * висит на брокере, которому никто не отдаёт задания.
+   */
+  const hub = new WorkerHub({ db });
+
   const ctx = {
-    db, kv, loop, live, catalog, root: ROOT, dev: DEV,
+    db, kv, loop, live, catalog, hub, root: ROOT, dev: DEV,
     /* `opts` доносит набор и РАЗМЕР действующего существа: дуэль двух мозгов
        обязана идти в той же игре, в которой существо живёт. */
     duel: (cand, inc, arch, opts = {}) => duelBrains(db, cand, inc, arch, opts),
@@ -537,7 +545,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     });
   });
 
-  return { db, kv, server, loop, live, jobs, catalog, ctx };
+  return { db, kv, server, loop, live, jobs, catalog, hub, ctx };
 }
 
 const bearer = (req) => {

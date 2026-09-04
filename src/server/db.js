@@ -326,6 +326,32 @@ const MIGRATIONS = [
        дорого, а не строить нельзя — потолок появился позже самих тел. */
     `ALTER TABLE creature ADD COLUMN body_draws INTEGER`,
   ],
+  /*
+   * Токен воркера коллеги (D173).
+   *
+   * Здесь НЕТ и не будет колонки под токен Anthropic: учётные данные Claude не
+   * покидают машину коллеги, и хранить их нам прямо запрещено. `token` —
+   * СВОЙ секрет, выданный Airena, дающий право забирать задания своего
+   * аккаунта и больше ничего.
+   *
+   * Лежит в базе, а не в памяти, ровно по одной причине: токен хранит тот, кто
+   * НЕ перезапускается. Держи мы его в памяти, каждый деплой молча отвязывал
+   * бы всех коллег, и узнали бы они об этом не сообщением, а пропавшей кнопкой.
+   *
+   * `ON DELETE CASCADE` — потому что слияние гостя в аккаунт удаляет строку
+   * гостя, и токен, переживший свой аккаунт, это право забирать задания,
+   * которых больше некому принадлежать.
+   */
+  [
+    `CREATE TABLE worker_token (
+       token         TEXT PRIMARY KEY,
+       account_id    TEXT NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+       hostname      TEXT,
+       created_at    INTEGER NOT NULL,
+       last_seen_at  INTEGER NOT NULL
+     )`,
+    `CREATE INDEX worker_token_account ON worker_token(account_id)`,
+  ],
 ];
 
 export function openDb(file = 'data/airena.db') {
