@@ -82,10 +82,9 @@ if (forge) {
 // ── промпт кузницы называет закрытые списки форм (docs/VFX-PLAN.md §7.5) ───
 {
   /* Без этой строки E1 молча подменял бы стихию у умения игрока: модель не
-     знала бы, что «временного луча» не бывает. Проверка вакуумно зелена,
-     пока ни одна ВЫПУЩЕННАЯ стихия не ограничена в формах, — так и задумано:
-     четыре новые пока `unreleased` и в промпт не попадают. Фальсифицируется
-     снятием `unreleased` с любой из них. */
+     знала бы, что «временного луча» не бывает. С 04.09 проверка перестала
+     быть вакуумной: пять стихий выпущены, и у всех пяти список форм закрыт,
+     то есть каждая обязана назвать свои формы в промпте кузницы. */
   const { grammar, DELIVERIES } = await import('../src/skills/registry.js');
   const g = grammar();
   const { parseUserPrompt } = await import('../src/server/forge/pipeline.js');
@@ -94,8 +93,19 @@ if (forge) {
     if (!Array.isArray(el.forms) || el.forms.length >= Object.keys(DELIVERIES).length) continue;
     ok(`промпт кузницы называет формы «${el.ru}»`, txt.includes(`${el.id} (${el.ru}; только доставки `));
   }
-  ok('промпт кузницы не предлагает нерелизную стихию',
-    !/gravity|time \(время|acid|radiation/.test(txt), 'grammar() отдаёт только выпущенные');
+  /*
+   * КАЛИТКА, А НЕ ЖИЛЕЦ (та же правка, что в `checkgrammar` 04.09). Здесь
+   * стоял список имён четырёх тогда-нерелизных стихий, и выпуск сделал его
+   * ложным. Проверяется механизм: стихия, помеченная `unreleased`, из
+   * промпта пропадает — флаг ставится временно и снимается в `finally`.
+   */
+  const { ELEMENTS } = await import('../src/skills/registry.js');
+  ELEMENTS.acid.unreleased = true;
+  try {
+    const hidden = parseUserPrompt(grammar());
+    ok('промпт кузницы не предлагает нерелизную стихию',
+      !/\bacid \(/.test(hidden) && /\bacid \(/.test(txt), 'grammar() отдаёт только выпущенные');
+  } finally { delete ELEMENTS.acid.unreleased; }
 }
 
 console.log(bad ? `\n  ПРОВАЛ: ${bad}\n` : '\n  ДЕРЖИТ\n');

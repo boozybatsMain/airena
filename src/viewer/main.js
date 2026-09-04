@@ -46,11 +46,24 @@ const boot = $('#boot');
 const errBox = $('#err');
 const fail = (m) => { errBox.style.display = 'block'; errBox.textContent += `${m}\n`; console.error(m); };
 
+/**
+ * АДРЕС БЭКЕНДА. Пусто — свой хост, то есть прежнее поведение целиком.
+ *
+ * Ставится страницей до загрузки модулей (`index.html`, блок «где живёт
+ * бэкенд»): статику продукта может раздавать GENEX, а ручки живут на своём
+ * сервере. Дев-страница вьювера глобаль не ставит — там всегда свой хост.
+ *
+ * Префикс идёт ТОЛЬКО на `/api/...`. `/bodies/octopus.js` — это статика, она
+ * лежит рядом со страницей, и увести её на бэкенд значило бы просить у него
+ * файл, которого он в бандле не раздаёт.
+ */
+const API = () => (typeof window !== 'undefined' && window.__api) || '';
+
 // ---------------------------------------------------------------------------
 // scene
 // ---------------------------------------------------------------------------
 
-const cfg = await (await fetch('/api/config')).json();
+const cfg = await (await fetch(`${API()}/api/config`)).json();
 const HALF = cfg.arena.half;
 
 const scene = new THREE.Scene();
@@ -207,8 +220,23 @@ try {
   /* тепловое искажение: смещение xy · сила z · коэффициент */
   const dst = distTex.sample(uvN);
   const uvW = uvN.add(dst.xy.mul(dst.z).mul(postU.distort));
-  /* аберрация: радиальная, сильнее к краю кадра */
-  const shift = centred.mul(r2.mul(2.0).add(0.2)).mul(postU.aberration).mul(0.022);
+  /*
+   * АБЕРРАЦИЯ: радиальная, сильнее к краю кадра.
+   *
+   * КОЭФФИЦИЕНТ ОПУЩЕН С 0.022 ДО 0.011 (заказ 04.09 «никакого визуального
+   * шума»). Судья первого круга поймал это на пустоте: снаряд размером в
+   * десять пикселей давал жёлто-красную кайму У КАЖДОГО ящика, у стены арены и
+   * у обоих бойцов — то есть эффект величиной в мизинец перекрашивал весь
+   * кадр. Арифметика подтверждает: у края `centred` ≈ 0.7 и `r²` ≈ 0.5, то
+   * есть при силе 0.5 смещение выходило 0.0077 UV — пятнадцать пикселей на
+   * ширине 1600. Пятнадцать пикселей цветной каймы на каждом ребре сцены — это
+   * не «удар почувствовался», это сломанный кадр.
+   *
+   * Ополовинено, а не снято: на добивании и на взрыве зоны сила доходит до
+   * потолка 1.4, и там семь пикселей у самого края — ровно тот всплеск, ради
+   * которого аберрация и заведена. Спад (`exp(-dt·7)`) не трогался.
+   */
+  const shift = centred.mul(r2.mul(2.0).add(0.2)).mul(postU.aberration).mul(0.011);
   const cr = colourTex.sample(uvW.add(shift)).r;
   const cg = colourTex.sample(uvW).g;
   const cb = colourTex.sample(uvW.sub(shift)).b;
@@ -282,6 +310,20 @@ const grid = new THREE.GridHelper(HALF * 2, HALF * 2, 0x9aa0aa, 0xc9c6be);
 grid.position.y = 0.012;
 grid.material.transparent = true;
 grid.material.opacity = 0.5;
+/*
+ * СЕТКА НЕ ПИШЕТ ГЛУБИНУ, И ЭТО НЕ КОСМЕТИКА.
+ *
+ * Она прозрачна, но `depthWrite` у неё стоял: линии клали свою глубину на
+ * высоте 0.012 м, и всё, что лежит на полу НИЖЕ этой высоты, теряло по её
+ * линиям пиксели. А ниже неё лежат сажа (0.018 у поля декалей — выше, повезло)
+ * и всё, что модули кладут собственными плитами у самого пола: шрам пустоты
+ * протекал полом ровно по клеткам, и это нашёл агент пустоты, разглядывая
+ * кроп 125×55.
+ *
+ * Порядок сортировки прозрачных объектов при этом не страдает: сетка лежит
+ * плашмя, ниже неё — только пол, который непрозрачен и пишет глубину сам.
+ */
+grid.material.depthWrite = false;
 scene.add(grid);
 
 /**
@@ -472,7 +514,7 @@ const STOCK_BODY = { blue: 'octopus', orange: 'gorilla' };
  */
 async function loadBody(ref, kind = ref, bodySize = 1) {
   const generated = ref.startsWith('gen:');
-  const url = generated ? `/api/body/${encodeURIComponent(ref.slice(4))}` : `/bodies/${ref}.js`;
+  const url = generated ? `${API()}/api/body/${encodeURIComponent(ref.slice(4))}` : `/bodies/${ref}.js`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`тело ${ref}: ${res.status}`);
   const src = await res.text();
@@ -1245,7 +1287,22 @@ function tickScreen(dt) {
  * светится: проход идёт после свечения и в него не попадает (§10.1).
  */
 const HIT_LAYER = 3;
-const HIT_SOLID = 0.12, HIT_FADE = 0.16;
+/*
+ * ВСПЫШКА УРОНА КОРОЧЕ И НЕ ГЛУХАЯ (замечание волны приёмки 04.09).
+ *
+ * Решение 8 требует, чтобы тело жертвы вспыхнуло красным на мгновение, — и
+ * оно вспыхивает. Но полка полной заливки держалась 0.12 с при уходе 0.16, а
+ * потолок стоял 0.95: судья померил два кадра записи боя, где ОБА тела ушли
+ * в плоский лососевый на 5.10 % и 4.36 % арены — больше любого эффекта в
+ * повторе, — слились друг с другом и потеряли и силуэт, и элементный статус
+ * ровно в тот момент, когда он важнее всего.
+ *
+ * Полка срезана до 0.05 с (мгновение — это мгновение), уход оставлен прежним,
+ * а потолок опущен до 0.72: модель не заменяется краской целиком, её форма и
+ * стихия на ней остаются читаемыми. Само «попало» при этом никуда не делось —
+ * его несут ещё и толчок камеры, и подпись атома.
+ */
+const HIT_SOLID = 0.05, HIT_FADE = 0.16;
 const hitUntil = { blue: 0, orange: 0 };
 const hitMat = (() => {
   const M = THREE.MeshBasicNodeMaterial || THREE.MeshBasicMaterial;
@@ -1288,7 +1345,7 @@ function tickHit(now) {
     /* Сплошной красный, потом короткий спад. */
     peak = Math.max(peak, left > HIT_FADE ? 1 : left / HIT_FADE);
   }
-  hitU.alpha.value = peak * 0.95;
+  hitU.alpha.value = peak * 0.72;
   hitActive = peak > 0;
 }
 /**
@@ -1529,6 +1586,28 @@ function updateFx(now) {
     const f = fxPool[i];
     const u = (now - f.born) / f.life;
     if (u >= 1) {
+      /*
+       * ПОСЛЕДНИЙ КАДР ЖИЗНИ ЗОВЁТСЯ, А НЕ ПРОПУСКАЕТСЯ.
+       *
+       * Здесь меш снимался, а обновление на этом кадре не звалось НИ РАЗУ.
+       * Любая форма, которая делает что-то «в конце» — посадка навеса у всех
+       * десяти стихий, удар метеора, лужа разбитой колбы, — заводит это из
+       * своего обновления по условию вида `u >= 1`. Значит срабатывала она
+       * только тогда, когда какой-нибудь кадр случайно попадал в окно между
+       * условием и концом жизни, то есть ВЕРОЯТНОСТНО.
+       *
+       * Нашёл это агент кислоты, снимая свою стихию: у радиации посадка
+       * навеса не оставила ничего в девяти кадрах подряд (r5-radiation), при
+       * том что тот же код в прошлой галерее давал 12 326 пикселей лужи. Он
+       * же посчитал вероятность: окно у него было 11 % кадров жизни носителя.
+       * Модули лечили это расширением окна — то есть лечили симптом, каждый
+       * у себя и по-разному.
+       *
+       * Гейт `checkdecay` звал этот кадр с самого начала (там это называется
+       * «разогрев») — и был прав: без него он не видел следов, рождённых в
+       * конце формы. Расхождение между гейтом и вьювером было не в гейте.
+       */
+      try { f.update(f.obj, 1); } catch (err) { console.warn('fx конец', err); }
       scene.remove(f.obj);
       /*
        * УТИЛИЗИРУЕТСЯ И МАТЕРИАЛ, А НЕ ТОЛЬКО ГЕОМЕТРИЯ.
@@ -2538,7 +2617,12 @@ function connect() {
    */
   let tok = null;
   try { tok = localStorage.getItem('airena.session'); } catch { /* приватный режим */ }
-  const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+  /* Сокет идёт туда же, куда ручки: бой считает бэкенд, а не тот, кто отдал
+     страницу. Без `API()` живая трансляция осталась бы стучаться в раздатчик
+     статики, где `/ws` не отвечает вовсе. */
+  const url = API()
+    ? `${API().replace(/^http/, 'ws')}/ws`
+    : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   ws = tok ? new WebSocket(url, ['airena', tok]) : new WebSocket(url);
   window.__ws = () => (ws ? ws.readyState : -1);
   /* Одна дверь наружу для оболочки: попросить сервер повторить конкретный
@@ -2835,7 +2919,7 @@ addEventListener('keydown', (e) => {
    этого маршрута нет вовсе (F11: исходники и теги чужих мозгов наружу не
    ходят), и падать из-за отсутствующего выпадающего списка — значит терять
    картинку ради инструмента ревьюера. */
-const tagList = await fetch('/api/brains')
+const tagList = await fetch(`${API()}/api/brains`)
   .then((r) => (r.ok ? r.json() : []))
   .then((v) => (Array.isArray(v) ? v : []))
   .catch(() => []);
@@ -2911,7 +2995,7 @@ if (params.get('seed')) {
  */
 try {
   const rec = document.body.dataset.dev && $('#sel-oct') && $('#sel-gor')
-    ? await (await fetch('/api/recommended')).json()
+    ? await (await fetch(`${API()}/api/recommended`)).json()
     : null;
   if (rec) {
     /* `reports/tournament.json` пишет `tools/tournament.mjs` и ключует его
@@ -3979,7 +4063,7 @@ function frame() {
     const { name, resolve } = pendingShot;
     pendingShot = null;
     const png = renderer.domElement.toDataURL('image/png');
-    fetch('/api/shot', {
+    fetch(`${API()}/api/shot`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name, png }),

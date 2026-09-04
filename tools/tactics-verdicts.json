@@ -1824,6 +1824,456 @@
    "text": "acceleration        24 m/s^2   (so 5.8 m/s is reached in 0.242 s)",
    "model": "claude-sonnet-5",
    "rubric": "a9a7dccdf1316489"
+  },
+  "67f430bed4a2d2f44b7c73d3": {
+   "c": 1,
+   "text": "skills              k1, k2, k3",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ab63832e4ea3f6a622a3f427": {
+   "c": 5,
+   "text": "k1",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fc4581c76ca959d155bc5beb": {
+   "c": 3,
+   "text": "cooldown            11.733 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cd245bb3b413e225efa4a030": {
+   "c": 3,
+   "text": "cast                0.3 s of wind-up, then it lands, then 0.3 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "662d4b4d4ac158e99eede686": {
+   "c": 3,
+   "text": "delivery            cone — a wedge ahead of you, close in. It needs a clear line to the body it hits, and it sweeps the FLOOR — a body that is off the ground when it lands takes nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c67345c93f97ec6d042a9f2b": {
+   "c": 3,
+   "text": "range               3.4 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a2d5342c078e08c2dc22a531": {
+   "c": 3,
+   "text": "reach               4.9 m between the two centres, at the very most: the range is measured to their SURFACE, so 1.5 m of their radius is added to it. Your own radius is NOT: the wedge is measured from your centre",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e1155bf189b145aa7bcd59c7": {
+   "c": 3,
+   "text": "effect damage       takes hp off what it hits — 33.15",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c1be325e8457c83d43490a59": {
+   "c": 3,
+   "text": "effect knock        pushes what it hits away from you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c149adefddaeeb9c5479a745": {
+   "c": 5,
+   "text": "k2",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c3f530dacceffc4bd1a727af": {
+   "c": 3,
+   "text": "cooldown            9.933 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b09fbc93b5baad763cef5e88": {
+   "c": 3,
+   "text": "cast                0.533 s of wind-up, then it lands, then 0.233 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "eab648976bf5397a0b0f1b20": {
+   "c": 3,
+   "text": "delivery            lob — a projectile on an arc. It flies OVER blocks and over bodies, touching nothing on the way, and everything happens where it lands: a circle of its splash radius, which catches a body whose centre is within that splash plus their own radius. WHERE it lands is yours to name — api.use(name, metres) takes the distance you want, and with no argument it lands at the enemy's distance as it stands when the cast finishes. What you asked for is clamped when the cast lands: never nearer than your own radius plus the splash, never past the range above, never past the edge of the arena. A landing that catches nobody is a miss with reason \"aim\"",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1d33233093a82f38c314ce49": {
+   "c": 3,
+   "text": "range               15 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "16316631c229e770c85db018": {
+   "c": 3,
+   "text": "speed               12 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "44916c7d16b4fd72cd4cb7d0": {
+   "c": 3,
+   "text": "splash              1.8 m around the point it lands on",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3c898fcda9935f6edd17c99b": {
+   "c": 3,
+   "text": "reach               18.3 m between the two centres at the very most — your range 15 m plus the 1.8 m of splash plus their 1.5 m of radius — and it will not land nearer to you than 3.3 m, your own radius plus that splash, whatever distance you ask for",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d9121addd7b55fee2bb82300": {
+   "c": 3,
+   "text": "effect burn         sets what it hits on fire: hp comes off over time, and a second hit renews rather than stacks, 4 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "da75c26b97b727247901aca2": {
+   "c": 5,
+   "text": "k3",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "02f829673ae2c1b975360b2f": {
+   "c": 3,
+   "text": "cooldown            7.233 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "96b42f6c54a65933f5edae4a": {
+   "c": 3,
+   "text": "cast                it lands immediately, then 0.2 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "beefb08c73f68e0f2d96925b": {
+   "c": 3,
+   "text": "delivery            blink — you are somewhere else immediately, untouchable while you move",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3df1848999e6798f9e057871": {
+   "c": 3,
+   "text": "distance            7.5 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9e0525f4537e29e86637abd5": {
+   "c": 3,
+   "text": "effect cleanse      removes fire, root, blindness, silence, stun and every weaken from you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b6e5e1736dff32c140c111d0": {
+   "c": 3,
+   "text": "These three are the skills you are holding as this is written. They can be exchanged for three others between one match and the next, and you are NOT rewritten when they are: the same program you are writing now runs with the new set. So a range copied out of the table above and typed into your source as a number describes a skill you may no longer have, and nothing will tell you it has stopped being true.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "822d473921c88fc57e7399ca": {
+   "c": 1,
+   "text": "The live figures are in perception, under p.self.kit, keyed by the same names api.use takes; the opponent's are under p.enemy.kit. They are rebuilt for every thought, from the set actually equipped.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "88b64a73f4639f4b4a2df16b": {
+   "c": 1,
+   "text": ".kit          your three skills as LIVE numbers, under the same names api.use",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1616bd396abe899c43c51d8b": {
+   "c": 1,
+   "text": "takes. Each carries { kind, element, effects, channel, windup,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "725f77a2a4b47627e4076473": {
+   "c": 1,
+   "text": "recover, cooldown } and whichever of range, radius, splash,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4ed9088aade925df4307379e": {
+   "c": 1,
+   "text": "distance, halfAngle, speed, damage, ticks, airborne, duration",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "580c87a08ae2bc0025544356": {
+   "c": 1,
+   "text": "its delivery has. It is rebuilt for every thought from the set you are",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b720a80ec3e4967368d20452": {
+   "c": 3,
+   "text": "actually holding, which is not necessarily the set the tables",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "caa8a4c8df415147cb7a8743": {
+   "c": 3,
+   "text": "above were printed from",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "de64561e84b294e773d7d88c": {
+   "c": 1,
+   "text": ".kit          the same shape, for their three",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "422e1b59034cc9aaccccee0d": {
+   "c": 5,
+   "text": "takes.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5cf3adeec3722b3d963a7af5": {
+   "c": 1,
+   "text": "For a lob, a is instead the DISTANCE in metres you want",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aba2c67e8215de8280b61487": {
+   "c": 1,
+   "text": "it to come down at; with no argument it comes down at",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ec3f4aa573e3187bb13f9811": {
+   "c": 3,
+   "text": "whatever the enemy's distance is when the cast finishes.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d3693139c33c84085576659a": {
+   "c": 3,
+   "text": "The number is clamped as the cast lands, not as you ask. The return value says only that the ORDER was",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dbf653ab0f1a582cdc6da1b5": {
+   "c": 3,
+   "text": "cooldown            10.833 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8fb5aff498e77e7b9245bab9": {
+   "c": 3,
+   "text": "cast                0.667 s of wind-up, then it lands, then 0.133 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "30f113c40430f819e3bb9be0": {
+   "c": 3,
+   "text": "delivery            beam — a straight line from your muzzle. It stops at the first block, wall or body it meets",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "90a067e99401f2f75645456e": {
+   "c": 3,
+   "text": "range               24 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "13157b191dc8dc2cf33ae0e3": {
+   "c": 3,
+   "text": "reach               27.6 m between the two centres, at the very most: the beam starts 1.7 m ahead of your centre along your facing, runs 24 m from there, carries 0.4 m of margin, and connects on their SURFACE — so 1.5 m of their radius counts too",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "743ea5b38b64e31441a708e6": {
+   "c": 3,
+   "text": "effect damage       takes hp off what it hits — 26",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5313825a036dd5d8335b2d92": {
+   "c": 3,
+   "text": "cooldown            8.133 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "86d371e0eb1b13e62c81bd0e": {
+   "c": 3,
+   "text": "cast                0.467 s of wind-up, then it lands, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "54912f5b56360c663c9fcafd": {
+   "c": 3,
+   "text": "delivery            zone — a disc on the ground that keeps working for a few seconds after it lands. It sits ON the floor, so a body that is in the air skips the ticks it spends up there — one or two of them, not the whole cast",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aa79e853d23fdd9007d90363": {
+   "c": 3,
+   "text": "range               12 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ea75c11688640e61a1b470af": {
+   "c": 3,
+   "text": "radius              3 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b6b42cd3c88d6dee924cfb6e": {
+   "c": 3,
+   "text": "lasts               3 s on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7e877db8093182d5374ca75f": {
+   "c": 3,
+   "text": "reach               16.5 m between the two centres, at the very most: the disc lands along your facing at your range or at their distance, whichever is SHORTER, and it works on a body whose centre is within 3 m of the disc plus their own 1.5 m of radius",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7c1c59c34d1e7962c832916f": {
+   "c": 3,
+   "text": "effect weaken       multiplies one of the target's numbers down while it lasts (top movement speed), 1.067 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "87fe865626c78ea67f7bf7df": {
+   "c": 3,
+   "text": "cast                0.067 s of wind-up, then it lands, then 0.167 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "81b1327ab67a82a9210b8652": {
+   "c": 3,
+   "text": "delivery            jump — you leave the ground. Three deliveries travel along the floor — cone, zone and dash — and they pass underneath you while you are up there. Your horizontal velocity is frozen at take-off, and you can order nothing until you land",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "96aba5dca21183e5bfa4e1e8": {
+   "c": 3,
+   "text": "airborne            0.567 s off the ground, above 0.35 m for most of it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d873a511922e0445e5d8235b": {
+   "c": 3,
+   "text": "landing             you get { type: 'landed' } in p.events on the tick you touch down",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "473c4e3dcda9249aeaeb3895": {
+   "c": 3,
+   "text": "effect shield       absorbs damage before hp does, until it is spent or its time runs out, 5 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "16aa23ed799d86e018fb3749": {
+   "c": 3,
+   "text": "cooldown            9.033 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f84c11f7da77b778e3b9b65c": {
+   "c": 3,
+   "text": "cast                0.2 s of wind-up, then it lands, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "76509bc71f1ec2d82c450685": {
+   "c": 3,
+   "text": "delivery            dash — you travel forward and everything on the path is hit. A block stops the travel, and so does height: a body that is off the ground when you arrive takes nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ba08fa93ff32a0a00eb6b51f": {
+   "c": 3,
+   "text": "distance            8 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d2575943a7f225ed91d1204f": {
+   "c": 3,
+   "text": "reach               11 m between the two centres, at the very most: you sweep 8 m and everything within 3 m of that line — your radius plus theirs — is hit",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d40efce0eda2830a5e0424b8": {
+   "c": 3,
+   "text": "effect stun         the target cannot act at all while it lasts, 0.9 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cf8a024f76b38adc8a7f6a21": {
+   "c": 3,
+   "text": "cast                0.367 s of wind-up, then it lands, then 0.167 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "125b987c0cd9bc990f3c26b0": {
+   "c": 3,
+   "text": "delivery            bolt — a projectile that travels. It can be walked out of, and a block stops it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "937ce62343f1be7b4e6d7d61": {
+   "c": 3,
+   "text": "range               18 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "12108fed951314a638150fed": {
+   "c": 3,
+   "text": "speed               22 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7f72a8fc34a1508fa59201d4": {
+   "c": 3,
+   "text": "reach               21.983 m between the two centres, at the very most: it leaves 1.8 m ahead of your centre, flies 18.333 m — its range rounded UP to whole steps of the world — and touches them when it comes within 1.85 m of their centre",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7dc76039032f0058f56a54a5": {
+   "c": 3,
+   "text": "effect blind        the target's perception of you arrives late — it sees where you were, and it is told that it is blinded, 2.5 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7dd8c2f0f1db62aa5960917a": {
+   "c": 3,
+   "text": "cast                0.333 s of wind-up, then it lands, then 0.2 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "135655a24f2499faef0d2cc5": {
+   "c": 3,
+   "text": "delivery            self — it happens to you, where you stand",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d6db41a8421f333693d20d1b": {
+   "c": 3,
+   "text": "effect heal         puts hp back, never above maximum",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "38102b0d1bce87ceb1f4d33b": {
+   "c": 3,
+   "text": "The number is clamped as the cast lands, not as you ask.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8bf93d94813cd800ac59a4f8": {
+   "c": 1,
+   "text": "The return value says only that the ORDER was",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
   }
  }
 }

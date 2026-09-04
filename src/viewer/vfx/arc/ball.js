@@ -42,7 +42,7 @@
 import * as THREE from 'three';
 import { clamp01, mulberry, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { BURN, clampN } from './util.js';
+import { BURN, BURN_FADE, BURN_HOLD, clampN } from './util.js';
 import { boltField } from './field.js';
 import { restriker, cloud, hotCore, stormBurst, arcSparks, spikes, floorRing, heldLight, radialArcs } from './common.js';
 
@@ -70,7 +70,8 @@ function ball(vfx, e, P, ctx, lob) {
     spread: 0.5,      /* труба пучка у конца, м */
     ringR: fp.radius * (lob ? 1.857 : 1.571),   /* кольцо посадки, м */
     burnRadius: fp.radius * (lob ? 1 : 0.857),  /* ожог посадки, м */
-    burnAfter: 8,     /* ожог переживает полёт на столько, с */
+    burnHold: BURN_HOLD,  /* выдержка ожога посадки, с */
+    burnFade: BURN_FADE,  /* уход ожога, с */
   });
   const speed = Math.max(4, S.speed);
   const len = Math.max(1.5, S.range);
@@ -257,9 +258,12 @@ function ball(vfx, e, P, ctx, lob) {
         vfx.flashLight(X, Y, Z, P[1], 24, 0.35, 8);
         vfx.screen.shake(lob ? 0.35 : 0.3);
         vfx.screen.aberration(0.4);
-        /* Ожог живёт от ПОЛЁТА, а не двадцать секунд всегда: разряд кончается
-           там же, где снаряд, и след обязан считаться от того же срока. */
-        kit.decal(vfx, { type: 'arc', x: X, z: Z, radius: S.burnRadius, hold: travel + S.burnAfter, tint: BURN, seed: (seed % 7) + 1 });
+        /* Выдержка — от ПОСАДКИ, и полёт в неё не входит. `travel + burnAfter`
+           стояло здесь от прошлого круга и складывало срок, который метка уже
+           отлежала в воздухе: снаряд летит 0.8 с, метка рождается после этого
+           и просила ещё 1.8 с выдержки — лишний полёт на полу (замер гейта:
+           «lob hold 1.8», реальный конец 4.4 с при форме 1.1 с). */
+        kit.decal(vfx, { type: 'arc', x: X, z: Z, radius: S.burnRadius, hold: S.burnHold, fade: S.burnFade, tint: BURN, seed: (seed % 7) + 1 });
         if (lob) {
           stormBurst(vfx, P, { x: X, y: Math.max(0.7, Y), z: Z, radius: 0.6, endRadius: 2.2, life: 0.45, intensity: 1.2 });
           radialArcs(vfx, P, seed, X, Z, 8, fp.radius * 1.714, 0.45, 0.4);

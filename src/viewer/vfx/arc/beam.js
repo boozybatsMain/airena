@@ -38,7 +38,7 @@
 
 import { clamp01, mulberry, rnd, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { BURN, TAU, clampN, env } from './util.js';
+import { BURN, BURN_AFTER, BURN_FADE, TAU, clampN, env } from './util.js';
 import { boltField } from './field.js';
 import { restriker, arcSparks, cloud, hotCore, spikes, streakItems, floorRing } from './common.js';
 
@@ -62,7 +62,8 @@ export function beam(vfx, e, P, ctx) {
     spread: 1,            /* толщина пучка, доли (радиус луча из сима уже учтён) */
     marks: 85,            /* меток треска на метр пути */
     burnRadius: 0.6,      /* ожог у цели при попадании, м (промах — на 0.1 меньше) */
-    burnAfter: 8,         /* ожог переживает разряд на столько, с */
+    burnAfter: BURN_AFTER,  /* ожог переживает разряд на столько, с */
+    burnFade: BURN_FADE,    /* уход ожога, с */
   });
   const A = [e.x0, S.y, e.z0];
   const B = [e.x1, S.yEnd, e.z1];
@@ -268,11 +269,13 @@ export function beam(vfx, e, P, ctx) {
      на кольцо прицела и на 1.5 с читался серо-сиреневой пылью (замер
      r2.1 с трёх судей). Шейдер декали подмешивает белое по жару первые
      2.5 с — из `beam.js` это не убрать, только спрятать под мехом. */
-  /* Стойкость — от ЖИЗНИ РАЗРЯДА, а не плоские двадцать секунд: шейдер
-     декали подмешивает белое по её возрасту первые 2.5 с (kit.js), так что
-     долгий след — это и есть та грязь, на которую жалуется абзац выше. */
+  /* Выдержка — ОСТАТОК разряда плюс `burnAfter`, а не вся его жизнь: метка
+     ложится на 0.9 с (`T.decal`), и `LIFE + burnAfter` заставляло её отлежать
+     эти 0.9 с ВТОРОЙ раз — при LIFE 1.2 с пол гас на 4.9 с вместо 3.1 с. То
+     же остывание, о котором говорит абзац выше (белое подмешивается первые
+     2.5 с), теперь укладывается в жизнь метки целиком. */
   const onDecal = () => {
-    kit.decal(vfx, { type: 'arc', x: B[0], z: B[2], radius: S.burnRadius - (hit ? 0 : 0.1), hold: LIFE + S.burnAfter, tint: BURN, seed: (seed % 7) + 1 });
+    kit.decal(vfx, { type: 'arc', x: B[0], z: B[2], radius: S.burnRadius - (hit ? 0 : 0.1), hold: Math.max(0, LIFE - T.decal) + S.burnAfter, fade: S.burnFade, tint: BURN, seed: (seed % 7) + 1 });
   };
   const state = { hit: false, decal: false, spikesWritten: false };
   const spikeItems = [];
@@ -280,7 +283,22 @@ export function beam(vfx, e, P, ctx) {
     const t = u * LIFE;
     const hot = rs.tick(t);
     const reach = clamp01((t - T.out0) / (T.out1 - T.out0)) + 0.001;
-    const fade = t < LIFE - 0.35 ? 1 : clamp01((LIFE - t) / 0.35);
+    /*
+     * УХОД КОВРА — ПОЛИНОМОМ 3t²−2t³ ЗА 0.6 c, А НЕ ПРЯМОЙ ЗА 0.35.
+     *
+     * Гейт затухания ходил шагом 0.075 с при пороге 0.18 и печатал по лучу
+     * зелёное «0.22 c». Ведущий уменьшил шаг до 0.006 с — вышло 0.17 c, ниже
+     * порога слоя. Арифметика простая: при прямой путь от половины пика до
+     * пяти процентов равен 0.45 окна, то есть 0.158 c при окне 0.35. Тот же
+     * путь по полиному — 0.362 окна; при окне 0.6 это 0.217 c, и запас над
+     * порогом двадцать процентов, а не минус шесть.
+     *
+     * НА ЭКРАНЕ ОСТАТКА СТАЛО МЕНЬШЕ, А НЕ БОЛЬШЕ: ковёр начинает гаснуть на
+     * 1.5 c вместо 1.75 и кончается там же, на 2.1 c (`T.residue`). Уход
+     * растянут внутрь жизни эффекта, а не за неё.
+     */
+    const kb = clamp01((LIFE - t) / 0.6);
+    const fade = kb * kb * (3 - 2 * kb);
     const cool = clamp01((t - T.cool0) / (T.cool1 - T.cool0));
     field.set({ fade, hot, reach, cool });
     if (!state.hit && t >= T.out1) { state.hit = true; onHit(); }

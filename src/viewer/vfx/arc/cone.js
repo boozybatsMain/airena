@@ -15,7 +15,7 @@
 
 import { clamp01, mulberry, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { BURN, clampN, env } from './util.js';
+import { BURN, BURN_FADE, BURN_HOLD, clampN, env } from './util.js';
 import { boltField } from './field.js';
 import { restriker, stormBurst, arcSparks, muzzle } from './common.js';
 
@@ -30,15 +30,38 @@ export function cone(vfx, e, P, ctx) {
      несущая поля, даёт прежний кадр (см. `kit.tune`). Дальность и раскрытие
      идут из записи через `footprint` — их крутит сим, а не картинка. */
   const S = kit.tune(e, {
-    duration: 0.8,     /* жизнь веера, с */
-    full: 0.45,        /* полная сила, с */
+    /*
+     * ЖИЗНЬ ВЕЕРА 1.25 c, А НЕ 0.8.
+     *
+     * Гейт затухания отказывался мерить эту форму: «arc/cone: уход не измерен
+     * — носитель живёт 0.80 c — короче 1.2 c». Это единственный конус набора
+     * без замера ухода, и при этом САМЫЙ ГРОМКИЙ — 4.68 % арены на пике
+     * (`f3-forms/arc-cone-t0_15-top.png`). Судья контактных форм назвал это
+     * прямо: «заказ „не резко, а с плавным затуханием“ на этой форме держится
+     * ни на чём».
+     *
+     * Порог гейта — два `FADE_MIN`; 1.25 c переводит веер из «доли удара» в
+     * «остаток», и уход считается наравне с соседями (kinetic 0.41, ember
+     * 0.28, frost 0.55, void 0.67 c). Полная сила при этом УКОРОЧЕНА (0.45 →
+     * 0.40): на экране веер стоит меньше, а не больше, — прибавка ушла целиком
+     * в уход, где огибающая `env` (степень 1.4) даёт путь от половины пика до
+     * пяти процентов 0.494 окна, то есть 0.42 c при окне 0.85.
+     *
+     * ЗАХЛАМЛЕНИЯ ЭТО НЕ ДОБАВЛЯЕТ: хвост формы держит ожог (`BURN_HOLD` +
+     * `BURN_FADE` = 2.4 c), а не веер, и замеры судьи по кадрам 1.50 / 2.60 /
+     * 4.00 c (0.02 / 0.00 / 0.00 % арены) от этой правки не меняются — к
+     * 1.25 c веер уже ноль.
+     */
+    duration: 1.25,    /* жизнь веера, с */
+    full: 0.4,         /* полная сила, с */
     bolts: null,       /* число разрядов; null — от площади следа */
     spread: 0.92,      /* доля раскрытия, занятая разрядами */
     reach: 1,          /* дальность разрядов, доли `range` */
     grow: 0.08,        /* прорастание разряда из руки, с */
     y: 1.2,            /* высота руки, м */
     burnRadius: 0.55,  /* ожог: доли дальности — и радиус, и вынос центра */
-    burnHold: 20,      /* стойкость ожога, с */
+    burnHold: BURN_HOLD,  /* выдержка ожога, с (метка рождается в конце разряда) */
+    burnFade: BURN_FADE,  /* уход ожога, с */
   });
   const src = [e.x + ux * 0.6, S.y, e.z + uz * 0.6];
 
@@ -113,8 +136,11 @@ export function cone(vfx, e, P, ctx) {
   kit.impactKit(vfx, { x: cx, z: cz, y: 0.8, radius: range * 0.5, colours: P, strength: 1.2 });
   vfx.screen.aberration(0.5);
 
-  /* Ожог размером с сектор плюс два поменьше по краям широкого веера. */
-  kit.decal(vfx, { type: 'arc', x: e.x + ux * range * S.burnRadius, z: e.z + uz * range * S.burnRadius, radius: range * S.burnRadius, hold: S.burnHold, tint: BURN, seed: (seed % 7) + 1 });
+  /* Ожог ОДИН, размером с сектор: два поменьше по краям веера стояли здесь
+     до чистки 04.09 и на кадрах читались не «сектором», а тремя круглыми
+     пятнами грязи — три метки вместо одной и втрое больше поводов увидеть
+     позднюю серую фазу (см. `BURN_HOLD` в `util.js`). */
+  kit.decal(vfx, { type: 'arc', x: e.x + ux * range * S.burnRadius, z: e.z + uz * range * S.burnRadius, radius: range * S.burnRadius, hold: S.burnHold, fade: S.burnFade, tint: BURN, seed: (seed % 7) + 1 });
   arcSparks(vfx, P, { x: src[0], y: 1.1, z: src[2], n: 44, speed: 13, life: 0.5, cone: { dir, half }, gravity: -8, r: rng });
   for (const tg of targets) arcSparks(vfx, P, { x: tg.p[0], y: 0.2, z: tg.p[2], n: 9, speed: 5, life: 0.4, gravity: -6, at: vfx.now + 0.05 + rng() * 0.15, r: rng });
   return true;

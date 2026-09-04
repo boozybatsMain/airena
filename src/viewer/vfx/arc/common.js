@@ -1,5 +1,6 @@
 /**
- * Молния · общие кусочки доставок: шар грозы и чехол, перестройщик,
+ * Молния · общие кусочки доставок: шар грозы и чехол, ЗАВЕСА СТЕНЫ (плита
+ * ионизированного воздуха в коллизионной коробке), перестройщик,
  * ползущие дуги, гроза, искры, выброс у руки, ведомый свет, веер дуг,
  * ОБЛАКО (шар каста у руки — обычный блендинг; облако удара — аддитивное),
  * горячее ядро, ШИПЫ удара (две копии: белая в свечение, синяя в тело),
@@ -443,6 +444,80 @@ function floorRing(vfx, P, { x, z, r0 = 0.4, r1 = 3.0, life = 0.5, at = 0, y = 0
   return mesh;
 }
 
+/* ── завеса стены ──────────────────────────────────────────────────────── */
+
+let SLAB_GEO = null;
+function slabGeo() {
+  if (!SLAB_GEO) SLAB_GEO = shared(new THREE.BoxGeometry(1, 1, 1));
+  return SLAB_GEO;
+}
+
+/**
+ * ЗАВЕСА: ионизированный объём внутри коллизионной коробки стены.
+ *
+ * Почему объём, а не одни нити. Судья контактных форм снял `arc-wall` и две
+ * соседние стены с той же камеры в тот же момент: у мороза и кинетики —
+ * «плотные объёмы в рост бойца», у молнии — «почти прозрачная бледно-лиловая
+ * панель по колено, по ней ползают белые нити». Панель эта не наша: штатная
+ * плита `vfx.js` под элементной стеной стоит на 0.15 непрозрачности — она
+ * ПОКАЗАНИЕ КОРОБКИ, а не стена. Реестр обещает «вырастающую плиту»
+ * (`registry.js`, wall), и держать её было нечем: двенадцать блуждающих
+ * нитей на эллипсоиде — это изгородь, сквозь которую видно всё.
+ *
+ * Что здесь. Тело коробки обычным блендингом (аддитивное на белом полу не
+ * существует, §10.1), заряд ПОЛЗЁТ ВВЕРХ по местной высоте (шум, снесённый
+ * часами), френелевый кант держит рёбра, верхняя треть светлее — у плиты
+ * читается кромка. Прозрачность нарочно неполная (ровное тело 0.30, до
+ * единицы добирают только прожилки и кант): стена обязана читаться преградой,
+ * но боец за ней не должен пропадать — за залитый объём, в котором кастера
+ * нет, в том же круге забраковали купол гравитации. Замер: доля арены на
+ * 0.40 c выросла с 1.02 % до 1.82 % (трансляция) — это полоса соседей
+ * (мороз 1.73 %, кинетика 1.40 %), а не выше их.
+ */
+function veilMat(P) {
+  return pooled(`arc:veil:${hex(P)}`, () => {
+    const m = new THREE.MeshBasicNodeMaterial({
+      transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending,
+    });
+    const fade = withFade(m);
+    const seed = uniform(0);
+    m.userData.u = { fade, seed };
+    const fres = oneMinus(tabs(TSL.dot(normalView, positionViewDirection))).clamp(0, 1);
+    /* Заряд ползёт ВВЕРХ: шум по местной высоте, снесённый временем. */
+    const climb = mx_fractal_noise_float(vec3(
+      positionLocal.x.mul(6.0).add(seed),
+      positionLocal.y.mul(11.0).sub(TIME.mul(1.7)),
+      positionLocal.z.mul(3.0),
+    ), 3, 2.0, 0.5, 1);
+    const veins = oneMinus(smoothstep(float(0.0), float(0.10), tabs(climb)));
+    /* Кромка: верхняя треть плиты светлее — у стены видно, докуда она. */
+    const crown = smoothstep(float(0.16), float(0.5), positionLocal.y);
+    m.colorNode = mix(col(P[2]), col(P[1]), veins.mul(0.6).add(fres.mul(0.3)).add(crown.mul(0.22)).clamp(0, 1));
+    const alpha = float(0.30).add(veins.mul(0.45)).add(fres.pow(1.6).mul(0.35)).add(crown.mul(0.12)).mul(fade).clamp(0, 1);
+    m.opacityNode = alpha;
+    return markGlow(m, veins.mul(0.45).mul(fade).clamp(0, 1));
+  }, 4);
+}
+
+/** Плита завесы: меш и ручка `set(fade, x, y, z, w, h, d)`. */
+function veil(P, seed) {
+  const mesh = new THREE.Mesh(slabGeo(), veilMat(P));
+  /* Порядок 6 — ПЕРЕД всеми слоями поля разрядов (рубашка 7, ядро 10,
+     свечение 11, см. `LAYER` в `field.js`): нити бегут ПО плите, а не под
+     ней, и равенство порядков не решает это молча в чью-то пользу. */
+  mesh.renderOrder = 6;
+  mesh.frustumCulled = false;
+  mesh.material.userData.u.seed.value = seed;
+  return {
+    mesh,
+    set(fade, x, y, z, w, h, d) {
+      mesh.material.userData.u.fade.value = fade;
+      mesh.position.set(x, y, z);
+      mesh.scale.set(Math.max(0.001, w), Math.max(0.001, h), Math.max(0.001, d));
+    },
+  };
+}
+
 /* ── перестройщик ──────────────────────────────────────────────────────── */
 
 /**
@@ -535,6 +610,6 @@ function radialArcs(vfx, P, seed, x, z, n, len, life, y0 = 0.3) {
 }
 
 export {
-  orb, halo, restriker, crawl, stormBurst, arcSparks, muzzle, heldLight, radialArcs,
+  orb, halo, veil, restriker, crawl, stormBurst, arcSparks, muzzle, heldLight, radialArcs,
   cloud, hotCore, spikes, streakItems, floorRing,
 };

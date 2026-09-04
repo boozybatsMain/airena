@@ -23,6 +23,9 @@ import { dist2, hasLos } from '../src/core/geom.js';
 import { createNav } from '../src/core/nav.js';
 import { runMatch } from '../src/core/match.js';
 import { createWorld, perceive, snapshot, step, SOLIDS, burnRate } from '../src/core/sim.js';
+/* Кит собирается прямо здесь: инвариант навеса — про доставку из грамматики,
+   а её нет ни у одного из двух эталонов §1. */
+import { compileKit } from '../src/skills/compile.js';
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail = '') => {
@@ -243,6 +246,87 @@ group('simulation');
     }
   }
   ok('a blink never lands inside a block or outside the arena', bad === 0, `${bad} bad landings`);
+}
+{
+  /*
+   * ── НАВЕС ПОПАДАЕТ ТОЛЬКО ТУДА, КУДА УПАЛ ─────────────────────────────
+   *
+   * Два свойства одной механики, и до 04.09 симуляция нарушала ОБА сразу:
+   * навес проверялся тем же тестом близости, что и болт, на каждом тике
+   * полёта. То есть попадал по дороге, пролетая НАД целью, а долетев до
+   * конца жизни — уходил в промах и не применял ничего. Замер на этой самой
+   * расстановке до правки: враг в 5 м, дальность заказана 12 м — удар в
+   * точке z=3.4, 26 урона, промахов ноль. Заказ основателя дословно: «не
+   * должна попадать, если пролетает над существом… попадает только туда,
+   * куда попала».
+   *
+   * Проверяется расстановкой, а не арифметикой: обе половины — про то, что
+   * делает `tickProjectiles` за 38 тиков полёта, и повторить это формулой
+   * в тесте значит проверить формулу, а не симуляцию.
+   */
+  const kit = compileKit([
+    { delivery: 'lob', effects: ['damage'], element: 'ember' },
+    { delivery: 'self', effects: ['heal'], element: 'frost' },
+    { delivery: 'bolt', effects: ['damage'], element: 'kinetic' },
+  ]);
+  /**
+   * Один навес: синий стоит в (x0,0) курсом на +Z, оранжевый — в (x0,gap).
+   * `ask` — дальность, которую называет мозг; `null` — не называет вовсе.
+   */
+  const shot = (gap, ask, x0 = 0) => {
+    const w = createWorld(5, { kits: { blue: kit.defs, orange: kit.defs } });
+    const B = w.fighters.blue, O = w.fighters.orange;
+    B.x = x0; B.z = 0; B.heading = 0; B.wantHeading = 0;
+    O.x = x0; O.z = gap; O.heading = Math.PI; O.wantHeading = Math.PI;
+    const hp0 = O.hp;
+    let fired = false;
+    const cast = [], impacts = [];
+    const think = (id, p, api) => {
+      api.stop();
+      if (id !== 'blue') return null;
+      api.face(0, 1);
+      if (!fired && api.ready('k1')) fired = ask === null ? api.use('k1') : api.use('k1', ask);
+      return null;
+    };
+    for (let i = 0; i < 150 && !w.done; i++) {
+      /* Цель стоит: инвариант про прицел, а не про её манёвр. */
+      O.x = x0; O.z = gap; O.vx = 0; O.vz = 0;
+      step(w, think);
+      for (const e of w.fx) {
+        if (e.kind === 'lob') cast.push(e);
+        if (e.kind === 'impact' && e.who === 'blue') impacts.push(e);
+      }
+    }
+    return {
+      damage: hp0 - O.hp,
+      misses: w.log.filter((e) => e.type === 'miss' && e.who === 'blue' && e.skill === 'k1').length,
+      cast: cast[0] || null,
+      impact: impacts[0] || null,
+    };
+  };
+
+  const over = shot(5, 12);
+  ok('a lob does not touch what it flies over',
+    over.damage === 0 && over.misses === 1 && over.impact === null,
+    `урон ${over.damage}, промахов ${over.misses}, ударов ${over.impact ? 1 : 0}`);
+
+  const onto = shot(5, null);
+  ok('a lob with no range asked lands on the enemy',
+    onto.damage > 0 && onto.misses === 0 && Math.abs(onto.cast.aim - 5) < 0.1,
+    `урон ${onto.damage}, промахов ${onto.misses}, aim ${onto.cast && onto.cast.aim}`);
+
+  /* Точка в записи — ТА ЖЕ, по которой считает сим: вьювер кладёт лужу по
+     ней, и разойтись им нельзя (кислота уже уезжала за край арены). */
+  ok('the lob record carries the point the sim resolved at',
+    onto.impact && Math.hypot(onto.impact.x - onto.cast.x1, onto.impact.z - onto.cast.z1) < 0.01,
+    onto.impact ? `удар (${onto.impact.x}, ${onto.impact.z}) против записи (${onto.cast.x1}, ${onto.cast.z1})` : 'удара не было');
+
+  /* Судья приёмки нашёл радиационный навес, лежавший три кадра подряд по ту
+     сторону стены. Зажим — по границам поля из config.js. */
+  const far = shot(6, 15, ARENA_HALF - 4);
+  ok('a lob never lands outside the arena',
+    far.cast && Math.abs(far.cast.x1) <= ARENA_HALF && Math.abs(far.cast.z1) <= ARENA_HALF,
+    far.cast ? `точка (${far.cast.x1}, ${far.cast.z1}) при половине поля ${ARENA_HALF}` : 'каста не было');
 }
 
 // ---------------------------------------------------------------------------

@@ -84,8 +84,8 @@ bound('число прочтений грамматики (§9.2)', /\*\*(\d+) �
 ok('осей грамматики в коде столько, сколько в §8 перечислено, кроме снятой',
   Object.keys(DELIVERIES).length === 9
   && Object.keys(EFFECTS).length === 14 && Object.keys(CHANNELS).length === 7
-  && Object.keys(releasedElements()).length === 5,
-  `доставок ${Object.keys(DELIVERIES).length}, эффектов ${Object.keys(EFFECTS).length}, каналов ${Object.keys(CHANNELS).length}, выпущенных элементов ${Object.keys(releasedElements()).length} из ${Object.keys(ELEMENTS).length}; нерелизные (docs/VFX-PLAN.md §7.5) в ТЗ не входят, пока основатель не примет модуль; триггеры сняты`);
+  && Object.keys(releasedElements()).length === 9,
+  `доставок ${Object.keys(DELIVERIES).length}, эффектов ${Object.keys(EFFECTS).length}, каналов ${Object.keys(CHANNELS).length}, выпущенных элементов ${Object.keys(releasedElements()).length} из ${Object.keys(ELEMENTS).length}; девять выпущены 04.09 (шаг 11 плана §7.5), десятая — время — закрыта заказом основателя «чтобы никто не мог создать время»: она есть в таблице и на стенде, но наружу не выдаётся; триггеры сняты`);
 
 /*
  * НЕ ВСЁ, ЧТО ХОЧЕТСЯ СВЕРИТЬ, СВЕРЯЕМО.

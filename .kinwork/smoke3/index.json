@@ -1,0 +1,245 @@
+{
+  "url": "http://localhost:8823/?vfx=1&sweep=1",
+  "at": "2026-09-03T11:37:37.115Z",
+  "w": 1600,
+  "h": 900,
+  "cams": {
+    "broadcast": {
+      "az": 0.7853981633974483,
+      "pitch": 0.46,
+      "dist": 26,
+      "look": {
+        "x": 0,
+        "y": 1.2,
+        "z": 1.6
+      }
+    },
+    "side": {
+      "az": -0.7853981633974483,
+      "pitch": 0.46,
+      "dist": 26,
+      "look": {
+        "x": 0,
+        "y": 1.2,
+        "z": 1.6
+      }
+    },
+    "low": {
+      "az": 1.9477874452256718,
+      "pitch": 0.2,
+      "dist": 15,
+      "look": {
+        "x": 0,
+        "y": 1.4,
+        "z": 1.6
+      }
+    },
+    "top": {
+      "az": 0.3141592653589793,
+      "pitch": 1.15,
+      "dist": 22,
+      "look": {
+        "x": 0,
+        "y": 0.6,
+        "z": 1.6
+      }
+    }
+  },
+  "moments": [
+    0.3,
+    1.2
+  ],
+  "casts": [
+    [
+      0.3,
+      1.2
+    ]
+  ],
+  "gap": 0.45,
+  "shots": [
+    {
+      "el": "kinetic",
+      "kind": "wall",
+      "moment": 0.3,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-wall-t0_30-broadcast.png",
+      "actual": 0.301
+    },
+    {
+      "el": "kinetic",
+      "kind": "wall",
+      "moment": 1.2,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-wall-t1_20-broadcast.png",
+      "actual": 1.2
+    },
+    {
+      "el": "kinetic",
+      "kind": "wall",
+      "moment": 0.3,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-wall-t0_30-side.png",
+      "actual": 0.311
+    },
+    {
+      "el": "kinetic",
+      "kind": "wall",
+      "moment": 1.2,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-wall-t1_20-side.png",
+      "actual": 1.213
+    },
+    {
+      "el": "kinetic",
+      "kind": "charge",
+      "moment": 0.3,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-charge-t0_30-broadcast.png",
+      "actual": 0.318
+    },
+    {
+      "el": "kinetic",
+      "kind": "charge",
+      "moment": 1.2,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-charge-t1_20-broadcast.png",
+      "actual": 1.201
+    },
+    {
+      "el": "kinetic",
+      "kind": "charge",
+      "moment": 0.3,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-charge-t0_30-side.png",
+      "actual": 0.296
+    },
+    {
+      "el": "kinetic",
+      "kind": "charge",
+      "moment": 1.2,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-charge-t1_20-side.png",
+      "actual": 1.196
+    },
+    {
+      "el": "kinetic",
+      "kind": "status",
+      "moment": 0.3,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-status-t0_30-broadcast.png",
+      "actual": 0.3
+    },
+    {
+      "el": "kinetic",
+      "kind": "status",
+      "moment": 1.2,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-status-t1_20-broadcast.png",
+      "actual": 1.201
+    },
+    {
+      "el": "kinetic",
+      "kind": "status",
+      "moment": 0.3,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-status-t0_30-side.png",
+      "actual": 0.313
+    },
+    {
+      "el": "kinetic",
+      "kind": "status",
+      "moment": 1.2,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-status-t1_20-side.png",
+      "actual": 1.211
+    },
+    {
+      "el": "kinetic",
+      "kind": "bolt",
+      "moment": 0.3,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-bolt-t0_30-broadcast.png",
+      "actual": 0.301
+    },
+    {
+      "el": "kinetic",
+      "kind": "bolt",
+      "moment": 1.2,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-bolt-t1_20-broadcast.png",
+      "actual": 1.201
+    },
+    {
+      "el": "kinetic",
+      "kind": "bolt",
+      "moment": 0.3,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-bolt-t0_30-side.png",
+      "actual": 0.301
+    },
+    {
+      "el": "kinetic",
+      "kind": "bolt",
+      "moment": 1.2,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-bolt-t1_20-side.png",
+      "actual": 1.2
+    },
+    {
+      "el": "kinetic",
+      "kind": "beam",
+      "moment": 0.3,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-beam-t0_30-broadcast.png",
+      "actual": 0.301
+    },
+    {
+      "el": "kinetic",
+      "kind": "beam",
+      "moment": 1.2,
+      "cam": "broadcast",
+      "cast": 0,
+      "file": "kinetic-beam-t1_20-broadcast.png",
+      "actual": 1.201
+    },
+    {
+      "el": "kinetic",
+      "kind": "beam",
+      "moment": 0.3,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-beam-t0_30-side.png",
+      "actual": 0.297
+    },
+    {
+      "el": "kinetic",
+      "kind": "beam",
+      "moment": 1.2,
+      "cam": "side",
+      "cast": 0,
+      "file": "kinetic-beam-t1_20-side.png",
+      "actual": 1.198
+    }
+  ],
+  "backend": "webgpu",
+  "fps": 60,
+  "draws": 1768,
+  "errors": []
+}

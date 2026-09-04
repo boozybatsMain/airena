@@ -155,8 +155,9 @@ export function compileSkill(skill, id, { fixedCooldown = null } = {}) {
   };
 
   /* Геометрия доставки — то, что резолвер обязан знать, чтобы построить
-     форму: без range у конуса нет длины, без radius у зоны нет площади. */
-  for (const k of ['range', 'halfAngle', 'speed', 'radius', 'duration', 'distance', 'iframes', 'arc', 'airborne']) {
+     форму: без range у конуса нет длины, без radius у зоны нет площади, без
+     splash у навеса нет круга поражения в точке приземления. */
+  for (const k of ['range', 'halfAngle', 'speed', 'radius', 'splash', 'duration', 'distance', 'iframes', 'arc', 'airborne']) {
     if (d[k] !== undefined) def[k] = d[k];
   }
 

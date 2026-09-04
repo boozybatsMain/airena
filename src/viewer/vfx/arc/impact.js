@@ -23,7 +23,7 @@
 import * as THREE from 'three';
 import { clamp01, mulberry, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { BURN, clampN, env, onSphere, bodyAt } from './util.js';
+import { BURN, BURN_FADE, BURN_HOLD, clampN, env, onSphere, bodyAt } from './util.js';
 import { boltField } from './field.js';
 import { restriker, cloud, stormBurst, arcSparks, spikes, radialArcs } from './common.js';
 import { shieldOf } from './self.js';
@@ -57,7 +57,8 @@ export function impact(vfx, e, P, ctx) {
     arcLen: 2.4,       /* веер дуг по полу, м */
     kitR: 1.5,         /* ударный набор, м */
     burnRadius: 1.2,   /* ожог, м */
-    burnHold: 20,      /* стойкость ожога, с */
+    burnHold: BURN_HOLD,  /* выдержка ожога, с (метка рождается в конце разряда) */
+    burnFade: BURN_FADE,  /* уход ожога, с */
   });
   const victim = bodyAt(ctx, e.who === 'blue' ? 'orange' : 'blue');
   const cx = victim ? victim.x : e.x, cz = victim ? victim.z : e.z;
@@ -114,7 +115,7 @@ export function impact(vfx, e, P, ctx) {
   stormBurst(vfx, P, { x: e.x, y: 1.0, z: e.z, radius: 0.6, endRadius: S.blastR, life: 0.42, intensity: 1.1 });
   spikes(vfx, P, { x: e.x, y: 1.0, z: e.z, n: 24, speed: 9, life: 0.3, r: rng });
   radialArcs(vfx, P, seed, e.x, e.z, 6, S.arcLen, 0.4, 0.5);
-  kit.decal(vfx, { type: 'arc', x: e.x, z: e.z, radius: S.burnRadius, hold: S.burnHold, tint: BURN, seed: (seed % 9) + 1 });
+  kit.decal(vfx, { type: 'arc', x: e.x, z: e.z, radius: S.burnRadius, hold: S.burnHold, fade: S.burnFade, tint: BURN, seed: (seed % 9) + 1 });
   kit.impactKit(vfx, { x: e.x, z: e.z, y: 1.0, radius: S.kitR, colours: P, strength: 0.9 });
   arcSparks(vfx, P, { x: e.x, y: 1.0, z: e.z, n: 36, speed: 9, life: 0.45, r: rng });
   return true;

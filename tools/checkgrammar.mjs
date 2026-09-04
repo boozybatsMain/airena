@@ -396,21 +396,41 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
   ok('E1: кислота бывает конусом',
     validateSkill({ delivery: 'cone', effects: ['burn'], element: 'acid' }).length === 0,
     'форма из списка стихии проходит');
-  ok('E1 не трогает выпущенные стихии',
+  ok('E1 не трогает стихии без списка форм',
     validateSkill({ delivery: 'beam', effects: ['damage'], element: 'arc' }).length === 0,
-    'у пяти выпущенных стихий формы не ограничены');
-  ok('нерелизная стихия не отдаётся игроку',
+    'у пяти старых стихий формы не ограничены');
+  /*
+   * КАЛИТКА `unreleased` ПРОВЕРЯЕТСЯ МЕХАНИЗМОМ, А НЕ ЖИЛЬЦОМ.
+   *
+   * До 04.09 здесь стоял живой пример — набор на гравитации, — и гейт держался
+   * ровно до того дня, когда гравитацию выпустили: примера не стало, правило
+   * осталось, а проверка позеленела бы навсегда, если бы её просто удалили.
+   * Проверять надо КАЛИТКУ: флаг ставится временно прямо на таблицу, набор
+   * прогоняется, флаг снимается в `finally` — так гейт переживёт и выпуск, и
+   * появление следующей нерелизной стихии.
+   */
+  ELEMENTS.gravity.unreleased = true;
+  try {
+    ok('нерелизная стихия не отдаётся игроку',
+      validateKit([
+        { delivery: 'zone', effects: ['pull', 'damage'], element: 'gravity' },
+        { delivery: 'self', effects: ['boost'], channel: 'armor', element: 'gravity' },
+        { delivery: 'cone', effects: ['damage'], element: 'kinetic' },
+      ]).some((b) => b.code === 'element_unreleased'),
+      'правило набора: сиды и стенд компилируются, HTTP — нет');
+  } finally { delete ELEMENTS.gravity.unreleased; }
+  ok('выпущенная стихия игроку отдаётся',
     validateKit([
       { delivery: 'zone', effects: ['pull', 'damage'], element: 'gravity' },
       { delivery: 'self', effects: ['boost'], channel: 'armor', element: 'gravity' },
       { delivery: 'cone', effects: ['damage'], element: 'kinetic' },
-    ]).some((b) => b.code === 'element_unreleased'),
-    'правило набора: сиды и стенд компилируются, HTTP — нет');
+    ]).length === 0,
+    'после выпуска 04.09 тот же набор проходит HTTP-край');
 
   /* У стихии с модулем каждая ОБЕЩАННАЯ форма обязана быть в модуле:
      иначе стенд предложит кнопку, за которой штатный силуэт. Гейт зелен,
      пока файла модуля нет. */
-  const NEW = new Set(['gravity', 'time', 'acid', 'radiation']);
+  const NEW = new Set(['gravity', 'time', 'acid', 'radiation', 'laser']);
   for (const [id, e] of Object.entries(ELEMENTS)) {
     if (!NEW.has(id) || !Array.isArray(e.forms)) continue;
     let mod = null;

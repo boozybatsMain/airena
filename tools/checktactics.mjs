@@ -318,6 +318,52 @@ function loadStore() {
 }
 
 /**
+ * КАЖДЫЙ ПРОМПТ, КОТОРЫЙ КОМУ-ТО ВЫДАЮТ, — А НЕ ТОЛЬКО ЭТАЛОННЫЙ.
+ *
+ * Судили здесь ровно `brainPrompt(id)`, то есть форму БЕЗ НАБОРА: стенд §1, на
+ * котором дерутся шесть эталонных мозгов. Все существа игроков получают другую
+ * форму — с карточками умений грамматики, — и её не читал никто. Обещание при
+ * этом было записано, в `src/brain/prompt.js` над `kitBlocks`, дословно:
+ * «`checktactics` sweeps this text too, and a tactical hint here would fail it
+ * exactly as it would anywhere else». Не sweeps. Строки `DELIVERY_LINE`,
+ * `EFFECT_LINE` и абзац про смену набора шли к моделям неаудированными.
+ *
+ * Наборы — ФИКСИРОВАННЫЕ и перечислены здесь, а не собираются случайно: ключ
+ * вердикта считается от текста сегмента, и набор, меняющийся от прогона к
+ * прогону, перевыносил бы приговор каждому запуску заново. Два набора берут
+ * все девять доставок, потому что тактическая подсказка в `DELIVERY_LINE`
+ * доехала бы до модели через любую из них.
+ *
+ * `where` остаётся тем же: имя документа, в контексте которого сегмент судят.
+ * Сегмент, общий для формы с набором и без, судится ОДИН раз — и это верно, а
+ * не экономия: рубрика просит судить строку на её месте, а место у неё одно.
+ */
+async function documents() {
+  const { compileKit } = await import('../src/skills/compile.js');
+  const KITS = [
+    [{ delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+      { delivery: 'lob', effects: ['burn'], element: 'ember' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' }],
+    [{ delivery: 'beam', effects: ['damage'], element: 'arc' },
+      { delivery: 'zone', effects: ['weaken'], element: 'acid', channel: 'speed' },
+      { delivery: 'jump', effects: ['shield'], element: 'frost' }],
+    [{ delivery: 'dash', effects: ['stun'], element: 'kinetic' },
+      { delivery: 'bolt', effects: ['blind'], element: 'void' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' }],
+  ];
+  const out = [];
+  for (const id of ['blue', 'orange']) out.push([id, brainPrompt(id)]);
+  for (const [i, grammar] of KITS.entries()) {
+    const built = compileKit(grammar);
+    if (built.problems.length) throw new Error(`kit ${i} does not compile: ${JSON.stringify(built.problems)}`);
+    for (const id of ['blue', 'orange']) {
+      out.push([`${id}/kit${i}`, brainPrompt(id, { own: built.defs, enemy: built.defs })]);
+    }
+  }
+  return out;
+}
+
+/**
  * @returns {Promise<{ lines: string[], failures: string[] }>} so the caller
  *   decides what a failure means. `tools/checkprompt.mjs` runs this as its
  *   third direction, which is how it reaches `npm test` without a fourth
@@ -329,8 +375,7 @@ export async function checkTactics({ show = false, log = () => {} } = {}) {
 
   const texts = new Map(); // segment text -> the fighter prompts it appears in
   const contexts = {};
-  for (const id of ['blue', 'orange']) {
-    const text = brainPrompt(id);
+  for (const [id, text] of await documents()) {
     contexts[id] = text;
     const segs = segments(text);
     const gap = proveCoverage(text, segs);
@@ -345,7 +390,7 @@ export async function checkTactics({ show = false, log = () => {} } = {}) {
   const store = loadStore();
   const all = [...texts.entries()].map(([text, where]) => ({ text, where, key: keyOf(text) }));
   const todo = all.filter((s) => !store.verdicts[s.key]);
-  lines.push(`${all.length} segments across both prompts, ${all.length - todo.length} already judged`);
+  lines.push(`${all.length} segments across ${Object.keys(contexts).length} prompts, ${all.length - todo.length} already judged`);
 
   if (todo.length) {
     if (!existsSync(CLAUDE_BIN)) {
@@ -363,7 +408,7 @@ export async function checkTactics({ show = false, log = () => {} } = {}) {
      * it is not in.
      */
     let spent = 0, batchNo = 0;
-    for (const id of ['blue', 'orange']) {
+    for (const id of Object.keys(contexts)) {
       const mine = todo.filter((s) => s.where.includes(id) && !s.done);
       for (let i = 0; i < mine.length; i += BATCH) {
         const batch = mine.slice(i, i + BATCH);

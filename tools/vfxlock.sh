@@ -4,10 +4,13 @@
 # 0.1–0.5 с (замер 02.09: 0.3 → 0.5, 0.6 → 0.9). Замок — атомарный mkdir, тот
 # же, что у `vfxshot-lock.sh`, чтобы кадры и ролики стояли в одной очереди.
 #   tools/vfxlock.sh node tools/vfxclip.mjs --el=arc --kind=beam --cam=side
+# Ожидание 3600 тактов по 2 с (два часа), а не 900: очередь из десяти
+# параллельных агентов, каждый со своим прогоном по 5–10 минут, выбирала
+# получасовой лимит целиком, и последние в очереди падали не по своей вине.
 LOCK=${TMPDIR:-/tmp}/airena-vfxshot.lock
 i=0
 while ! mkdir "$LOCK" 2>/dev/null; do
-  i=$((i+1)); [ $i -gt 900 ] && { echo "vfxlock: не дождался замка" >&2; exit 2; }
+  i=$((i+1)); [ $i -gt 3600 ] && { echo "vfxlock: не дождался замка" >&2; exit 2; }
   sleep 2
 done
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM

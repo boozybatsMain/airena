@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { clamp01, lerp, mulberry, rnd, seedOf } from '../core.js';
 import * as kit from '../kit.js';
-import { TAU, clampN, env, onSphere, bodyAt } from './util.js';
+import { BURN, BURN_AFTER, BURN_FADE, TAU, clampN, env, onSphere, bodyAt } from './util.js';
 import { boltField } from './field.js';
 import { orb, halo, restriker, crawl, stormBurst, arcSparks, muzzle, heldLight, radialArcs } from './common.js';
 
@@ -17,6 +17,7 @@ export function zone(vfx, e, P, ctx) {
   const S = kit.tune(e, {
     duration: 3,       /* жизнь зоны, с */
     collapse: 0.32,    /* закрывающий беат, с (не длиннее четверти жизни) */
+    fade: kit.FADE_MIN,/* уход огибающей столба, с (не короче пола слоя) */
     land: 0.12,        /* когда столб встаёт на пол, с */
     sky: 9.5,          /* высота, с которой падают разряды, м */
     strikeEvery: 0.3,  /* период ударов с неба, с */
@@ -26,7 +27,8 @@ export function zone(vfx, e, P, ctx) {
     dir: e.h || 0,     /* курс кастера при постановке: куда смотрит веер щупалец, рад */
     burnRadius: 1.1,   /* большой ожог, доли радиуса диска */
     strikeBurn: 0.85,  /* ожог одного удара с неба, м */
-    burnAfter: 6,      /* ожог переживает зону на столько, с */
+    burnAfter: BURN_AFTER,  /* ожог переживает зону на столько, с */
+    burnFade: BURN_FADE,    /* уход ожога, с */
   });
   const D = Math.max(0.8, S.duration);
   const cx = e.x, cz = e.z;
@@ -36,6 +38,27 @@ export function zone(vfx, e, P, ctx) {
      съедали 40 % зоны, а расписание ударов (`t < D - COLLAPSE - 0.15`) не
      пускало в зону короче 0.92 с НИ ОДНОГО удара с неба. */
   const COLLAPSE = Math.min(S.collapse, D * 0.25);
+  /*
+   * УХОД — ОТДЕЛЬНОЕ ЧИСЛО, И ОНО ДЛИННЕЕ ЗАКРЫВАЮЩЕГО БЕАТА.
+   *
+   * Плотность столба ехала тем же `c`, что и схлопывание: `1 − c²` на
+   * COLLAPSE = 0.32 с. Гейт затухания померил это на чистом прогоне и назвал
+   * число: общая огибающая падала с половины пика до пяти процентов за
+   * 0.15 с при поле слоя 0.18 (`tools/checkdecay.mjs`, `kit.FADE_MIN` × 0.3).
+   * То есть зона гасла ВДВОЕ быстрее, чем разрешено, — ровно то «резко», от
+   * которого основатель отказался 04.09.
+   *
+   * Беат и уход — разные вещи, и теперь это два числа. Беат остаётся 0.32 с:
+   * это гроза, волна и толчок, ими зона и заканчивается. Уход — `kit.FADE_MIN`
+   * (0.6 с), пол политики слоя, и он начинается раньше беата: столб успевает
+   * потускнеть до половины к тому мигу, когда его сдёргивает волной.
+   *
+   * Потолок в половину жизни нужен зоне короче 1.2 с: отдать ей под уход
+   * больше половины значило бы, что она вся — уход. Тот же порог стоит в
+   * самом гейте («носитель живёт короче 1.2 с — это доля удара, а не
+   * остаток»), так что ниже него зона всё равно не меряется.
+   */
+  const FADE = Math.min(Math.max(S.fade, COLLAPSE), D * 0.5);
 
   const nCol = clampN(kit.countFor(10, fp.area, kit.REF_AREA.zone, 28), 4, 28);
   const nRim = clampN(Math.round((TAU * r) / 1.4), 4, 20);
@@ -117,12 +140,27 @@ export function zone(vfx, e, P, ctx) {
     const t = u * LIFE;
     const hot = rs.tick(t);
     const c = clamp01((t - (D - COLLAPSE)) / COLLAPSE);
-    field.set({ fade: t < 0.26 ? 1 : 1 - c * c, hot, reach: t < 0.26 ? clamp01(t / 0.09) + 0.001 : 1 });
+    /* Огибающая: доля оставшейся жизни к `FADE`, сглаженная тем же полиномом
+       3t²−2t³, которым уходят следы на полу и яма статуса пустоты
+       (`void.js`, ветка `status`). Ни излома производной на входе в уход, ни
+       обрыва на выходе: замер гейта после правки — 0.22 с от половины пика
+       до пяти процентов против прежних 0.15. `t < 0.26` из этой ветки ушло
+       не потерей, а тождеством: пока столб падает с неба, `left` заведомо
+       больше `FADE`, и огибающая и так равна единице. */
+    const kf = clamp01((D - t) / FADE);
+    field.set({ fade: kf * kf * (3 - 2 * kf), hot, reach: t < 0.26 ? clamp01(t / 0.09) + 0.001 : 1 });
     for (const s of strikes) {
       if (s.fired || t < s.t) continue;
       s.fired = true;
       stormBurst(vfx, P, { x: s.x, y: 0.45, z: s.z, radius: 0.4, endRadius: 1.3, life: 0.32, intensity: 1.0, squash: 0.7 });
-      kit.decal(vfx, { type: 'arc', x: s.x, z: s.z, radius: S.strikeBurn, hold: D + S.burnAfter, tint: P[1], seed: (s.phase % 9) + 1 });
+      /* Выдержка удара с неба — ОСТАТОК зоны, а не вся её длительность:
+         удар на 2.4 с просил `D + burnAfter` и гас на 8.3 с при зоне 3.0 с
+         (хвост 5.3 с при потолке слоя 5.0, гейт его не видит — метка
+         кладётся из хода формы). Теперь все ожоги зоны гаснут одновременно
+         с большим диском. Тон — `BURN`, как у всей молнии: в `P[1]` ожог
+         читался серой копотью (замер круга 2: 61,94,136 на белом полу), то
+         есть почерком огня, а не разряда. */
+      kit.decal(vfx, { type: 'arc', x: s.x, z: s.z, radius: S.strikeBurn, hold: Math.max(0, D - t) + S.burnAfter, fade: S.burnFade, tint: BURN, seed: (s.phase % 9) + 1 });
       vfx.flashLight(s.x, 1.2, s.z, P[0], 22, 0.25, 7);
       arcSparks(vfx, P, { x: s.x, y: 0.2, z: s.z, n: 24, speed: 7, life: 0.45, gravity: -7, r: rng });
       vfx.screen.shake(0.12);
@@ -136,8 +174,11 @@ export function zone(vfx, e, P, ctx) {
   stormBurst(vfx, P, { x: cx, y: 0.6, z: cz, radius: 0.7, endRadius: r * 0.9, life: 0.5, intensity: 1.2, squash: 0.75 });
   radialArcs(vfx, P, seed, cx, cz, 8, r * 1.1, 0.5, 0.35);
   /* Ожог — ОСТАТОК: переживает зону, но ровно на `burnAfter`. Прежние
-     `20 + D` держали двадцать секунд минимум при любой настройке. */
-  kit.decal(vfx, { type: 'arc', x: cx, z: cz, radius: r * S.burnRadius, hold: D + S.burnAfter, tint: P[1], seed: (seed % 7) + 1 });
+     `20 + D` держали двадцать секунд минимум при любой настройке. Тон —
+     `BURN`, а не `P[1]`: бледный `P[1]` даёт на белом полу серую копоть
+     (замер круга 2: 61,94,136), и на кадре `arc-zone-t1_50-top` диск под
+     живой зоной читался пыльным пятном, пока над ним горели синие щупальца. */
+  kit.decal(vfx, { type: 'arc', x: cx, z: cz, radius: r * S.burnRadius, hold: D + S.burnAfter, fade: S.burnFade, tint: BURN, seed: (seed % 7) + 1 });
   kit.impactKit(vfx, { x: cx, z: cz, y: 0.8, radius: r * 0.6, colours: P, strength: 1.3 });
   vfx.screen.aberration(0.6);
   arcSparks(vfx, P, { x: cx, y: 0.3, z: cz, n: 56, speed: 9, life: 0.55, gravity: -7, at: vfx.now + LAND, r: rng });

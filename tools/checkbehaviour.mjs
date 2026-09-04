@@ -369,5 +369,210 @@ const touching = BLUE.radius + ORANGE.radius;
   agree('jump cooldown', 'skills.jump.cooldown', hop.readyT - hop.startT, ROUND, 's');
 }
 
+
+// ---------------------------------------------------------------------------
+// ── ДОСЯГАЕМОСТЬ УМЕНИЙ НАБОРА ─────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+/*
+ * Всё выше меряет ПЯТЬ ЗАХАРДКОЖЕННЫХ УМЕНИЙ — стенд §1, на котором дерутся
+ * шесть эталонных мозгов. Существа игроков дерутся не ими: у них набор
+ * грамматики, и до сих пор его геометрию не мерил никто.
+ *
+ * Это ровно тот угол, из-за которого написан весь файл. Докстринг наверху
+ * называет свой повод: луч объявлял «range 24 m» для оружия, достающего на
+ * 26.85 м, и мозг, вставший на 25 м, стоял внутри него. Карточка набора
+ * печатала ТОЛЬКО `range` — то есть повторяла ту же ошибку на пути, по
+ * которому идут все игроки. Измерено двоичным поиском по факту урона:
+ *
+ *     конус  range 3.4  -> 4.9   м между центрами  (+44%)
+ *     навес  range 15   -> 18.85 м                 (+26%)
+ *     луч    range 24   -> 27.6  м                 (+15%)
+ *
+ * Занижение действует в одну сторону: боец, которому сказали «3.4», подходит
+ * на 3.4 и ближе — то есть вплотную. `src/brain/prompt.js` теперь печатает
+ * строку `reach`, а этот раздел её МЕРЯЕТ.
+ *
+ * Число берётся ИЗ ТЕКСТА промпта, а не пересчитывается по формуле: формула в
+ * гейте — это та же ошибка во втором файле, о чём здесь сказано уже дважды.
+ * `q()` тут не помощник — карточка набора рендерится через `n()` и в трассу не
+ * попадает, поэтому строка разбирается по своей метке.
+ *
+ * Доставки без цели (`blink`, `self`, `jump`) не проверяются: у них нет
+ * дальности попадания, и `reachLine` для них ничего не печатает.
+ */
+{
+  const { compileKit } = await import('../src/skills/compile.js');
+  const { brainPrompt } = await import('../src/brain/prompt.js');
+
+  /* Два добивающих умения без геометрии: набор обязан быть из трёх, и грамматика
+     не принимает двух одинаковых (`kit_dup`), поэтому они разные. Ни одно из них
+     не участвует в замере — у обоих цели нет. */
+  const FILLER = [
+    { delivery: 'self', effects: ['heal'], element: 'frost' },
+    { delivery: 'blink', effects: ['cleanse'], element: 'void' },
+  ];
+  /* Тела: одинаковые и РАЗНЫЕ. Разные — потому что в сумму входят радиусы
+     двух конкретных тел, и на паре равных радиусов перепутанные местами
+     слагаемые дали бы тот же ответ. */
+  const BODIES = [null, { own: { radius: 1.2 }, enemy: { radius: 1.8 } }];
+
+  /** Число из строки `reach` того блока набора, что описывает это умение. */
+  function reachSaid(text, name) {
+    const block = text.split('\n\n').find((b) => b.startsWith(`${name}\n`));
+    if (!block) return null;
+    const line = block.split('\n').find((l) => /^ {2}reach {2,}/.test(l));
+    if (!line) return null;
+    const m = line.match(/([\d.]+) m between the two centres/);
+    return m ? Number(m[1]) : null;
+  }
+
+  /**
+   * Один выстрел умения набора по цели, стоящей в `dist` метрах прямо по курсу.
+   *
+   * Тела пришпилены на каждом тике — по той же причине, что и в `fire` выше:
+   * двоичный поиск иначе сходится к сносу кастера, а не к геометрии. Рывок
+   * пришпиливать нельзя, он ею и движется.
+   */
+  function lands(defs, name, kind, dist, builds) {
+    /* `brainPrompt` берёт телосложения как { own, enemy }, `createWorld` — по
+       СТОРОНАМ. Перекладка здесь, чтобы обе стороны сравнения смотрели на одно
+       и то же тело: замер по умолчанию против промпта с телосложением — это
+       сравнение двух разных бойцов. */
+    const w = createWorld(1, {
+      kits: { blue: defs, orange: defs },
+      builds: builds ? { blue: builds.own, orange: builds.enemy } : null,
+    });
+    w.solids = w.solids.filter((s) => s.wall);
+    w.obstacles = [];
+    const me = w.fighters.blue, you = w.fighters.orange;
+    const put = (f, x, z, h) => { f.x = x; f.z = z; f.px = x; f.pz = z; f.heading = h; f.wantHeading = h; f.vx = 0; f.vz = 0; f.kx = 0; f.kz = 0; f.y = 0; };
+    /* От -9 по +Z: самая длинная досягаемость здесь — луч, 27.6 м, и она
+       обязана уместиться внутри арены, иначе меряется стена. */
+    const pin = () => { put(me, 0, -9, 0); put(you, 0, -9 + dist, Math.PI); };
+    pin();
+    const hp0 = you.hp;
+    let ordered = false;
+    const think = (id, p, api) => { if (id === 'blue' && !ordered) { api.use(name); ordered = true; } };
+    /* Зона живёт 3 с и бьёт раз в полсекунды; 200 шагов покрывают и её. */
+    for (let k = 0; k < 200; k++) { if (kind !== 'dash') pin(); step(w, think); }
+    return hp0 - you.hp > 0;
+  }
+
+  const KINDS = ['beam', 'cone', 'bolt', 'lob', 'zone', 'dash'];
+  for (const builds of BODIES) {
+    const tag = builds ? 'unequal bodies' : 'equal bodies';
+    for (const kind of KINDS) {
+      const built = compileKit([{ delivery: kind, effects: ['damage'], element: 'kinetic' }, ...FILLER]);
+      if (built.problems.length) {
+        console.error(`  kit ${kind}: does not compile — ${JSON.stringify(built.problems)}`);
+        bad++; checked++;
+        continue;
+      }
+      const name = Object.keys(built.defs).find((k) => built.defs[k].kind === kind);
+      const text = brainPrompt('blue', { own: built.defs, enemy: built.defs }, builds);
+      const want = reachSaid(text, name);
+      checked++;
+      if (want === null) {
+        console.error(`  kit ${kind} reach (${tag}): the prompt prints no reach line for it`);
+        bad++;
+        continue;
+      }
+      /* Нижняя граница поиска — вплотную, верхняя — заведомо дальше любой
+         досягаемости. Ширина поиска и есть допуск: своей ошибки у замера нет. */
+      const got = edgeOf((d) => lands(built.defs, name, kind, d, builds), 0.6, 31, 1e-3);
+      const off = Math.abs(got - want);
+      const line = `  kit ${kind} reach (${tag})`.padEnd(36)
+        + ` measured ${got.toFixed(3).padStart(7)} m   prompt says ${String(want).padStart(6)}`;
+      if (off <= 2e-3) console.log(`${line}   ok`);
+      else { console.error(`${line}   OFF BY ${off.toFixed(3)}`); bad++; }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ── ПОЛЕ `kit` В ПЕРЦЕПЦИИ: ОБЕЩАНО СТОЛЬКО ЖЕ, СКОЛЬКО ОТДАНО ─────────────
+// ---------------------------------------------------------------------------
+/*
+ * §5 промпта перечисляет поля `p.self.kit[имя]` поимённо, и это ОБЕЩАНИЕ. Оно
+ * стоило дорого до того, как было дано: из 62 мозгов, написанных моделью, ни
+ * один не прочитал `p.self.kit` — потому что промпт не произносил слова `kit`
+ * ни разу, а `kitView` в `sim.js` отдавал это поле с самого появления F10.
+ * 61 мозг из 77 вместо этого сравнивает `dist` с вписанным числом.
+ *
+ * Обещание, данное текстом, проверяется по живому объекту перцепции: каждое
+ * названное поле обязано существовать, и ни одного НЕназванного там быть не
+ * должно — иначе §5 снова описывает не тот объект, который приезжает.
+ */
+{
+  const { compileKit } = await import('../src/skills/compile.js');
+  const { brainPrompt } = await import('../src/brain/prompt.js');
+  const { perceive } = await import('../src/core/sim.js');
+
+  /* Набор, вытягивающий ВСЕ необязательные поля `kitView`: range/speed (навес),
+     radius/duration/ticks (зона), distance (мигание), halfAngle (конус),
+     airborne (прыжок), damage (везде, где есть урон). */
+  /* Три набора, потому что в один все девять доставок не помещаются, а
+     проверяется ОБЪЕДИНЕНИЕ полей: `splash` бывает только у навеса,
+     `halfAngle` только у конуса, `ticks` и `duration` только у зоны,
+     `airborne` только у прыжка, `distance` у мигания и рывка. */
+  const KITS = [
+    [{ delivery: 'zone', effects: ['damage'], element: 'acid' },
+      { delivery: 'cone', effects: ['damage'], element: 'kinetic' },
+      { delivery: 'jump', effects: ['shield'], element: 'frost' }],
+    [{ delivery: 'lob', effects: ['burn'], element: 'ember' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' },
+      { delivery: 'beam', effects: ['damage'], element: 'arc' }],
+    [{ delivery: 'dash', effects: ['knock'], element: 'kinetic' },
+      { delivery: 'bolt', effects: ['damage'], element: 'acid' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' }],
+  ];
+  const built = compileKit(KITS[0]);
+  const w = createWorld(1, { kits: { blue: built.defs, orange: built.defs } });
+  const p = perceive(w, 'blue');
+  const text = brainPrompt('blue', { own: built.defs, enemy: built.defs });
+
+  checked++;
+  if (!p.self.kit || !p.enemy.kit) {
+    console.error('  p.self.kit / p.enemy.kit: the sim does not serve them at all');
+    bad++;
+  } else {
+    /* Имена полей выписаны из строки §5 — из ТЕКСТА, а не из второго списка
+       рядом: список рядом согласился бы сам с собой. */
+    const block = text.slice(text.indexOf('  .kit '), text.indexOf('\n\np.enemy')).replace(/\s+/g, ' ');
+    const always = block.match(/\{([^}]*)\}/);
+    const maybe = block.match(/whichever of ([^.]*?) its delivery/);
+    const said2 = new Set([...(always ? always[1] : '').split(','), ...(maybe ? maybe[1] : '').split(',')]
+      .map((w) => w.trim()).filter(Boolean));
+    const served2 = new Set();
+    for (const grammar of KITS) {
+      const one = compileKit(grammar);
+      const w2 = createWorld(1, { kits: { blue: one.defs, orange: one.defs } });
+      for (const d of Object.values(perceive(w2, 'blue').self.kit)) for (const k of Object.keys(d)) served2.add(k);
+    }
+    const missing = [...served2].filter((k) => !said2.has(k));
+    const invented = [...said2].filter((k) => !served2.has(k));
+    if (missing.length) { console.error(`  p.self.kit serves fields the prompt does not name: ${missing.join(', ')}`); bad++; }
+    else if (invented.length) { console.error(`  the prompt names fields p.self.kit does not serve: ${invented.join(', ')}`); bad++; }
+    else console.log(`  p.self.kit fields                  measured ${String(served2.size).padStart(7)}     prompt names ${said2.size}   ok`);
+  }
+
+  /* И обратное: у бойца БЕЗ набора поле пустое, поэтому промпт без набора не
+     смеет о нём говорить. Иначе это строка про null — тот же вред, что D160
+     нашёл в строке `skills`. */
+  checked++;
+  const bare = createWorld(1);
+  if (perceive(bare, 'blue').self.kit !== null) {
+    console.error('  a fighter without a kit: p.self.kit is not null, so §1 would need the line after all');
+    bad++;
+  } else if (brainPrompt('blue').includes('.kit')) {
+    console.error('  the kitless prompt talks about p.self.kit, which is null for its reader');
+    bad++;
+  } else {
+    console.log('  a fighter without a kit                        p.self.kit null, and the prompt is silent   ok');
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 if (bad === 0) console.log(`\n${checked} claims measured; the world does what the prompt says.`);
 else { console.error(`\n${bad} of ${checked} claims do not match the world.`); process.exit(1); }

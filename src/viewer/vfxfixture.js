@@ -23,7 +23,23 @@ export const CAMS = {
      оранжевому идёт почти вдоль взгляда и схлопывается в столбик — судить по
      нему форму пучка нельзя (замер турнира молнии 02.09). */
   side: { az: -Math.PI * 0.25, pitch: 0.46, dist: 26, look: { x: 0, y: 1.2, z: 1.6 } },
-  low: { az: Math.PI * 0.62, pitch: 0.2, dist: 15, look: { x: 0, y: 1.4, z: 1.6 } },
+  /*
+   * НИЗКИЙ ГЛАЗ СМОТРЕЛ НА КАСТЕРА, А ЗОНЫ ЛОЖАТСЯ НА ЦЕЛЬ.
+   *
+   * Точка наблюдения (0, 1.4, 1.6) — это почти синий боец, а стойка ставит
+   * зону, статус и удар на ОРАНЖЕВОГО (3.0, 5.0). В результате низкий глаз
+   * давал РОВНО 0.00 % арены на всех моментах у зон пустоты, кинетики,
+   * кислоты и радиации: цель вместе с эффектом оставалась за правым ящиком и
+   * за краем кадра. Нашли независимо судья различимости и два агента, и
+   * формулировка судьи точная: «ракурс, который ничего не показывает, не
+   * является вторым ракурсом» — то есть половина требования заказа
+   * «посмотреть с разных ракурсов» держалась на пустых кадрах.
+   *
+   * Взгляд переставлен на СЕРЕДИНУ между бойцами и поднят до груди цели, а
+   * азимут отзеркален: с этой стороны линия на оранжевого свободна. Высота
+   * и дальность не тронуты — это по-прежнему низкий близкий глаз.
+   */
+  low: { az: -Math.PI * 0.38, pitch: 0.2, dist: 15, look: { x: 1.4, y: 1.3, z: 2.4 } },
   top: { az: Math.PI * 0.1, pitch: 1.15, dist: 22, look: { x: 0, y: 0.6, z: 1.6 } },
 };
 
@@ -81,12 +97,21 @@ export function fxFor(kind, element, { hit = true, atom = 'damage', effect = 'bu
   switch (kind) {
     case 'beam': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x, z1: ORANGE.z, hit });
     case 'cone': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: 3.4, halfAngle: 0.96, hit });
-    case 'bolt': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 22 });
-    case 'lob': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, speed: 12 });
-    case 'zone': return out({ ...base, x: ORANGE.x, z: ORANGE.z, r: 3.0, duration: 3, h });
+    /* `aim` — как в `deliver.js`: куда снаряд летит на самом деле. На стойке
+       предел и расстояние совпадают, поэтому кадр не меняется, но модуль,
+       читающий `e.aim`, получает здесь то же поле, что и в бою. */
+    case 'bolt': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, aim: dist, speed: 22 });
+    case 'lob': return out({ ...base, x: BLUE.x, z: BLUE.z, h, range: dist, aim: dist, speed: 12 });
+    /* `effects` — как у удара: сим кладёт в запись зоны список её атомов
+       (`deliver.js`, 04.09), и без него стойка не может показать зону, которая
+       ТЯНЕТ, от зоны, которая жжёт. По умолчанию урон — то же, что было. */
+    case 'zone': return out({ ...base, x: ORANGE.x, z: ORANGE.z, r: 3.0, duration: 3, h, effects: [atom] });
     case 'dash': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: ORANGE.x - 1.5, z1: ORANGE.z - 1, hit });
     case 'blink': return out({ ...base, x0: BLUE.x, z0: BLUE.z, x1: BLUE.x + 4, z1: BLUE.z + 3 });
-    case 'self': return out({ ...base, x: BLUE.x, z: BLUE.z });
+    /* `effects` — как у зоны и удара: сим кладёт список атомов доставки и в
+       запись оболочки (`deliver.js`, 04.09). Без него стойка не отличала бы
+       оболочку ЩИТА от вспышки лечения. */
+    case 'self': return out({ ...base, x: BLUE.x, z: BLUE.z, effects: [atom] });
     case 'jump': return out({ ...base, x: BLUE.x, z: BLUE.z, h, height: 2.2, duration: 0.55 });
     case 'wall': return out({ ...base, x: 1, z: 1, w: 4, d: 1, height: 2.2, duration: 4 });
     /* `who` удара — КАСТЕР, как пишет `pushImpact` в deliver.js; жертву вьювер

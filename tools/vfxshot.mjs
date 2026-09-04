@@ -12,6 +12,7 @@
  *   node tools/vfxshot.mjs --moments=0.06,0.12,0.38,0.8,1.5   близкие моменты — отдельными кастами
  *   node tools/vfxshot.mjs --fight --seed=101    настоящий бой на дев-вьювере
  *   node tools/vfxshot.mjs --watch=<match id> --url='http://localhost:8787/?vfx=1&sweep=1'
+ *   node tools/vfxshot.mjs --watch=<match id> --oncast   (кадр по касту, а не по таймеру)
  *                                                  повтор боя из базы продукта: камера
  *                                                  решателя, наборы, тряска — как у зрителя
  *
@@ -38,6 +39,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 /* Запуск Chrome, глаза, стойка бойцов и записи доставок — общие с
    `vfxclip.mjs` (ролики): см. `vfxchrome.mjs`. */
+import { ELEMENTS as REGISTRY_ELEMENTS } from '../src/skills/registry.js';
 import { CAMS, BLUE, ORANGE, fxFor, launchChrome, closeChrome, Cdp, openPage, waitReady, sleep } from './vfxchrome.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -54,8 +56,50 @@ const W = Number(args.w || 1600), H = Number(args.h || 900);
 
 /* ── план ──────────────────────────────────────────────────────────────── */
 
-const ELEMENTS = (args.el ? args.el.split(',') : ['frost', 'ember', 'arc', 'void', 'kinetic']);
+/*
+ * СПИСОК СТИХИЙ БЕРЁТСЯ ИЗ РЕЕСТРА, А НЕ ИЗ ПАМЯТИ ЭТОГО ФАЙЛА.
+ *
+ * Здесь стояли пять имён списком — те пять, что существовали, когда съёмку
+ * писали. Потом выпустили гравитацию, время, кислоту, радиацию и лазер, а
+ * список остался, и `--all` (флага с таким именем тут вообще нет) молча
+ * снимал ПОЛОВИНУ набора. Цена ошибки видна по кругу приёмки: три судьи
+ * независимо пересчитали каталог и нашли 30 форм там, где отчёт обещал 60, —
+ * и были правы, а отчёт нет. Причём четыре из пяти пропущенных модулей как
+ * раз в этом круге и правились, то есть непроверенным осталось именно новое.
+ *
+ * Теперь набор один и тот же у грамматики, у гейта и у съёмки: пропасть
+ * между ними больше не может открыться молча.
+ */
+const ALL_ELEMENTS = Object.keys(REGISTRY_ELEMENTS);
+const ELEMENTS = (args.el ? args.el.split(',') : ALL_ELEMENTS);
 const KINDS = (args.kind ? args.kind.split(',') : ['cone', 'self', 'zone', 'beam', 'bolt', 'lob']);
+
+/*
+ * ── ПЕРЕБОР ПО АТОМАМ (заказ 04.09: «каждый эффект технически выполняет
+ * отдельную функцию, совпадающую с его визуалом») ─────────────────────────
+ *
+ * У формы `impact` и формы `status` эффект — не сама форма, а АТОМ внутри неё:
+ * четырнадцать подписей удара (`atomImpact` в `vfx.js`) и десять носителей
+ * статуса. Без этого перебора прогон снимал ровно один из них — `damage` и
+ * `burn` по умолчанию `fxFor`, — то есть тринадцать подписей из четырнадцати
+ * не были сняты НИ РАЗУ, и «отдельная функция» проверялась на слово.
+ *
+ *   --atom=damage,burn,knock,...    (только для kind=impact)
+ *   --effect=shield,stun,root,...   (только для kind=status)
+ *
+ * Имя файла получает атом суффиксом, иначе четырнадцать ударов перезаписали бы
+ * друг друга: `<el>-impact.damage-t0_20-broadcast.png`.
+ */
+const ATOMS = (args.atom ? args.atom.split(',') : [null]);
+const EFFECTS = (args.effect ? args.effect.split(',') : [null]);
+/** Что перебирать внутри формы: атомы для удара, эффекты для статуса. */
+function variantsOf(kind) {
+  /* Зона перебирается по атомам так же, как удар: с 04.09 её запись несёт
+     список эффектов, и «зона, которая тянет» — это отдельный кадр. */
+  if (kind === 'impact' || kind === 'zone') return ATOMS.map((a) => (a ? { atom: a, tag: a } : { tag: null }));
+  if (kind === 'status') return EFFECTS.map((e) => (e ? { effect: e, tag: e } : { tag: null }));
+  return [{ tag: null }];
+}
 
 const CAM_NAMES = (args.cams ? args.cams.split(',') : Object.keys(CAMS));
 
@@ -93,6 +137,38 @@ async function main() {
     const page = await openPage(cdp, BASE, { w: W, h: H });
     /* Сцена готова, когда есть ручки прогона и тела обеих сторон. */
     await waitReady(page, BASE);
+    /*
+     * ПАМЯТКА «КАК ЧИТАТЬ БОЙ» СНИМАЕТСЯ И НА СТОЙКЕ, А НЕ ТОЛЬКО В БОЮ.
+     *
+     * Гасили её пока только в записи боя, а стойка снималась с ней — панель
+     * стоит в правом нижнем углу и попадает В ИЗМЕРЯЕМУЮ ПОЛОСУ АРЕНЫ (строки
+     * 120–790). Разностный замер её вычитает, потому что она одинакова в базе
+     * и в кадре, а вот судья, которому велено «посмотреть глазами», видит её
+     * на каждом кадре и справедливо считает шумом. Ключ тот же, каким её
+     * гасит игрок, — съёмка не выключает ничего особенного, а приходит «не в
+     * первый раз».
+     */
+    await page.evaluate(`(() => {
+      /*
+       * ПАМЯТОК ДВЕ, И ОНИ НА РАЗНЫХ СТРАНИЦАХ.
+       *
+       * Продуктовая («#howto», src/client/index.html) гасится ключом, как у
+       * человека, — но показывается она ПО СОБЫТИЮ airena:match, а слушатель
+       * ставится при загрузке, то есть позже нашего вызова он вернул бы её
+       * обратно; поэтому элемент удаляется, а не прячется.
+       *
+       * Стендовая («#legend», src/viewer/index.html) — вообще другая: ни
+       * ключа, ни кнопки. Её искали по чужому идентификатору, и снималась
+       * она поэтому НИКОГДА: панель стояла в правом нижнем углу на всех
+       * кадрах развёртки, внутри измеряемой полосы арены (строки 120–790),
+       * и три судьи приёмки честно назвали её шумом.
+       */
+      const el = document.getElementById('howto');
+      try { localStorage.setItem('airena.howto', (el && el.dataset.v) || '2'); } catch { /* приватный режим */ }
+      if (el) el.remove();
+      document.getElementById('legend')?.remove();
+      return true;
+    })()`);
     /* Прогрев: первый кадр с новым материалом на WebGPU пустой (стенд /ice
        выяснил это первым), и конвейеры собираются на первом появлении. */
     await page.evaluate(`window.__airenaSweep.place(${JSON.stringify({ blue: BLUE, orange: ORANGE })}); true`);
@@ -107,8 +183,24 @@ async function main() {
     } else {
       for (const el of ELEMENTS) {
         for (const kind of KINDS) {
-          const fx = fxFor(kind, el);
+        for (const v of variantsOf(kind)) {
+          /*
+           * `--who=blue|orange` — НА КОМ ПОКАЗЫВАТЬ СТАТУС.
+           *
+           * Стойка по умолчанию раскладывает эффекты так же, как сим: щит,
+           * лечение, очищение и усиление ложатся на кастера (синий), прочие
+           * на цель (оранжевый). Для игры это верно, а для СРАВНЕНИЯ двух
+           * знаков — нет: судья приёмки справедливо снял мой довод про
+           * усиление и ослабление, потому что их рамки сняты с разных бойцов
+           * разного роста, и «дорожки идут навстречу» из таких кадров не
+           * следует. Флаг ставит оба знака на одно тело.
+           */
+          const fx = fxFor(kind, el, {
+            ...(v.tag ? (kind === 'status' ? { effect: v.effect } : { atom: v.atom }) : {}),
+            ...(args.who ? { who: args.who } : {}),
+          });
           if (!fx) continue;
+          const label = v.tag ? `${kind}.${v.tag}` : kind;
           /*
            * Прогрев конкретного эффекта — КОЛЬЦОМ, а не одним кастом.
            *
@@ -136,16 +228,17 @@ async function main() {
               for (const m of group) {
                 const wait = t0 + m * 1000 - Date.now();
                 if (wait > 0) await sleep(wait);
-                const name = `${el}-${kind}-t${m.toFixed(2).replace('.', '_')}-${camName}.png`;
+                const name = `${el}-${label}-t${m.toFixed(2).replace('.', '_')}-${camName}.png`;
                 const at = await page.evaluate('performance.now()');
                 await page.shot(join(OUT, name));
-                index.shots.push({ el, kind, moment: m, cam: camName, cast: gi, file: name, actual: +((at - pageT0) / 1000).toFixed(3) });
+                index.shots.push({ el, kind, atom: v.tag || null, moment: m, cam: camName, cast: gi, file: name, actual: +((at - pageT0) / 1000).toFixed(3) });
               }
               /* Дать эффекту догореть, чтобы следующий каст не снимал хвост. */
               await sleep(Math.max(1200, 3800 - (Date.now() - t0)));
             }
           }
-          console.log(`  ${el} · ${kind}: ${CAM_NAMES.length * MOMENTS.length} кадров, кастов на глаз: ${GROUPS.length}`);
+          console.log(`  ${el} · ${label}: ${CAM_NAMES.length * MOMENTS.length} кадров, кастов на глаз: ${GROUPS.length}`);
+        }
         }
       }
     }
@@ -166,7 +259,15 @@ async function main() {
  */
 async function fightRun(page, index, watching = false) {
   const n = Number(args.n || 24), every = Number(args.every || 0.8);
-  await page.evaluate(`window.__airenaSweep.cam(null); true`);
+  /*
+   * ГЛАЗ БОЯ. По умолчанию — камера решателя (`null`), та самая, которую
+   * видит зритель. Но судья приёмки справедливо заметил, что «посмотреть с
+   * разных ракурсов» выполнено только для стоек: все кадры записи сняты одним
+   * глазом. `--fightcam=low|top|side` прикалывает бой к неподвижному глазу
+   * стойки — тогда одну и ту же запись можно снять трижды и сравнить.
+   */
+  const eye = args.fightcam && CAMS[args.fightcam] ? CAMS[args.fightcam] : null;
+  await page.evaluate(`window.__airenaSweep.cam(${eye ? JSON.stringify(eye) : 'null'}); true`);
   await page.evaluate(`(() => {
     window.__fxSeen = [];
     addEventListener('airena:frame', (ev) => { const f = ev.detail.frame; if (f && f.fx && f.fx.length) window.__fxSeen.push({ t: f.t, kinds: f.fx.map((e) => e.kind + ':' + (e.element || '')) }); });
@@ -184,22 +285,104 @@ async function fightRun(page, index, watching = false) {
   /* Повтор из базы просим ТОЛЬКО когда сцена готова: по `?m=` он стартовал
      бы на загрузке страницы, и первые десять секунд боя уходили на сборку
      WebGPU и тел. Маршрут продукта — хеш, `app.js` сам зовёт повтор. */
-  if (watching) await page.evaluate(`(location.hash = ${JSON.stringify('#/watch/' + args.watch)}, true)`);
+  if (watching) {
+    /*
+     * ПАМЯТКА «КАК ЧИТАТЬ БОЙ» СНИМАЕТСЯ ДО ПОВТОРА.
+     *
+     * Она закрывала четверть арены во всех тридцати кадрах записи, и судья
+     * приёмки честно написал, что бой приходится судить сквозь неё. Панель
+     * гасится тем же ключом, каким её гасит игрок (`airena.howto`), — то есть
+     * съёмка не выключает ничего особенного, а просто приходит «не в первый
+     * раз». Версию ключа читаем со страницы, чтобы она не разъехалась с
+     * `app.js`.
+     */
+    await page.evaluate(`(() => {
+      /*
+       * ПАМЯТОК ДВЕ, И ОНИ НА РАЗНЫХ СТРАНИЦАХ.
+       *
+       * Продуктовая («#howto», src/client/index.html) гасится ключом, как у
+       * человека, — но показывается она ПО СОБЫТИЮ airena:match, а слушатель
+       * ставится при загрузке, то есть позже нашего вызова он вернул бы её
+       * обратно; поэтому элемент удаляется, а не прячется.
+       *
+       * Стендовая («#legend», src/viewer/index.html) — вообще другая: ни
+       * ключа, ни кнопки. Её искали по чужому идентификатору, и снималась
+       * она поэтому НИКОГДА: панель стояла в правом нижнем углу на всех
+       * кадрах развёртки, внутри измеряемой полосы арены (строки 120–790),
+       * и три судьи приёмки честно назвали её шумом.
+       */
+      const el = document.getElementById('howto');
+      try { localStorage.setItem('airena.howto', (el && el.dataset.v) || '2'); } catch { /* приватный режим */ }
+      if (el) el.remove();
+      document.getElementById('legend')?.remove();
+      return true;
+    })()`);
+    await page.evaluate(`(location.hash = ${JSON.stringify('#/watch/' + args.watch)}, true)`);
+  }
   for (let i = 0; i < 150; i++) {
     const going = await page.evaluate('!!(window.airena && window.airena.frames && window.airena.frames.length > 2)').catch(() => false);
     if (going) break;
     await sleep(200);
   }
   await sleep(300);
-  for (let i = 0; i < n; i++) {
+  /*
+   * ── КАДР ПО КАСТУ, А НЕ ПО ТАЙМЕРУ ───────────────────────────────────────
+   *
+   * `--oncast` ждёт ЗАПИСЬ в `world.fx` и снимает сразу после неё. Прежний
+   * равномерный шаг ловил формы по вероятности, и это померено: у галереи
+   * `f2-fight-laser-void` медианный шаг 1.52 с при жизни лазерного ствола
+   * 0.63 с — луч записан в окнах восьми кадров из двадцати шести и НЕ ПОПАЛ
+   * НИ НА ОДИН. Три судьи приёмки independently написали одно и то же: «ни
+   * один кадр не застаёт луч в касте», «4 из 21 кадра — пустая арена». Это
+   * был дефект съёмки, а не слоя, и растягивать ради него жизнь эффекта
+   * значило бы нарушить пункт 4 заказа.
+   *
+   * Задержка `--castlag` (по умолчанию 0.18 с) — не «чтобы покрасивее»:
+   * доставка ставит носитель в тот же кадр, а вход формы занимает 0.1–0.15 с,
+   * и снимок ровно в миг записи застаёт эффект в нуле.
+   */
+  const onCast = args.oncast !== undefined && String(args.oncast) !== 'false';
+  const lag = Number(args.castlag ?? 0.18);
+  let shot = 0;
+  const grab = async (why) => {
+    if (eye) await page.evaluate(`window.__airenaSweep.cam(${JSON.stringify(eye)}); true`);
     const t = await page.evaluate('(window.airena && window.airena.renderClock) || 0');
-    const name = `fight-${String(i).padStart(2, '0')}-t${Number(t).toFixed(1).replace('.', '_')}.png`;
+    const name = `fight-${String(shot).padStart(2, '0')}-t${Number(t).toFixed(1).replace('.', '_')}.png`;
     await page.shot(join(OUT, name));
     const seen = await page.evaluate('(window.__fxSeen || []).splice(0).map((s) => s.kinds.join(",")).join(";")');
-    index.shots.push({ fight: true, file: name, t, fx: seen });
-    const over = await page.evaluate('!!(window.airena && window.airena.over)');
-    if (over) break;
-    await sleep(every * 1000);
+    index.shots.push({ fight: true, file: name, t, fx: seen, why });
+    shot += 1;
+    return page.evaluate('!!(window.airena && window.airena.over)');
+  };
+  if (onCast) {
+    /* Ждём каст, снимаем, повторяем. Голодание невозможно: если каста нет
+       дольше `every`, снимок делается всё равно — иначе тихий отрезок боя
+       выпал бы из галереи целиком. */
+    await page.evaluate('window.__fxWait = []; addEventListener("airena:frame", (ev) => { const f = ev.detail.frame; if (f && f.fx && f.fx.length) window.__fxWait.push(f.t); }); true');
+    let waited = 0;
+    while (shot < n) {
+      const hit = await page.evaluate('(window.__fxWait.splice(0).length > 0)').catch(() => false);
+      if (hit) {
+        await sleep(lag * 1000);
+        if (await grab('каст')) break;
+        waited = 0;
+      } else if (waited >= every * 1000) {
+        if (await grab('тишина')) break;
+        waited = 0;
+      } else {
+        await sleep(120);
+        waited += 120;
+        continue;
+      }
+      if (await page.evaluate('!!(window.airena && window.airena.over)')) break;
+    }
+  } else {
+    for (let i = 0; i < n; i++) {
+      /* Решатель кадрирования двигает камеру каждый кадр, поэтому неподвижный
+         глаз надо ставить заново перед каждым снимком, а не один раз. */
+      if (await grab('шаг')) break;
+      await sleep(every * 1000);
+    }
   }
 }
 

@@ -461,16 +461,62 @@ function skillBlock(name, me, you, youLbl) {
  * `referenceTagOf`) только тогда, когда набора нет вовсе.
  */
 function skillsFor(tag, kit, mine, theirs) {
-  if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit)}`;
+  if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit, mine, theirs)}\n\n${KIT_IS_NOT_YOURS}`;
   return `YOUR SKILLS\n\n${skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, mine, theirs, 'body.enemy')).join('\n\n')}`;
 }
 
 /** Умения соперника. Применяющий — он, цель — я, поэтому пара перевёрнута. */
 function enemySkillsFor(tag, enemyKit, theirs, mine) {
   const head = "YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n";
-  if (enemyKit) return head + kitBlocks(enemyKit);
+  if (enemyKit) return head + kitBlocks(enemyKit, theirs, mine);
   return head + skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, theirs, mine, 'body.own')).join('\n\n');
 }
+
+/**
+ * ОГРАНИЧЕНИЕ С ЕГО ПРИЧИНОЙ: ДАЛЬНОСТЬ НЕ ВПИСЫВАЕТСЯ ЧИСЛОМ.
+ *
+ * ── что было измерено ───────────────────────────────────────────────────────
+ *
+ * 77 мозгов в `data/airena.db` с набором и исходником. 61 из них сравнивает
+ * `dist` с ВПИСАННЫМ ЧИСЛОМ (`dist <= 4.616`, `dist >= 3.501` — это КУВАЛДА,
+ * `c_3aa2bb0f-f14`). Читают `p.self.kit` пятнадцать, и все пятнадцать — наши:
+ * одиннадцать `kit-stub` и четыре «рукописный эталон». Из 62 мозгов,
+ * НАПИСАННЫХ МОДЕЛЬЮ, — НИ ОДИН.
+ *
+ * Причина не в модели. `brainPrompt` не произносил слова «kit» ни разу:
+ * `grep -c kit` по отрендеренному промпту давал 0. Поле `p.self.kit` существует
+ * в `sim.js` (`kitView`) с тех пор, как появилась F10, и мозгу о нём не
+ * говорили — а правило №1 этого файла звучит так: «модель не может позвать то,
+ * о существовании чего ей не сказали». Она и не звала: она переписывала числа
+ * из таблицы умений в исходник, потому что другого места взять их не было.
+ *
+ * И тогда обещание F10 — «смена кита НИКОГДА не требует регенерации мозга» —
+ * держалось только на том, что кит не меняли. Меняют — и `4.616` описывает
+ * набор, которого у бойца больше нет.
+ *
+ * ── почему текст такой ──────────────────────────────────────────────────────
+ *
+ * Это ограничение (не вписывай) со своей причиной (набор меняют, тебя — нет),
+ * то есть категория 2 правила редактирования. Ни слова о том, КАКУЮ дистанцию
+ * держать: доктрина дистанции — это тактика, её пишет модель, и подсказка здесь
+ * стоила бы ровно того замера, ради которого весь файл так устроен.
+ *
+ * Живёт только в промпте существа с набором — у эталонной фикстуры §1
+ * `kitView` возвращает null, и абзац про поле, которого у неё нет, был бы
+ * неправдой. Заодно `brainPrompt(id)` остаётся байт-в-байт прежним, а на нём
+ * стоят и хеш провенанса в `tools/bracket.mjs`, и кэш вердиктов
+ * `tools/tactics-verdicts.json`.
+ */
+const KIT_IS_NOT_YOURS = `These three are the skills you are holding as this is written. They can be
+exchanged for three others between one match and the next, and you are NOT
+rewritten when they are: the same program you are writing now runs with the new
+set. So a range copied out of the table above and typed into your source as a
+number describes a skill you may no longer have, and nothing will tell you it
+has stopped being true.
+
+The live figures are in perception, under p.self.kit, keyed by the same names
+api.use takes; the opponent's are under p.enemy.kit. They are rebuilt for every
+thought, from the set actually equipped.`;
 
 /**
  * A skill built out of the §8 grammar, described the way the four hardcoded
@@ -489,7 +535,38 @@ const DELIVERY_LINE = {
   beam: 'a straight line from your muzzle. It stops at the first block, wall or body it meets',
   cone: 'a wedge ahead of you, close in. It needs a clear line to the body it hits, and it sweeps the FLOOR — a body that is off the ground when it lands takes nothing',
   bolt: 'a projectile that travels. It can be walked out of, and a block stops it',
-  lob: 'a projectile on an arc. It flies OVER blocks and lands where it was aimed',
+  /*
+   * НАВЕС — ЕДИНСТВЕННАЯ ДОСТАВКА, У КОТОРОЙ ДАЛЬНОСТЬ НАЗЫВАЕТ МОЗГ.
+   *
+   * Здесь стояло «It flies OVER blocks and lands where it was aimed». Первая
+   * половина верна, вторая была неправдой в обе стороны сразу, и обе половины
+   * этой неправды агент механики починил 04.09 в `src/core/deliver.js`
+   * (`lobLanding`, `tickProjectiles`) и в `src/core/sim.js` (`startSkill`).
+   * Своей формулировки он не прислал, поэтому строка ниже написана ПО КОДУ, и
+   * вот по какому:
+   *
+   *   `startSkill`: `const reach = (s.kind === 'lob' && a !== null &&
+   *   Number.isFinite(a)) ? a : null` — для навеса первый аргумент `api.use`
+   *   это ЗАПРОШЕННАЯ ДАЛЬНОСТЬ В МЕТРАХ. Больше её не читает никто: у мигания
+   *   `a, b` — направление, у остальных семи доставок аргументы не читаются.
+   *
+   *   `lobLanding`: `null` (аргумента не было) значит РАССТОЯНИЕ ДО ВРАГА, а
+   *   не предел умения. Запрос зажимается `min(предел, max(свой радиус +
+   *   splash, запрос))`, и поверх — край арены. Зажимается в момент
+   *   приземления каста, а не приказа.
+   *
+   *   `tickProjectiles`, ветка `p.arc`: полёт не проверяет НИЧЕГО — ни тел, ни
+   *   препятствий. Весь удар это круг `splash` вокруг точки падения, и тело
+   *   попадает под него, когда его центр ближе `splash + его радиус`. Пустая
+   *   точка — промах с причиной `aim`, и он приезжает мозгу событием.
+   *
+   * Почему это важно ИМЕННО ДЛЯ ДИСТАНЦИИ: у навеса теперь есть и ближняя
+   * граница, а не только дальняя. Ближе `свой радиус + splash` он не ложится
+   * вовсе — то есть это единственное умение в грамматике, которым нельзя
+   * ударить в упор, и мозг, который об этом не знает, будет жать его вплотную
+   * и получать промахи.
+   */
+  lob: 'a projectile on an arc. It flies OVER blocks and over bodies, touching nothing on the way, and everything happens where it lands: a circle of its splash radius, which catches a body whose centre is within that splash plus their own radius. WHERE it lands is yours to name — api.use(name, metres) takes the distance you want, and with no argument it lands at the enemy\'s distance as it stands when the cast finishes. What you asked for is clamped when the cast lands: never nearer than your own radius plus the splash, never past the range above, never past the edge of the arena. A landing that catches nobody is a miss with reason "aim"',
   zone: 'a disc on the ground that keeps working for a few seconds after it lands. It sits ON the floor, so a body that is in the air skips the ticks it spends up there — one or two of them, not the whole cast',
   dash: 'you travel forward and everything on the path is hit. A block stops the travel, and so does height: a body that is off the ground when you arrive takes nothing',
   blink: 'you are somewhere else immediately, untouchable while you move',
@@ -530,7 +607,108 @@ const CHANNEL_LINE = {
  */
 
 
-function kitBlocks(kit) {
+/**
+ * САМОЕ ДАЛЬНЕЕ ПОПАДАНИЕ ОТ ЦЕНТРА ДО ЦЕНТРА — то, чего в карточке набора не
+ * было, и то единственное число, по которому выбирается дистанция.
+ *
+ * ── зачем оно здесь ─────────────────────────────────────────────────────────
+ *
+ * Захардкоженная пятёрка §1 получает эту строку с самого начала: у луча стоит
+ * `reach`, у конуса `reach`, и докстринг наверху объясняет почему — «мозг,
+ * держащийся сразу за числом дальности, стоит ВНУТРИ оружия». Карточка
+ * грамматики печатала только `range`, то есть ровно ту ошибку, ради поимки
+ * которой написан `tools/checkbehaviour.mjs`, — и печатала её на пути, по
+ * которому идут ВСЕ существа игроков, а не на эталонном стенде.
+ *
+ * Насколько велика разница, замерено двоичным поиском по попаданию (три пары
+ * тел, 18 замеров, все совпали с формулами ниже до третьего знака):
+ *
+ *     конус  range 3.4  -> 4.9  м между центрами   (+44%)
+ *     навес  range 15   -> 18.85 м                 (+26%)
+ *     луч    range 24   -> 27.6 м                  (+15%)
+ *
+ * Занижение бьёт ровно в ту сторону, на которую жалуется основатель: боец,
+ * которому сказали «3.4», подходит на 3.4 и ближе, чтобы наверняка достать
+ * конусом, который доставал уже с 4.9.
+ *
+ * ── почему числа считаются, а не берутся из `d` ────────────────────────────
+ *
+ * Слагаемые — радиусы ДВУХ КОНКРЕТНЫХ ТЕЛ и константы места вызова в
+ * `deliver.js`, у которых нет имени в конфиге (0.2 и 0.4 у луча, 0.3 и 0.35 у
+ * снаряда). Ровно та же развилка, что у `skillBlock` выше: там они тоже
+ * выписаны, а не импортированы.
+ *
+ * Полёт снаряда квантуется теми же тиками, что и фазы: он живёт `range/speed`
+ * секунд, а мир вычитает по тику, пока жизнь не уйдёт в ноль, — поэтому
+ * пролетает он `ceil` тиков, а не ровно свою дальность. Та же поправка, что
+ * `served` делает для длительностей, и по той же причине.
+ *
+ * @param {object} d    скомпилированное умение набора
+ * @param {object} me   боевая запись ТОГО, КТО ПРИМЕНЯЕТ
+ * @param {object} you  боевая запись ТОГО, ПО КОМУ ПРИМЕНЯЮТ
+ * @returns {?string} строка карточки, либо null — у доставок без цели
+ *   (`blink`, `self`, `jump`) дальности попадания не существует, и строка,
+ *   называющая её, описывала бы геометрию, которой у умения нет.
+ */
+function reachLine(d, me, you) {
+  const at = (v, tail) => `${n(v)} m between the two centres, at the very most: ${tail}`;
+  if (d.kind === 'beam') {
+    const muzzle = me.radius + 0.2;
+    return at(muzzle + d.range + you.radius + 0.4,
+      `the beam starts ${n(muzzle)} m ahead of your centre along your facing, runs ${n(d.range)} m from there, `
+      + `carries ${n(0.4)} m of margin, and connects on their SURFACE — so ${n(you.radius)} m of their radius counts too`);
+  }
+  if (d.kind === 'cone') {
+    return at(d.range + you.radius,
+      `the range is measured to their SURFACE, so ${n(you.radius)} m of their radius is added to it. Your own radius is NOT: `
+      + 'the wedge is measured from your centre');
+  }
+  if (d.kind === 'bolt') {
+    const muzzle = me.radius + 0.3;
+    /* Сколько тиков живёт снаряд: мир вычитает по тику, пока `life > 0`. */
+    const ticks = Math.ceil((d.range / d.speed) / TICK - 1e-9);
+    const flight = ticks * d.speed * TICK;
+    return at(muzzle + flight + you.radius + 0.35,
+      `it leaves ${n(muzzle)} m ahead of your centre, flies ${n(flight)} m — its range rounded UP to whole steps of the world — `
+      + `and touches them when it comes within ${n(you.radius + 0.35)} m of their centre`);
+  }
+  /*
+   * У НАВЕСА ДВЕ ГРАНИЦЫ, И БЛИЖНЯЯ ВАЖНЕЕ ДАЛЬНЕЙ.
+   *
+   * Дальняя складывается так же, как у всех: предел умения плюс круг падения
+   * плюс радиус цели. Ближняя — своя, и она есть ТОЛЬКО у навеса: `lobLanding`
+   * не даёт положить его ближе `свой радиус + splash`, потому что иначе круг
+   * накрыл бы кастера. Печатается вместе с дальней, одной строкой: порознь они
+   * читаются как два независимых числа, а это один отрезок.
+   */
+  if (d.kind === 'lob') {
+    const near = me.radius + d.splash;
+    return `${n(d.range + d.splash + you.radius)} m between the two centres at the very most — your range `
+      + `${n(d.range)} m plus the ${n(d.splash)} m of splash plus their ${n(you.radius)} m of radius — and it will not land `
+      + `nearer to you than ${n(near)} m, your own radius plus that splash, whatever distance you ask for`;
+  }
+  if (d.kind === 'zone') {
+    return at(d.range + d.radius + you.radius,
+      `the disc lands along your facing at your range or at their distance, whichever is SHORTER, and it works on a body whose `
+      + `centre is within ${n(d.radius)} m of the disc plus their own ${n(you.radius)} m of radius`);
+  }
+  if (d.kind === 'dash') {
+    return at(d.distance + me.radius + you.radius,
+      `you sweep ${n(d.distance)} m and everything within ${n(me.radius + you.radius)} m of that line — your radius plus theirs — is hit`);
+  }
+  return null;
+}
+
+/**
+ * @param {object} kit  скомпилированный набор
+ * @param {object} me   тело ТОГО, ЧЕЙ ЭТО НАБОР
+ * @param {object} you  тело ТОГО, ПО КОМУ ОН ПРИМЕНЯЕТСЯ
+ *
+ * `me`/`you` приезжают, а не берутся из набора, по той же причине, что и в
+ * `skillBlock`: досягаемость складывается из радиусов ДВУХ конкретных тел, и в
+ * блоке чужих умений пара приходит перевёрнутой.
+ */
+function kitBlocks(kit, me, you) {
   return Object.entries(kit).map(([name, d]) => {
     const L = [];
     const push = (k, v) => L.push(`  ${k.padEnd(20)}${v}`);
@@ -542,7 +720,15 @@ function kitBlocks(kit) {
     if (d.radius !== undefined) push('radius', `${n(d.radius)} m`);
     if (d.distance !== undefined) push('distance', `${n(d.distance)} m`);
     if (d.speed !== undefined) push('speed', `${n(d.speed)} m/s`);
+    /* Радиус поражения навеса в точке падения. Без него `reach` ниже — сумма,
+       одно слагаемое которой нигде не названо, а ближняя граница броска
+       (свой радиус + splash) вообще не выводима. */
+    if (d.splash !== undefined) push('splash', `${n(d.splash)} m around the point it lands on`);
     if (d.duration !== undefined && d.kind === 'zone') push('lasts', `${n(d.duration)} s on the ground`);
+    /* Досягаемость — ПОСЛЕ всех своих слагаемых, чтобы читалась как их сумма,
+       а не как ещё одно независимое число. См. `reachLine`. */
+    const reach = reachLine(d, me, you);
+    if (reach) push('reach', reach);
     /*
      * D160: прыжок приезжает из грамматики, и его воздушная фаза — главное
      * число умения. Без этой строки модель видела бы доставку `jump` с
@@ -568,7 +754,38 @@ function kitBlocks(kit) {
 // 5. perception
 // ---------------------------------------------------------------------------
 
-function perception() {
+/**
+ * @param {boolean} withKit  есть ли у бойцов набор грамматики.
+ *
+ * ПОЛЕ `kit` ОПИСЫВАЕТСЯ ТОЛЬКО ТОМУ, У КОГО ОНО НЕ NULL.
+ *
+ * `sim.js` `kitView` возвращает null бойцу без набора, то есть эталонной
+ * фикстуре §1. Строка «здесь лежат живые числа твоих умений», под которой
+ * лежит null, — это ровно тот вред, что D160 нашёл в строке `skills`: модель
+ * читает поле, получает пустоту и не понимает, что сломалось.
+ *
+ * Второе следствие того же условия и вторая причина его соблюсти:
+ * `brainPrompt(id)` без набора остаётся байт-в-байт прежним. На нём стоит §1 —
+ * шесть эталонных мозгов, написанных ОДНИМ промптом, — и его хеш сверяет
+ * `tools/bracket.mjs`.
+ */
+function perception(withKit = false) {
+  /*
+   * Поля перечислены ровно те, что кладёт `kitView`. `channel` и `element`
+   * названы вместе с остальными, потому что без них список врал бы умолчанием:
+   * усиление читается только по `channel`, а стихия — единственное, чем два
+   * одинаковых по геометрии умения отличаются на экране.
+   */
+  const kitField = withKit ? `
+  .kit          your three skills as LIVE numbers, under the same names api.use
+                takes. Each carries { kind, element, effects, channel, windup,
+                recover, cooldown } and whichever of range, radius, splash,
+                distance, halfAngle, speed, damage, ticks, airborne, duration
+                its delivery has. It is rebuilt for every thought from the set you are
+                actually holding, which is not necessarily the set the tables
+                above were printed from` : '';
+  const enemyKitField = withKit ? `
+  .kit          the same shape, for their three` : '';
   return `WHAT YOU PERCEIVE — the object p
 
 p.t             seconds since the match began
@@ -598,7 +815,7 @@ p.self
                 phase is 'windup' | 'strike' | 'dash' | 'air' | 'recover'
                 telegraph is true while the effect has not landed yet
   .cooldowns    { skillName: seconds remaining, 0 means ready }
-  .skills       the names you may pass to api.use
+  .skills       the names you may pass to api.use${kitField}
 
 p.enemy
   .id .x .z .y .vx .vz .speed .heading
@@ -606,7 +823,7 @@ p.enemy
   .alive .airborne .stunned .invulnerable .busy
   .casting      the same shape as p.self.casting, so you can see a wind-up
                 while it is still winding up
-  .skills       what they may use
+  .skills       what they may use${enemyKitField}
   .dist         straight-line distance between the two centres
   .visible      true when nothing solid sits on the straight line between your
                 centre and theirs. This is the same test the beam performs
@@ -655,7 +872,32 @@ p.mem           a read-only copy of everything you have stored. Writing to it
 // 6. the verbs
 // ---------------------------------------------------------------------------
 
-function verbs() {
+/**
+ * @param {boolean} withLob  есть ли в наборе доставка `lob`.
+ *
+ * ── ЧЕТВЁРТАЯ СЕКЦИЯ, КОТОРУЮ ДОБАВЛЯЕТ НАБОР, И ПОЧЕМУ ИМЕННО ТАК ──────────
+ *
+ * Строка про `api.use` говорила «a,b are the direction argument blink takes».
+ * 04.09 это перестало быть всей правдой: агент механики сделал первый аргумент
+ * ЗАПРОШЕННОЙ ДАЛЬНОСТЬЮ навеса (`sim.js`, `startSkill`: `const reach =
+ * (s.kind === 'lob' && ...) ? a : null`). Умение, у которого мозг НАЗЫВАЕТ
+ * дистанцию, и промпт, который об этом молчит, — это ровно правило №1 этого
+ * файла наоборот: рычаг есть, о нём не сказано, им никто не пользуется.
+ *
+ * Условие — наличие навеса, а не наличие набора. У эталонной фикстуры §1
+ * навеса нет ни у одной стороны, и предложение про метры было бы там правдой
+ * ни о чём; заодно `brainPrompt(id)` остаётся байт-в-байт прежним.
+ */
+function verbs(withLob = false) {
+  /* Врезка идёт ВНУТРЬ описания `api.use`, а не отдельным абзацем: это второе
+     значение того же аргумента, и абзац поодаль читался бы как другой глагол. */
+  const lobArg = withLob ? `
+                        For a lob, a is instead the DISTANCE in metres you want
+                        it to come down at; with no argument it comes down at
+                        whatever the enemy's distance is when the cast finishes.
+                        The number is clamped as the cast lands, not as you ask.
+                       `
+    : '';
   return `WHAT YOU CAN DO — the object api
 
 Movement orders STAND. One call keeps steering the body until you replace it,
@@ -672,7 +914,7 @@ api.stop()              Drop the movement order.
 api.face(dx, dz)        Turn toward a direction. Stands until replaced.
 api.faceAt(x, z)        Turn toward a point, measured when you call it.
 api.use(name, a, b)     Order a skill. a,b are the direction argument blink
-                        takes. The return value says only that the ORDER was
+                        takes.${lobArg} The return value says only that the ORDER was
                         accepted, not that the skill started: orders are applied
                         after your thought finishes, and one can still be
                         refused there — on cooldown, already busy, stunned,
@@ -821,9 +1063,21 @@ is the first character of the program.`;
  *   через мост `referenceTagOf` — и только если набора нет. Никаких
  *   характеристик сторона не несёт.
  * @param {object} [kits]  { own, enemy } — compiled §8 kits. Passing them
- *   replaces the two skill sections and NOTHING else: §1 rests on six brains
+ *   replaces the two skill sections and adds the two lines of §5 that describe
+ *   `p.self.kit` / `p.enemy.kit` — and NOTHING else. §1 rests on six brains
  *   sharing one prompt, and a prompt that quietly changed shape would rewrite
  *   that measurement backwards.
+ *
+ *   Поэтому третья секция добавлена ПОД УСЛОВИЕМ, а не безусловно, и условие
+ *   ровно то же, что у первых двух. `brainPrompt(id)` без набора обязан
+ *   остаться байт-в-байт прежним: на нём стоит §1, его хеш сверяет
+ *   `tools/bracket.mjs`, по нему кэшируются вердикты `checktactics`. Проверяется
+ *   это не на слово — `tools/checkprompt.mjs` рендерит обе формы.
+ *
+ *   Что кит НЕ добавляет — ни одной строки о том, как драться. Поле `kit`
+ *   существует, потому что F10 обещает смену набора без регенерации мозга, и
+ *   мозг, который не может прочитать свою дальность, это обещание нарушает; на
+ *   вопрос «какую дистанцию держать» промпт по-прежнему не отвечает.
  * @param {object} [builds]  { own, enemy } — ТЕЛОСЛОЖЕНИЯ двух бойцов. Здесь
  *   стояли `sizes` — два числа-множителя поверх записи архетипа. Записей нет,
  *   и множителю не к чему прикладываться: тело приезжает целиком, своими
@@ -861,8 +1115,9 @@ nothing about a body, a skill or a shape.`,
     skillsFor(id, kits?.own, me, foe),
     bodyBlock(false, foe, kits?.enemy, otherId),
     enemySkillsFor(otherId, kits?.enemy, foe, me),
-    perception(),
-    verbs(),
+    perception(Boolean(kits?.own)),
+    /* Условие — доставка, а не набор: аргумент-дальность есть только у навеса. */
+    verbs(Object.values(kits?.own || {}).some((d) => d.kind === 'lob')),
     HELPERS,
     rules(),
     OBJECTIVE,

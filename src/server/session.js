@@ -29,7 +29,9 @@ export const GUEST_TTL_DAYS = 30;
  * без переменной процесс не поднимается вовсе — падение на старте видно, а
  * тихая уязвимость нет.
  */
-const DEV = process.env.AIRENA_DEV === '1';
+/* Режим один на весь сервер и объяснён в `mode.js`: дев-стенд — это
+   ОТСУТСТВИЕ `AIRENA_SECRET`, а не выставленная переменная. */
+import { DEV } from './mode.js';
 const SECRET = (() => {
   const v = process.env.AIRENA_SECRET;
   if (v && v.length >= 24) return v;
