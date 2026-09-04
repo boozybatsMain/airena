@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Airena</title>
+
 <!--
   Карта импортов стоит ПЕРВОЙ и в <head>.
 
@@ -19,8 +20,45 @@
   "three": "/vendor/three.webgpu.min.js",
   "three/webgpu": "/vendor/three.webgpu.min.js",
   "three/tsl": "/vendor/three.tsl.min.js",
-  "three/addons/": "/vendor-addons/"
+  "three/addons/": "/vendor-addons/",
+  "@genex-ai/embed-sdk": "/vendor-genex/index.js"
 } }
+</script>
+
+<!--
+  ГДЕ ЖИВЁТ БЭКЕНД.
+
+  До этой строки адрес сервера был не записан нигде: клиент звал `/api/...`
+  относительным путём, то есть «тот же хост, что отдал страницу». На своём
+  домене это верно и не стоит ни байта. Но статику продукта раздаёт GENEX
+  (R2 + воркер, §12: платформа не даёт серверный compute), а бэкенд Airena
+  стоит отдельно — и тогда каждый относительный `/api/...` уходит на
+  `<slug>.genex.technology`, где ручек нет вовсе.
+
+  Значение подставляет сборка (`tools/build.mjs` → `--api=`), а `?api=` в
+  адресе перебивает его на лету: один залитый бандл можно проверить против
+  локального сервера, не пересобирая. Пустая строка = свой хост, то есть
+  ровно прежнее поведение.
+
+  Почему глобаль, а не модуль: адрес нужен и оболочке (`lib/api.js`), и
+  вьюверу (`/viewer/main.js`), а вьювер живёт под своим маунтом и на дев-
+  сервере `src/server/index.js` вообще не видит `src/client`. Общий модуль
+  пришлось бы дублировать или монтировать; глобаль такого выбора не требует
+  и уже есть в этом файле рядом (`window.__v` — штамп сборки).
+-->
+<meta name="airena-backend" content="">
+<meta name="genex-slug" content="">
+<script>
+window.__api = (function () {
+  try {
+    var q = new URLSearchParams(location.search).get('api');
+    var m = document.querySelector('meta[name="airena-backend"]');
+    var v = String(q || (m && m.content) || '').trim().replace(/\/+$/, '');
+    /* Только абсолютный http(s). Мусор в адресной строке не имеет права
+       увести запросы на чужой хост — он их просто не меняет. */
+    return /^https?:\/\/[^/]+$/.test(v) ? v : '';
+  } catch (e) { return ''; }
+})();
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%A6%91%3C/text%3E%3C/svg%3E">
 <link rel="preload" href="/fonts/tektur-cyrillic.woff2" as="font" type="font/woff2" crossorigin>

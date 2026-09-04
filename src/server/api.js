@@ -50,7 +50,9 @@ import * as limits from './limits.js';
  * дев-вход не включит. Раньше `?dev=1` был не защитой, а лишь вторым условием
  * поверх серверного — сервер и тогда решал сам.
  */
-const DEV = process.env.AIRENA_DEV === '1';
+/* Режим один на весь сервер и объяснён в `mode.js`: дев-стенд — это
+   ОТСУТСТВИЕ `AIRENA_SECRET`, а не выставленная переменная. */
+import { DEV } from './mode.js';
 import { accountFromToken, claimAccount, ensureGuest } from './session.js';
 import { compileKit, readable } from '../skills/compile.js';
 
@@ -268,7 +270,13 @@ export function buildRouter(ctx) {
     const acct = who(req, res);
     let body;
     try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
-    const claim = ctx.verifyEmbedToken(body.embedToken);
+    /* `await` обязателен: проверка подписи ходит за ключами платформы
+       (`identity.js`), то есть асинхронна. Без него сюда приезжает Promise —
+       объект, и `if (!claim)` его пропускает; дальше `claimAccount`
+       раскладывает его на `{sub, email}`, получает `undefined` и отвечает
+       `no_sub`. Замерено гейтом: стена перестаёт пускать ВООБЩЕ никого —
+       400 и на подделку, и на настоящий токен. `tools/checkidentity.mjs`. */
+    const claim = await ctx.verifyEmbedToken(body.embedToken);
     if (!claim) return fail(res, 401, 'bad_token', 'платформа не подтвердила личность');
     const out = claimAccount(db, acct.is_guest ? acct.id : null, claim);
     if (out.error) return fail(res, 400, out.error, 'не удалось привязать аккаунт');

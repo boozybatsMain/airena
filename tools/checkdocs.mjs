@@ -55,6 +55,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SKILLS, SUDDEN_DEATH_AT, THINK_HZ, TICK_HZ } from '../src/core/config.js';
 import { ASPECT_MAX, ASPECT_MIN } from '../src/server/forge/body.js';
+import { FADE_MIN, TAIL_MAX } from '../src/viewer/vfx/kit.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -96,10 +97,21 @@ const basePort = read('src/server/index.js').match(/const PORT = Number\(process
   // the wrong file.
   ?? '<src/server/index.js no longer declares a default PORT>';
 
-/** Query parameters `src/viewer/main.js` reads, whatever it does with them. */
+/**
+ * Query parameters the client reads, whatever it does with them.
+ *
+ * Обе поверхности, а не одна. Раньше здесь стоял только `src/viewer/main.js`, и
+ * это было верно ровно до того дня, когда параметр начала читать САМА СТРАНИЦА:
+ * `?api=` разбирается в `index.html` до загрузки модулей — иначе адрес бэкенда
+ * был бы неизвестен тому же вьюверу. Гейт при этом объявлял документацию
+ * враньём, хотя параметр читается и работает. Проверка не ослаблена: параметр
+ * по-прежнему обязан читаться КОДОМ, просто код клиента живёт в двух файлах.
+ */
 const viewerParams = new Set(
-  [...read('src/viewer/main.js').matchAll(/params\.get\('([a-z]+)'\)/g)].map((m) => m[1])
-    .concat([...read('src/viewer/main.js').matchAll(/URLSearchParams\(location\.search\)\.get\('([a-z]+)'\)/g)].map((m) => m[1])),
+  ['src/viewer/main.js', 'src/client/index.html'].flatMap((f) => [
+    ...[...read(f).matchAll(/params\.get\('([a-z]+)'\)/g)].map((m) => m[1]),
+    ...[...read(f).matchAll(/URLSearchParams\(location\.search\)\.get\('([a-z]+)'\)/g)].map((m) => m[1]),
+  ]),
 );
 
 /**
@@ -122,6 +134,11 @@ const servedWindup = (skill) => Math.ceil(SKILLS[skill].windup * TICK_HZ) / TICK
  *   failure mode this file exists for as much as a stale number is.
  */
 const CLAIMS = [
+  {
+    what: 'the decay gate thresholds, in the commands table',
+    re: /the tail may not exceed (\d+) s after the form ends\*\*, a decal may not ask for more hold than the layer's own clamp, and it may not fade in under ([\d.]+) s/,
+    want: () => [String(TAIL_MAX), String(FADE_MIN)],
+  },
   {
     what: 'the body aspect thresholds, in the commands table',
     re: /refused as a pancake below ([\d.]+) and as a needle above (\d+)/,
@@ -243,6 +260,15 @@ const EXEMPT = [
   [/\?webgl=1|\?shots=1/g, 'the flag value that turns a query parameter on'],
   [/[?&](?:oct|gor)=[A-Za-z0-9-]+/g, 'a brain tag; checked as a tag against brains/ below, not as a number'],
   [/WebGL2/g, 'the name of a graphics API, the way Math.atan2 is the name of a function'],
+  /*
+   * Cryptographic algorithm and curve names — the same case as WebGL2, and
+   * it arrived with the identity gate: `Ed25519` is what the platform's key
+   * set calls its curve and `HS256` is the scheme a forged header swaps to.
+   * Rewriting them without digits would not make the sentence more sourced,
+   * only less true — there is no other name for either.
+   */
+  [/\b(?:Ed25519|EdDSA|X25519|HS\d{3}|RS\d{3}|PS\d{3}|ES\d{3}|SHA-?\d{1,3})\b/g,
+    'the name of a signature scheme or curve, not a measurement'],
   [/0 hp/g, 'zero'],
 
   /*
@@ -329,9 +355,9 @@ export function checkDocs({ text = README_ON_DISK } = {}) {
   // ── query parameters ─────────────────────────────────────────────────────
   const used = new Set([...README.matchAll(/[?&]([a-z]+)=/g)].map((m) => m[1]));
   for (const p of used) {
-    if (!viewerParams.has(p)) fail(`README documents ?${p}=, which src/viewer/main.js never reads`);
+    if (!viewerParams.has(p)) fail(`README documents ?${p}=, which neither src/viewer/main.js nor src/client/index.html reads`);
   }
-  lines.push(`${used.size} query parameters, all read by the viewer`);
+  lines.push(`${used.size} query parameters, all read by the client`);
 
   return { lines, failures };
 }

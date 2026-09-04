@@ -26,7 +26,8 @@ import { ArenaLoop, REST_MS } from './arena-loop.js';
 import { sideKey, sideKeys, sideResult } from './creatures.js';
 import { openDb, kv as makeKv } from './db.js';
 import { buildCatalog, fallbackBundle } from './forge/models.js';
-import { cookies, fail, json, serveStatic, crossSiteRefused } from './http.js';
+import { cookies, corsAllows, corsHeaders, fail, json, serveStatic, crossSiteRefused } from './http.js';
+import { JWKS_URL, OUR_PROJECT, OUR_SLUG, REFUSED, identityReady, verifyPlatformToken, warmKeys } from './identity.js';
 import { Jobs } from './jobs.js';
 import { Live } from './live.js';
 import { buildStamp, stampHtml } from './stamp.js';
@@ -34,7 +35,9 @@ import { accountFromToken } from './session.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const PORT = Number(process.env.PORT || 8787);
-const DEV = process.env.AIRENA_DEV === '1';
+/* Режим один на весь сервер и объяснён в `mode.js`: дев-стенд — это
+   ОТСУТСТВИЕ `AIRENA_SECRET`, а не выставленная переменная. */
+import { DEV, announceMode } from './mode.js';
 
 /** Что клиенту разрешено доставать по HTTP. */
 const MOUNTS = [
@@ -54,6 +57,12 @@ const MOUNTS = [
    * попадает ровно то, что импортировано.
    */
   ['/vendor-addons/', join(ROOT, 'node_modules/three/examples/jsm')],
+  /*
+   * SDK личности платформы. Тем же приёмом, что three: вендор монтируется, а
+   * не копируется в исходники, — иначе `npm update` перестаёт быть
+   * обновлением и становится ручной синхронизацией чужого протокола.
+   */
+  ['/vendor-genex/', join(ROOT, 'node_modules/@genex-ai/embed-sdk/dist')],
   ['/bodies/', join(ROOT, 'bodies')],
   /* Реестр грамматики — чистые данные, ни одного node-импорта. Экран берёт
      палитры элементов и русские имена атомов ОТТУДА ЖЕ, откуда сервер берёт
@@ -232,6 +241,21 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     const path = decodeURIComponent(url.pathname);
     req.query = Object.fromEntries(url.searchParams);
 
+    /*
+     * Разрешение чужому клиенту вешается ДО маршрутизации и на любой ответ.
+     *
+     * Иначе preflight (`OPTIONS`) не совпадает ни с одним маршрутом, падает
+     * в ветку хеш-роутов и получает HTML со статусом 200 — браузер читает это
+     * как «доступ не разрешён» и не отправляет сам запрос. Ошибка выглядела бы
+     * как «сервер молчит», хотя сервер жив и здоров.
+     */
+    const cors = corsHeaders(req);
+    if (cors) for (const [k, v] of Object.entries(cors)) res.setHeader(k, v);
+    if (req.method === 'OPTIONS') {
+      res.writeHead(cors ? 204 : 403);
+      return res.end();
+    }
+
     const hit = router.match(req.method, path);
     if (hit) {
       /* Чужая страница не имеет права действовать от имени игрока — проверка
@@ -291,6 +315,10 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
   const sameSite = (req) => {
     const o = req.headers.origin;
     if (!o) return true;
+    /* Тот же названный вручную источник, что и у HTTP (`AIRENA_CORS`). CORS на
+       сокеты не распространяется, поэтому разрешение приходится повторить
+       здесь — но берётся оно из одного места, а не из второго списка. */
+    if (corsAllows(o)) return true;
     try { return new URL(o).host === req.headers.host; } catch { return false; }
   };
 
@@ -549,22 +577,34 @@ function makeCatalog() {
 /**
  * Проверка embedToken GENEX.
  *
- * Личность даёт платформа (A4). До подключения стенда токен принимается в
- * дев-режиме как `{sub, email}` в base64url — и это записано здесь, а не
- * забыто: E8 требует перечитать со стенда всякое число и всякий контракт,
- * взятый из кода GENEX, до реализации.
+ * Личность даёт платформа (A4). Подпись проверяется по-настоящему — весь
+ * разбор и все претензии живут в `identity.js`, вместе с тем, что именно было
+ * прочитано на стенде (E8). Здесь остаётся развилка и дев-путь.
+ *
+ * ── ПОЧЕМУ РАЗВИЛКА ПО ФОРМЕ, А НЕ ПО РЕЖИМУ ────────────────────────────────
+ *
+ * Токен платформы — это JWT: три части через точку. Дев-токен — одна часть,
+ * base64url от `{sub, email}`. Различить их можно по форме, и это лучше, чем
+ * по режиму: на дев-стенде остаётся возможность проверить НАСТОЯЩИЙ токен,
+ * не поднимая продакшен, а в продакшене дев-путь недостижим по-прежнему —
+ * `DEV` там ложно.
  */
-export function verifyEmbedToken(token) {
+export async function verifyEmbedToken(token) {
   if (typeof token !== 'string' || !token) return null;
-  if (process.env.AIRENA_GENEX_PUBKEY) {
-    /* TODO(E8): подпись платформы проверяется её публичным ключом. Стенд
-       ещё не перечитан, ключа нет — и пока его нет, продакшен не поднимается:
-       см. проверку в конце файла. */
-    return null;
+
+  if (token.split('.').length === 3) {
+    const why = {};
+    const claim = await verifyPlatformToken(token, { detail: why });
+    /* Отказ пишется в лог с причиной, а игроку уходит одна строка без деталей:
+       по разнице между «подпись не сошлась» и «токен для другой игры» подбор
+       становится дешевле, а починку это всё равно делаем мы, а не он. */
+    if (!claim) console.error(`  личность отклонена: ${REFUSED[why.code] || why.code || 'без причины'}`);
+    return claim;
   }
+
   if (!DEV) return null;
-  /* Дальше — дев-путь. Продакшен без настоящего ключа сюда не доходит:
-     стартовая проверка ниже не даёт серверу подняться. */
+  /* Дальше — дев-путь. Продакшен сюда не доходит: `DEV` там ложно, а стартовая
+     проверка в конце файла не даёт подняться без настоящей привязки к игре. */
   try {
     const p = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
     return p.sub ? { sub: String(p.sub), email: p.email ? String(p.email) : null } : null;
@@ -587,33 +627,46 @@ function listen(server, port, attemptsLeft = 12) {
 /*
  * ПРОДАКШЕН БЕЗ НАСТОЯЩЕЙ ПРОВЕРКИ ЛИЧНОСТИ НЕ ПОДНИМАЕТСЯ.
  *
- * `verifyEmbedToken` вне дев-режима возвращает `null` всегда: подпись
- * платформы её публичным ключом ещё не реализована (E8 требует сначала
- * перечитать стенд GENEX). Комментарий там обещал «пока ключа нет, продакшен
- * не поднимается: см. проверку в конце файла» — а проверки в файле не было.
+ * Подпись платформы теперь проверяется по-настоящему (`identity.js`), и
+ * отказывать стало не за что — кроме одного случая, и он опаснее прежнего.
  *
- * Без неё продукт вставал в состояние без выхода, прикрытое ссылкой на
- * несуществующий гейт: `POST /api/session/claim` всегда `401`, значит игрок
- * навсегда гость, значит генерация недоступна НИКОМУ, а §14 меряет
- * «посетитель → создал существо» и получает ноль по устройству. И заметить
- * это можно было только пройдя воронку до конца на настоящем сервере.
+ * ПРОВЕРИТЬ ПОДПИСЬ МАЛО. Токен выписан ДЛЯ ОДНОЙ игры: в претензиях стоят
+ * `slug` и `projectId`. Сервер, который проверил подпись и не сверил игру,
+ * принимает токен ЛЮБОЙ игры платформы — чужая игра выписывает своему игроку
+ * валидную подпись, тот несёт её сюда и заводит аккаунт у нас. Поэтому
+ * привязка (`AIRENA_GENEX_SLUG` или `AIRENA_GENEX_PROJECT`) обязательна, и без
+ * неё сервер не встаёт: тихо принимать всех — хуже, чем не подняться.
  *
  * Громкий отказ на старте лучше тихого тупика в воронке: он случается у нас,
  * а не у игрока, и объясняет, что именно нужно сделать.
  */
 function refuseToStartWithoutIdentity() {
-  if (DEV) return;
+  if (DEV) { announceMode(); return; }
+  if (identityReady()) {
+    console.error(`  личность: подпись платформы, ключи ${JWKS_URL}`);
+    console.error(`  игра: ${[OUR_SLUG && `slug ${OUR_SLUG}`, OUR_PROJECT && `project ${OUR_PROJECT}`].filter(Boolean).join(', ')}`);
+    /* Ключи читаются на старте, а не при первом игроке: иначе первая же
+       попытка войти платит за поход в сеть, а падение JWKS обнаруживается
+       не в логе запуска, а на игроке. */
+    warmKeys().then((n) => {
+      if (n) console.error(`  ключей платформы прочитано: ${n}`);
+      else console.error('  ВНИМАНИЕ: ключи платформы не прочитаны — вход не сработает, пока она не ответит');
+    });
+    return;
+  }
   if (process.env.AIRENA_ALLOW_NO_IDENTITY === '1') {
     console.error('\n  ВНИМАНИЕ: личность игроков не проверяется (AIRENA_ALLOW_NO_IDENTITY=1).');
     console.error('  Аккаунт завести нельзя, генерация недоступна. Только для стенда.\n');
     return;
   }
-  console.error('\n  Не поднимаюсь: личность игроков проверять нечем.\n');
-  console.error('  Платформа подписывает токен своим ключом, а проверка подписи ещё не');
-  console.error('  реализована (E8: сначала перечитать стенд GENEX). Пока её нет, стена');
-  console.error('  аккаунта непроходима, и продукт работает вхолостую: гость доходит до');
-  console.error('  «СОЗДАТЬ», упирается и уходит.\n');
+  console.error('\n  Не поднимаюсь: не знаю, какая игра на платформе — моя.\n');
+  console.error('  Подпись токена я проверить умею, но подписи мало: токен выписан для');
+  console.error('  ОДНОЙ игры, и без сверки я приму токен любой чужой игры платформы.');
+  console.error('  Тогда её игрок заводит аккаунт здесь, и это не ошибка входа, а чужой');
+  console.error('  вход, выглядящий как свой.\n');
   console.error('  Что делать:');
+  console.error('    AIRENA_GENEX_SLUG=<slug>           — наша игра на платформе (npx genex list)');
+  console.error('    AIRENA_GENEX_PROJECT=<id>          — или её идентификатор');
   console.error('    AIRENA_DEV=1 …                     — дев-режим, токен принимается как base64url');
   console.error('    AIRENA_ALLOW_NO_IDENTITY=1 …       — поднять всё равно (стенд без генерации)\n');
   process.exit(78);

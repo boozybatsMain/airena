@@ -6,6 +6,7 @@
   "description": "Two LLM-written brains fight in an arena.",
   "scripts": {
     "serve": "node src/server/app.js",
+    "build": "node tools/build.mjs",
     "test": "node tools/suite.mjs",
     "arena": "node tools/arena.mjs",
     "tournament": "node tools/tournament.mjs",
@@ -18,6 +19,7 @@
     "seed": "node tools/seed.mjs"
   },
   "dependencies": {
+    "@genex-ai/embed-sdk": "^0.17.0",
     "acorn": "^8.15.0",
     "esbuild": "^0.28.2",
     "three": "^0.180.0",

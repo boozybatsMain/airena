@@ -26,6 +26,79 @@ export const MIME = {
 /** Что стоит жать. Картинки уже сжаты — второй проход только греет процессор. */
 const GZIP = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg']);
 
+/*
+ * ─── КЛИЕНТ НА ЧУЖОМ ХОСТЕ ──────────────────────────────────────────────────
+ *
+ * GENEX раздаёт только статику (§12: платформа не даёт серверный compute), а
+ * бэкенд Airena стоит отдельно. Значит на превью страница приезжает с
+ * `<slug>.genex.technology`, а ручки живут на другом origin — и браузер по
+ * умолчанию не отдаёт странице НИ ОДНОГО ответа: ни `/api/session`, ни
+ * заголовка `x-airena-session`, которым заводится гость.
+ *
+ * ПО УМОЛЧАНИЮ ВЫКЛЮЧЕНО, и это не осторожность ради осторожности:
+ * `crossSiteRefused` рядом существует ровно затем, чтобы чужая страница не
+ * сожгла игроку единственное за жизнь бесплатное существо (F7). Открывать
+ * эту дверь молча — значит отменить ту защиту, не сказав никому.
+ *
+ *   AIRENA_CORS=https://airena.genex.technology   — один источник (так надо);
+ *   AIRENA_CORS=*                                 — любой (стенд, «потестить»).
+ *
+ * `*` здесь НЕ подставляется в заголовок: с `credentials: 'include'` браузер
+ * звёздочку не принимает. Отражается конкретный `Origin` запроса — то есть
+ * `*` означает «доверяю любому», а не «отвечаю всем одинаково».
+ */
+const CORS = String(process.env.AIRENA_CORS || '').trim();
+const CORS_ANY = CORS === '*';
+const CORS_LIST = new Set(
+  CORS && !CORS_ANY ? CORS.split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean) : [],
+);
+
+/** Доверяем ли мы этому источнику настолько, чтобы отвечать ему от имени игрока. */
+export function corsAllows(origin) {
+  if (!CORS || !origin) return false;
+  const o = String(origin).replace(/\/+$/, '');
+  return CORS_ANY ? /^https?:\/\/[^/]+$/.test(o) : CORS_LIST.has(o);
+}
+
+/**
+ * Заголовки для доверенного чужого источника, либо `null`.
+ *
+ * `expose-headers` тут не мелочь: гостевая сессия приезжает ЗАГОЛОВКОМ
+ * `x-airena-session` (см. `lib/api.js`), и без этой строки клиент на чужом
+ * хосте его просто не увидит — гость не заводится, и на экране «сервер не
+ * отвечает» при полностью живом сервере.
+ */
+export function corsHeaders(req) {
+  const origin = req.headers.origin;
+  if (!corsAllows(origin)) return null;
+  const out = {
+    'access-control-allow-origin': origin,
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-headers': 'authorization, content-type, accept',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-expose-headers': 'x-airena-session',
+    'access-control-max-age': '600',
+    vary: 'Origin',
+  };
+  /*
+   * СТРАНИЦА ИЗ ИНТЕРНЕТА — СЕРВЕР НА ЭТОЙ ЖЕ МАШИНЕ.
+   *
+   * Ровно тот случай, ради которого всё это и делалось в первый раз: бандл
+   * лежит на `<slug>.genex.technology`, а бэкенд крутится на localhost, чтобы
+   * посмотреть глазами до всякого хостинга. Браузер такой переход из
+   * публичной сети в локальную спрашивает отдельно (Private/Local Network
+   * Access) и обычного CORS ему мало — без этой строки preflight падает, и
+   * выглядит это как «сервер не отвечает» при живом сервере.
+   *
+   * Заголовок появляется ТОЛЬКО в ответ на прямой вопрос браузера и только
+   * когда источник уже прошёл `corsAllows`, то есть назван человеком.
+   */
+  if (req.headers['access-control-request-private-network'] === 'true') {
+    out['access-control-allow-private-network'] = 'true';
+  }
+  return out;
+}
+
 export class Router {
   constructor() { this.routes = []; }
 
@@ -98,7 +171,13 @@ export function crossSiteRefused(req) {
   if (origin) {
     let sameHost = false;
     try { sameHost = new URL(origin).host === host; } catch { sameHost = false; }
-    if (!sameHost) return { code: 'cross_site', message: 'запрос пришёл с чужой страницы' };
+    /* Единственная дыра в этой стене — источник, НАЗВАННЫЙ вручную в
+       `AIRENA_CORS`. Клиент, который раздаёт GENEX, приезжает с другого
+       хоста по устройству продукта, и «чужой» для него — не признак атаки.
+       Дыра открывается переменной окружения, то есть решением человека, а не
+       формой запроса: подделать `Origin` браузер не даёт, а совпасть со
+       списком случайно нельзя. */
+    if (!sameHost && !corsAllows(origin)) return { code: 'cross_site', message: 'запрос пришёл с чужой страницы' };
   } else if (hasCookie) {
     return { code: 'no_origin', message: 'запрос без источника, но с сессией' };
   }
@@ -160,7 +239,9 @@ export function readJson(req) {
  * чинишь то, что уже починено. Этот абзац написан после того, как три
  * подряд «исправленные» ошибки продолжали воспроизводиться из кеша.
  */
-const DEV = process.env.AIRENA_DEV === '1';
+/* Режим один на весь сервер и объяснён в `mode.js`: дев-стенд — это
+   ОТСУТСТВИЕ `AIRENA_SECRET`, а не выставленная переменная. */
+import { DEV } from './mode.js';
 
 export function serveStatic(req, res, mounts, path) {
   for (const [prefix, dir] of mounts) {

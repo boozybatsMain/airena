@@ -13,7 +13,7 @@ a player can reach it. Nothing in this repo tells it how to fight.
 npm install
 node tools/seed.mjs                          # stock the ladder, measure the sparring pairs
 npm run dev                                  # the game, with the dev account path open
-npm test                                     # 30 invariants, then every gate in order
+npm test                                     # 34 invariants, then every gate in order
 
 npm run viewer                               # the bare battle viewer, no product around it
 node tools/brainforge.mjs --all --tag=mine   # ask Claude for two new minds (7 min, $0.84 a pair)
@@ -69,7 +69,7 @@ tools/         arena · bake · balance · bench · bodyinstall · bracket · br
                cablecheck · checkbehaviour · checkbody · checkboot · checkdocs ·
                checkforgebody · checkframing · checkgrammar · checkisolate ·
                checkkits · checkpose · checkprompt · checkscope · checkselectors ·
-               checkstale · checktactics · falsify · fix-provenance · forge ·
+               checkstale · checktactics · checkdecay · duel · falsify · fix-provenance · forge ·
                bodysize · checkbodyrace · checkcadence · checkcamera · checkcontrast ·
                checkfaults ·
                checkfacade · checkforge · checkgauntlet · checkladder ·
@@ -80,7 +80,8 @@ tools/         arena · bake · balance · bench · bodyinstall · bracket · br
                kitbalance · lane-cli · loadtest · matchpool ·
                matchworker ·
                nanscan · orbrain · plan · report · retire · seed · seedlive ·
-               seedforge · seedvfx · sizebalance · suite · test ·
+               seedelements · seedforge · seedvfx · sizebalance · suite · test ·
+               vfxclean · vfxsheet ·
                tournament · vfxshot · visibility (runs/ — разовые прогоны)
 docs/          shots/ (visual evidence) · EXPERIMENT.md (the results) · DECISIONS.md (what the spec left open,
                and why each was decided that way) · SCREENS.md (the screen build order) ·
@@ -138,7 +139,7 @@ have broken it while looking like a security improvement.
 | | |
 |---|---|
 | `npm test` | the gate list in `tools/suite.mjs`, in order; on failure it names the gate and prints the exact command to repeat it. Not every gate in the table below is in it, and the ones that are not say so in their own row: two need a browser with a visible window (`checklayout`, and the frame count), and `bracket` needs two populations copied into `brains/` first |
-| `node tools/test.mjs` | 30 invariants — determinism, collision, sandbox, wire |
+| `node tools/test.mjs` | 34 invariants — determinism, collision, sandbox, wire |
 | `node tools/checkprompt.mjs` | the prompt and the config still agree — and it runs the tactics judge |
 | `node tools/checkbehaviour.mjs` | the world does what the prompt says: every reach, cone and timing, measured |
 | `node tools/checktactics.mjs` | every line of the prompt is a capability, a constraint with its reason, a fact or the objective |
@@ -154,6 +155,9 @@ have broken it while looking like a security improvement.
 | `node tools/checkcontrast.mjs` | "make it light" is not six numbers changed. The palette was chosen against a dark page, and secondary text that reads at seven to one on near-black becomes grey on pale grey — a break invisible in the screenshot of whoever made it, because the eye fills in text it already knows. So the pairs are checked against WCAG AA — the ordinary ratio for body text, the relaxed one for the large display type — with the tokens read out of `kit.css` rather than copied. The two fighter colours are also checked against each other, at the same ΔE threshold the skill elements already use |
 | `node tools/checklayout.mjs` | the fight HUD is three absolutely positioned blocks — fighter cards pinned to the edges, clock and byline centred — and none of the three knows about the others, so "it fits" is a property of the window width rather than of the stylesheet. On a wide screen nothing overlaps, which is why nobody sees it on a work laptop; a step narrower the byline sat on a cooldown tile and the model id sat on the clock, both measured by comparing rectangles rather than by looking. This file carries the probe and the widths, and says plainly that it needs a real browser: the engine computes layout, and no amount of reading CSS can stand in for it |
 | `node tools/checkisolate.mjs` | every escape attempt in the file, run against the sandbox, plus the controls: an honest brain and every reference brain in `brains/` must still pass — and the same match, run both ways, must produce the same log |
+| `npm run build` (`node tools/build.mjs`) | copies the player's real bundle into `dist/` — the same walk from `index.html` that `checkscope` audits, so the two cannot disagree about what a bundle is. There is no bundler: three.js already ships built, and the load order in `index.html` is hand-tuned against F6 with a reason on every line. `--api=https://host` bakes the backend's address into the page for a client served by someone else; `--verbose` lists every file, and it refuses to finish if a reference leads nowhere or the bundle passes A6's two hundred files |
+| `node tools/backup.mjs` | a snapshot of the live database through `VACUUM INTO`, with rotation. Not `cp`: the database runs in WAL mode, so the newest pages are in the sidecar file and a plain copy comes out either short of the last matches or corrupt — which you find out on the day you needed the backup. Measured on the working database: seven hundred megabytes in four seconds, `integrity_check` clean, server still playing |
+| `node tools/checkidentity.mjs` | A4's gate, and it is about forgery rather than about logging in. A live platform token passes through a leaky implementation just as happily as through a sound one — to see the hole you have to bring a forgery, and nobody brings one by accident. So this brings fourteen, each one a way JWTs are actually broken: `alg: none`, the scheme swapped to HMAC so the public key becomes the secret, a body rewritten after signing, a foreign key under our `kid`, a ticket passed off as a session, an expired token, a token minted for somebody else's game. It signs them with its own Ed25519 pair against its own key set on localhost, so it measures our check rather than the platform's uptime. Then it boots a real production server and repeats the same forgeries against `/api/session/claim` — the module can be perfect while the route forgets to await it, and that failure is invisible from the module's side |
 | `node tools/checkscope.mjs` | walks the player's real bundle from `index.html` and fails on a price, a purchase word, the word "токен", a bet, sound, or any path to a brain source |
 | `node tools/loadtest.mjs` | an hour of arrivals, each on a fresh account so the per-account limits never help, must not breach the daily budget — and it prints what the same hour costs with the fuses removed |
 | `node tools/seed.mjs` | stock the ladder from every population whose constants are current, and measure which (brain, side) pairs are weak enough to spar a newcomer |
@@ -162,6 +166,7 @@ have broken it while looking like a security improvement.
 | `node tools/checkboot.mjs` | F6's gate. The promise is a first frame in ten seconds; what this measures is the WEIGHT of the critical path — the bytes a browser must fetch and parse before it can draw — because weight is the part we control and the part one commit can ruin. Bodies, fonts and dev tools are excluded on purpose: none of them stands between the player and the first frame. `--list` shows what each file costs |
 | `node tools/checkgrammar.mjs` | the §8 gate. Prototype keys are not part of the grammar; a skill whose price cannot be computed is refused rather than waved through; every legal skill in the grammar compiles to finite numbers; and after a match with every delivery, no solid in the world is missing its half-extents and no perception field is `undefined`. Both of the defects it was written for — `wall` writing `w`/`d` where the arena reads `hx`/`hz`, and `TRIGGERS['constructor']` making `costOf` return `NaN` — pass every other check in this table |
 | `node tools/checkvfx.mjs` | the VFX level the spec picks is the only generated layer that runs in a **bystander's** browser — someone who opened a link to watch a fight that is not theirs. So this asserts three things and not whether it looks good: that no accepted decoration can touch the read-kit (checked by sweeping every field name the canonicaliser lets out, not by trusting that I remembered), that no accepted decoration can outspend the frame budget (three individually-legal layers must not add up past it), and that every legal combination of parts draws without throwing — the spec's "worst case is a boring effect, not a black screen", which is only provable by enumeration. It also plays a deliberately stale decoration, the kind the database can hold after the limits change, and asserts the viewer clamps it rather than trusting what it stored. `--falsify` breaks nine rules |
+| `node tools/checkdecay.mjs` | the founder's order of the fourth of September — *"an effect happens and then it's gone; not abruptly, but with a smooth fade-out; no clutter and no visual noise"* — turned into a number. It runs **every form of every element** headlessly against the real `Vfx` (no browser, no WebGPU: the modules build node materials, and nothing compiles a shader until a renderer exists) and records what each one asks to draw — floor decals through a watcher the layer exposes for this gate, meshes through `spawnMesh`, particles read straight out of the pool's interleaved stride. Each form's last-visible moment is compared with the life of the form itself: **the tail may not exceed 5 s after the form ends**, a decal may not ask for more hold than the layer's own clamp, and it may not fade in under 0.6 s — "gone" and "not abruptly" are both failures, at opposite ends. The rule had lived on the discipline of ten files and lost twice: after a full sweep the tree still held a twenty-second burn under the stock Nova beam, longer ones under time, and — the one nobody had looked at — a burn under **every** lightning form that outlived its own discharge forty times over, each with an argument for why it in particular was allowed. It also measures **how** a form leaves: a tail can sit inside the ceiling and still vanish with a click, and the order asks for the opposite. The probe takes the opacity envelope of the whole effect — the maximum across all of a form's carriers, not each mesh judged alone — over the closing window, and requires it to fall from half-peak to five percent no faster than the smaller of three tenths of `FADE_MIN` and a quarter of the carrier's own life — scaled rather than exempting short forms, because a length cutoff created a dead zone and paid modules to grow out of it. It runs on a second, un-warmed pass, because the warm-up call that reveals decals born at the end of a form also tells a stateful module it has already finished; and it runs only on **standing** forms — zone, shell, status, cone, beam, wall. A bolt, a lob, a jump, a dash, a blink, a wind-up and an impact end by *arriving*: their disappearance is a scene change, not a cut. Each of those four qualifications was bought with a wrong reading — the loudest being five elements in a row reporting the very same fall time for their lob, which turned out to be the probe's own step size rather than anything on screen. `--falsify` plants an impossible hold and an instant fade |
 | `node tools/checkfaults.mjs` | whether a failed generation is the player's fault or ours is decided twice, in two files that did not know about each other: the pipeline chooses whether to blame the model, and the limiter chooses whether to spend one of the player's three daily attempts. One list said a provider error was ours; the other said it was the player's. So an exhausted billing account — the provider answering that it can afford four hundred tokens of a twenty-thousand-token prompt — burned real attempts while the waiting screen said the model had answered. This asserts that every code the pipeline calls ours is also free for the player, names the expensive ones one by one because deleting them looks like tidying, and checks the two lists were reconciled rather than merged |
 | `node tools/checkbodyrace.mjs` | a fighter's body is loaded asynchronously for both sides at once, from one loop, with no await between them. The guard against a stale load was written per-viewer instead of per-side, so the second call's counter invalidated the first side's finished body and the left fighter silently kept whatever body was already on screen — the stock archetype. Nothing in the arena reports this: the fight is correct, the name is correct, only the shape is somebody else's, and no other gate ever runs two swaps at the same time. So this one does, and it asserts both halves of the bargain — that a shared counter loses a body and a per-side counter does not, that re-requesting the SAME side still lets the newest answer win, and that a build failure falls back to the archetype instead of leaving the previous opponent's body standing there |
 | `node tools/checkcadence.mjs` | the two newest mechanics — fights on a five-second cooldown, and "whose fight is this" — live entirely in process memory: two maps on the scheduler and one on the broadcast layer. Nothing on disk to diff, nothing on screen to assert, and the first review wave found five confirmed defects in them, including the one that turned the founder's five seconds into twelve. So this asserts five statements with a stubbed clock and an in-memory database: that both fighters are held until the SHOW ends and free exactly one rest later, that a resting creature is not offered as an opponent (not just a fighting one), that a throw releases BOTH sides rather than stranding the opponent for a minute, that a live broadcast is always preferred over one that is merely lingering for late viewers, and that "yours" and "the one you follow" produce different fields for owner, guest-with-starter and anonymous. No network, no isolate, no fixtures |
@@ -188,6 +193,10 @@ have broken it while looking like a security improvement.
 | `node tools/matchpool.mjs` | worker pool behind the balance leagues; `tools/matchworker.mjs` is the worker. A round-robin is far more fights than one process finishes while anyone is still waiting, and balance work that takes that long per iteration gets abandoned rather than done. The worker also holds the **symmetric arena** used only for measuring: same body and same brain on both sides, so the only difference left is the kit |
 | `node tools/checkforgebody.mjs "<prompt>"` | the body path end to end, through the **product** code rather than the lab tool: the player's words go to the model with `packages/forge`'s instruction, the reply goes through A1-for-bodies, and what comes back is the pair the database stores — what the model wrote, and what a stranger's browser is allowed to run. `--dry` prints the call without making it |
 | `node tools/seedvfx.mjs` | six demo creatures for the VFX work, two kits per element (contact: cone · self · zone; ranged: beam · bolt · lob) for frost, ember and arc, seeded as **game** creatures so the arena loop schedules real broadcast fights for them; void and kinetic demos are removed — acceptance looks at three elements (docs/VFX.md) |
+| `node tools/seedelements.mjs` | one fighter per element, built the way a **player** builds one: a description that names no grammar term at all ("presses everything near it towards the ground", not `gravity`/`zone`), through the real forge — parse, kit, brain, body — and seeded as a game creature so the arena loop schedules real broadcast fights. `seedvfx` proves the viewer draws a module's forms; this proves the *generator* reaches for the right ones, which is a different question and the one the founder asked. Prints, per creature, whether the element landed, whether the kit is legal end to end (E1 included), and whether there is anything in it that can finish a fight — plus the running spend, and it stops on `--budget`. `--mixes` adds four two-element descriptions |
+| `node tools/duel.mjs` | stages a real match between two **named** creatures, through the same `playMatch` the server uses — same isolate, same seed discipline, same row in `match` — so `#/watch/<id>` shows a genuine fight rather than a staging. The arena loop already fights on its own, but its pairing is matchmaking: waiting for gravity to meet acid by chance is a lottery, not a check. Prints the winner, the link, and — the part acceptance actually needs — **how many times each skill was used**, because a fight in which a creature never reached for its element proves nothing about its element. `--all` runs every pair of the recent element seeds |
+| `node tools/vfxsheet.mjs` | contact sheet: a run's frames as one image, rows by element/form and columns by moment, cropped to the arena rows. Judging "does it clutter the screen" is only possible side by side — clutter is about what the previous cast left on the floor, not about how the peak looks |
+| `node tools/vfxclean.mjs` | turns "it clutters the screen" into a number: the share of arena pixels that differ from the same arena with no effect at all. The baseline is `nil/charge` and nothing else — `--el=nil` does **not** give an empty frame, because elements without a module fall through to the stock silhouette, and only `charge` returns false there. Measures the arena rows, never the whole frame: the HUD flares on a beam cast and inflates a whole-frame count by about a third |
 | `node tools/vfxshot.mjs` | the capture grid behind every visual claim about effects: headless Chrome over CDP on real WebGPU, bodies placed in the combat scene, one cast shot from three eyes (broadcast distance, low side, top) at three moments (release, peak, hold); `--fight` shoots a real match with the framing camera instead. Frames land in `reports/vfx/<tag>` with an `index.json`; `before` was taken before the non-ice effects were removed, `reference` holds the founder's reference casts |
 | `node tools/vfxchrome.mjs` | shared headless-Chrome/CDP launcher behind the capture tools (WebGPU flags, DevTools port, waiting for the viewer); re-exports the fighters' stand and the cameras from `src/viewer/vfxfixture.js`, so the capture grid and the hand stand always shoot the same scene |
 | `node tools/vfxclip.mjs` | one cast as a screencast → a video file (ffmpeg) and an animated webp; the JSON beside it says where in the clip the cast begins, so a frame at a given moment after it can be pulled with ffmpeg. Motion defects (a discharge that flies as a chunk, a lattice that flickers) are invisible in stills |
@@ -202,6 +211,63 @@ have broken it while looking like a security improvement.
 | `npm run dev` | **the stand — this is the one to run locally.** It sets `AIRENA_DEV`, which makes the server accept a local identity, so the account wall can be passed without the platform; the client learns this from `/api/session` and offers the dev login by itself, so the plain URL the server prints is enough and no query string is needed. It also sets `AIRENA_SUB_MODELS`, which adds the subscription bundles — they reach Opus and Fable through the local `claude` OAuth session instead of a billed key, and that is the only generation path that still works when the OpenRouter balance is empty |
 | `npm run serve` | the same server WITHOUT the dev identity. It refuses to start unless the platform key is configured or `AIRENA_ALLOW_NO_IDENTITY` is set — deliberately, because a stand where nobody can pass the account wall measures a funnel that has no exit |
 | `npm run viewer` | the viewer; it prints its URL |
+
+## Serving the client from somewhere else
+
+The product is designed to live inside a GENEX iframe, and GENEX hosts static
+files only — no server compute. So the page and the backend can end up on two
+different origins, and everything the client does has to survive that.
+
+```bash
+npm run build -- --api=https://your-backend.example    # dist/, with that address baked in
+AIRENA_CORS='*' npm run dev                            # the backend, trusting any page
+```
+
+Three things make it work, and each was a wall before:
+
+- **The page carries the backend's address.** `index.html` sets `window.__api`
+  from a meta tag the build fills in; `lib/api.js` and the viewer prefix their
+  `/api/…` calls and the socket with it. Empty means same origin — the old
+  behaviour, unchanged. `?api=https://…` in the address overrides it, so one
+  uploaded bundle can be pointed at a local server without rebuilding.
+- **The backend has to say yes, by name.** `AIRENA_CORS` is the only thing that
+  opens it: a comma-separated list of origins, or `*` for a stand. It is off by
+  default, because the cross-site refusal it relaxes is what stops a stranger's
+  page from burning a player's one free creature. With it off, a foreign origin
+  gets no headers, and a foreign POST gets a refusal — same as before.
+- **The session survives the crossing.** A guest's session arrives as the
+  `x-airena-session` header, which a cross-origin page cannot read unless the
+  server exposes it; it does. The socket is checked against the same list,
+  since CORS does not reach a WebSocket handshake.
+
+What this does **not** solve: the platform still signs the player's identity
+with a key we do not verify yet (`verifyEmbedToken` in `src/server/app.js`), so
+a real deployment stands up only in dev mode or with
+`AIRENA_ALLOW_NO_IDENTITY` set, where the account wall is either local or shut.
+
+## Running it in public
+
+The backend is one stateful process with a disk, and that is not a stage it
+will grow out of by accident: the fight loop runs on a timer, the broadcast
+lives in the process's own memory at thirty hertz, and the database is a local
+SQLite file with a single writer. Two replicas would mean two independent
+fight loops and two different showcases, silently. `Dockerfile`,
+`docker-compose.yml` and `Caddyfile` at the root deploy exactly one, with TLS
+in front and the data on a volume.
+
+Player identity is the platform's, and it is checked rather than trusted:
+`src/server/identity.js` verifies the `embedToken`'s signature against the
+platform's published key set — `EdDSA` on `Ed25519`, which `node:crypto` reads
+without a new dependency — and then the claims, including which game the token
+was minted for. Skipping that last one would accept a token from any other game
+on the platform. On the page side the handshake is the platform's own SDK rather
+than our idea of it: the previous code posted two messages that do not exist in
+the protocol, so inside a real embed the account wall could never have received
+a token at all.
+
+The runbook, the measured disk numbers, what was read off the platform's own
+stand, and the order in which the singleton has to be cut apart to scale are in
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## What is in `brains/`
 

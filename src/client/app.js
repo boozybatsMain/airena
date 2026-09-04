@@ -34,6 +34,7 @@ import * as ladder from './screens/ladder.js';
 import * as create from './screens/create.js';
 import * as wait from './screens/wait.js';
 import * as wall from './screens/wall.js';
+import { startPlatformIdentity } from './lib/platform.js';
 import * as result from './screens/result.js';
 import * as tactics from './screens/tactics.js';
 import * as fatal from './screens/fatal.js';
@@ -266,6 +267,11 @@ async function render() {
    * бои дольше всех. Версия поднимается ВМЕСТЕ с содержимым легенды.
    */
   const HOWTO_VERSION = '2';
+  /* Версия видна СНАРУЖИ, на самом элементе. Съёмка боя (`tools/vfxshot.mjs
+     --watch`) гасит памятку тем же ключом, каким её гасит человек, и без
+     этого атрибута ей пришлось бы держать копию номера у себя — то есть
+     разъехаться с ним на первом же подъёме версии. */
+  el.dataset.v = HOWTO_VERSION;
   let seen = true;
   try { seen = localStorage.getItem('airena.howto') === HOWTO_VERSION; } catch { seen = true; }
   if (seen) return;
@@ -358,6 +364,20 @@ async function main() {
    * доехать и показать текстовый режим (fatal), а не исчезнуть вместе с ним.
    */
   bootRenderer();
+
+  /*
+   * РУКОПОЖАТИЕ С ПЛАТФОРМОЙ — ЗДЕСЬ, А НЕ У СТЕНЫ АККАУНТА.
+   *
+   * Дашборд платформы даёт игре пятнадцать секунд на первое сообщение
+   * протокола и, не услышав его, накрывает фрейм страницей «This game didn't
+   * finish starting» — то есть молчание на старте читается как сборка без
+   * SDK. Замерено на живом превью: ровно это игрок и увидел.
+   *
+   * Без `await` и рядом с рендерером по той же причине, что и он: F6 меряет
+   * время до первого кадра, и кадр не имеет права ждать чужую сеть. Отсюда
+   * же и порядок — сначала тяжёлый рендерер, потом всё остальное.
+   */
+  startPlatformIdentity();
 
   try { await refreshSession(); } catch { /* fatal уже показан */ }
   track('session_start', {

@@ -13,6 +13,16 @@
 
 const KEY = 'airena.session';
 
+/**
+ * Адрес бэкенда. Пусто = свой хост, и тогда всё ровно как было.
+ *
+ * Ставится в `index.html` до загрузки модулей (см. комментарий там): статику
+ * может раздавать GENEX, а ручки живут на отдельном сервере. Читается на
+ * каждый вызов, а не один раз при импорте, — модуль грузится раньше, чем
+ * страница успевает решить, и кеш в константе сохранил бы пустую строку.
+ */
+const base = () => (typeof window !== 'undefined' && window.__api) || '';
+
 export class ApiError extends Error {
   constructor(status, code, message, extra = {}) {
     super(message || code);
@@ -41,7 +51,10 @@ export async function call(path, { method = 'GET', body = null, signal = null } 
 
   let res;
   try {
-    res = await fetch(path, { method, headers, signal, body: body ? JSON.stringify(body) : null, credentials: 'same-origin' });
+    /* `include`, а не `same-origin`: на своём домене это то же самое, а с
+       отдельным бэкендом кука сессии (запасной путь к личности) иначе не
+       поедет вовсе. Главный путь всё равно заголовок — D22. */
+    res = await fetch(base() + path, { method, headers, signal, body: body ? JSON.stringify(body) : null, credentials: 'include' });
   } catch (e) {
     throw new ApiError(0, 'offline', 'Сервер не отвечает. Бои идут на нём, так что ничего не потеряно.');
   }

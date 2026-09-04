@@ -1,0 +1,53 @@
+# Продакшен-стенд Airena: один процесс с состоянием и TLS перед ним.
+#
+# ── ПОЧЕМУ ОДНА РЕПЛИКА, И ЭТО НЕ ЛЕНЬ ───────────────────────────────────────
+#
+# `deploy: replicas: 2` здесь сломало бы продукт молча, поэтому объясняю прямо:
+#
+#   — `ArenaLoop` крутит бои по таймеру (`src/server/arena-loop.js`), а `Live`
+#     вещает их на 30 Гц из карты в ПАМЯТИ процесса (`src/server/live.js`).
+#     Две реплики — это два независимых цикла боёв и две разные витрины, между
+#     которыми игрока кидает балансировщик;
+#   — база — файл SQLite (`node:sqlite`), у него один писатель.
+#
+# Горизонталь начинается не с этого файла, а с разреза: API без состояния
+# отдельно, матч-сервис отдельно. См. docs/DEPLOY.md.
+
+services:
+  airena:
+    build: .
+    image: airena:local
+    restart: unless-stopped
+    # Ключи и секреты приезжают файлом, а не слоем образа и не строкой в git.
+    env_file: .env
+    environment:
+      AIRENA_DB: /data/airena.db
+      PORT: "8787"
+    volumes:
+      - airena-data:/data
+    # Наружу порт не открыт: единственная дверь — Caddy. Иначе HTTP-версия
+    # сервиса осталась бы доступной по IP мимо TLS, а кука сессии обязана быть
+    # `Secure` (F8) — по голому HTTP она просто не поставится.
+    expose:
+      - "8787"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Домен подставляется из того же `.env`: сертификат Caddy берёт сам.
+      AIRENA_DOMAIN: ${AIRENA_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - airena
+
+volumes:
+  airena-data:
+  caddy-data:
+  caddy-config:

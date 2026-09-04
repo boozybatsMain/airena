@@ -41,6 +41,7 @@ const MOUNTS = [
   ['/skills/', 'src/skills'],
   ['/vendor/', 'node_modules/three/build'],
   ['/vendor-addons/', 'node_modules/three/examples/jsm'],
+  ['/vendor-genex/', 'node_modules/@genex-ai/embed-sdk/dist'],
   ['/bodies/', 'bodies'],
   ['/assets/', 'preview/assets'],
   ['/fonts/', 'src/client/fonts'],
