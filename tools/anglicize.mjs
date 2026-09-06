@@ -60,6 +60,13 @@ const MAP = {
    */
   'КУРГАН OPUS': 'BARROW WARDEN', 'КУРГАН FABLE': 'BARROW SHADE',
   'ЧАСОВЩИК-ГРОМОВЕРЖЕЦ F': 'THUNDER CLOCKMAKER',
+  /* Production library seeds (06.09): bare bases; a numeric suffix is kept by
+     `englishName` (КЛИН-15 → WEDGE-15). */
+  'КЛИН': 'WEDGE', 'ВАЛ': 'SHAFT', 'КРЯЖ': 'RIDGE', 'ПРЕСС': 'PRESS', 'КОЛОДА': 'DECK',
+  'ГЛЫБА': 'BOULDER', 'ИГЛА': 'NEEDLE', 'МЕТКА': 'MARK', 'ЗЕРНО': 'GRAIN', 'ГРУНТ': 'SOIL',
+  'ШПИЛЬ': 'SPIRE', 'ЛИНЗА': 'LENS', 'ОБУХ': 'HAMMERBACK', 'ЧЕРТА': 'LINE', 'СТЫК': 'SEAM',
+  'КРОКОДИЛ': 'CROCODILE', 'СТРАЖ': 'WARDEN', 'ОСКТУС': 'OSKTUS', 'СТРЕЛА': 'ARROW',
+  'МОЛОТ': 'HAMMER', 'ПРОСВЕТ': 'GLEAM', 'ЩИТ': 'SHIELD', 'КОГОТЬ': 'CLAW', 'ЖАЛО': 'STING', 'ВИХРЬ': 'VORTEX',
 };
 
 /**
@@ -84,6 +91,8 @@ export function englishName(name) {
   if (REPAIR[key]) return REPAIR[key];
   if (!/[Ѐ-ӿ]/.test(name)) return name;
   if (MAP[key]) return MAP[key];
+  const m = key.match(/^(.+?)-(\d+)$/);
+  if (m && MAP[m[1]]) return `${MAP[m[1]]}-${m[2]}`;
   throw new Error(`no English name for «${name}» — add it to MAP in tools/anglicize.mjs`);
 }
 
