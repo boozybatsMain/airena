@@ -129,9 +129,14 @@ records decisions and status.
 
 ## Open commitments
 
-- **Production server not updated.** The backend at `207.154.234.71` still runs
-  the old code and database; the icon migration (`user_version` 12) and
-  `tools/anglicize.mjs` must run there on deploy.
+- ✅ **Published 07.09.** Backend `/opt/airena` at `207.154.234.71` pulled
+  `a33aa1c`, rebuilt with docker compose, migrated to `user_version` 12,
+  renamed its 23 creatures to English and drew 21 ability icons (`FAL_KEY`
+  added to its `.env`); a backup was taken first (`/data/backup`). Client
+  built with `AIRENA_API=https://207.154.234.71.sslip.io`, pushed with
+  `genex preview` and made live with `genex promote`:
+  https://airena.genex.technology (page https://genex.games/world/airena).
+  `genex rollback --yes` returns players to the previous build.
 - **The key in git history** (see earlier entries) is still the founder's
   action: rotate at openrouter.ai.
 - Legacy brains still quip in Russian inside their source; the feed hides
