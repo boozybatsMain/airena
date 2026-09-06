@@ -1,0 +1,112 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   WORKER (§6.8) — one glass panel on the backdrop: three steps and six
+   characters. And, at the bottom of this file, FATAL — the two dead ends.
+   Fatal has no stylesheet of its own (it is not a routed screen and nothing
+   links it from index.html), so it rides here, with its own heading.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* The panel is short enough to be read without scrolling on a laptop, and
+   that is a layout decision, not a wish: the code is the point of the page and
+   a code below the fold is a page that failed. Wide, the steps and the code
+   stand side by side; narrow, they stack in reading order. */
+/* The document's default top gap is sized for screens that open with a state
+   word; this one opens with a panel, and the gap is spent on nothing. */
+body[data-screen="worker"] .doc { padding-top: 104px; padding-bottom: 72px; }
+
+.worker { max-width: 1040px; margin: 0 auto; }
+.worker-panel { padding: 34px 44px 30px; }
+.worker-h { margin: 12px 0 0; color: var(--ink-2); }
+.worker-lede { margin: 14px 0 0; max-width: 66ch; color: var(--muted); }
+
+.worker-grid { display: grid; grid-template-columns: 1.08fr 1fr; gap: 0 56px; align-items: start; }
+.worker-col { min-width: 0; }
+
+/* section labels: a tracked word with the hairline running out of it */
+.worker .wsec { margin: 30px 0 16px; }
+
+/* ── the three steps ────────────────────────────────────────────────────── */
+.wsteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.wstep { display: grid; grid-template-columns: 30px 1fr; gap: 16px; align-items: start; }
+.wstep .n {
+  width: 30px; height: 30px; font-size: 11.5px; font-weight: 600;
+  font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+.wstep .b { min-width: 0; }
+.wstep-t { font-family: var(--font-body); font-size: var(--t-body); line-height: 1.5; color: var(--ink); padding-top: 5px; }
+
+.wcmd {
+  display: flex; align-items: center; gap: 10px; margin-top: 9px;
+  padding: 9px 9px 9px 13px; border-radius: var(--r-card);
+  background: rgba(255, 255, 255, .42); border: 1px solid rgba(255, 255, 255, .6);
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px; line-height: 1.5; letter-spacing: 0; color: var(--ink-2);
+  min-width: 0; word-break: break-all;
+}
+.wcopy { flex: 0 0 auto; }
+
+.whint { margin: 18px 0 0; }
+
+/* ── the code ───────────────────────────────────────────────────────────── */
+.wcode { min-height: 96px; }
+.wskel { height: 48px; max-width: 300px; margin-top: 12px; }
+.wcode-in { display: inline-block; max-width: 100%; }
+.wbig {
+  display: inline-block; cursor: pointer; user-select: all;
+  font-variant-numeric: tabular-nums; color: var(--ink-2);
+  transition: color var(--d-ui) var(--ease);
+}
+.wbig:hover { color: var(--info-ink); }
+.wrule { height: 1px; margin: 16px 0 11px; background: linear-gradient(90deg, var(--stone), rgba(141, 127, 115, 0)); }
+.whint2 { color: var(--muted); }
+.wtimer { font-variant-numeric: tabular-nums; }
+.wtimer.soon { color: var(--accent-ink); }
+.wcode-foot { margin-top: 20px; flex-wrap: wrap; gap: var(--s4); }
+.wwhy { margin-top: 12px; max-width: 58ch; }
+.wbad { color: var(--accent-ink); }
+
+/* the flash on a copy button / hint: green for done, amber for did not */
+.worker .ok { color: var(--success-ink); }
+.worker .bad { color: var(--warning-ink); }
+
+.wnote { margin-top: 30px; }
+.wfoot { margin-top: 26px; }
+
+/* The rail costs the document 168 px of width; below that the two columns
+   would each be too narrow for a command to breathe. */
+@media (max-width: 1040px) {
+  .worker-grid { grid-template-columns: 1fr; gap: 0; }
+}
+
+@media (max-width: 900px) {
+  .worker-panel { padding: 26px 20px 24px; }
+  .worker .wsec { margin: 28px 0 14px; }
+  .wstep { grid-template-columns: 26px 1fr; gap: 12px; }
+  .wstep .n { width: 26px; height: 26px; font-size: 11px; }
+  .wcmd { flex-direction: column; align-items: stretch; gap: 8px; }
+  .wcopy { align-self: flex-start; }
+  .wcode-foot { margin-top: 16px; gap: var(--s3); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FATAL (§6.8) — full-screen ground, one state word, one sentence, one button.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.fatal {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: var(--s6); text-align: center;
+  background: radial-gradient(120% 80% at 50% 22%, var(--sky-2), var(--sky) 72%);
+  animation: fatal-in var(--d-screen) var(--ease) both;
+}
+@keyframes fatal-in { from { opacity: 0; } to { opacity: 1; } }
+
+.fatal-in { display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 660px; }
+.fatal-word { font-size: clamp(26px, 3.4vw, 42px); line-height: 1.18; text-wrap: balance; }
+.fatal-line { margin: 0; max-width: 48ch; color: var(--muted); text-wrap: pretty; }
+
+/* The chrome sits in a layer above #overlay, and a rail that still routes
+   while the arena is dead is a trap. `:has` keeps the toggle in CSS — no
+   ad-hoc class on <body> (§4.2). */
+body:has(#overlay .fatal) #chrome { opacity: 0; pointer-events: none; }
+body:has(#overlay .fatal) #tip { opacity: 0; }

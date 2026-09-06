@@ -1,0 +1,1141 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   LADDER — creatures · minds · season (docs/REDESIGN.md §6.7).
+
+   Three tables and a podium on the backdrop. Nothing is boxed twice: the rows
+   are their own surface, the podium cards are glass, and the only thing that
+   floats is the footer that answers "where am I".
+
+   The left edge of every row is a glass disc with the creature on it. On the
+   three podium cards and on the player's own row that is the REAL BODY —
+   `ui/portrait.js`, the same scene the specimen page draws; everywhere else it
+   is `ui/silhouette.js`, the drawing made from the same id, which is also what
+   stands on the big discs until a render arrives. The rank rides at its left
+   on desktop and on its shoulder on a phone. One column, one rhythm, from the
+   leader's card down to the last standing.
+
+   FOUR TIERS, NOT ONE.
+     ≤ 1180  narrow desktop: the record column goes
+     ≤  900  the shell swaps its rail for a bottom tab bar — this file only
+             answers that with bottom offsets; no column is dropped here
+     ≤  860  tablet: the same table, tighter tracks and a smaller disc
+     ≤  640  phone: the podium becomes rows and the table becomes two lines
+   The 900 px line used to carry both the chrome change and every amputation,
+   so an iPad in portrait was handed the phone's stripped table across seven
+   hundred pixels of empty row.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.lad { padding-bottom: 32px; }
+/* The dock (below) is what reaches the bottom of the screen when the player has
+   a creature, so the page's own bottom padding would only push it back up and
+   let a row show underneath at the end of the scroll. */
+.lad:has(.lad-wrap.has-foot) { padding-bottom: 0; }
+.lad-wrap { display: flex; flex-direction: column; }
+
+/* ── header: state word, meta line, segmented control ───────────────────── */
+
+.lad-top {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s5); flex-wrap: wrap; margin-bottom: var(--s6);
+}
+.lad-titles { min-width: 0; }
+.lad-title { margin: 0; padding-left: 0; }
+.lad-sub { margin-top: 14px; font-variant-numeric: tabular-nums; }
+/*
+ * THE CONTROL IS ON A PHOTOGRAPH, NOT ON A CARD.
+ *
+ * `.seg`'s own fill is white at 42 %, which is right over the flat ground of a
+ * create card and wrong over the arena: measured off ladder.png, MINDS came out
+ * at 3.87:1 and SEASON at 3.63:1 against the picture behind them — 11 px type
+ * below AA on the only control this screen has. The glass goes to the kit's
+ * `strong` value and the resting label to `--ink-soft`, which is the same pair
+ * every other on-photo label here already uses.
+ */
+.lad-seg {
+  flex: 0 0 auto; margin-bottom: 4px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15); backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 6px 20px var(--shade);
+}
+.lad-seg > button { color: var(--ink-soft); }
+.lad-seg > button:hover { color: var(--ink-2); background: rgba(255, 255, 255, .62); }
+.lad-seg > button.on { color: var(--ink-2); background: #fff; }
+
+
+.lad-body { display: flex; flex-direction: column; padding-bottom: var(--s6); }
+/* The dock floats over the list while it is stuck; the list has to end far
+   enough above it that the last row and the footnote can be read once the
+   reader reaches the bottom. The dock is 58px of pill plus its own 22px band. */
+.lad-wrap.has-foot .lad-body { padding-bottom: 132px; }
+
+/* ── the specimen mark ──────────────────────────────────────────────────── */
+
+/*
+ * THE CREATURE, NOT ITS INITIALS.
+ *
+ * The kit's LEADERBOARD ROW opens with a picture of the machine being ranked,
+ * and `ui/silhouette.js` is that picture: one drawing per id, picked from six
+ * FAMILIES so a column of forty reads as forty different animals rather than
+ * one outline with its dials turned. It is the same drawing the VS card wears,
+ * so a creature keeps one face across the product.
+ *
+ * The disc itself is the kit's icon tile — `--glass-strong`, a hairline, lit
+ * from the top left like every other round surface — so a column of forty of
+ * them reads as one material. The monogram remains for the row whose id has
+ * not arrived.
+ */
+.lad-mark {
+  position: relative; flex: 0 0 auto; display: grid; place-items: center;
+  width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+  color: var(--muted);
+  background:
+    radial-gradient(118% 118% at 30% 20%, rgba(255, 255, 255, .95), rgba(255, 255, 255, .34) 62%, rgba(201, 184, 167, .26)),
+    var(--glass-strong);
+  border: 1px solid var(--glass-line);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .05), 0 4px 12px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .7);
+  transition: color var(--d-ui) var(--ease), transform var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease);
+}
+/* Ink, not grey: a monoline drawing at 34 px needs the weight a two-letter
+   monogram did not. The drawing is inset from the rim so the disc still reads
+   as a tile with something ON it rather than a circle cropping an animal. */
+/* Weight, because the drawing IS the picture on every disc the render does not
+   reach: at 40 px a sixty-per-cent grey outline of a serpent is a grey comma.
+   Filled at .74 it is a creature. */
+.lad-mark.has-shape { color: rgba(46, 46, 51, .74); }
+.lad-mark .silhouette { width: 88%; height: 88%; display: block; transition: opacity 320ms var(--ease); }
+
+/*
+ * THE REAL BODY, ON THE DISCS BIG ENOUGH TO HOLD ONE.
+ *
+ * `ui/portrait.js` mounts its canvas here for the three podium cards and for
+ * the player's own row: the same scene the specimen page draws, the same body
+ * the arena fights with. The drawing stays underneath and fades out only when
+ * a render actually arrives, so nothing ever blinks through empty — and a body
+ * that will not load leaves a disc that was never wrong to begin with.
+ *
+ * The ground shadow is what stops it reading as a cut-out: a body floating on a
+ * white disc has no weight until something under it is darker than it is.
+ */
+/*
+ * THE CIRCLE FRAMES THE BODY; IT DOES NOT AMPUTATE IT.
+ *
+ * `portrait.js` fits a body to about 85 % of its square frame, and the canvas
+ * was then blown up another 18 % on a row and 26 % on the podium — so the
+ * creature reached past the rim and the ring cut the leaders off mid-leg, which
+ * is exactly the crop a portrait may not have. Four per cent is the whole
+ * correction: the body sits at roughly 88 % of the disc, with about 8 % of air
+ * inside the circle on every side, and nothing of it is behind the metal.
+ */
+.lad-mark .portrait-canvas {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(var(--body-fit, 1.04));
+  opacity: 0; transition: opacity 420ms var(--ease);
+}
+.lad-mark.has-body .portrait-canvas { opacity: 1; }
+.lad-mark.has-body .silhouette { opacity: 0; }
+.lad-mark.has-body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(72% 40% at 50% 92%, rgba(46, 46, 51, .17), rgba(46, 46, 51, 0) 70%);
+}
+.lad-mono {
+  font-family: var(--font-display);
+  font-size: var(--mono, 12px); font-weight: 500; line-height: 1;
+  letter-spacing: .14em;
+  /* Tracking is added AFTER the last letter, so the ink of a centred box sits
+     half a track to the left. The same amount on the left puts it back. */
+  padding-left: .14em;
+  text-transform: uppercase; color: inherit; font-variant-numeric: tabular-nums;
+}
+
+/* rank (or medal) and mark travel together as one cell */
+.lad-id { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; }
+.lad-rank {
+  flex: 0 0 46px; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+
+/* ── podium ─────────────────────────────────────────────────────────────── */
+
+/*
+ * THE PODIUM HAS A PEAK, AND THE THREE NAMES SHARE A LINE.
+ *
+ * The peak is built from weight — opaque glass, a deeper shadow, a heavier
+ * name, a larger disc, and the gold worn on the specimen's own ring — and not
+ * from a column 57 px wider than its neighbours for a reason no reader can
+ * name. The three cards are the same width, and the identity block is a box of
+ * known height with the name clamped to two lines and the chips forbidden to
+ * wrap, so a YOU pill on the third card can no longer lift that card's name
+ * nine pixels above the other two.
+ */
+/*
+ * A PODIUM HAS A STEP.
+ *
+ * Three cards of one width, one height and one type size are a list of three,
+ * and a list does not say that the creature on the left is the best in the
+ * arena — `#1 ARRESTER` carried no more presence than `#3 MARK-92`. First place
+ * is a fifth wider, an eighth taller, set in a hero size with a 28 px stone and
+ * a 112 px disc; second and third are bottom-aligned against it, so their tops
+ * sit below its shoulder and their feet on its line. That is the whole
+ * hierarchy: no new colour, no new material, no badge that was not there.
+ */
+.podium {
+  display: grid; grid-template-columns: 1.22fr 1fr 1fr;
+  gap: var(--s4); align-items: end;
+}
+.pod {
+  --mark: 88px;
+  --pod-h: 202px;
+  display: grid; min-width: 0; min-height: var(--pod-h);
+  grid-template-columns: var(--mark) minmax(0, 1fr);
+  /* The second row is at least as tall as the largest disc on the podium, so
+     first place's bigger mark cannot deepen its own row and drop its name. */
+  grid-template-rows: auto minmax(96px, auto) auto;
+  grid-template-areas:
+    "crest crest"
+    "mark  ident"
+    "stats stats";
+  align-items: center; align-content: space-between;
+  column-gap: var(--s4); row-gap: 6px;
+  padding: 15px 20px 16px;
+  transition: transform var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease);
+}
+
+/*
+ * THE CREST: THE MEDAL, CLEAR OF THE FACE IT DECORATES.
+ *
+ * The gem used to be a pill pinned to the disc's top-left corner, cutting the
+ * metal ring in half and, on a phone, sitting across the creature's shoulder.
+ * A medal that damages the thing it hangs on is worse than no medal. It opens
+ * the card on a line of its own now: the stone, then the rank, then air.
+ */
+.pod-crest { grid-area: crest; display: flex; align-items: center; gap: 9px; min-height: 28px; }
+.pod-crest .gem {
+  flex: 0 0 auto; display: block;
+  filter: drop-shadow(0 2px 4px rgba(46, 46, 51, .22));
+  transition: transform var(--d-ui) var(--ease);
+}
+.pod:hover .gem, .pod:focus-visible .gem { transform: translateY(-1px); }
+.pod-place {
+  font-size: 13px; font-weight: 600; letter-spacing: .08em; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.pod:hover { transform: translateY(-2px); box-shadow: 0 18px 48px var(--shade); }
+.pod:active { transform: translateY(0); }
+.pod:hover .lad-mark, .pod:focus-visible .lad-mark { color: var(--ink-2); transform: scale(1.04); }
+
+.pod-id { grid-area: mark; width: var(--mark); height: var(--mark); }
+.pod-id .lad-mark { width: var(--mark); height: var(--mark); --mono: 26px; }
+/* A box of known height: two lines of name, six pixels, one mind badge. */
+.pod-ident { grid-area: ident; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.pod-line { display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; min-width: 0; min-height: 50px; }
+.pod-name {
+  min-width: 0;
+  font-size: 21px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-2); line-height: 1.15; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pod-mind { min-width: 0; min-height: 20px; overflow: hidden; }
+.pod-mind .mind { max-width: 100%; }
+.pod-stats {
+  grid-area: stats; display: flex; justify-content: space-between; gap: var(--s3);
+  margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--hairline);
+}
+.pod-stat .v { font-size: 16px; font-weight: 500; color: var(--ink-2); white-space: nowrap; line-height: 1; }
+.pod-stat .k {
+  margin-top: 7px; font-size: 9.5px; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap;
+}
+
+/*
+ * THE METAL IS ON THE FRAME, NOT ACROSS THE FACE.
+ *
+ * The gold, silver and bronze used to be a rim around the whole card, which
+ * put three coloured rectangles side by side and left the creature inside each
+ * one untinted. The metal belongs to the specimen: it is the ring around the
+ * portrait disc — exactly where a frame goes — and the cards themselves are
+ * one material again. The stone at the card's corner is the same metal said
+ * once more, in the kit's own shape, where it cannot cross the picture.
+ * First place still peaks — a larger disc, opaque glass, a heavier name, a
+ * deeper shadow — from weight rather than from colour.
+ */
+.pod-id .lad-mark {
+  --ring: rgba(46, 46, 51, .05); --ring-w: 1px;
+  box-shadow:
+    0 0 0 var(--ring-w) var(--ring),
+    0 6px 18px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .75);
+}
+.pod.p1 {
+  --mark: 112px;
+  min-height: calc(var(--pod-h) * 1.12);
+  grid-template-rows: auto minmax(112px, auto) auto;
+  padding: 19px 24px 20px;
+  background:
+    linear-gradient(158deg, rgba(226, 190, 90, .15), rgba(255, 255, 255, 0) 58%),
+    radial-gradient(58% 74% at 16% 52%, rgba(226, 190, 90, .12), rgba(255, 255, 255, 0) 72%),
+    var(--glass-strong);
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .07),
+    0 22px 60px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+/* The hero size the contract gives a creature's name, held back from its
+   ceiling so a sixteen-letter name still takes two lines and not four. */
+.pod.p1 .pod-name { font-size: clamp(23px, 2.3vw, 32px); font-weight: 600; letter-spacing: .09em; }
+.pod.p1 .pod-crest { min-height: 34px; gap: 11px; }
+.pod.p1 .pod-place { font-size: 15px; }
+.pod.p1 .pod-line { min-height: 62px; }
+.pod.p1 .pod-stats { padding-top: 16px; }
+.pod.p1 .pod-stat .v { font-size: 18px; }
+.pod.p1 .pod-stat .k { font-size: 10px; }
+.pod.p1 .pod-id .lad-mark { --ring: rgba(198, 155, 52, .85); --ring-w: 2.5px; --mono: 28px; }
+.pod.p2 .pod-id .lad-mark { --ring: rgba(146, 154, 166, .85); --ring-w: 2.5px; }
+.pod.p3 .pod-id .lad-mark { --ring: rgba(168, 110, 66, .8); --ring-w: 2.5px; }
+/* the fallback monogram still borrows its metal; the drawing keeps its ink */
+.pod.p1 .lad-mark:not(.has-shape) { color: #8A7333; }
+.pod.p2 .lad-mark:not(.has-shape) { color: #5F6672; }
+.pod.p3 .lad-mark:not(.has-shape) { color: #8A5B36; }
+/* Mine, wherever it stands, marked the way the standings row marks it: a wash
+   of `--info` and a rule down the left edge, not a slab of blue and not a ring
+   that turns the card into a second kind of surface. */
+.pod.is-me {
+  background:
+    linear-gradient(100deg, rgba(110, 168, 255, .13) 0%, rgba(110, 168, 255, .05) 46%, rgba(110, 168, 255, 0) 78%),
+    var(--glass-strong);
+  box-shadow:
+    inset 2px 0 0 var(--info),
+    0 0 0 1px rgba(110, 168, 255, .34),
+    0 14px 44px var(--shade);
+}
+.pod.is-me .lad-mark:not(.has-shape) { color: var(--info-ink); }
+
+/*
+ * MEDALS THAT READ AT ARM'S LENGTH, AND A BRONZE THAT IS BRONZE.
+ *
+ * The kit's silver was #F1F1F3→#BFC4CC — a near-white disc on a near-white
+ * row, and the `2` sat on nothing at all. The third place ran to #C98A5E,
+ * near enough to `--accent` that a reader who has learnt coral as "the other
+ * side, defeat, danger" reads the bronze as a warning. Darkened and pulled
+ * towards brown: the three tints are a set with the same weight and none of
+ * them borrows a colour that means something else.
+ */
+.lad .rank-badge.r1 { color: #4A3A10; background: linear-gradient(135deg, #F6E3A4, #D9AF44); }
+.lad .rank-badge.r2 { color: #2C3138; background: linear-gradient(135deg, #E3E6EA, #9AA1AB); }
+.lad .rank-badge.r3 { color: #402314; background: linear-gradient(135deg, #DCB08C, #B0764A); }
+.lad .rank-badge.plain { color: var(--muted); background: rgba(255, 255, 255, .58); }
+/*
+ * WHERE THE GEM IS WORN, THE PILL STOPS BEING THE METAL.
+ *
+ * The prize board's top three carry the podium's stone, so the badge behind it
+ * goes back to being a glass pill with a number on it — three metals painted
+ * twice, one inside the other, is the "borders in borders" the contract asks
+ * the interface not to draw (§1.7).
+ */
+.lad .rank-badge.has-gem {
+  color: var(--ink-2); background: rgba(255, 255, 255, .66);
+  border: 1px solid var(--glass-line); box-shadow: 0 2px 8px var(--shade);
+}
+.lad .rank-badge .gem { display: block; margin-right: 1px; filter: drop-shadow(0 1px 2px rgba(46, 46, 51, .2)); }
+
+/* ── section labels, tables, buttons ────────────────────────────────────── */
+
+.lad-label { margin: var(--s6) 0 var(--s3); }
+/* The rhythm is the same in all three segments — label, table — but MINDS has
+   nothing above its label, and the caution card that sometimes is has already
+   paid for its own air. Two stacked gaps of 32 px is a hole, not a rhythm. */
+.lad-body > .lad-label:first-child { margin-top: 0; }
+.lad-alert + .lad-label { margin-top: var(--s2); }
+.lad-more { display: flex; justify-content: center; margin-top: var(--s4); }
+.lad-more-btn:disabled { opacity: .5; cursor: default; }
+.lad-more-note { margin-top: var(--s2); text-align: center; color: var(--accent-ink); }
+.lad-error { margin-top: var(--s5); }
+.lad-error .btn { margin-top: var(--s4); }
+/* Two short lines, not one long one. A qualification the length of a paragraph
+   set on a single 12.5 px line is the least calm thing on a quiet screen; the
+   same facts in two clauses are read in two glances and not re-read. */
+.lad-foot-note {
+  margin-top: var(--s3); max-width: 62ch;
+  font-family: var(--font-body); font-size: var(--t-small); line-height: 1.5;
+  color: var(--ink-soft); text-shadow: var(--photo-halo);
+}
+.lad-table { display: flex; flex-direction: column; }
+/* A row is a bordered box, so its text starts one pixel inside its own edge.
+   The header has no border: without the extra pixel every column label stands
+   a pixel to the left of the column it names. */
+/*
+ * ONE GRID, ONE HEAD STYLE, ONE RIGHT EDGE.
+ *
+ * A row is a bordered box, so its text starts one pixel inside its own edge;
+ * the head has no border, so it carries the pixel in its padding and every
+ * column label stands over the column it names.
+ *
+ * AND THE LETTER-SPACE AT THE END OF A LABEL IS NOT PART OF THE LABEL. Tracking
+ * is added AFTER the last letter, so a right-aligned `WIN RATE` sits two pixels
+ * left of the digits underneath it while its box is flush with theirs — the
+ * kind of miss that reads as a table nobody drew. The negative margin takes the
+ * trailing track back, and the label's ink shares the number's edge exactly.
+ *
+ * The hairline under the row is what makes the six labels one head rather than
+ * six captions floating over a picture.
+ */
+.lad-head {
+  padding: 0 17px 9px; align-items: end; margin-bottom: 7px;
+  box-shadow: inset 0 -1px 0 rgba(46, 46, 51, .16);
+}
+.lad-head .k, .lad-head > div {
+  font-family: var(--font-display);
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--muted); line-height: 1.1;
+  text-shadow: var(--photo-halo);
+}
+.lad-head .k.r { margin-right: calc(var(--track-label) * -1); }
+
+/* season tiles: three equal columns, not three content-sized boxes with a
+   ragged right edge (`creature.css` solved the same thing the same way) */
+.lad-tiles {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3); margin-bottom: var(--s2);
+}
+.lad-tiles .tile { min-width: 0; padding: 18px 20px 16px; }
+.lad-tiles .tile .v { font-size: 30px; }
+
+/* ── one creature row ───────────────────────────────────────────────────── */
+
+/*
+ * The slack is shared between the two text columns instead of pooling in one
+ * five-hundred-pixel void after the name: the mind sits nearer the name it
+ * belongs to, and the numbers keep the right edge to themselves.
+ */
+.lad-grid {
+  display: grid; align-items: center; gap: var(--s4);
+  grid-template-columns: 104px minmax(140px, 1fr) minmax(150px, .55fr) 86px 112px 78px 20px;
+}
+.lad-grid .r { text-align: right; }
+/*
+ * A TABLE IS NOT A WINDOW.
+ *
+ * The rows were `.row`'s 38 % white wash, and the arena photograph's hanging
+ * banners and arches read straight through them: `1,873 – 3,213` and `36%`
+ * measured about 2.5:1 against a ground that changed under every row. A table
+ * is the one surface in the product that is read rather than looked at, so it
+ * gets a real material — glass at the kit's `strong` value, lit from the top,
+ * with the picture behind it and not inside it.
+ *
+ * The mark sets the row's height, so the padding only has to keep the disc off
+ * the edge — twelve pixels of it cost a visible row at the bottom of a ladder
+ * that exists to be scanned.
+ */
+.lad .row {
+  padding: 10px 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .88) 0%, rgba(255, 255, 255, .80) 100%);
+  border-color: rgba(255, 255, 255, .78);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1); backdrop-filter: blur(16px) saturate(1.1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .6) inset, 0 4px 14px rgba(46, 46, 51, .06);
+}
+.lad button.row:hover { background: linear-gradient(180deg, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .9) 100%); }
+.lad-row { cursor: pointer; }
+.lad-row:hover .lad-mark, .lad-row:focus-visible .lad-mark,
+.prize-row:hover .lad-mark, .prize-row:focus-visible .lad-mark {
+  color: var(--ink-2); transform: scale(1.05);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .07), 0 6px 16px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .75);
+}
+
+/* My own row. The modifier is `is-me` and not `me` on purpose: `ui/chrome.css`
+   owns an unscoped `.me { position: absolute; top: … }` for the my-chip, and a
+   row wearing that class is torn out of the table and pinned over the
+   wordmark. Named apart, the two can never collide again. */
+/*
+ * A TINT AND A RULE, NOT A SLAB OF BLUE.
+ *
+ * My row used to be filled flat with #C9D9F5 — the loudest, coldest blue in
+ * the system, laid over the full width of the row, on a screen whose whole
+ * palette is warm off-white. It shouted the one thing that did not need
+ * shouting and it changed the row's material, so my own line read as belonging
+ * to a different table from the ones above and below it.
+ *
+ * The kit marks a selected row the other way round: the surface stays, a wash
+ * of `--info` at a tenth passes over it, and a 2 px rule stands at the left
+ * edge. The rule is an inset shadow rather than a border so the row's own
+ * corners and its text position are untouched — a 2 px border here shifts every
+ * cell one pixel left of the rows around it.
+ */
+.lad .row.is-me {
+  background:
+    linear-gradient(90deg, rgba(110, 168, 255, .13) 0%, rgba(110, 168, 255, .10) 38%, rgba(110, 168, 255, .07) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, .93) 0%, rgba(255, 255, 255, .87) 100%);
+  border-color: rgba(110, 168, 255, .42);
+  box-shadow:
+    inset 2px 0 0 var(--info),
+    inset 0 1px 0 rgba(255, 255, 255, .7),
+    0 6px 18px rgba(41, 87, 180, .09);
+}
+.lad button.row.is-me:hover {
+  background:
+    linear-gradient(90deg, rgba(110, 168, 255, .17) 0%, rgba(110, 168, 255, .13) 38%, rgba(110, 168, 255, .09) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, .97) 0%, rgba(255, 255, 255, .93) 100%);
+}
+.row.is-me .lad-rank { color: var(--info-ink); }
+.row.is-me .lad-mark:not(.has-shape) { color: var(--info-ink); }
+.row.is-me .lad-mark.has-shape { color: rgba(30, 62, 130, .68); }
+/* Scrolled to, it must not land under the dock: the one row worth scrolling to
+   is the one the pill would cover. */
+.lad-row.is-me, .prize-row.is-me { scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom)); }
+
+.lad-who { min-width: 0; }
+.lad-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.lad-line .name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/*
+ * THE NARROW-SCREEN META LINE — TWO GROUPS, NOT FIVE ITEMS.
+ *
+ * The mind used to share one `nowrap` line with the record and the win rate,
+ * and a phone cut it to `AIRENA …`, `GLM 5…`, `CLAU…`: the ladder never said
+ * which mind any creature carried, on the screen whose whole subject is the
+ * comparison. Grouped, the line breaks BETWEEN the mind and the numbers, so
+ * the mind's name is never clipped and the numbers never lose their leading
+ * separator to a line break.
+ */
+.lad-meta {
+  display: none; align-items: center; gap: 4px 12px; margin-top: 6px; flex-wrap: wrap;
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  font-variant-numeric: tabular-nums; min-width: 0;
+}
+.lad-meta-mind { display: inline-flex; min-width: 0; max-width: 100%; }
+.lad-meta-stats { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* `2,263 – 709` is one number, not two: without this it breaks at the dash and
+   a 72px row becomes an 86px one halfway down the list. */
+.lad-meta-stats > span { white-space: nowrap; }
+/* The phone drops the column headers with the columns. Each number keeps its
+   own word at the smallest size in the product, so `2,451 – 745 · 75%` is
+   never four unlabelled figures to a reader who has not seen the desktop. */
+.lad-cap {
+  font-style: normal; margin-left: 5px;
+  /* --muted, not --stone: at 8.5px a caption is already the smallest thing on
+     the screen and 3.4:1 is not a contrast a small word survives. */
+  font-size: 8.5px; font-weight: 500; letter-spacing: .14em; color: var(--muted);
+}
+.lad-meta .mind { font-size: 10.5px; letter-spacing: .1em; color: var(--muted); max-width: 100%; }
+.lad-meta .mind .mind-mark { width: 14px; height: 14px; flex: 0 0 14px; }
+.lad-meta .mind .mind-name { overflow: visible; text-overflow: clip; }
+.lad-dot::before { content: "·"; }
+
+/*
+ * THE RATING COLUMN HOLDS A NUMBER AND NOTHING ELSE.
+ *
+ * A thirty-pixel bar used to sit under every rating on a scale nothing on the
+ * screen named. In a table already sorted by that column it said, less
+ * precisely, what the column said — an unlabelled graphic under a labelled
+ * figure, which is the one thing a document may not put in a grid. The measure
+ * that earns its width is the minds table's, which is drawn against a fixed
+ * fifty and prints the notch that says so.
+ */
+.lad-mind { min-width: 0; overflow: hidden; }
+.lad-mind .mind { font-size: 11px; letter-spacing: .06em; max-width: 100%; }
+.lad-mind .mind .mind-name { overflow: hidden; text-overflow: ellipsis; }
+.lad-mind .mind .mind-mark { width: 17px; height: 17px; flex: 0 0 17px; }
+.lad-rating { font-size: 16px; }
+/* `--muted` is a LABEL colour; on a row these are data. Two of the three
+   numbers in every row were reading a shade lighter than the third for no
+   reason a reader could name, and over the photograph they fell under 3:1. */
+.lad-record, .lad-wr { font-size: 13px; color: rgba(46, 46, 51, .72); }
+.lad-go { display: flex; justify-content: flex-end; color: var(--sand); transition: color var(--d-ui), transform var(--d-ui) var(--ease); }
+.row:hover .lad-go { color: var(--ink-2); transform: translateX(2px); }
+
+/* house rows keep a set rating: say it quietly, once — and the chip carries
+   its own sentence, so the word is explained where it is read */
+.chip.lad-ref {
+  height: 20px; padding: 0 8px; font-size: 9px; letter-spacing: .16em; flex: 0 0 auto;
+  color: var(--stone); background: rgba(255, 255, 255, .32); border-color: rgba(255, 255, 255, .5);
+  cursor: help; transition: color var(--d-ui) var(--ease), background var(--d-ui) var(--ease);
+}
+.chip.lad-ref:hover { color: var(--ink-2); background: rgba(255, 255, 255, .62); }
+.chip.lad-you {
+  height: 20px; padding: 0 8px; font-size: 9px; letter-spacing: .16em; flex: 0 0 auto;
+  color: var(--info-ink); background: rgba(110, 168, 255, .2); border-color: rgba(110, 168, 255, .38);
+}
+/*
+ * The chip, and what it means, on one line under the standings header.
+ *
+ * A hover tooltip explains a term of art to a mouse. HOUSE is just as visible
+ * on a phone and on the segment where the season's footnote is two tabs away,
+ * so the sentence stands in type where the chip is read — once, quietly, in
+ * the label's own rhythm.
+ */
+.lad-legend {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: -2px 0 var(--s3); padding-left: 1px;
+  font-family: var(--font-body); font-size: 12px; line-height: 1.5; color: var(--ink-soft);
+  text-shadow: var(--photo-halo);
+}
+/* Two facts, one line where there is room for one and two where there is not:
+   what the first column ranks, and what the last one pays in. They stay flex
+   ITEMS — two inline spans wrapping through the same line share it, and a
+   probe that measures type by its box then reads one sentence lying on the
+   other. */
+.lad-note { gap: 2px 18px; }
+.lad-note > span { flex: 0 1 auto; min-width: 0; }
+.lad-legend .chip.lad-ref.is-legend { cursor: default; }
+.lad-legend .chip.lad-ref.is-legend:hover { color: var(--stone); background: rgba(255, 255, 255, .32); }
+/* The minds table's opening line stands where the other two segments put their
+   section label, and keeps that label's rhythm above the table. */
+.lad-hint { margin: var(--s5) 0 var(--s3); }
+.lad-alert + .lad-hint { margin-top: var(--s2); }
+
+/*
+ * A CAUTION IS A CARD, NOT A RULE ACROSS THE PAGE.
+ *
+ * The kit draws its ALERTS at 355 px: a dot, a line, a second line under it.
+ * One ten-word sentence stretched to 1,180 px reads as a system banner about
+ * the arena, and this is a footnote about how much has been measured yet.
+ */
+.lad-alert {
+  display: flex; align-items: flex-start; gap: 11px;
+  max-width: 420px; margin-bottom: var(--s5);
+  padding: 11px 15px 12px; border-radius: var(--r-card);
+  border-left: 2px solid var(--warning);
+}
+.lad-alert-dot {
+  flex: 0 0 9px; width: 9px; height: 9px; margin-top: 4px; border-radius: 50%;
+  background: var(--warning); box-shadow: 0 0 0 3px rgba(244, 208, 111, .3);
+}
+.lad-alert-text { min-width: 0; }
+.lad-alert .hd {
+  font-family: var(--font-display); font-size: 11px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--warning-ink);
+}
+.lad-alert .sub {
+  margin-top: 4px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.5;
+  color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+
+/* ── minds table ────────────────────────────────────────────────────────── */
+
+.mind-grid {
+  display: grid; align-items: center; gap: var(--s4);
+  grid-template-columns: minmax(150px, 1fr) 96px 108px 92px 104px 20px;
+}
+.mind-grid .r { text-align: right; }
+.mind-cell { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; width: 100%; }
+.mind-line {
+  /* `align-items: baseline` put the mode a pixel low: the badge is an
+     inline-flex box whose baseline is the bottom of its 20 px mark, not the
+     baseline of its words. Centred, the two read as one line. */
+  display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%;
+}
+
+/*
+ * THE ACTION, IN THE SPACE THE NAME ALREADY OWNS.
+ *
+ * The mind column is the widest track on the screen and a mind's name fills a
+ * fifth of it; the rest was dead. The row's offer stands at the far end of
+ * that line, so it appears exactly where the eye already is and costs the row
+ * no height at all — nothing shifts when the pointer arrives, and a keyboard
+ * reader gets it on focus for the same reason.
+ */
+.mind-cta {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; margin-left: auto;
+  padding-left: var(--s4);
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--info-ink);
+  white-space: nowrap; opacity: 0; transform: translateX(-4px);
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+.mind-cta svg { width: 13px; height: 13px; flex: 0 0 13px; }
+.mind-row:hover .mind-cta, .mind-row:focus-visible .mind-cta { opacity: 1; transform: none; }
+
+/* The reference is not a mind, and the row that ranks it first says so. */
+.chip.lad-base {
+  height: 20px; padding: 0 8px; font-size: 9px; letter-spacing: .16em; flex: 0 0 auto;
+  color: var(--stone); background: rgba(255, 255, 255, .32); border-color: rgba(255, 255, 255, .5);
+  cursor: help; transition: color var(--d-ui) var(--ease), background var(--d-ui) var(--ease);
+}
+.chip.lad-base:hover { color: var(--ink-2); background: rgba(255, 255, 255, .62); }
+.mind-cell .mind { font-size: 12px; min-width: 0; max-width: 100%; }
+/* The mode is its own word, not a fragment of the badge: on a phone it drops
+   to a line of its own, and a middot that starts a line separates nothing. */
+.lad-mode {
+  flex: 0 0 auto; font-size: 10px; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap;
+}
+.mind-line .lad-mode::before { content: "· "; }
+/* The win rate, drawn: everything left of the notch is a losing mind. It runs
+   the full width of the mind column and stops where the CREATURES column
+   begins — capped at 420px it ended three hundred pixels short of the numbers
+   it belongs to, and the row read as half-finished. */
+.mind-bar {
+  position: relative; width: 100%; height: 3px;
+  border-radius: var(--r-pill); background: rgba(46, 46, 51, .1);
+}
+.mind-bar > i { display: block; height: 100%; border-radius: inherit; background: rgba(141, 127, 115, .62); transition: width 420ms var(--ease); }
+.mind-bar.up > i { background: rgba(52, 140, 102, .55); }
+.mind-bar::after {
+  content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px;
+  width: 1px; background: rgba(46, 46, 51, .3);
+}
+/* the sample size behind a win rate; a phone reads this instead of two columns */
+/*
+ * It WRAPS, AND IT WRAPS AT THE MIDDOT. Clipped, the one number that makes a
+ * win rate mean anything arrived as `88,972 FIGH…`; wrapped as free text it
+ * left the word FIGHTS alone on a line of its own. Two nowrap halves in a
+ * flex row break between the two facts or not at all.
+ */
+.mind-sample {
+  display: none; flex-wrap: wrap; gap: 0 6px; max-width: 100%;
+  font-size: 9.5px; font-weight: 500; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+.mind-sample > span { white-space: nowrap; }
+
+/* `ui/screens/create.css` styles the mind PICKER's row under the same name
+   (`.mind-row { background: transparent; border: 1px solid transparent }`) and
+   loads before this file, so without re-asserting it here the ladder's minds
+   lose their surface and the arena masonry reads straight through the numbers.
+   The values are `.row`'s from ui/components.css. */
+.lad .row.mind-row {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .88) 0%, rgba(255, 255, 255, .80) 100%);
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: var(--r-card); padding: 12px 16px;
+}
+/*
+ * These rows go somewhere now, so they answer to the pointer like every other
+ * row in the product: the same lift, the same chevron, the same offer.
+ */
+.mind-row { cursor: pointer; text-align: left; }
+.lad button.row.mind-row:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .90) 100%);
+}
+.lad button.row.mind-row:active { transform: translateY(1px); }
+.mind-fights, .mind-count { color: rgba(46, 46, 51, .72); }
+.mind-avg { font-size: 15px; }
+
+/* ── season ─────────────────────────────────────────────────────────────── */
+
+/* The first track is the standings' first track, so the marks of the two
+   tables stand in one column when a reader switches segments. */
+.prize-grid {
+  display: grid; align-items: center; gap: var(--s4);
+  grid-template-columns: 104px minmax(140px, 1fr) minmax(150px, .55fr) 112px 92px 120px;
+}
+.prize-grid .r { text-align: right; }
+/* medal at the head of the track, mark at its foot: the mark then sits exactly
+   where the standings table puts it */
+.prize-id { gap: 0; justify-content: space-between; width: 100%; }
+/* the medal comes first in the reading order and second in the markup, so the
+   phone can hang it on the mark without a second element */
+.prize-id .rank-badge {
+  order: -1; flex: 0 0 auto; width: auto; min-width: 34px; height: 26px; gap: 5px;
+  padding: 0 7px; border-radius: var(--r-pill); font-size: 11px; letter-spacing: .04em;
+}
+.prize-coins { font-size: 13px; font-weight: 600; letter-spacing: .04em; color: var(--ink-2); white-space: nowrap; }
+.prize-row { cursor: pointer; }
+
+/* ── sticky footer: where am I ──────────────────────────────────────────── */
+
+/*
+ * THE DOCK REACHES THE BOTTOM OF THE SCREEN; THE PILL FLOATS INSIDE IT.
+ *
+ * A pill stuck 32 px above the bottom edge left a sliver of the next row
+ * showing underneath it — and on a phone, where it stood 28 px above the tab
+ * bar, a whole legible row (`CLAUDE FABLE  37%  1,104`) sat in the gap. Half a
+ * row peeking out from under the answer is worse than no answer: it reads as a
+ * rendering fault.
+ *
+ * So the sticky box is the DOCK. Its bottom edge is the viewport's (the tab
+ * bar's, on a phone), its lower band fades to the page ground, and the pill
+ * lives inside with its air intact. Nothing can appear beneath it because
+ * there is nothing beneath it.
+ */
+.lad-dock {
+  position: sticky; bottom: 0; z-index: 4; margin-top: var(--s6);
+  padding-bottom: 22px; pointer-events: none;
+}
+.lad-dock > * { pointer-events: auto; }
+/* The band under the pill is the page ground itself, not a wash of it: at 98 %
+   a row's ink still showed through the last twenty pixels of the screen, which
+   is exactly the sliver the dock exists to remove. */
+.lad-dock::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  left: -16px; right: -16px; top: -30px; bottom: 0;
+  background: linear-gradient(180deg,
+    rgba(235, 225, 217, 0) 0%,
+    rgba(235, 225, 217, .5) 32%,
+    rgba(235, 225, 217, .93) 66%,
+    var(--sky) 84%);
+}
+/*
+ * THE ANSWER IS OPAQUE, AT EVERY WIDTH.
+ *
+ * Glass at 74 % is right for a panel with a photograph behind it and wrong for
+ * a bar with a TABLE behind it: the row the pill was standing on read straight
+ * through it — `#6 ACID CUTTER · 1,515 · 61%` printed across `#7 ARENA RANK ·
+ * STONE GOLEM · 1,515 MMR` — so the one line that tells a player where they
+ * stand was the least legible thing on the screen. The phone had already been
+ * given the fix at ≤900; the desktop needed it for the same reason.
+ */
+.lad-foot {
+  position: relative;
+  display: flex; align-items: center; gap: var(--s5);
+  padding: 11px 12px 11px 22px; border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .95);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15); backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 16px 44px rgba(46, 46, 51, .16);
+}
+.f-delta {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+/* The prize board's own rank, beside the arena rank it disagrees with: both
+   labelled, so the pill carries two facts instead of one contradiction. */
+.f-scope { color: var(--ink-2); }
+.f-scope .num { font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+.f-scope .f-word { color: var(--muted); }
+.f-delta.up { color: var(--success-ink); }
+.f-delta.down { color: var(--accent-ink); }
+.f-delta svg { width: 14px; height: 14px; flex: 0 0 14px; }
+.f-rank {
+  display: flex; align-items: baseline; gap: 8px; flex: 0 0 auto;
+  font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ink-2);
+}
+.f-name {
+  flex: 1; min-width: 0; font-size: 13px; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.f-rating { display: flex; align-items: baseline; gap: 8px; font-size: 16px; font-weight: 500; color: var(--ink-2); flex: 0 0 auto; }
+.f-word { font-size: 9.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.f-delta .f-word { color: inherit; opacity: .8; }
+/* The word that reconciles the two ranks on the SEASON segment carries the
+   sentence itself: the conflict is read here, so the answer lives here. */
+.f-why {
+  cursor: help; border-bottom: 1px dotted rgba(107, 95, 85, .55); padding-bottom: 1px;
+  transition: color var(--d-ui) var(--ease), border-color var(--d-ui) var(--ease);
+}
+.f-why:hover, .f-why:focus-visible { color: var(--ink-2); border-bottom-color: var(--stone); }
+.f-view { flex: 0 0 auto; }
+
+/* ── entrance ───────────────────────────────────────────────────────────── */
+
+/* A table that appears all at once appears as a block. Twenty-six milliseconds
+   apart, it appears as a list being read down. `--i` is set per row in
+   `ladder.js` and capped there, so row ninety does not wait. */
+@keyframes lad-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.pod, .lad-row, .prize-row, .mind-row {
+  animation: lad-in 420ms var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+/* base.css shortens every duration for a reduced-motion reader, but a stagger
+   is a DELAY, and a delayed `backwards` fill holds the row invisible. */
+@media (prefers-reduced-motion: reduce) {
+  .pod, .lad-row, .prize-row, .mind-row { animation: none; }
+}
+
+/* ── skeletons ──────────────────────────────────────────────────────────── */
+
+/* The shape that is coming, per section: a skeleton that promises a podium to
+   a reader who pressed MINDS is a shape that has to be taken back. */
+.lad-skel-title { width: min(320px, 60%); height: 46px; }
+.lad-skel-sub { width: 200px; height: 13px; margin-top: 16px; border-radius: var(--r-chip); }
+.lad-skel-seg { width: 330px; max-width: 100%; height: 42px; border-radius: var(--r-card); }
+.podium .lad-skel-pod { height: 202px; align-self: end; border-radius: var(--r-panel); }
+.podium .lad-skel-pod:first-child { height: 226px; }
+.lad-skel-hint { width: min(340px, 70%); height: 13px; margin: var(--s5) 0 var(--s3); border-radius: var(--r-chip); }
+.lad-skel-tile { height: 92px; border-radius: var(--r-panel); }
+.lad-skel-row { height: 72px; margin-bottom: 6px; }
+
+/* ── narrow desktop: the record column is the first to go ───────────────── */
+
+@media (max-width: 1180px) {
+  .lad-grid { grid-template-columns: 100px minmax(130px, 1fr) minmax(140px, .5fr) 82px 82px 20px; }
+  .lad-record { display: none; }
+  .lad-id { gap: 12px; }
+  .lad-rank { flex-basis: 44px; }
+  .prize-grid { grid-template-columns: 100px minmax(130px, 1fr) minmax(140px, .5fr) 88px 116px; }
+  .mind-grid { grid-template-columns: minmax(140px, 1fr) 88px 96px 84px 96px 20px; }
+  .pod { --mark: 82px; --pod-h: 190px; grid-template-rows: auto minmax(90px, auto) auto; padding: 15px 18px 16px; }
+  .pod.p1 { --mark: 102px; grid-template-rows: auto minmax(102px, auto) auto; padding: 18px 21px 19px; }
+  .pod-name { font-size: 19px; }
+  .pod.p1 .pod-name { font-size: clamp(21px, 2.2vw, 27px); }
+  .pod-line { min-height: 46px; }
+  .pod.p1 .pod-line { min-height: 56px; }
+}
+
+/*
+ * ── the shell swaps its rail for a bottom tab bar (≤ 900) ────────────────
+ *
+ * THE ONLY THING THIS BREAKPOINT DOES IS GET OUT OF THE TAB BAR'S WAY. No
+ * column is dropped here: an iPad in portrait is 768 px wide and has room for
+ * the whole table.
+ *
+ * The bar is 2 + 46 + 2 px plus the home indicator's inset (`ui/chrome.css`),
+ * so every offset that was chosen to clear it has to grow with the inset —
+ * bare pixels put the last six of the pill under the bar on a notched phone.
+ * The dock's bottom edge IS the top of that bar: 50 px + the inset, exactly,
+ * so no row can appear in a gap that no longer exists.
+ */
+@media (max-width: 900px) {
+  .lad { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .lad:has(.lad-wrap.has-foot) { padding-bottom: 0; }
+  .lad-wrap.has-foot .lad-body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+  .lad-dock { bottom: calc(50px + env(safe-area-inset-bottom)); padding-bottom: 14px; }
+  .lad-dock::before { top: -26px; }
+  .lad-seg > button { padding: 0 14px; }
+  /* This is the width where the shell trades its rail for a tab bar — a touch
+     layout. A hover label on a screen with no pointer is a line that never
+     appears and squeezes the mind's name to make room for it; the chevron and
+     the sentence above the table carry the offer from here down. */
+  .mind-cta { display: none; }
+}
+
+/* ── tablet: the same table, tighter (≤ 860) ────────────────────────────── */
+
+@media (max-width: 860px) {
+  .lad-mark { width: 42px; height: 42px; }
+  .lad-id { gap: 10px; }
+  .lad-rank { flex-basis: 36px; font-size: 11px; }
+  .lad-grid { grid-template-columns: 88px minmax(96px, 1fr) minmax(126px, .52fr) 70px 66px 16px; gap: var(--s3); }
+  .prize-grid { grid-template-columns: 88px minmax(100px, 1fr) minmax(126px, .52fr) 76px 100px; gap: var(--s3); }
+  .mind-grid { grid-template-columns: minmax(120px, 1fr) 68px 80px 70px 82px 16px; gap: var(--s3); }
+  /* 88 px of track cannot hold a stone, a rank and a gap; the number is the
+     fact, so the stone is what goes. */
+  .prize-id .rank-badge .gem { display: none; }
+  .lad-head { padding: 0 13px 8px; }
+  .lad .row { padding: 10px 12px; }
+  .lad-mind .mind { font-size: 10.5px; }
+  .lad-rating { font-size: 15px; }
+
+  /* Three cards still, but stacked inside: 190 px of card cannot hold a disc
+     and a two-word name side by side, and it can hold them one under the
+     other with room to spare. */
+  .podium { grid-template-columns: 1.16fr 1fr 1fr; gap: var(--s3); }
+  .pod {
+    --mark: 56px;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "crest" "mark" "ident" "stats";
+    align-items: start; row-gap: 12px; padding: 14px 16px 16px;
+  }
+  .pod.p1 { --mark: 74px; grid-template-rows: auto auto auto auto; padding: 16px 18px 18px; }
+  .pod-id .lad-mark { --mono: 17px; }
+  .pod.p1 .lad-mark { --mono: 22px; }
+  .pod-crest { min-height: 0; gap: 8px; }
+  .pod-crest .gem { width: 18px; height: 23px; }
+  .pod.p1 .pod-crest { min-height: 0; }
+  .pod.p1 .pod-crest .gem { width: 23px; height: 29px; }
+  .pod-place { font-size: 12px; }
+  .pod.p1 .pod-place { font-size: 13px; }
+  .pod-line { min-height: 42px; }
+  .pod.p1 .pod-line { min-height: 48px; }
+  .pod-name { font-size: 16px; letter-spacing: .08em; }
+  .pod.p1 .pod-name { font-size: 20px; }
+  .pod.p1 .pod-stat .v { font-size: 15px; }
+  .pod-stats { margin-top: 0; }
+  /* Two numbers fit; three do not. The record is the one the table drops at
+     1180 px, so it is the one that goes here. */
+  .pod-stats .pod-stat:nth-child(2) { display: none; }
+  .pod-stat .v { font-size: 14px; }
+  .lad-tiles .tile .v { font-size: 26px; }
+}
+
+/* ── phone: the podium becomes rows, the table becomes two lines (≤ 640) ── */
+
+@media (max-width: 640px) {
+  .lad-wrap.has-foot .lad-body { padding-bottom: calc(168px + env(safe-area-inset-bottom)); }
+  .lad-top { align-items: flex-start; flex-direction: column; gap: var(--s4); margin-bottom: var(--s5); }
+  .lad-seg { margin-bottom: 0; align-self: stretch; overflow-x: auto; }
+  .lad-seg > button { flex: 1; padding: 0 10px; letter-spacing: .12em; }
+
+  /* Two hundred pixels of card each meant a player scrolled past three cards
+     to reach the ladder. The top three keep their medals and their glass and
+     lose everything a phone cannot spare: they are rows now, like the rest,
+     and the standings start on the first screen. */
+  .podium { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  /* THE STONE STANDS BESIDE THE FACE, NOT ON IT. On a phone the medal used to
+     be pinned to the disc's lower-left corner, across the shoulder of whatever
+     the disc was showing. It gets its own narrow column at the head of the
+     row: eighteen pixels of it, and the creature is whole. */
+  .podium { grid-template-columns: minmax(0, 1fr); }
+  .pod {
+    --mark: 40px;
+    min-height: 68px;
+    grid-template-columns: 18px 40px minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    grid-template-areas: "crest mark ident stats";
+    align-items: center; column-gap: 10px; row-gap: 0;
+    padding: 12px 14px; border-radius: var(--r-card);
+  }
+  .pod-crest { flex-direction: column; gap: 2px; min-height: 0; }
+  .pod-crest .gem { width: 18px; height: 23px; }
+  .pod-place { font-size: 9px; letter-spacing: .04em; color: var(--muted); }
+  /* `.pod.p1` outranks `.pod`, so first place keeps its desktop mark unless it
+     is told otherwise here — and a 112px disc in a 68px row swallows the name.
+     It keeps the lead a phone has room for: four pixels of disc, two of type
+     and a taller row. */
+  .pod.p1 {
+    --mark: 46px; min-height: 78px; padding: 13px 14px;
+    grid-template-columns: 18px 46px minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+  }
+  .pod:hover { transform: none; }
+  .pod-id .lad-mark, .pod.p1 .lad-mark { --mono: 11px; }
+  .pod.p1 .pod-crest .gem { width: 20px; height: 25px; }
+  .pod.p1 .pod-place { font-size: 9.5px; }
+  .pod-ident { gap: 3px; }
+  .pod-name { font-size: 14px; font-weight: 600; letter-spacing: .08em; -webkit-line-clamp: 1; }
+  .pod.p1 .pod-name { font-size: 16px; letter-spacing: .07em; }
+  .pod-line { gap: 8px; min-height: 0; }
+  .pod.p1 .pod-line { min-height: 0; }
+  .pod-mind { display: none; }
+  .pod-meta { margin-top: 0; }
+  /*
+   * THE RECORD LINE STOPS BEFORE THE RATING COLUMN.
+   *
+   * `ident` and `stats` are two grid areas ten pixels apart and nothing was
+   * keeping the text inside its own: `2,682 – 806 RECORD · 76% WIN RATE` ended
+   * flush against `RATING`, three pixels of overlap that a five-digit record or
+   * a wider locale turns into a collision. Twelve pixels of gutter belong to
+   * the number column, the identity block may shrink, and the name clips with
+   * an ellipsis rather than crossing anything.
+   *
+   * The meta line still WRAPS between the mind and the numbers — it must. Held
+   * on one line it shrinks the mind instead, and `AIRENA REFERENCE` in a
+   * ten-pixel box becomes a column of single letters sixteen lines deep.
+   */
+  .pod-ident, .pod-line, .pod-meta { min-width: 0; }
+  .pod-name { overflow: hidden; text-overflow: ellipsis; }
+  .pod-meta .lad-meta-mind { min-width: 0; }
+  /* And the record itself goes. `2,725 – 818 RECORD · 76% WIN RATE` is a
+     hundred and ninety-five pixels of type in a hundred and seventy-eight
+     pixel column, which is the overrun by arithmetic rather than by accident.
+     The record is the column this file already drops first — at 1180 in the
+     table, at 860 in the podium's own tiles — so it is the one that goes here
+     too, and the two facts left both keep their words. */
+  .pod-meta .lad-meta-stats > span:first-child,
+  .pod-meta .lad-meta-stats > .lad-dot { display: none; }
+  .pod-stats {
+    grid-area: stats; margin: 0; padding: 0 0 0 12px; border-top: 0; text-align: right;
+  }
+  .pod-stats .pod-stat + .pod-stat { display: none; }
+  /* The caption stays. A phone that drops every column header leaves the
+     podium showing `1,693` with no word for it anywhere on the screen, and a
+     first-time player has nothing to call the number they came for. */
+  .pod-stats .pod-stat .k { display: block; margin-top: 3px; font-size: 8.5px; letter-spacing: .14em; }
+  .pod-stats .pod-stat .v { font-size: 14px; }
+
+  /* the rank rides on the mark's shoulder: 48px of table width back */
+  .lad .row { padding: 11px 14px; }
+  .lad-mark { width: 40px; height: 40px; --mono: 11px; }
+  .lad-id { width: 40px; height: 40px; gap: 0; flex: 0 0 40px; }
+  .lad-rank, .prize-id .rank-badge {
+    position: absolute; left: -5px; bottom: -5px; top: auto; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: auto; min-width: 20px; height: 18px; padding: 0 5px; flex: 0 0 auto;
+    border-radius: var(--r-pill); font-size: 9px; letter-spacing: .04em;
+    box-shadow: 0 2px 8px var(--shade);
+  }
+  .lad-rank { background: var(--glass-strong); border: 1px solid var(--glass-line); }
+
+  /*
+   * THE HEADER SURVIVES THE PHONE.
+   *
+   * It used to be dropped whole, and the standings then showed `1,693` and
+   * `2,451 – 745 · 75%` with no word for any of them. Three of its seven cells
+   * go with their columns; the three that are left land on the three columns
+   * that remain, and the first is only hidden — the mark's column is labelled
+   * by the badge riding on it, not by a caption over it.
+   */
+  .lad-grid.lad-head, .prize-grid.lad-head { display: grid; padding: 0 15px 7px; }
+  .lad-grid.lad-head > :first-child, .prize-grid.lad-head > :first-child { visibility: hidden; }
+  .lad-head .k { font-size: 9.5px; }
+  .lad-grid { grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--s3); }
+  .lad-mind, .lad-record, .lad-wr, .lad-go { display: none; }
+  .lad-meta { display: flex; }
+  /* A name that will not fit takes a second line. It is never cut: `CLAU…`
+     names nothing, and the mind is the one field this row exists to carry. */
+  .lad-meta .mind { white-space: normal; }
+  .lad-meta .mind .mind-name { white-space: normal; overflow-wrap: anywhere; }
+  .lad-rating { font-size: 14px; }
+  .lad-label { margin: var(--s5) 0 var(--s2); }
+  .lad-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lad-tiles .tile:last-child { grid-column: 1 / -1; }
+  .lad-tiles .tile { padding: 14px 16px 12px; }
+  .lad-tiles .tile .v { font-size: 24px; }
+
+  .mind-grid { grid-template-columns: minmax(0, 1fr) 50px 60px; gap: 10px; }
+  .lad-head { padding: 0 15px 8px; }
+  .lad-head .k { letter-spacing: .1em; }
+  .mind-count, .mind-fights { display: none; }
+  /* `GLM 5.3 FLASH · QUICK` and `· DEEP` are two different minds, so the mode
+     cannot be dropped — it moves to its own line under the name, and it goes
+     there as a WORD: the badge's leading middot would arrive at the head of a
+     line with nothing on its left to separate. */
+  .mind-cell { gap: 3px; }
+  /* The name, the mode and the sample size become one column of type, indented
+     past the mark so the three lines share a left edge instead of stepping. */
+  .mind-line { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; width: 100%; justify-items: start; }
+  .mind-line .chip.lad-base { margin-left: 28px; }
+  .mind-line .lad-mode::before { content: none; }
+  .mind-line .lad-mode { padding-left: 28px; font-size: 9.5px; letter-spacing: .18em; color: var(--stone); }
+  .mind-sample { padding-left: 28px; }
+  /* the bar's room is the sample line's room; on a phone the numbers win */
+  .mind-bar { display: none; }
+  .mind-sample { display: flex; }
+  .mind-cell .mind {
+    display: grid; grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 8px; align-items: center; width: 100%;
+  }
+  .mind-cell .mind .mind-mark { grid-column: 1; grid-row: 1; }
+  .mind-cell .mind .mind-name { grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+  .prize-grid { grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--s3); }
+  .prize-id { width: 40px; height: 40px; gap: 0; }
+  .prize-grid .lad-mind { display: none; }
+  .prize-grid .lad-rating { display: none; }
+
+  .lad-foot {
+    gap: 10px 12px; padding: 12px 12px 12px 16px; border-radius: var(--r-panel);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank   name  view"
+      "rating delta view";
+  }
+  .f-rank { grid-area: rank; flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.1; }
+  .f-rank .f-word { font-size: 8.5px; letter-spacing: .14em; }
+  .f-name { grid-area: name; align-self: center; }
+  .f-rating { grid-area: rating; }
+  /*
+   * IT SHRINKS; IT DOES NOT GET CUT.
+   *
+   * `↑ 37 UP SINCE LAST VISI` — the final T clipped by the VIEW button, with no
+   * ellipsis, because the line is a row of separate nodes and `text-overflow`
+   * has no single text node to trim. The one sentence that tells a player they
+   * are climbing cannot end mid-letter, so the word gives up tracking and half
+   * a pixel of size and the whole of it fits.
+   */
+  .f-delta { grid-area: delta; min-width: 0; }
+  .f-delta .f-word { font-size: 8.5px; letter-spacing: .06em; }
+  .f-view { grid-area: view; align-self: center; }
+  /*
+   * THE UNIT SURVIVES THE PHONE.
+   *
+   * `MMR` used to be dropped here for width, which left a bare `1,593` under
+   * `#3 ARENA RANK` — two numbers in one pill, one of them unnamed, while the
+   * chrome chip six centimetres above wrote `1,593 MMR` for the same figure.
+   * The word costs twenty-six pixels of a row that had them.
+   */
+  .f-rating .f-word { font-size: 8.5px; letter-spacing: .12em; }
+  .f-rating { gap: 6px; }
+}
+
+@media (max-width: 420px) {
+  .lad-seg > button { font-size: 10px; letter-spacing: .08em; padding: 0 6px; }
+  .f-delta { font-size: 9.5px; letter-spacing: .1em; }
+  .f-delta .f-word { font-size: 8px; letter-spacing: .04em; }
+  .lad-line .name { font-size: 13px; }
+  .lad-meta { gap: 3px 10px; }
+  .lad-cap { margin-left: 4px; font-size: 8px; letter-spacing: .1em; }
+}

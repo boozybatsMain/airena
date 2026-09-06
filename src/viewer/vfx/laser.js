@@ -352,7 +352,13 @@ function crossSection(P, d, u) {
  * что утопила накал заряда — см. `roundMat`).
  */
 function barMat(P, key) {
-  return pooled(`laser:${key}:${hex(P)}`, () => {
+  /* Пространство имён у КАЖДОГО семейства своё (`laser:bar:…` против
+     `laser:round:…`): шаблон ключа у прутьев и у круглых тел совпадал слово в
+     слово, и пересечение имён форм разводило по одному кольцу два разных
+     материала. Сегодня имена не пересекаются («beam», «bar» против «spot»,
+     «bolt», «orb») — то есть цена ошибки уже уплачена дважды (см. довод выше
+     и у `roundMat`) и ждала третьего имени. */
+  return pooled(`laser:bar:${key}:${hex(P)}`, () => {
     const m = new THREE.MeshBasicNodeMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending,
     });
@@ -461,7 +467,8 @@ function barrel(P, a, b, width, prof, key = 'beam') {
  * рисовался вовсе. В бою это был замах, который иногда исчезает.
  */
 function roundMat(P, key, tail) {
-  return pooled(`laser:${key}:${hex(P)}`, () => {
+  /* Своё пространство имён — довод у `barMat`. */
+  return pooled(`laser:round:${key}:${hex(P)}`, () => {
     const m = new THREE.MeshBasicNodeMaterial({
       transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.NormalBlending,
     });
@@ -594,7 +601,18 @@ function meltFoot(ctx, x, z, S) {
  * Числа в `THREE.Color(r, g, b)` — ЛИНЕЙНЫЕ (рабочее пространство), поэтому
  * калёный оранжевый записан прямо, а не через hex.
  */
-const MELT_WARM = new THREE.Color(1.0, 0.52, 0.05);
+/*
+ * ГРАДУИРОВКА ПОД МИР (ARENA-AAA, 06.09). Было `(1.0, 0.52, 0.05)` — на
+ * экране #FFBF3F: Lab C* 70 при насыщенности 75 %, то есть ЯНТАРЬ ГРОМЧЕ
+ * КОРАЛЛОВОГО БАННЕРА (C* 64, на кадре 47 %) — второй акцент, которого
+ * ARENA-BRIEF §5 запрещает по имени, да ещё и в красной стихии, где жёлтого
+ * быть не должно вовсе. Теперь #E0C590: тот же оттенок (h 40), цветность
+ * прижата к полке палитры (C* 30, насыщенность 36 %), светлота сохранена
+ * (L* 81), — калёный, но не крашеный.
+ * Условие выше держится с запасом: `tint.g − tint.b` = 0.28 при пороге
+ * 0.067, так что обод по-прежнему не уйдёт в розово-лиловое.
+ */
+const MELT_WARM = new THREE.Color(0.74, 0.56, 0.28);
 const meltTint = (P) => P[1].clone().lerp(P[2], 0.25).lerp(MELT_WARM, 0.35);
 
 /* ── расплав: горячая середина прожига (урок 10) ─────────────────────────── */

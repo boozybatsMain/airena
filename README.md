@@ -65,7 +65,7 @@ packages/      forge — the body instruction, compiled from TypeScript in memor
 forge/         bodies written during lab runs, kept as evidence rather than as art
 bodies/        gorilla.js, octopus.js — finished art, build(THREE, TSL)
 brains/        one directory per generation; each .js has a .json beside it
-tools/         arena · bake · balance · bench · bodyinstall · bracket · brainforge ·
+tools/         anglicize · arena · bake · balance · bench · bodyinstall · bracket · brainforge ·
                cablecheck · checkbehaviour · checkbody · checkboot · checkdocs ·
                checkforgebody · checkframing · checkgrammar · checkisolate ·
                checkkits · checkpose · checkprompt · checkscope · checkselectors ·
@@ -74,15 +74,16 @@ tools/         arena · bake · balance · bench · bodyinstall · bracket · br
                checkfaults ·
                checkfacade · checkforge · checkgauntlet · checkladder ·
                checklayout · checkmodels · checkprices · checkscreens ·
-               checkspec · checkstages · checkvfx ·
+               arenashot · checkspec · checkstages · checkvfx · devrestart ·
                gauntletfield · gauntletpick ·
                gauntlet ·
                kitbalance · lane-cli · loadtest · matchpool ·
                matchworker ·
                nanscan · orbrain · plan · report · retire · seed · seedlive ·
-               seedelements · seedforge · seedvfx · sizebalance · suite · test ·
+               seedelements · seedforge · seedicons · seedvfx · shots · sizebalance ·
+               suite · test ·
                vfxclean · vfxsheet ·
-               tournament · vfxshot · visibility (runs/ — разовые прогоны)
+               tournament · vfxshot · visibility (runs/ — one-off runs)
 docs/          shots/ (visual evidence) · EXPERIMENT.md (the results) · DECISIONS.md (what the spec left open,
                and why each was decided that way) · SCREENS.md (the screen build order) ·
                the look brief in `docs/` (what the founder asked of the look, and
@@ -138,7 +139,7 @@ have broken it while looking like a security improvement.
 
 | | |
 |---|---|
-| `npm test` | the gate list in `tools/suite.mjs`, in order; on failure it names the gate and prints the exact command to repeat it. Not every gate in the table below is in it, and the ones that are not say so in their own row: two need a browser with a visible window (`checklayout`, and the frame count), and `bracket` needs two populations copied into `brains/` first |
+| `npm test` | the gate list in `tools/suite.mjs`, in order. Every gate runs — a red one costs its own line and not the twenty-five behind it — and the summary at the end names each gate, its seconds and its exit code, with the failures repeated underneath as commands to paste. `--bail` stops at the first failure, `--only=` runs named gates, `--list` prints the list, and `--log=<file>` writes the same wall to disk under a header naming the commit, the uncommitted files, the node and the stand's database — so a red line in a shipped log can be attributed to the code or to the stand instead of guessed at. Not every gate in the table below is in it, and the ones that are not say so in their own row: `checklayout` reads a capture run's own measurements and `shots` takes them, so both need a running server and a headless browser, and `bracket` needs two populations copied into `brains/` first |
 | `node tools/test.mjs` | 34 invariants — determinism, collision, sandbox, wire |
 | `node tools/checkprompt.mjs` | the prompt and the config still agree — and it runs the tactics judge |
 | `node tools/checkbehaviour.mjs` | the world does what the prompt says: every reach, cone and timing, measured |
@@ -152,14 +153,14 @@ have broken it while looking like a security improvement.
 | `node tools/checkstale.mjs` | which populations were written against constants that have since moved |
 | `node tools/checkframing.mjs` | replays seeded matches through the viewer's own camera solve, headless, and fails if a live fighter ever leaves the frame |
 | `node tools/checkcamera.mjs` | framing proves a fighter is IN the shot, which is a different question from whether the shot is pleasant. A camera can hold both fighters perfectly and still lurch. This reads the same replay dump the framing gate produces and takes the second difference of the camera's own state — dolly, height, azimuth — because jerk is what the eye reads as a jolt. It judges the ninety-ninth percentile and prints the tail without judging it: the tail belongs to the game, not the camera, since a blink moves a fighter most of a shot-width in one tick and the eye has to answer in that same frame or lose him. It is what caught the azimuth having no speed limit at all |
-| `node tools/checkcontrast.mjs` | "make it light" is not six numbers changed. The palette was chosen against a dark page, and secondary text that reads at seven to one on near-black becomes grey on pale grey — a break invisible in the screenshot of whoever made it, because the eye fills in text it already knows. So the pairs are checked against WCAG AA — the ordinary ratio for body text, the relaxed one for the large display type — with the tokens read out of `kit.css` rather than copied. The two fighter colours are also checked against each other, at the same ΔE threshold the skill elements already use |
-| `node tools/checklayout.mjs` | the fight HUD is three absolutely positioned blocks — fighter cards pinned to the edges, clock and byline centred — and none of the three knows about the others, so "it fits" is a property of the window width rather than of the stylesheet. On a wide screen nothing overlaps, which is why nobody sees it on a work laptop; a step narrower the byline sat on a cooldown tile and the model id sat on the clock, both measured by comparing rectangles rather than by looking. This file carries the probe and the widths, and says plainly that it needs a real browser: the engine computes layout, and no amount of reading CSS can stand in for it |
+| `node tools/checkcontrast.mjs` | "make it light" is not six numbers changed. The palette was chosen against a dark page, and secondary text that reads at seven to one on near-black becomes grey on pale grey — a break invisible in the screenshot of whoever made it, because the eye fills in text it already knows. So the pairs are checked against WCAG AA — the ordinary ratio for body text, the relaxed one for the large display type — with the tokens read out of `ui/tokens.css` rather than copied. The two fighter colours are also checked against each other, at the same ΔE threshold the skill elements already use |
+| `node tools/checklayout.mjs --shots=reports/screens/ui` | the fight HUD is three absolutely positioned blocks — fighter cards pinned to the edges, clock and byline centred — and none of the three knows about the others, so "it fits" is a property of the window width rather than of the stylesheet. On a wide screen nothing overlaps, which is why nobody sees it on a work laptop; a step narrower the byline sat on a cooldown tile and the model id sat on the clock, both measured by comparing rectangles rather than by looking. It carries the probe; it used to demand that somebody run it by hand at six widths and paste the answers back, which is a chore nobody does twice — so it was permanently red and the middle width went unevidenced through three review rounds. It now reads the JSON `shots` already writes beside every picture, and judges what it does not find as well as what it does: a capture set missing one of the three widths the redesign accepts the product at fails, because two out of three reads exactly like a pass |
 | `node tools/checkisolate.mjs` | every escape attempt in the file, run against the sandbox, plus the controls: an honest brain and every reference brain in `brains/` must still pass — and the same match, run both ways, must produce the same log |
 | `npm run build` (`node tools/build.mjs`) | copies the player's real bundle into `dist/` — the same walk from `index.html` that `checkscope` audits, so the two cannot disagree about what a bundle is. There is no bundler: three.js already ships built, and the load order in `index.html` is hand-tuned against F6 with a reason on every line. `--api=https://host` bakes the backend's address into the page for a client served by someone else; `--verbose` lists every file, and it refuses to finish if a reference leads nowhere or the bundle passes A6's two hundred files |
 | `node tools/backup.mjs` | a snapshot of the live database through `VACUUM INTO`, with rotation. Not `cp`: the database runs in WAL mode, so the newest pages are in the sidecar file and a plain copy comes out either short of the last matches or corrupt — which you find out on the day you needed the backup. Measured on the working database: seven hundred megabytes in four seconds, `integrity_check` clean, server still playing |
 | `node tools/checkimage.mjs` | the container carries everything the server reaches for on disk. Not a list — a derivation: it pulls every `join(ROOT, …)` out of the server's own sources and checks the Dockerfile copies that directory. It exists because a list drifts, and this one did: `packages/` — where the body grammar lives — was never copied, so every creature was born wearing a stock body while the job closed as a success and the money was spent. The failure was silent by design (a creature is born even when its body fails), so nothing red ever appeared; the only trace was one telemetry row, after the fact |
 | `node tools/checkidentity.mjs` | A4's gate, and it is about forgery rather than about logging in. A live platform token passes through a leaky implementation just as happily as through a sound one — to see the hole you have to bring a forgery, and nobody brings one by accident. So this brings fourteen, each one a way JWTs are actually broken: `alg: none`, the scheme swapped to HMAC so the public key becomes the secret, a body rewritten after signing, a foreign key under our `kid`, a ticket passed off as a session, an expired token, a token minted for somebody else's game. It signs them with its own Ed25519 pair against its own key set on localhost, so it measures our check rather than the platform's uptime. Then it boots a real production server and repeats the same forgeries against `/api/session/claim` — the module can be perfect while the route forgets to await it, and that failure is invisible from the module's side |
-| `node tools/checkscope.mjs` | walks the player's real bundle from `index.html` and fails on a price, a purchase word, the word "токен", a bet, sound, or any path to a brain source |
+| `node tools/checkscope.mjs` | walks the player's real bundle from `index.html` — and the server files that write copy — and fails on a price, a purchase word, a bet, sound, any path to a brain source, and on the vocabulary the redesign banned: the playground words (*token*, *kit*, *skill*, *model*), Cyrillic anywhere a player can read it, the glossary's one-word-per-thing rule (a bout is a *fight*, the daily allowance counts *generations*, creatures made by players are *player creatures*), and American spelling. Every rule carries the strings it must catch and the strings it must let through, checked before the bundle is read: three times now a rule has gone green over the defect it was written for — twice by being narrowed to quiet a false positive, once by being left in Russian while the product moved to English — and a fixture that fails stops the gate with "fix the rule, not the fixture" |
 | `node tools/loadtest.mjs` | an hour of arrivals, each on a fresh account so the per-account limits never help, must not breach the daily budget — and it prints what the same hour costs with the fuses removed |
 | `node tools/seed.mjs` | stock the ladder from every population whose constants are current, and measure which (brain, side) pairs are weak enough to spar a newcomer |
 | `node tools/kitbalance.mjs` | balance of the §8 kits, measured with **one hand-written brain on both sides** so the pilot cancels out and the numbers are about the kit. `--atoms` and `--deliveries` isolate one axis at a time |
@@ -300,6 +301,67 @@ takes the WebGL2 path instead of WebGPU. `?shots=1&n=12&oct=u1&gor=u2` writes a
 match between two named tags to `reports/screens/` as PNGs; `oct` and `gor` are
 read in that capture mode only, because everywhere else the dropdowns own the
 choice.
+
+Every named screen state in `docs/REDESIGN.md` can be captured at once:
+`node tools/shots.mjs --base=<url> --out=reports/screens/ui` opens each one in
+headless Chrome and writes it as a PNG at each of the three widths §12 accepts
+the product at: 1440×900 as `<state>.png`, 1280×720 as `<state>-w.png` and
+390×844 as `<state>-m.png`. The middle one is the one that matters and the one
+nobody looks at — at the widest nothing in the HUD touches, at the phone width
+the layout has already collapsed into its own arrangement, and the collision
+lives in the band between them, which is also the commonest laptop a player
+owns. Beside every picture it writes a JSON carrying that page's console errors
+and two different measurements of the one thing a screenshot cannot show — text
+that cannot be read. The first is arithmetic: the pairs of text rectangles that
+intersect. The second asks the browser, because the collision a phone-width
+screen actually produces is not two captions sharing a pixel but a panel landing
+on a line — translucent glass over a word that is still there, still measured
+and completely invisible, which no pairwise test can see. So every text node in
+the four text-bearing layers is hit-tested at its centre and at both ends, the
+stack the browser hands back is walked down to the word, and the first solid
+thing standing above it is reported by name. Either kind of collision fails the
+run, as a console error does, and `node tools/checklayout.mjs --shots=<dir>`
+reads the same numbers back as the gate for that acceptance criterion.
+
+A state may also name the one structural fact that would prove the screen
+understood it — `body[data-sim]` carrying the id it was asked for, the
+four-minute line standing in the birth notes. A `?ui=` id a screen does not
+recognise is not an error: the screen draws its ordinary self, the page is
+clean, both probes are green, and the file is written under the name of the
+state that is missing. That is a picture indistinguishable from evidence at a
+glance, which is the one thing this directory may not contain, so a state whose
+fixture is absent is stamped and fails the run like any other.
+
+Before capturing, it hands the browser's own guest session a creature, so the
+specimen, career and ladder screens are shot with real rows instead of empty
+states; `--db=` names the database that write goes through, `--only=` narrows
+the run to named states or to a whole chapter, and `--no-mobile` / `--no-laptop`
+drop a width when a round only needs one. Six states give that session back and
+are photographed as a stranger sees them — the arena a visitor lands on, the
+Create screen they meet before their first creature, the generation that did not
+come together, and the two empty pages that send them back — because those are
+exactly the screens the claim above would otherwise cover over.
+
+Whose session a state wants is then asserted, not assumed: the page is asked
+`/api/session` back before every shot, and a state that wants the owner and
+finds a visitor re-writes the token and re-runs the claim — a second capture
+run on the same stand takes the row — before it gives up. Giving up stamps the
+reason across the top of the picture in red, writes it into that state's JSON,
+prints the state id in red and fails the run. A capture that quietly
+photographs the wrong identity is worse than no capture, because at a glance it
+is indistinguishable from the real thing. The run is ordered as the journey it
+captures, and prints its chapters as headings: the first hour, making a
+creature, the fight, the record, the edges.
+
+And it stamps itself. `run.json` lands beside the pictures on every run, green
+or red, carrying the commit the tree was on, how many files were uncommitted,
+the database the claim and the replay came out of with its size and mtime, the
+node, the seconds the run took and one row per capture. `node tools/suite.mjs
+--log=<file>` writes the same kind of header above the gate wall. Both exist
+because a review round was handed a `gates.log` with one red line in it and no
+way to tell whether the code or the stand's database had been broken at the time
+— evidence that cannot be dated is not evidence, and attributing a red line
+wrongly is how a real failure gets waved through the next time.
 
 ---
 

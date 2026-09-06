@@ -58,7 +58,7 @@ ok('в каталоге только разрешённые семьи',
 ok('обе разрешённые семьи в каталоге есть', ids.length === ALLOWED.length,
   `${ids.length} из ${ALLOWED.length}`);
 ok('дорогие семьи отвергнуты с причиной',
-  cat.rejected.some((r) => /claude-opus/.test(r.bundle) && /разрешённых/.test(r.why)),
+  cat.rejected.some((r) => /claude-opus/.test(r.bundle) && /allow list|разрешённых/.test(r.why)),
   cat.rejected.find((r) => /claude-opus/.test(r.bundle))?.why || 'нет записи об отказе');
 /*
  * Haiku в каталоге нет — но проверять надо ФАКТ, а не путь.

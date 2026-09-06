@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Airena — arena stand</title>
+<!--
+  THE ARENA STAND, a dev page.
+
+  The arena is judged as a finished picture (reports/arena/RENDER-QUALITY.md),
+  and a picture needs a place to be looked at without a match running. This
+  page builds `src/viewer/environment.js` exactly as `main.js` will, stands the
+  two stock bodies in it, draws two telegraph rings, and runs the post graph
+  the founder asked for — AO, tone map, vignette, antialiasing — so every
+  setting can be photographed from fixed cameras and compared against the
+  concept renders.
+
+    ?cam=game|melee|near|counter|far          the GAME's cameras (main.js's orbit:
+                                              az π/4 at dist 30 / 20 / 13, az 3π/4
+                                              into the key, az 0 at dist 34)
+    ?cam=default|high|low|vs|world             the brief's own comparisons and the
+                                              AAA world framing (`world`)
+                                              (`low` and `vs` both swing 7–13°
+                                              toward +x so the planet lands in
+                                              the upper-right third)
+    ?quality=high|medium|low                  tier (low is forced on WebGL2)
+    ?webgl=1                                  the WebGL2 fallback, on purpose
+    ?fade=1                                   the SOLIDS fade beyond the play rule (block d 0.35);
+                                              the near wall fades by the rule whenever it hides
+                                              ≥ 1.5 m of floor (?wallrule=0 to switch that off)
+    ?ghost=1                                  a fighter's ring hidden by unfaded cover is drawn
+                                              over the cover (the port's ring rule)
+    ?jitter=0.37                              offset the projection by that many pixels
+                                              (a shimmer pair with the unjittered capture)
+    ?auto=1                                   tick the quality governor (demotes on measured fps)
+    ?heat=0..1                                sudden death
+    ?glow=1                                   the game's MRT (bloomIntensity, distort)
+                                              with the rings glow-marked, so the
+                                              reflector × MRT path is photographed
+    ?shadow=vsm|pcf|pcfsoft                   shadow filter (default: the rig's)
+    ?dpr=1|2                                  pixel ratio override
+    ?hud=1                                    backend / fps / tier readout
+    ?ao=0|2, ?aor= ?aos= ?aot= ?aof= ?aospp=   AO off / AO term alone; radius, scale,
+    ?dnr= ?aores= ?denoise=0                  thickness, floor, samples; denoise radius,
+                                              AO resolution, denoise off (diagnostics)
+    ?key=RRGGBB, ?plaza=RRGGBB                calibration: override the key's colour and
+                                              the plaza's albedo for one capture
+
+  Served by the dev server at /viewer/arena.html, and by `tools/arenashot.mjs`
+  standing in for it. Not in the product bundle.
+
+  Hooks for the capture tool: `window.__arenaReady` once frames are stable,
+  `window.__arenaStats = { backend, fps, msPerFrame, tier, cam, gpuErrors }`,
+  `window.__arenaProbe([{ name, x, y, z }])` → sRGB of the rendered pixel
+  under a world point, for calibrating the grade against the brief's hexes
+  (`{ name, u, v }` reads a point of the FRAME instead, and
+  `{ name, obj, k, ky }` a named object at k of its own projected radius
+  along screen x and ky down screen y — the planet's core, its limb and the
+  sky beside it, whatever camera and wherever the disc hangs),
+  `window.__arenaBanners()` → every banner's top/bottom as a fraction of frame
+  height through EVERY camera preset (published in `__arenaStats.banners`, so
+  a banner that floats or is cut is caught by the capture and not by an eye),
+  and `window.__arenaJitter(px)` → the mean |Δ| in 8-bit codes between a frame
+  and the same frame projected `px` pixels to the right, over the plaza and
+  the floor: the number for "no shimmer on the grid".
+-->
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.webgpu.js",
+  "three/webgpu": "/vendor/three.webgpu.js",
+  "three/tsl": "/vendor/three.tsl.js",
+  "three/addons/": "/vendor-addons/"
+} }
+</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #E6DCD1; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 14px; top: 12px; z-index: 5; display: none;
+    font: 11px/1.6 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase;
+    color: #6B5F55; white-space: pre; pointer-events: none; }
+  #err { position: fixed; left: 14px; bottom: 12px; z-index: 5; display: none;
+    font: 12px/1.5 ui-monospace, monospace; color: #B3261E; white-space: pre-wrap; max-width: 70vw; }
+  /* No DOM vignette. The page's vignette is in the post graph, and it is a
+     WASH, not a darkening (see `VIGNETTE` below); the port deletes main.js's
+     radial-gradient element with it. */
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<div id="err"></div>
+<script type="module">
+import * as THREE from 'three';
+import * as TSL from 'three/tsl';
+import { buildBody } from './loadbody.js';
+import { bakeStatic } from './bake.js';
+import { buildEnvironment, preTone, srgbToLin, RIG, REFLECT_LAYER, qualityGovernor } from './environment.js';
+import { markGlow, setGlowEnabled } from './vfx/core.js';
+
+const p = new URLSearchParams(location.search);
+const hud = document.getElementById('hud');
+const errEl = document.getElementById('err');
+const fail = (m) => { errEl.style.display = 'block'; errEl.textContent += `${m}\n`; console.error(m); };
+if (p.get('hud') === '1') hud.style.display = 'block';
+
+/* The exposure the whole frame is graded at. The environment's unlit colours
+   are inverted through this same number, so it is set once, here. */
+const EXPOSURE = Number(p.get('exposure') || 1.0);
+/* The vignette is a WASH toward `--sky-2` (#F4EEE8), not a darkening. The
+   built HUD (hud.css `#hud::before/::after`) dims the top 440 px and the
+   bottom 380 px by washing toward rgba(244,238,232) at .84/.9, and c1's edges
+   go lighter into haze; a darkening vignette under that wash cancelled at the
+   top and bottom and survived at the left and right flanks — a soft bow-tie
+   of darker edges nothing else on the site has, with the darkest non-fighter
+   ink of the frame along the nav rail's column. `VIGNETTE` is the wash at the
+   far corner (the ramp starts a third of the way out, so the centre is
+   untouched): 0.4 puts a plaza corner ~1 L over the plaza, a shaded pit face
+   at the edge ~5 L lighter, and fighters at the edge keep their contrast
+   against a lighter ground. */
+const VIGNETTE = Number(p.get('vignette') || 0.4);
+
+// ── renderer ──────────────────────────────────────────────────────────────
+
+const forceWebGL = p.get('webgl') === '1';
+let renderer;
+let backend;
+try {
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL });
+  await renderer.init();
+  backend = forceWebGL ? 'webgl2 (forced)' : 'webgpu';
+} catch (e) {
+  fail(`WebGPU unavailable (${e.message}) — falling back to WebGL2`);
+  renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: true });
+  await renderer.init();
+  backend = 'webgl2 (fallback)';
+}
+const isWebGL = !!renderer.backend?.isWebGLBackend;
+/* Device-level GPU errors are not console errors: a WGSL module that fails
+   validation (the reflector × MRT case) drops its command buffer silently.
+   They are collected here so the capture can see them. */
+const gpuErrors = [];
+try {
+  renderer.backend.device?.addEventListener('uncapturederror', (e) => {
+    gpuErrors.push(String(e.error?.message || 'gpu error').slice(0, 300));
+  });
+} catch { /* WebGL2 has no device */ }
+const DPR = p.has('dpr') ? Number(p.get('dpr')) : Math.min(devicePixelRatio, 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = EXPOSURE;
+document.body.appendChild(renderer.domElement);
+
+/* The tier. WebGL2 never gets AO or the reflection: 'low' is what it is for. */
+const wanted = p.get('quality') || 'high';
+const tier = isWebGL ? 'low' : (['high', 'medium', 'low'].includes(wanted) ? wanted : 'high');
+
+// ── scene + environment ───────────────────────────────────────────────────
+
+const cfg = await (await fetch('/api/config')).json();
+const HALF = cfg.arena.half;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.3, 400);
+
+const env = buildEnvironment(THREE, TSL, {
+  scene, renderer, camera, cfg,
+  half: HALF, wallHeight: cfg.arena.wallHeight, obstacles: cfg.arena.obstacles,
+  quality: tier, exposure: EXPOSURE,
+  shadowType: p.get('shadow') || RIG.shadowType,
+});
+
+/* Where the two stand-in fighters stand. The octopus where the task put it;
+   the gorilla moved from (7, −3) to (9, −7) so it clears block b from the boot
+   camera and a judgement frame shows both bodies. */
+const BLUE = { x: -6, z: 4 }, ORANGE = { x: 9, z: -7 };
+const MID = { x: (BLUE.x + ORANGE.x) / 2, z: (BLUE.z + ORANGE.z) / 2 };
+
+/* Camera presets. The first five are main.js's fight camera (`camState`:
+   the eye at look + (sin az · dist, height, cos az · dist), height =
+   2.8 + dist · 0.42 with no cover, aimed 0.4 m over the pair's midpoint):
+   `game` is the anchor azimuth at the boot distance, `melee`/`near` the
+   clamped range, `counter` the one azimuth that looks into the key, `far` the
+   max distance with the horizon at the top edge. `default` is main.js's boot
+   camera; `high` is c4's near top-down; `low` the establishing shot the brief
+   asks for — 8 m over the plaza, 32 m out, at fov 56 (was 50: the
+   half-frame was 36.7° and the tier wings, at 33–37° off-axis, showed only
+   as two chips cut by the frame edges; at 40.4° both wings run in from the
+   flanks as stepped silhouettes and fade into the haze, and the planet
+   gains ~40 px of sky over it. NOT the 40 m the third review proposed: from
+   there the near wall hides 8.8 m of field, the wall rule ghosts it with its
+   8 m apron, and the bottom 40 % of the establishing frame became a
+   translucent slab of apron, cut faces and coping over the dome — at 32 m
+   the rule still fires (4.8 m) but the ghost is the bottom 40 px); `vs` a
+   low three-quarter for the VS card, close enough that the bodies outrank
+   the cover. The port's VS/intro/result framing takes `low`'s distance and
+   fov. */
+/* ROUND 7 RAISES THE AIM AND FLATTENS THE PITCH. At `look` y 0.4 and height
+   2.8 + 0.42·dist the eye sat 15.4 m up at dist 30 and looked 26.6° down, so
+   with a 23° half-frame the TOP of the picture was 3.6° BELOW the horizon:
+   everything the world is made of — the deck's roofline at 16.4 m, the
+   banners, the sky, the planet, the moon — was outside every fighting frame,
+   and the top 145 px of `stand-game.png` measured 12.9 L of corduroy. At
+   y 3.5 / 0.34 the eye is 13 m up and 17.6° down, the ceiling is +5.4°, and
+   the roofline plus ~60 px of sky are in play framing. `main.js`'s camera
+   solver carries the same two numbers and MUST be kept in step with these. */
+const orbit = (az, dist, cover = 0) => {
+  const height = 2.8 + dist * (0.34 + 0.20 * cover);
+  return { pos: [MID.x + Math.sin(az) * dist, height, MID.z + Math.cos(az) * dist], look: [MID.x, 3.5, MID.z], fov: 46 };
+};
+const CAMS = {
+  game: orbit(Math.PI / 4, 30),
+  melee: orbit(Math.PI / 4, 20),
+  near: orbit(Math.PI / 4, 13),
+  counter: orbit(Math.PI * 3 / 4, 30),
+  far: orbit(0, 34),
+  /* The boot camera, re-pitched with the orbit (round-7): at (0, 26, 34)
+     → (0, 1, 0) it looked 36.3° down, the whole bank/deck/banner layer was
+     47 px of the frame's height and both banners bled off the top edge with
+     no hanging point. At (0, 17, 38) → (0, 4, −6) it looks 16.4° down, the
+     ceiling is +6.6°, and the deck's fascia, the banners, the far gate and
+     the sky are all in the first frame the product ever shows. Mirrored in
+     `main.js` (the boot camera constant). */
+  default: { pos: [0, 17, 38], look: [0, 4, -6], fov: 46 },
+  high: { pos: [0, 46, 24], look: [0, 0, -1], fov: 42 },
+  /* `world` — the AAA framing (ARENA-AAA §2, `reports/arena/aaa/a2.jpg`):
+     33 m over the near stand, looking down the −z axis at 55°, so the full
+     ring, the cantilever, the banner rhythm, the gate, the skyline, the
+     planet and the moon are all in one picture with the field in the lower
+     middle. It is a JUDGEMENT frame, not a game camera: nothing in the port
+     uses it. */
+  world: { pos: [0, 33, 60], look: [0, 5, -14], fov: 55 },
+  /* `aaa` — the frame the founder's directive is actually measured on
+     (`reports/arena/aaa/a2.jpg`). `world` and `vs` both look DOWN into the
+     pit: the plaza and the field take 55–60 % of the frame and the whole
+     stadium is a band across the top third, so the richest thing the build
+     has was never photographed at its own geometry. a2's eye is at DECK
+     HEIGHT looking ACROSS the bowl. This one stands 0.4 m under the near
+     deck's soffit at 2.35·HALF on +z, pitched 5° down and yawed 8° right,
+     at a 60° lens: the ±x banks sweep in from both edges, the far bank and
+     its cantilever hold a band at 41–52 % of the frame height with the
+     banner rhythm hanging off it, the portal and the far pavilion sit just
+     left of centre, the field fills the lower third, and the planet
+     (x ≈ 1020) and the moon (x ≈ 1260) are both in the upper right with
+     the towers dissolving between them. A JUDGEMENT frame, like `world`:
+     nothing in the port uses it. */
+  aaa: { pos: [0, 14.2, 47], look: [13, 6.0, -46], fov: 60 },
+  /* `low` and `vs` both swing ~7–13° toward +x now. The planet sits 30° right
+     of −z (where no scripted camera can centre it — at 26° the vs camera's
+     own 37.6° azimuth put the disc at x 590 of 1440, dead centre of the top
+     edge, which is exactly where the brief says it must not be); from these
+     two azimuths it lands at x ≈ 1030–1080, the upper-right third c1 has it
+     in, with its lower limb behind the stand's roofline. `low` also gains a
+     metre of height and two of distance so the stand's deck line clears the
+     planet's bottom. */
+  low: { pos: [-3, cfg.arena.wallHeight + 9, 34], look: [4.5, 4.0, -10], fov: 56 },
+  /* `vs`: a low three-quarter at 7.5 m — high enough that the near wall hides
+     only 4.8 m of field (the wall rule ghosts it either way), low enough that
+     the stand's roofline and the banner pair flanking the −z portal fill the
+     upper third, and aimed 13° right of −z so the planet clears x 960. */
+  vs: { pos: [-4, 7.5, 25], look: [2.4, 3.2, -2], fov: 46 },
+};
+/* ?heat=0..1 previews sudden death: the floor and the haze go to ember. */
+if (p.has('heat')) env.applySuddenDeath(Number(p.get('heat')));
+/* Calibration switches, stand only: ?key=RRGGBB overrides RIG.keyColour and
+   ?plaza=RRGGBB the plaza's albedo (ring and apron strips), so the lit
+   ground's Lab a/b can be walked onto the site's axis in captures without
+   editing the module between shots. */
+if (p.has('key')) env.key.color.set(parseInt(p.get('key'), 16));
+if (p.has('plaza')) {
+  const c = parseInt(p.get('plaza'), 16);
+  env.group.getObjectByName('plaza')?.material.color.set(c);
+  for (const s of env.solids.slice(0, 4)) s.mats[1]?.color.set(c);
+}
+/* THE BANNER ESCAPE IS GONE (round-7). `?banner=0` and arenashot's `PLAY`
+   between them meant every canonical fight capture on disk carried no coral
+   at all — the world's one accent missing from the frames the product shows,
+   and every reviewer judging the fight on a picture with one hue in it. With
+   sixteen banners hung under the deck at ±9 and ±27 m off each axis, none on
+   a fighting axis, none floating and none cut, there is no case left for
+   switching them off. `main.js` still carries the matching rule
+   (`env.banner.visible = …`) and it should go the same way. */
+const camName = CAMS[p.get('cam')] ? p.get('cam') : 'default';
+{
+  const c = CAMS[camName];
+  camera.position.set(...c.pos);
+  camera.fov = c.fov;
+  camera.lookAt(...c.look);
+  camera.updateProjectionMatrix();
+}
+/* ?jitter=px projects the frame that many pixels to the right: a capture
+   pair (0 and 0.37) is the still-image test for sub-pixel crawl on the grid
+   hairlines and the coping as the game camera eases. */
+const JITTER = Number(p.get('jitter') || 0);
+const applyJitter = (px) => {
+  if (px) camera.setViewOffset(innerWidth, innerHeight, px, 0, innerWidth, innerHeight);
+  else camera.clearViewOffset();
+};
+applyJitter(JITTER);
+
+/* THE PLAY RULE for the walls (brief §2: "whichever wall is between camera
+   and FIELD fades to the coping"). `main.js`'s `updateOcclusion` fades a
+   solid only when it hides ≥ 2 of a fighter's 3 sample heights, and from the
+   boot and establishing cameras the near wall hides neither fighter — but it
+   hides the field's near strip, and its notch's two cut faces stood as the
+   darkest architecture in the frame at bottom-centre, where the VS card's
+   stats row sits. So, per wall: the eye's distance `d` outside that wall's
+   outer face, and the strip of floor the wall's top edge hides from an eye
+   at height `h` — WALL·d/(h − WALL) − 0.8 m of wall thickness; ≥ 1.5 m and
+   the wall (with its apron, coping and stair) goes to the fade value. From
+   the presets: default hides 1.6 m → fades; low 4.8 → fades; far 2.8 →
+   fades; game −0.1 (the eye is over the wall) → no; high −0.5 → no;
+   melee/near/counter/vs (the eye inside the field) → no. The port: the same
+   test in `updateOcclusion` after `o.want = 1`, on SOLIDS[0..3] → `o.want =
+   FADE_TO`; the existing 14/3.5 easing smooths it. */
+const WALL_H = cfg.arena.wallHeight, FADE_TO = 0.24;
+function wallHidesField(eye, s) {
+  const alongX = s.hx > s.hz;                           // the ±z walls run along x
+  const n = alongX ? Math.sign(s.z) : Math.sign(s.x);   // the wall's outward normal
+  const d = (alongX ? eye.z : eye.x) * n - (HALF + 0.8);
+  if (!(eye.y > WALL_H) || !(d > 0)) return 0;
+  return WALL_H * d / (eye.y - WALL_H) - 0.8;
+}
+if (p.get('wallrule') !== '0') {
+  for (const s of env.solids.slice(0, 4)) {
+    if (wallHidesField(camera.position, s) >= 1.5) for (const m of s.mats) m.opacity = FADE_TO;
+  }
+}
+/* ?fade=1 previews the rest of the SOLIDS fade main.js drives: the near (+z)
+   wall with its apron, coping and stair down to 0.24 whatever the rule says,
+   the near block (d) to 0.35 — the values the game uses when a solid stands
+   between the eye and a fighter. */
+if (p.get('fade') === '1') {
+  for (const s of env.solids) {
+    const near = s.hz < 1 && s.z > 0;
+    const blockD = s.x === 0 && s.z === 10;
+    if (near) for (const m of s.mats) m.opacity = FADE_TO;
+    if (blockD) for (const m of s.mats) m.opacity = 0.35;
+  }
+}
+/* Segment-versus-box, as `main.js` has it (`segSolid`): does the segment
+   from the eye to the point cross the solid's box? */
+function segSolid(eye, px, py, pz, o) {
+  let t0 = 0, t1 = 1;
+  const axes = [
+    [eye.x, px - eye.x, o.x - o.hx, o.x + o.hx],
+    [eye.y, py - eye.y, 0, o.h],
+    [eye.z, pz - eye.z, o.z - o.hz, o.z + o.hz],
+  ];
+  for (const [s, d, lo, hi] of axes) {
+    if (Math.abs(d) < 1e-9) { if (s < lo || s > hi) return false; continue; }
+    let a = (lo - s) / d, b = (hi - s) / d;
+    if (a > b) { const q = a; a = b; b = q; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+    if (t0 > t1) return false;
+  }
+  return t1 > 0 && t0 < 1;
+}
+
+// ── the two stand-in fighters ─────────────────────────────────────────────
+
+const bodies = [];
+async function standBody(ref, x, z, faceX, faceZ) {
+  const res = await fetch(`/bodies/${ref}.js`);
+  if (!res.ok) throw new Error(`body ${ref}: ${res.status}`);
+  const root = buildBody(THREE, TSL, await res.text(), { trusted: true });
+  root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  /* Merged as main.js merges them (`bake.js`): two thousand draw calls a body
+     is the stand measuring its own overhead, not the arena's. ?bake=0 to skip. */
+  if (p.get('bake') !== '0') {
+    try { const r = bakeStatic(THREE, root); if (r.reverted) console.warn(`body ${ref}: merge reverted: ${r.why}`); }
+    catch (e) { console.warn(`body ${ref}: merge failed: ${e.message}`); }
+  }
+  /* The floor mirrors what is on REFLECT_LAYER and nothing else. */
+  root.traverse((o) => o.layers.enable(REFLECT_LAYER));
+  /* Scale the footprint to the collision diameter, exactly as main.js does. */
+  const raw = new THREE.Box3().setFromObject(root);
+  const rawSize = raw.getSize(new THREE.Vector3());
+  const footprint = Math.max(rawSize.x, rawSize.z) || 1;
+  const radius = cfg.fighters?.blue?.radius ?? 1.5;
+  root.scale.setScalar((radius * 2) / footprint);
+  root.rotation.y = Math.atan2(faceX - x, faceZ - z);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  root.position.set(x, -box.min.y, z);
+  scene.add(root);
+  bodies.push({ root, ref, x, z, h: box.max.y - box.min.y });
+  return root;
+}
+try {
+  await standBody('octopus', BLUE.x, BLUE.z, ORANGE.x, ORANGE.z);
+  await standBody('gorilla', ORANGE.x, ORANGE.z, BLUE.x, BLUE.z);
+} catch (e) { fail(`bodies: ${e.message}`); }
+
+/* THE BODY RULE, as `main.js`'s `updateOcclusion` has it: a solid that hides
+   ≥ 2 of a fighter's three sample heights (0.15, 0.5, 0.9 of its height)
+   from the eye fades to FADE_TO, and the fighter's ghost ring is drawn over
+   it (`gh.on`). Applied on the stand so every capture photographs the
+   game's state: in `low` block b hid 3 of 3 of the gorilla and in `counter`
+   cube f 2 of 3, and both captures showed the block solid with the ring
+   painted on its top — not evidence of the game. */
+const SAMPLE_HEIGHTS = [0.15, 0.5, 0.9];
+const hiddenBodies = new Set();
+for (const b of bodies) {
+  for (const o of env.solids) {
+    const hits = SAMPLE_HEIGHTS.filter((u) => segSolid(camera.position, b.x, u * b.h, b.z, o)).length;
+    if (hits < 2) continue;
+    for (const m of o.mats) m.opacity = Math.min(m.opacity, FADE_TO);
+    hiddenBodies.add(`${b.x},${b.z}`);
+  }
+}
+
+// ── post graph ────────────────────────────────────────────────────────────
+
+/*
+ * raster (HDR, MSAA where the backend allows; MRT with view normals for AO,
+ *   plus the game's bloomIntensity/distort outputs under ?glow=1)
+ *   → GTAO at low radius, denoised — the blocks, walls and bodies seat;
+ *     glow-marked pixels (telegraphs) are exempt from it
+ *   → ACES at `EXPOSURE` → a soft vignette → sRGB → ±0.5/255 hash dither
+ *   → SMAA (FXAA on 'low').
+ * Bloom stays off: it is for the VFX and there are none here.
+ */
+const wantGlow = p.get('glow') === '1';
+let post = null;
+const postU = { exposure: TSL.uniform(EXPOSURE), vignette: TSL.uniform(VIGNETTE) };
+const wantPost = p.get('post') !== '0';
+const postNodes = [];
+try {
+  if (!wantPost) throw new Error('disabled by ?post=0');
+  /* Diagnostics, for the stand only: ?ao=0 off, ?ao=2 shows the AO alone;
+     ?denoise=0, ?msaa=0, ?refl=0, ?dither=0, ?vig=0, ?tm=0. */
+  const aoMode = p.has('ao') ? Number(p.get('ao')) : 1;
+  const wantAO = tier === 'high' && !isWebGL && aoMode > 0;
+  const wantDenoise = p.get('denoise') !== '0';
+  const samples = isWebGL ? 0 : (p.has('msaa') ? Number(p.get('msaa')) : 4);
+  if (p.get('refl') === '0') env.setQuality('medium');
+  const scenePass = TSL.pass(scene, camera, { samples });
+  postNodes.push(`pass(msaa ${samples})`);
+  const mrtSpec = { output: TSL.output };
+  if (wantGlow) { mrtSpec.bloomIntensity = TSL.float(0); mrtSpec.distort = TSL.vec3(0); }
+  if (wantAO) mrtSpec.normal = TSL.normalView;
+  if (Object.keys(mrtSpec).length > 1) {
+    scenePass.setMRT(TSL.mrt(mrtSpec));
+    postNodes.push(`mrt(${Object.keys(mrtSpec).join(',')})`);
+  }
+  const colour = scenePass.getTextureNode('output');
+  const uvN = TSL.uv();
+  let hdr = colour.rgb;
+  let glow = null;
+  if (wantGlow) glow = scenePass.getTextureNode('bloomIntensity').sample(uvN).r.clamp(0, 1);
+  let aoOnly = null;
+  if (wantAO) {
+    const { ao } = await import('three/addons/tsl/display/GTAONode.js');
+    const depth = scenePass.getTextureNode('depth');
+    const normal = scenePass.getTextureNode('normal');
+    /* GTAO tuned to SEAT things: radius 1 m (view space), scale 1.4 (the
+       exponent on the occlusion), thickness 1.5, distance exponent 1.5. At
+       r 0.7 / s 0.7 a diff against the no-AO tier read 0.25 codes mean and
+       −1 L at a block's foot — invisible at 1:1. What keeps it from muddying:
+       `AO_FLOOR` clamps the term at 0.8 (−20 % linear ≈ −6.5 L at L 88), so a
+       crease can never fall through the brief's umbra floor, and the open
+       floor — no horizon anywhere within a metre — stays at exactly 1.
+       ?aor= ?aos= ?aot= override for diagnostics. */
+    const aoPass = ao(depth, normal, camera);
+    /* THE TUNING LIVES IN `RIG.ao` (round-7), not in this file and not in
+       main.js: both carried their own copy, both claimed in a comment to be
+       "the stand's, verbatim", and they had drifted to radius 1.2 vs 1.5,
+       distanceExponent 1.5 vs 1.0 and a fade of 62–80 m vs 52–68. The
+       query switches still override, for diagnostics only. */
+    const AO_RADIUS = p.has('aor') ? Number(p.get('aor')) : RIG.ao.radius;
+    const AO_SCALE = p.has('aos') ? Number(p.get('aos')) : RIG.ao.scale;
+    const AO_FLOOR = p.has('aof') ? Number(p.get('aof')) : RIG.ao.floor;
+    /* AO is a near-field effect: it fades out over view depths AO_FADE_FROM →
+       AO_FADE_TO (m). Everything the AO is FOR — the bodies' feet, the block
+       feet, the pit's creases — lies within ~50 m of every camera; the stand
+       begins at 65 m and takes none, because the GTAO's 5 px noise tile over
+       a bank of 1 m steps prints vertical banding along it (that is what the
+       wings this replaces had to dodge with depthWrite:false, and the bank
+       writes depth so it cannot). RENDER-QUALITY §6: the field crisp, the
+       distant tiers soft. */
+    const AO_FADE_FROM = RIG.ao.fadeFrom, AO_FADE_TO = RIG.ao.fadeTo;
+    aoPass.radius.value = AO_RADIUS;
+    aoPass.scale.value = AO_SCALE;
+    aoPass.thickness.value = p.has('aot') ? Number(p.get('aot')) : RIG.ao.thickness;
+    aoPass.distanceExponent.value = RIG.ao.distanceExponent;
+    aoPass.distanceFallOff.value = 1;
+    aoPass.samples.value = p.has('aospp') ? Number(p.get('aospp')) : RIG.ao.samples;
+    aoPass.resolutionScale = p.has('aores') ? Number(p.get('aores')) : RIG.ao.resolutionScale;
+    let aoTex = aoPass.getTextureNode();
+    postNodes.push(`gtao(r${AO_RADIUS} s${AO_SCALE} t${aoPass.thickness.value} floor${AO_FLOOR} fade${AO_FADE_FROM}-${AO_FADE_TO}m 16spp @${aoPass.resolutionScale})`);
+    if (wantDenoise) {
+      const { denoise } = await import('three/addons/tsl/display/DenoiseNode.js');
+      aoTex = denoise(aoTex, depth, normal, camera);
+      aoTex.radius.value = p.has('dnr') ? Number(p.get('dnr')) : RIG.ao.denoiseRadius;
+      postNodes.push(`denoise(r${aoTex.radius.value})`);
+    }
+    /* THE FADE HAD NEVER FIRED (round-9b). `TSL.cameraNear`/`cameraFar`
+       resolve to THE CAMERA BEING RENDERED, and inside a post graph that is
+       the post-processing quad's own orthographic camera (near 0, far 1) —
+       not the scene camera. `perspectiveDepthToViewZ(d, 0, 1)` is
+       identically 0, so `aoFade` was `smoothstep(48, 62, 0)` = 0 at every
+       pixel and the GTAO was applied at FULL strength to the whole frame,
+       out to the megastructure. Measured `?ao=0` against the same frame:
+       the tier bank at 90 m lost 3.5 L to it, the deck's soffit 4.6, the
+       far banners 5.6–6.1 — a near-field seating effect printing per-riser
+       corduroy on architecture 100 m away, which is the review's own
+       finding. The scene camera's near and far are uniforms of their own
+       now, read at build time from the camera this pass renders. */
+    const camNearU = TSL.uniform(camera.near), camFarU = TSL.uniform(camera.far);
+    const viewDist = TSL.perspectiveDepthToViewZ(depth.sample(uvN).r, camNearU, camFarU).negate();
+    const aoFade = TSL.smoothstep(TSL.float(AO_FADE_FROM), TSL.float(AO_FADE_TO), viewDist);
+    let aoF = TSL.mix(aoTex.r.max(AO_FLOOR), TSL.float(1.0), aoFade);
+    /* The telegraphs are the only thing that writes the glow mask, and the
+       floor's AO under a body must not muddy them. */
+    if (glow) aoF = TSL.mix(aoF, TSL.float(1.0), glow);
+    hdr = hdr.mul(aoF);
+    aoOnly = TSL.vec3(aoF, aoF, aoF);
+  }
+  const mapped = aoMode === 2 && aoOnly ? aoOnly
+    : (p.get('tm') === '0' ? hdr : TSL.toneMapping(THREE.ACESFilmicToneMapping, postU.exposure, hdr));
+  /* The wash vignette: after the tone map, mix toward --sky-2 (as a DISPLAY-
+     linear value, since `mapped` is already tone-mapped) by a ramp that
+     starts a third of the way out from (0.5, 0.46) — the fight sits above the
+     middle because the HUD owns the bottom third — and reaches
+     `postU.vignette` at the far corner. */
+  const centred = uvN.sub(TSL.vec2(0.5, 0.46));
+  const r2 = centred.dot(centred);
+  const wash = TSL.smoothstep(TSL.float(0.25), TSL.float(1.35), r2.mul(2.4)).mul(postU.vignette);
+  const washTo = TSL.vec3(srgbToLin(0xF4 / 255), srgbToLin(0xEE / 255), srgbToLin(0xE8 / 255));
+  const graded = p.get('vig') === '0' ? mapped : TSL.mix(mapped.rgb, washTo, wash);
+  let srgb = TSL.renderOutput(TSL.vec4(graded.rgb, 1));
+  postNodes.push('aces', `wash(${VIGNETTE})`);
+  if (p.get('dither') !== '0') {
+    /* ±0.5 code of hash noise on the 8-bit output: the sky's 7 L over 60
+       steps banded visibly without it. Static per pixel, under SMAA's edge
+       threshold. */
+    const px = uvN.mul(TSL.screenSize).floor();
+    const n = TSL.hash(px.x.add(px.y.mul(4096.0))).sub(0.5).div(255.0);
+    srgb = srgb.add(TSL.vec4(n, n, n, 0));
+    postNodes.push('dither');
+  }
+  let out = srgb;
+  const aaMode = p.get('aa') || (tier === 'low' ? 'fxaa' : 'smaa');
+  if (aaMode === 'fxaa') {
+    const { fxaa } = await import('three/addons/tsl/display/FXAANode.js');
+    out = fxaa(srgb);
+    postNodes.push('fxaa');
+  } else if (aaMode === 'smaa') {
+    const { smaa } = await import('three/addons/tsl/display/SMAANode.js');
+    out = smaa(srgb);
+    postNodes.push('smaa');
+  }
+  post = new THREE.PostProcessing(renderer);
+  post.outputColorTransform = false;
+  post.outputNode = out;
+  renderer.toneMapping = THREE.NoToneMapping;
+  if (wantGlow) setGlowEnabled(true);
+} catch (e) {
+  post = null;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  if (wantPost) fail(`post unavailable (${e.message}) — drawing without post-processing`);
+}
+
+/* Two sample telegraph rings on the floor — own side `--info`, other side
+   `--accent`, the two tokens the HUD's bars, dots and feed use, so floor and
+   panel agree (docs/REDESIGN.md §2.1). Thin, as the game draws them under a
+   fighter. Unlit and inverted through the tone map so they show as their own
+   hex. Under ?glow=1 they are glow-marked exactly as main.js marks its rims. */
+const GHOST_RING = 0.85;   // main.js's ghost ring opacity
+function ring(hex, x, z, r) {
+  const colour = (() => { const c = preTone(hex, EXPOSURE); return new THREE.Color(c.r, c.g, c.b); })();
+  const mat = new THREE.MeshBasicMaterial({
+    color: colour, transparent: true, opacity: 0.92, depthWrite: false, side: THREE.DoubleSide,
+  });
+  if (wantGlow && post) markGlow(mat, 0.5);
+  const geo = new THREE.RingGeometry(r * 0.87, r, 56);
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, 0.03, z);
+  m.renderOrder = 2;
+  scene.add(m);
+  /* ?ghost=1 — THE RING RULE for the port. A telegraph ring at y 0.03 is the
+     first thing a 3.2 m block takes, long before the fighter's body (which
+     fades a block only when 2 of 3 sample heights are hidden), so "whose
+     side" stopped reading while the fighter itself was visible. When the
+     ring's centre is hidden from the eye by a solid that is NOT faded
+     (fade > 0.6), that solid, if it is a BLOCK, fades to 35 % (brief §2: a
+     block between camera and fighter fades) — never a ring painted on a
+     solid block's top, which read as the fighter standing on the block —
+     and the ring is drawn over the cover at the ghost's opacity, as it is
+     over any solid the body rule has already ghosted; a wall hider only
+     gets the ghost ring (the wall rule owns walls). In `updateOcclusion`,
+     after the hits: `for each SOLIDS[i] with o.fade > 0.6 && segSolid(eye,
+     v.x, 0.05, v.z, o): if (i >= 4) o.want = Math.min(o.want, 0.35);
+     ringOn = 1`, then `gh.ringMat.opacity = GHOST_RING * Math.max(gh.on,
+     ringOn)` with `ringOn` eased at the same 16/5 rates; the body lozenge
+     stays on the 3-sample rule. */
+  if (p.get('ghost') === '1') {
+    const BLOCK_RING_FADE = 0.35;
+    const unfaded = env.solids
+      .map((o, i) => [o, i])
+      .filter(([o]) => (o.mats[0]?.opacity ?? 1) > 0.6 && segSolid(camera.position, x, 0.05, z, o));
+    for (const [o, i] of unfaded) if (i >= 4) for (const m of o.mats) m.opacity = Math.min(m.opacity, BLOCK_RING_FADE);
+    if (unfaded.length || hiddenBodies.has(`${x},${z}`)) {
+      const gm = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        color: colour, transparent: true, opacity: GHOST_RING, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
+      }));
+      gm.rotation.x = -Math.PI / 2;
+      gm.position.set(x, 0.05, z);
+      gm.renderOrder = 3;
+      scene.add(gm);
+    }
+  }
+}
+ring(0x6EA8FF, BLUE.x, BLUE.z, 1.6);
+ring(0xFF7A5C, ORANGE.x, ORANGE.z, 1.6);
+
+addEventListener('resize', () => {
+  const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
+  camera.aspect = w / h;
+  applyJitter(JITTER);
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+// ── probes, for calibration ───────────────────────────────────────────────
+
+/* Read back rendered pixels under world points. The copy happens INSIDE the
+   frame, right after the render, because a WebGPU canvas is blank to
+   `drawImage` once its frame has been presented. */
+let probeReq = null;
+const probeCanvas = document.createElement('canvas');
+window.__arenaProbe = (points) => new Promise((resolve) => { probeReq = { points, resolve }; });
+function runProbe() {
+  const { points, resolve } = probeReq;
+  probeReq = null;
+  const W = renderer.domElement.width, H = renderer.domElement.height;
+  probeCanvas.width = W; probeCanvas.height = H;
+  const g = probeCanvas.getContext('2d', { willReadFrequently: true });
+  g.drawImage(renderer.domElement, 0, 0);
+  const out = {};
+  const v = new THREE.Vector3();
+  /* A THIRD KIND OF PROBE (round-9): `{ obj: 'planet', k, ky }` samples a
+     named object in the environment at `k` times its own projected RADIUS
+     along screen x and `ky` along screen y — so "the core of the planet",
+     "its limb" and "the sky one and a half radii beside it" are the same
+     three numbers whatever the camera and wherever the body is hung. Without
+     it every judgement about the planet was a hand-picked pixel box in one
+     capture, which is how a disc that moved between rounds kept being
+     measured in the wrong place. */
+  const objCentre = new THREE.Vector3(), objEdge = new THREE.Vector3(), camRight = new THREE.Vector3();
+  /* A FOURTH THING EVERY WORLD-POINT PROBE NOW CARRIES (round-9b): WHAT IT
+     ACTUALLY HIT. A probe is a world point projected to a pixel and read
+     back, so a point on a block's flank that the camera cannot see reports
+     the value of whatever stands in front of it — and three rounds of
+     "the sun flank is 3.9 L under the floor" were exactly that: on `vs` the
+     `block-b-sunx` point fell behind a cap and read 90.8, and on every
+     establishing camera block b is GHOSTED to 0.35 by the ring rule, so its
+     faces were being measured through 65 % of the floor behind them. Each
+     world-point probe now also raycasts the scene along its own pixel and
+     reports the first surface's `name`, that surface's material `alpha`
+     (the play rules fade by opacity) and `occluded` — true when the first
+     hit is more than 5 cm nearer than the point asked for. `arenashot`'s
+     block rule skips a probe that is occluded or faded and says so, instead
+     of failing the world for a number the world never drew. */
+  const ray = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const camPos = new THREE.Vector3();
+  camera.getWorldPosition(camPos);
+  const hitOf = (x, y, z, ndcx, ndcy) => {
+    try {
+      ndc.set(ndcx, ndcy);
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObject(scene, true);
+      /* a FRAME point (`u`,`v`) asks only what stands along that pixel —
+         `hit: null` is the answer "nothing but the dome", which is how a
+         sky probe proves it sampled sky and not a roofline */
+      const want = x === undefined ? Infinity : camPos.distanceTo(new THREE.Vector3(x, y, z));
+      for (const h of hits) {
+        const o = h.object;
+        if (!o.visible || o.name === 'sky') continue;
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        return {
+          hit: o.name || o.type,
+          alpha: m && m.transparent ? Math.round((m.opacity ?? 1) * 100) / 100 : 1,
+          occluded: h.distance < want - 0.05,
+        };
+      }
+    } catch (e) { return { hit: `error: ${e.message}` }; }
+    return { hit: null };
+  };
+  for (const pt of points) {
+    let radiusPx = 0;
+    if (pt.obj !== undefined) {
+      const o = env.group.getObjectByName(pt.obj);
+      if (!o) { out[pt.name] = null; continue; }
+      o.getWorldPosition(objCentre);
+      const geo = o.geometry;
+      if (!geo.boundingSphere) geo.computeBoundingSphere();
+      const R = geo.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z);
+      camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+      objEdge.copy(objCentre).addScaledVector(camRight, R);
+      const c = objCentre.clone().project(camera), e = objEdge.clone().project(camera);
+      radiusPx = Math.abs(e.x - c.x) / 2 * W;
+      v.copy(c);
+      v.x += (pt.k ?? 0) * radiusPx * 2 / W;
+      v.y -= (pt.ky ?? 0) * radiusPx * 2 / H;
+    } else if (pt.u !== undefined) { v.set(pt.u * 2 - 1, 1 - pt.v * 2, 0); } else {
+      v.set(pt.x, pt.y, pt.z).project(camera);
+    }
+    const sx = Math.round((v.x + 1) / 2 * W), sy = Math.round((1 - v.y) / 2 * H);
+    const r = pt.r ?? 2;
+    if (sx < r || sy < r || sx >= W - r || sy >= H - r || v.z > 1) { out[pt.name] = null; continue; }
+    const d = g.getImageData(sx - r, sy - r, 2 * r + 1, 2 * r + 1).data;
+    let R = 0, G = 0, B = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { R += d[i]; G += d[i + 1]; B += d[i + 2]; n++; }
+    out[pt.name] = { rgb: [Math.round(R / n), Math.round(G / n), Math.round(B / n)], px: [sx, sy] };
+    if (radiusPx) out[pt.name].rpx = Math.round(radiusPx);
+    if (pt.obj === undefined) Object.assign(out[pt.name], hitOf(pt.x, pt.y, pt.z, v.x, v.y));
+  }
+  resolve(out);
+}
+
+/* The shimmer number. Two consecutive frames, the second projected `px`
+   pixels to the right, read back inside the frame like the probes, and
+   compared over regions that hold no body (the bodies breathe with `t`):
+   the plaza with its hairline grid at the top of the fight frame, and the
+   open floor at its bottom. A static scene shifted a third of a pixel
+   should move each pixel by a third of its neighbour's difference —
+   ≤ 1.5 codes over a plain surface with hairlines; over 4 is a line that
+   crawls. Reported: mean |Δ| and p99 per region, in 8-bit codes. */
+const JITTER_REGIONS = {
+  plaza: { u: 0.70, v: 0.00, w: 0.30, h: 0.14 },
+  floor: { u: 0.42, v: 0.78, w: 0.28, h: 0.17 },
+};
+let jitterReq = null;
+window.__arenaJitter = (px = 0.37, regions = JITTER_REGIONS) => new Promise((resolve) => {
+  jitterReq = { px, regions, stage: 0, a: null, resolve };
+});
+function jitterBefore() {
+  applyJitter(jitterReq.stage === 0 ? 0 : jitterReq.px);
+  camera.updateProjectionMatrix();
+}
+function jitterAfter() {
+  const W = renderer.domElement.width, H = renderer.domElement.height;
+  probeCanvas.width = W; probeCanvas.height = H;
+  const g = probeCanvas.getContext('2d', { willReadFrequently: true });
+  g.drawImage(renderer.domElement, 0, 0);
+  const grab = {};
+  for (const [name, r] of Object.entries(jitterReq.regions)) {
+    grab[name] = g.getImageData(Math.round(r.u * W), Math.round(r.v * H), Math.round(r.w * W), Math.round(r.h * H)).data;
+  }
+  if (jitterReq.stage === 0) { jitterReq.a = grab; jitterReq.stage = 1; return; }
+  const out = { px: jitterReq.px, regions: {} };
+  for (const [name, b] of Object.entries(grab)) {
+    const a = jitterReq.a[name];
+    const diffs = new Float32Array(a.length / 4);
+    let sum = 0;
+    for (let i = 0, j = 0; i < a.length; i += 4, j++) {
+      const d = (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])) / 3;
+      diffs[j] = d; sum += d;
+    }
+    diffs.sort();
+    out.regions[name] = {
+      mean: +(sum / diffs.length).toFixed(2),
+      p99: +diffs[Math.floor(diffs.length * 0.99)].toFixed(1),
+      max: +diffs[diffs.length - 1].toFixed(1),
+    };
+  }
+  applyJitter(JITTER);
+  camera.updateProjectionMatrix();
+  const { resolve } = jitterReq;
+  jitterReq = null;
+  resolve(out);
+}
+
+// ── loop ──────────────────────────────────────────────────────────────────
+
+const clock = new THREE.Clock();
+let frames = 0;
+let fpsFrames = 0, fpsTime = 0, fps = 0;
+/* Frame cost: the mean wall-clock delta over 120 frames after a 40-frame
+   warm-up. Honest only when the capture launches Chrome without vsync and the
+   frame-rate limit (arenashot does); under vsync it reads 16.7. */
+const WARM = 40, MEAS = 120;
+let measT0 = 0;
+window.__arenaStats = {
+  backend, fps: 0, msPerFrame: null, tier, cam: camName, dpr: DPR,
+  size: [renderer.domElement.width, renderer.domElement.height],
+  shadow: env.shadowType, post: postNodes, glow: wantGlow, gpuErrors, gpuErrorCount: 0, ready: false,
+  wallFade: env.solids.slice(0, 4).map((s) => s.mats[0].opacity),
+  /* the six cover blocks' own opacities after the two play rules have run:
+     an establishing camera routinely ghosts one of them to 0.35 because a
+     telegraph ring passes behind it, and a value measured through a ghost
+     is not the block's value (see `runProbe`) */
+  blockFade: env.solids.slice(4).map((s) => Math.round((s.mats[0].opacity ?? 1) * 100) / 100),
+  /* THE SKY'S COMPOSITING ORDER, as a number rather than as a claim. Both
+     sky bodies and all three megastructure shells write no depth, so which
+     of them paints over which is decided entirely by `renderOrder` — and a
+     truss drawn across the planet's face (round-8's blocker) is invisible
+     to any probe that samples the disc, because the disc is still where the
+     pixel came from. `CHECKS.planet` asserts planet > every megastructure
+     here, so the rule is checked on the tree and not on a crop. */
+  skyOrder: (() => {
+    const o = {};
+    env.group.traverse((m) => {
+      if (/^(planet|moon|megastructure-)/.test(m.name || '')) o[m.name] = m.renderOrder;
+    });
+    return o;
+  })(),
+  jitter: JITTER, tierChanges: [],
+};
+window.__arenaReady = false;
+window.__arena = { THREE, TSL, scene, camera, renderer, env, bodies, postU, cfg, tier, backend };
+
+/* THE BANNER PLACEMENT ASSERTION (round-5 finding: on the fight camera the
+   coral ran from y = 0 down to y ≈ 70 with its plinth hanging in open sky —
+   a banner solved for the boot camera only). Every banner's top and bottom
+   are projected through EVERY preset here, not just the one being shot, and
+   the fraction of frame height each lands at is reported beside the picture
+   in `stand.json`. A banner is WHOLE when both ends sit inside 0.05–0.85 of
+   the frame; `cut` marks an end outside it and `off` one outside the frame's
+   width. The rule the geometry is set from: no camera may show a banner
+   whose BOTTOM is off the frame (that is the floating-foot failure), and at
+   least one banner must be whole in each of `low` and `vs`. A top clipped by
+   the frame edge on a fight camera is not a failure — the whole stand is
+   clipped there — as long as the foot is seated on the bank. */
+window.__arenaBanners = () => {
+  const probe = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.3, 400);
+  const v = new THREE.Vector3();
+  const out = {};
+  for (const [name, c] of Object.entries(CAMS)) {
+    probe.position.set(...c.pos);
+    probe.fov = c.fov;
+    probe.aspect = innerWidth / innerHeight;
+    probe.lookAt(...c.look);
+    probe.updateMatrixWorld(true);
+    probe.updateProjectionMatrix();
+    const rows = [];
+    /* The sixteen banners are ONE `InstancedMesh` now (environment.js's
+       instancing pass), so their placements come off the group's own list
+       rather than off sixteen `matrixWorld`s. The group sits at the scene's
+       identity, so a placement IS the banner's world matrix. */
+    const { w, h } = env.banner.userData.size;
+    env.banner.userData.placements.forEach((mw, i) => {
+      const at = (dx, dy) => {
+        v.set(dx, dy, 0).applyMatrix4(mw).project(probe);
+        return { u: (v.x + 1) / 2, y: (1 - v.y) / 2, front: v.z < 1 };
+      };
+      const ends = [at(0, h / 2), at(0, -h / 2)];
+      if (!ends.every((e) => e.front && e.u > -0.05 && e.u < 1.05)) return;
+      const wpx = Math.round(Math.abs(at(w / 2, 0).u - at(-w / 2, 0).u) * innerWidth);
+      /* ROUND 7: a HEAD off the top edge is a failure too. Round 6 read the
+         foot rule only, so eight banners guillotined by the frame's top —
+         two coral tabs bleeding off the bezel with no hanging point —
+         passed the assertion in every play camera. Two thresholds, because
+         the two are different failures: `headInFrame` is "the hanging point
+         is in the picture at all", `headClear` is the lead's 40 px of sky
+         over it (0.045 of 900), which the establishing and standard fight
+         cameras must hold and the closest melee framings, where the whole
+         ring is cut, need not. */
+      rows.push({
+        i, x: +ends[0].u.toFixed(3), top: +ends[0].y.toFixed(3), bottom: +ends[1].y.toFixed(3), wpx,
+        footInFrame: ends[1].y > 0 && ends[1].y < 1,
+        headInFrame: ends[0].y > 0.005,
+        headClear: ends[0].y > 0.045,
+        whole: ends[0].y > 0.005 && ends[1].y < 0.85 && ends[0].y < ends[1].y,
+      });
+    });
+    out[name] = rows;
+    out[`${name}-count`] = {
+      shown: rows.length,
+      whole: rows.filter((r) => r.whole).length,
+      headOff: rows.filter((r) => !r.headInFrame).length,
+      headTight: rows.filter((r) => !r.headClear).length,
+      footOff: rows.filter((r) => !r.footInFrame).length,
+    };
+  }
+  return out;
+};
+
+/* ?auto=1 — the port's quality governor, ticked here so the stand can show
+   it demoting (`--extra=auto=1` under a throttled Chrome). It only ever goes
+   down, and on the stand it moves the environment's part (reflector, map
+   size); the page's own AO/AA are fixed at graph build. */
+const governor = p.get('auto') === '1' ? qualityGovernor({
+  tier, onChange: (q) => { env.setQuality(q); window.__arenaStats.tierChanges.push({ frame: frames, to: q }); },
+}) : null;
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, clock.getDelta());
+  const t = clock.elapsedTime;
+  for (const b of bodies) {
+    try {
+      b.root.userData.pose?.({ t, dt, speed: 0, stride: 0, turn: 0, grounded: true, health: 1, action: null, phase: 0 });
+    } catch (e) { /* a body's pose is its own business */ }
+  }
+  if (jitterReq) jitterBefore();
+  env.update(dt, t);
+  governor?.tick(dt);
+  if (post) post.render(); else renderer.render(scene, camera);
+  if (probeReq) runProbe();
+  if (jitterReq) jitterAfter();
+  frames++;
+  fpsFrames++; fpsTime += dt;
+  if (fpsTime >= 0.75) {
+    fps = Math.round(fpsFrames / fpsTime);
+    fpsFrames = 0; fpsTime = 0;
+    window.__arenaStats.fps = fps;
+    hud.textContent = `${backend} · ${tier} · ${camName} · ${fps} fps · ${window.__arenaStats.msPerFrame ?? '…'} ms\n${postNodes.join(' → ')}`;
+  }
+  if (frames === WARM) measT0 = performance.now();
+  if (frames === WARM + MEAS) window.__arenaStats.msPerFrame = +((performance.now() - measT0) / MEAS).toFixed(2);
+  window.__arenaStats.gpuErrorCount = gpuErrors.length;
+  /* The projection's x-offset term, as rendered: 2·jitter/width when the
+     view offset is in effect (a diagnostic for the shimmer pair). */
+  window.__arenaStats.projE8 = camera.projectionMatrix.elements[8];
+  if (!window.__arenaReady && frames >= 24) {
+    window.__arenaReady = true;
+    window.__arenaStats.ready = true;
+    /* Beside every picture in stand.json, for every camera — so a banner that
+       floats or is cut is caught by the capture and not by an eye. */
+    try { window.__arenaStats.banners = window.__arenaBanners(); } catch (e) { window.__arenaStats.banners = { error: e.message }; }
+  }
+}
+frame();
+</script>
+</body>
+</html>

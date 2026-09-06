@@ -140,8 +140,21 @@ function tones(P) {
   if (t) return t;
   const hsl = {};
   P[2].getHSL(hsl);
-  const deep = new THREE.Color().setHSL(hsl.h, Math.max(hsl.s, 0.7), Math.min(hsl.l, 0.3));
-  const mid = new THREE.Color().setHSL(hsl.h, Math.max(hsl.s, 0.65), Math.min(Math.max(hsl.l, 0.38), 0.44));
+  /*
+   * НАСЫЩЕННОСТЬ ЗАЖАТА С ДВУХ СТОРОН, А НЕ ПОДНЯТА ПОЛОМ (ARENA-AAA, 06.09).
+   *
+   * Стояло `Math.max(hsl.s, 0.7)` — ПОЛ без потолка, и он перебивал любую
+   * градуировку выше по течению: палитра приходила из `vfx.js` прижатой к
+   * C* ≤ 32, а `deep`/`mid` возвращали её на C* 41…62 при экранной
+   * насыщенности 51…59 % (замер по всем десяти стихиям после градуировки),
+   * то есть громче кораллового баннера — единственного акцента мира
+   * (ARENA-BRIEF §5). Пол нужен (у пепельных палитр вроде гравитации без
+   * него рубашка сереет), поэтому он остался — но с потолком: полоса
+   * 0.32…0.50 у `deep`, 0.28…0.38 у `mid`. Худший случай по всем стихиям —
+   * C* 38 при насыщенности 45 %, то есть внутри мира.
+   */
+  const deep = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, 0.32, 0.50), Math.min(hsl.l, 0.3));
+  const mid = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, 0.28, 0.38), Math.min(Math.max(hsl.l, 0.38), 0.44));
   t = { deep, mid };
   TONES.set(key, t);
   return t;
@@ -598,7 +611,8 @@ function spikes(vfx, P, { x, y, z, n, at, r, speed = 13, life = 0.35, size = 0.2
     const v = speed * (0.6 + r() * 0.8);
     list.push({ vx: Math.sin(a) * ce * v, vy: Math.sin(e) * v, vz: Math.cos(a) * ce * v, born: at + r() * 0.03, life: life * (0.6 + r() * 0.8), size: size * (0.6 + r() * 0.8) });
   }
-  const white = new THREE.Color(0.95, 0.97, 1.0);
+  /* Потолок мира — копинг #F4EEE8 (L* 94): было L* 98.8, стало L* 93. */
+  const white = new THREE.Color(0.81, 0.83, 0.86);
   const fill = (c1, c2, glow) => (i, s) => {
     const k = list[i];
     s.pos(x, y, z);
@@ -960,7 +974,8 @@ export function beam(vfx, e, P, ctx) {
   /* Штрихи внутри трубы — «подсвеченный туман» летит к цели всю полную фазу;
      пул свечения: на белом полу их нет, на тёмном теле и стенах — есть. */
   const nMote = kit.countFor(110, fp.area, REF, 320);
-  const white = new THREE.Color(0.95, 0.97, 1.0);
+  /* Потолок мира — копинг #F4EEE8 (L* 94): было L* 98.8, стало L* 93. */
+  const white = new THREE.Color(0.81, 0.83, 0.86);
   vfx.glow.emit(nMote, (i, s) => {
     const f = rng(), a = rng() * TAU, rr = rng() * 0.35 * wK;
     const v = 5 + rng() * 4;
@@ -994,7 +1009,11 @@ export function beam(vfx, e, P, ctx) {
      у чернил ≈ 146, и она остаётся синей до двух третей жизни. */
   const hsl = {};
   P[2].getHSL(hsl);
-  const ink = new THREE.Color().setHSL(hsl.h, 0.9, 0.33), inkEnd = ink.clone().multiplyScalar(0.55);
+  /* 0.9 была та же щель, что у `tones`: константа мимо градуировки. Полоса
+     0.32…0.44 сохраняет довод (разность каналов у чернил вдвое больше, чем у
+     `deep`, точка держит цвет до двух третей жизни) и не выводит ковёр за
+     полку мира. */
+  const ink = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, 0.32, 0.44), 0.33), inkEnd = ink.clone().multiplyScalar(0.55);
   const dot = (x, z, i, s, glow) => {
     const born = vfx.now + T.out0 + 0.05 + Math.pow(rng(), 1.15) * S.dust;
     const life = 0.6 + Math.pow(rng(), 1.2) * 0.5;

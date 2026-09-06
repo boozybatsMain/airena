@@ -35,15 +35,45 @@ export const LIMITS = {
   requestBudgetUsd: REQUEST_BUDGET_USD,
 };
 
+/*
+ * ONE VOICE FOR ONE REFUSAL.
+ *
+ * These eight strings are player copy: they travel out of `/api/creature` and
+ * `/api/session` and land inside the CREATE card. The screen keeps its own
+ * map (`DENY_TEXT` in `src/client/screens/create.js`) for the codes it can
+ * name from the code alone, and falls back to THIS string for anything the
+ * map does not hold. While these were lower-case sentence fragments — «you
+ * have used your creations for today» — that fallback printed a fragment in
+ * the middle of a card written in capitalised sentences, and the same refusal
+ * had two voices depending on which path it took.
+ *
+ * So the wording here IS the wording there, character for character. Change
+ * one and change the other.
+ *
+ * TWO RULES THE EIGHT ARE HELD TO, both learned by breaking them.
+ *
+ * 1. THE PLAYER'S NOUNS ONLY. A refusal is the worst possible place to teach
+ *    vocabulary, and it is the likeliest place to leak ours: `request_cost`
+ *    said a mind was "too heavy for one request", and a request is a thing
+ *    this product never shows anybody. The unit it does count, everywhere from
+ *    the create card to the birth footnote, is the **generation** (§9.1).
+ *
+ * 2. A REFUSAL SAYS WHAT HAPPENS NEXT. `budget_day`, `account_day` and
+ *    `concurrent` name a time; `request_cost` names an action. `guest` and
+ *    `free_used` used to name only themselves — "This account cannot create a
+ *    creature." is a closed door with no handle drawn on it, in a product
+ *    whose entire proposition is on the other side. Every line below now ends
+ *    on a door: a clock, a choice, or a sign-in.
+ */
 export const DENY = {
-  budget_day: 'дневной бюджет генерации исчерпан',
-  concurrent: 'слишком много генераций идёт прямо сейчас',
-  account_day: 'на сегодня лимит генераций исчерпан',
-  account_month: 'на этот месяц лимит генераций исчерпан',
-  request_cost: 'эта модель не помещается в предохранитель по стоимости запроса',
-  guest: 'гость не может создавать существо',
-  free_used: 'бесплатное существо уже создано на этом аккаунте',
-  internal: 'проверка лимитов не отработала',
+  budget_day: 'No more creatures today — the arena has spent its daily allowance. It opens again at 00:00 UTC.',
+  concurrent: 'Too many creatures are being made right now. Try again in a minute.',
+  account_day: 'Today’s generations are used up. The next one opens at 00:00 UTC.',
+  account_month: 'This month’s generations are used up.',
+  request_cost: 'This mind is too heavy for one generation. Choose another one.',
+  guest: 'You are watching as a guest. Sign in to create a creature.',
+  free_used: 'This account has used its free creature. More open when payments do.',
+  internal: 'The safety check did not answer. We do not start a generation we are not sure we can finish.',
 };
 
 export const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);

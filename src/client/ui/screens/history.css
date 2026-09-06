@@ -1,0 +1,861 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   HISTORY — the career, and one match in detail (docs/REDESIGN.md §6.6).
+   Reference: uikit.png ("LEADERBOARD ROW" for the rows — a rail, a name, a
+   right-hand chevron; "BATTLE RESULT" for the outcome word and the delta).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/*
+ * THE DOCUMENT SCROLLS INSIDE ITSELF, AND IS GIVEN ITS HEIGHT TO DO IT IN.
+ *
+ * The screen clips and the list scrolls within it, so the detail panel can sit
+ * still against the right edge: a panel inside the scrolling box would ride
+ * away with the career.
+ *
+ * The box that scrolls used to take its size from `height: 100%`, and a
+ * percentage height resolves against a parent with a definite one — or
+ * silently falls back to `auto`. Where it falls back, the document grows past
+ * the screen that holds it, the screen clips, and everything below the fold is
+ * not scrolled to but cut off. A one-item flex column cannot fail that way:
+ * the item is sized by the column, and `min-height: 0` lets it be smaller than
+ * its own content, which is what gives `overflow-y` something to do.
+ */
+#screen > .screen[data-screen="history"] {
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.doc.history {
+  flex: 1 1 auto; min-height: 0; max-height: 100%;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+}
+
+/*
+ * THE PANEL TAKES ITS SPACE FROM THE PAGE, IT DOES NOT STAND ON IT.
+ *
+ * A 420 px slide-over over a full-width list cut every row mid-glyph — `CLAU…`,
+ * `GEM…` — and ran the career header under itself. That is not a layered panel,
+ * that is a rendering fault. The document gives the panel its width instead, so
+ * the rows re-measure and truncate at their own boundary with their own
+ * ellipsis, and the scrim below only has to say "the list is behind this".
+ */
+/*
+ * ONE EVENT, ONE CLOCK.
+ *
+ * Opening a fight is a single gesture and it used to run on two: the panel slid
+ * in over 320 ms while the list that gives it the space re-flowed over 220. The
+ * rows finished re-measuring a tenth of a second before the panel that caused
+ * it had landed, so the career visibly settled and then the panel caught up.
+ * `ui/hud.css` makes the same argument about a phase change ("the panels, the
+ * veil and the feed all move on one clock"); this is the same argument about a
+ * disclosure. Every part of the gesture — the padding, the panel, the scrim —
+ * reads this one value.
+ */
+.history { --d-panel: 320ms; }
+
+@media (min-width: 901px) {
+  .doc.history { transition: padding-right var(--d-panel) var(--ease); }
+  .history.detail-open .doc.history { padding-right: 468px; }
+}
+/* On a small desktop the panel is taking a third of the window, and what it
+   takes it takes from the career. Forty pixels back is a whole column of the
+   row at 1024 px and costs the panel nothing it was using. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .history .detail { width: 380px; }
+  .history.detail-open .doc.history { padding-right: 428px; }
+}
+
+/* ── the career header ──────────────────────────────────────────────────── */
+.history .career { margin-bottom: var(--s6); }
+.history .career-name { margin: 10px 0 18px; }
+
+.history .career-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; }
+.history .stat { display: inline-flex; align-items: baseline; gap: 8px; }
+.history .stat + .stat::before {
+  content: "·"; color: var(--stone); margin-right: 10px;
+}
+.history .stat .v {
+  font-size: 20px; font-weight: 500; letter-spacing: .02em; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.history .stat .v.up { color: var(--success-ink); }
+.history .stat .v.down { color: var(--accent-ink); }
+.history .stat .k {
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--muted);
+}
+/* `BEST RATING 1,864` — the noun leads, the number answers it. The dot that
+   divides one stat from the next has to lead them both, or it lands between
+   the label and its own number (`BEST RATING · 1,864`). */
+.history .stat.lead .k { order: -1; }
+.history .stat.lead::before { order: -2; }
+/* A career with nothing in it yet. The label IS the statement, so it keeps the
+   weight of every other label on the line — `--stone` here fell to the tone of
+   a disabled control on the arena photograph, and the fact is not disabled. */
+.history .stat.none { align-self: center; }
+
+/*
+ * A HUNDRED AND TWENTY PIXELS OF THE CLIMB, STANDING ON THE NUMBER'S BASELINE.
+ *
+ * Seventy pixels of bare hairline at 82 % opacity, floating mid-height between
+ * `1,864` and `+283 MMR`, was a scribble: nothing under the line, nothing to
+ * measure it from, and less weight than any glyph beside it. Widened, given a
+ * ground (the polygon at 12 % and a baseline rule) and set at full strength, it
+ * reads as what it is. `align-self: baseline` puts the box's own bottom edge on
+ * the digits' feet — the chart's floor and the number's baseline are one line,
+ * so the climb is measured from where the eye already is.
+ */
+.history .spark { display: block; align-self: baseline; margin-left: 6px; color: var(--stone); }
+.history .spark.up { color: var(--success-ink); }
+.history .spark.down { color: var(--accent-ink); }
+
+/* ── day groups ─────────────────────────────────────────────────────────── */
+.history .day + .day { margin-top: var(--s6); }
+.history .day-head { margin-bottom: 12px; gap: 12px; }
+.history .day-label { color: var(--ink-2); }
+.history .day-sum {
+  font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/*
+ * THE DAY'S SHAPE, AT THE END OF THE DAY'S LINE.
+ *
+ * `.label-line` draws its rule as an `::after`, which is the last child; the
+ * chart has to come after that rule and not before it, or the head reads as
+ * `TODAY —— chart ————` with the line broken around a picture. `order: 1` puts
+ * it past the rule without a second element to hold it, and the whole line then
+ * ends where the RATING column ends: label, facts, rule, shape.
+ */
+.history .day-spark { order: 1; flex: none; display: flex; align-items: center; }
+/* Centred on the label row rather than sitting on a baseline: there is no
+   number here for its floor to line up with, only a rule it runs beside. */
+.history .day-head .spark { align-self: center; margin-left: 0; }
+/* A flat day is a flat line, and a flat line in `--stone` at 1.25 px is quieter
+   than the label beside it. The two tones stay for the days that went
+   somewhere. */
+.history .day-head .spark.flat { opacity: .7; }
+/* The door to the rest of the career sits under the middle of the list, wide
+   enough to be aimed at with a thumb and quiet enough not to compete with the
+   rows above it. */
+.history .more { margin-top: var(--s6); display: flex; justify-content: center; }
+.history .more .btn { min-width: 220px; justify-content: center; }
+
+/* ── one row of the career ──────────────────────────────────────────────── */
+/* A career of short names does not need 1,180 px; the measure is capped so the
+   row reads as one line and the page keeps its air on the right. */
+.history .list { max-width: 900px; }
+
+.history .hrow {
+  display: grid; align-items: center;
+  /* The opponent's name is short and stops growing; the slack falls into the
+     mind cell, to the RIGHT of the badge. A 1fr opponent column put 470px of
+     nothing between the name and the mind and broke the row into two unrelated
+     halves. The first column carries the outcome circle as well as the name,
+     so it is 34px wider than the name alone needs (24 + a 10px gap). */
+  grid-template-columns: minmax(0, 254px) minmax(0, 1fr) 52px 74px 84px 14px;
+  gap: var(--s4);
+}
+/*
+ * THERE IS NO COLUMN HEAD. (See `dayHead()` in screens/history.js.)
+ *
+ * `OPPONENT · MIND · TIME · CHANGE · RATING` was a legend for five columns that
+ * name themselves, set in three different weights, none of them over the values
+ * they named. What replaced it is the day's own line — the label, the day's
+ * count, and the day's rating drawn small at the right edge — which says
+ * something the rows cannot.
+ */
+
+/*
+ * A ROW IS GLASS; THE OUTCOME IS A GLYPH ON IT.
+ *
+ * Every row used to be washed edge to edge with `--success` or `--accent`, and
+ * a career is a column of twelve of them: the quietest screen in the product
+ * came out as a stack of mint bars, and on a phone as an entirely green page.
+ * That is the opposite of §1.7 ("selective colour"), it is not what the kit's
+ * own LEADERBOARD ROW does — plain white glass, a rail, a chevron — and it put
+ * the whole fact into a hue, which is no fact at all for a reader the hue does
+ * not reach.
+ *
+ * So the surface goes neutral and the colour is spent on three small things
+ * that each carry the outcome on their own: a hairline rail at the row's edge
+ * for the glance down the column, the 24px circle §6.6 asks for with its
+ * letter, and the sign in front of the delta.
+ */
+/*
+ * …AND GLASS HAS TO BE GLASS, NOT A WINDOW.
+ *
+ * At `--glass` (52 % white over an 8 px blur) the backdrop still came through:
+ * one of the arena's hanging banners ran a coral band straight down the RATING
+ * column, and a number in a table with a colour behind it reads as a state the
+ * table is in. §2.3's answer for a card on a document screen is `--glass-strong`,
+ * and the panel on this same screen already closes its surface the same way — a
+ * `--sky-2` wash over the strong ramp, which keeps the warm cast of the kit
+ * while taking the picture out of the type. The 8 px of blur the shared rule
+ * already puts under a row on the photographic ground stays as it is: with the
+ * surface this close to opaque there is little left behind it to soften.
+ */
+.history .rows { gap: 6px; }
+.history .rows .hrow {
+  position: relative; overflow: hidden;
+  padding: 12px 16px;
+  /* The chrome floats over the document, so a row brought into view by the
+     keyboard has to stop clear of the band it floats in — otherwise the first
+     Tab into the career puts the focus ring under the wordmark. */
+  scroll-margin: 108px 0 32px;
+  --rail: var(--sand);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--sky-2) 40%, transparent),
+      color-mix(in srgb, var(--sky-2) 52%, transparent)),
+    linear-gradient(180deg,
+      rgba(255, 255, 255, .84) 0%, rgba(255, 255, 255, .72) 46%, rgba(255, 255, 255, .76) 100%);
+  border-color: var(--glass-line);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .04);
+}
+.history .rows .hrow.o-win { --rail: var(--success); }
+.history .rows .hrow.o-loss { --rail: var(--accent); }
+.history button.hrow:hover {
+  background: rgba(255, 255, 255, .93); transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .05), 0 8px 22px var(--shade);
+}
+.history button.hrow:active {
+  transform: translateY(0);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .05), 0 2px 8px var(--shade);
+}
+.history .rows .hrow.on {
+  background: rgba(255, 255, 255, .92);
+  border-color: rgba(255, 255, 255, .95);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .07);
+}
+
+/* The rail: three pixels at the row's own edge, clipped by its radius. */
+.history .hrow .g { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rail); }
+
+/*
+ * The outcome circle (§6.6): W on success, L on accent, D on sand.
+ *
+ * The fill is the palette colour at 18 %, the letter its darker companion, so
+ * the glyph clears 4.5:1 while the colour stays a whisper. The letter alone is
+ * not the fact — a screen reader is given the word beside it, because "W" read
+ * out is a letter and not a result.
+ */
+.history .hrow .oc {
+  width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 11px; font-weight: 600;
+  letter-spacing: 0; line-height: 1; color: var(--muted);
+  background: rgba(201, 184, 167, .42);
+  box-shadow: inset 0 0 0 1px rgba(46, 46, 51, .07);
+  transition: transform var(--d-ui) var(--ease);
+}
+.history .hrow.o-win .oc {
+  color: var(--success-ink); background: rgba(122, 211, 166, .18);
+  box-shadow: inset 0 0 0 1px rgba(122, 211, 166, .55);
+}
+.history .hrow.o-loss .oc {
+  color: var(--accent-ink); background: rgba(255, 122, 92, .18);
+  box-shadow: inset 0 0 0 1px rgba(255, 122, 92, .48);
+}
+/* The row answers the pointer as one object: the circle leans in with it. */
+.history button.hrow:hover .oc,
+.history button.hrow:focus-visible .oc { transform: scale(1.07); }
+
+.history .sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; white-space: nowrap; border: 0; clip-path: inset(50%);
+}
+
+.history .hrow .n { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.history .hrow .n .name {
+  font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.history .chip.spar,
+.history .chip.best { height: 21px; padding: 0 8px; font-size: 9.5px; letter-spacing: .16em; flex: none; }
+/* The one fight in thirty worth stopping at. Success ink, because the fact it
+   states is a win — and a hairline gradient rather than a flat fill, so it
+   reads as a mark awarded rather than as one more label. */
+.history .chip.best {
+  color: var(--success-ink);
+  background: linear-gradient(180deg, rgba(122, 211, 166, .3), rgba(122, 211, 166, .16));
+  border-color: rgba(122, 211, 166, .5);
+}
+
+.history .hrow .m { display: flex; align-items: center; min-width: 0; }
+.history .hrow .mind-slot { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.history .hrow .mind-slot .mind { font-size: 10.5px; letter-spacing: .1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history .hrow .mind-slot .mind-mark { width: 17px; height: 17px; flex: 0 0 17px; color: var(--muted); }
+
+/* One rule aligns the header cell and the value cell of the same column. */
+.history .hrow .w, .history .hrow .d, .history .hrow .r { text-align: right; }
+.history .hrow .w { font-size: 11px; color: var(--stone); letter-spacing: .06em; }
+.history .hrow .d { font-size: 13px; font-weight: 600; letter-spacing: .04em; margin-right: -.04em; }
+.history .hrow .r { font-size: 13px; font-weight: 500; color: var(--ink); }
+/* The row opens something, and says so standing still — a cue that appears only
+   under the pointer is no cue on a touch screen. */
+.history .hrow .c { color: var(--sand); transition: color var(--d-ui) var(--ease), transform var(--d-ui) var(--ease); }
+.history button.hrow:hover .c, .history button.hrow:focus-visible .c { color: var(--stone); transform: translateX(2px); }
+
+/* ── a run of identical fights, folded ──────────────────────────────────── */
+/*
+ * THE ARENA REPEATS ITSELF; THE CAREER DOES NOT HAVE TO.
+ *
+ * On a quiet ladder the matchmaker hands out the same opponent for an hour, and
+ * the career came out as nine rows of `STORM · AIRENA REFERENCE · −6` a minute
+ * apart — a page with nothing on it to stop at, where the one fight worth
+ * opening looks exactly like the eight that were not. Three or more in a row
+ * with one result against one opponent become one line that says so, and the
+ * fights themselves are one chevron below it (`RUN_MIN`, screens/history.js).
+ *
+ * The folded line is a row of the same table: same grid, same rail, same
+ * outcome circle, so a career of runs and singles still reads down its columns.
+ * What marks it as a container is the count chip beside the name and the
+ * chevron that turns.
+ */
+.history .run-group { display: flex; flex-direction: column; }
+.history .hrow.run .name { letter-spacing: .1em; }
+.history .chip.run-n {
+  height: 20px; padding: 0 7px; font-size: 10px; letter-spacing: .06em; flex: none;
+  font-variant-numeric: tabular-nums; color: var(--ink-2);
+  background: rgba(255, 255, 255, .72); border-color: rgba(46, 46, 51, .12);
+}
+.history .hrow.run .rc svg { transition: transform var(--d-panel) var(--ease); }
+.history .run-group.open .rc svg { transform: rotate(180deg); }
+.history .run-group.open > .hrow.run { background: rgba(255, 255, 255, .9); }
+
+/*
+ * The fights inside a run are indented past a hairline that runs the height of
+ * the group: the same "these belong to the line above" the beats list makes
+ * with its dotted margin. They are quieter than a standalone row — the run
+ * above them has already said the result — but they are the same row, because
+ * each one still opens its own fight.
+ */
+.history .run-rows {
+  position: relative; margin: 6px 0 2px 22px; padding-left: 14px;
+}
+.history .run-rows[hidden] { display: none; }
+.history .run-rows::before {
+  content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px;
+  background: linear-gradient(180deg, var(--sand), rgba(201, 184, 167, 0));
+}
+.history .run-rows .hrow { padding-top: 10px; padding-bottom: 10px; }
+.history .run-rows .hrow .name { font-size: 12px; color: var(--ink); }
+/* The rail is the run's, not each fight's: repeating it nine times inside one
+   fold puts the colour back that the fold was drawn to take out. */
+.history .run-rows .hrow .g { opacity: .5; }
+/* Opening a fold is a disclosure, so the fights arrive the way the list does —
+   the same 9 px rise, the same cascade, a little quicker because the reader is
+   already looking at the place they will land. `display: none` holds the
+   animation until the fold opens, so it plays on every open and not once. */
+@media (prefers-reduced-motion: no-preference) {
+  .history .run-rows > .hrow {
+    animation: hrow-in 260ms var(--ease) backwards;
+    animation-delay: calc(var(--enter-i, 0) * 22ms);
+  }
+}
+
+/* The list arrives, it does not appear. Once per mount: `Load more` appends to
+   a page the reader is already reading, and must not make it flinch. */
+/*
+ * THE ENTRANCE MAY NOT OWN THE RESTING STATE.
+ *
+ * These keyframes used to run `opacity: 0 → 1` with `animation-fill-mode:
+ * backwards` and a per-row delay of up to 288 ms, which made one CSS animation
+ * the only thing standing between the reader and a blank page. In any
+ * environment where the animation does not start — a background tab the
+ * browser has throttled, a compositor that never gets a frame, the headless
+ * window the screenshots are taken in — `backwards` holds every row at zero
+ * opacity for ever. That is what `history-m.png` photographed: a career header
+ * over 550 px of bare backdrop, with all four hundred nodes of the list
+ * present in the DOM and none of them drawn.
+ *
+ * So the rows are painted first and moved second. A missed frame now costs the
+ * motion, which nobody will miss, instead of the career, which is the screen.
+ */
+@keyframes hrow-in { from { transform: translateY(9px); } to { transform: none; } }
+.history .list.enter .day-head,
+.history .list.enter .rows .hrow,
+.history .list .hrow.ghost { animation: hrow-in 320ms var(--ease); }
+.history .list.enter .day-head { animation-duration: 260ms; }
+/* The cascade — and the `backwards` fill that keeps it smooth across its own
+   delay — is motion, and motion is asked for. Under `reduce` the rows simply
+   are where they belong from the first frame. */
+@media (prefers-reduced-motion: no-preference) {
+  .history .list.enter .day-head,
+  .history .list.enter .rows .hrow,
+  .history .list .hrow.ghost {
+    /* The stagger travels as a plain number so a narrower layout can zero it
+       without an inline style to beat (see the ≤900 px block). */
+    animation-delay: calc(var(--enter-i, 0) * 24ms);
+    animation-fill-mode: backwards;
+  }
+}
+
+/* ── the shape of the career, while it is on its way ────────────────────── */
+/* Not a spinner and not a percentage (§1.5): the rows that are coming, in the
+   material they will arrive in, so the table does not change substance when
+   the data lands — only its content appears. */
+.history .hrow.ghost { pointer-events: none; }
+.history .ghost .skel, .history .sk-day { min-height: 0; border-radius: var(--r-chip); }
+.history .sk-day { display: inline-block; width: 180px; height: 10px; }
+.history .sk-oc { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; }
+.history .sk-name { display: block; width: min(160px, 76%); height: 12px; }
+.history .sk-mind { display: block; width: 118px; height: 12px; }
+
+/* ── empty states ───────────────────────────────────────────────────────── */
+/*
+ * `.doc.history`, not `.history`: `body[data-ground="stage"] .empty` in
+ * ui/components.css outweighs a two-class selector, so the 28 % wash written
+ * here never applied and the card sat at 40 % over the arena — through which
+ * one of the backdrop's warm columns smeared across the middle of the copy.
+ * Three classes take the rule back, and it closes the surface the way §2.3 asks
+ * a card on a document screen to: the strong ramp under a `--sky-2` wash, the
+ * same construction as the rows and the detail panel on this screen.
+ */
+.doc.history .empty {
+  max-width: 520px; margin: 0 auto;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--sky-2) 46%, transparent),
+      color-mix(in srgb, var(--sky-2) 58%, transparent)),
+    linear-gradient(180deg,
+      rgba(255, 255, 255, .84) 0%, rgba(255, 255, 255, .72) 46%, rgba(255, 255, 255, .78) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1); backdrop-filter: blur(16px) saturate(1.1);
+  border-color: rgba(46, 46, 51, .16);
+}
+/*
+ * AN EMPTY CAREER STANDS IN THE MIDDLE OF THE ROOM IT IS IN.
+ *
+ * One card pinned to the top of nine hundred pixels of arena photograph, with
+ * six hundred below it and nothing in them, reads as a page that stopped
+ * loading rather than as a page with nothing in it yet. The document is the
+ * only child of a flex column and therefore has a height; the inner column
+ * takes it, and the card takes the middle. Browsers without `:has()` keep the
+ * old top alignment, which is a placement and not a fault.
+ */
+.doc.history .doc-inner:has(> .empty) {
+  min-height: 100%; display: flex; flex-direction: column;
+}
+.doc.history .doc-inner:has(> .empty) > .empty { margin-block: auto; }
+.history .empty .circle { color: var(--stone); opacity: .7; }
+.history .empty-wait .wait-k { margin-top: var(--s5); }
+.history .empty-wait .wait-num { margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+/* ── the detail panel ───────────────────────────────────────────────────── */
+/*
+ * A SCRIM DIMS THE CAREER; IT DOES NOT DESTROY IT.
+ *
+ * Two pixels of blur sounded like nothing and photographed as a smear: the
+ * STONE GOLEM headline, the whole career line and every opponent name behind
+ * the panel came out illegible, so the page the panel is a layer OVER stopped
+ * being a page at all. A reader who opens a fight has not left the career —
+ * they are one Esc from it, the rows are still there to be aimed at, and the
+ * list re-flows to make room precisely so it can still be read. Flat ink at
+ * 28 % dims it by exactly the amount that says "this is behind"; nothing is
+ * blurred, because nothing here is out of focus.
+ */
+.history .detail-veil {
+  position: absolute; inset: 0; background: rgba(46, 46, 51, .28);
+  opacity: 0; transition: opacity var(--d-panel) var(--ease);
+}
+.history .detail-veil.in { opacity: 1; }
+/* Closing is now a slide-out over a career that stays put, so the veil outlives
+   its own usefulness by the length of the transition. It must not keep eating
+   clicks meant for the rows underneath while it fades. */
+.history .detail-veil:not(.in) { pointer-events: none; }
+.history .detail:not(.in) { pointer-events: none; }
+
+/*
+ * THE PANEL IS AS TALL AS THE FIGHT IT IS TELLING.
+ *
+ * Pinned `top: 100px; bottom: 24px`, it was a full-height rail whatever it had
+ * to say, and a short retelling left a hundred and fifty pixels of nothing
+ * between `Show all 17` and the WATCH REPLAY button standing on the floor —
+ * the card visibly running out of content a third of the way up its own
+ * surface. Neither growing the beats nor floating the button fixes that; both
+ * only move the hole. What is wrong is the height, so the height gives way: the
+ * panel takes the size of its content up to everything the screen has, and a
+ * long fight fills it exactly as before and scrolls inside the beats.
+ *
+ * A floor under it (`min-height`) keeps the skeleton and the card it becomes
+ * near the same size, so the panel does not visibly grow when the answer lands.
+ */
+.history .detail {
+  position: absolute; top: 100px; right: 24px; width: 420px;
+  max-height: calc(100% - 124px); min-height: min(600px, calc(100% - 124px));
+  display: flex; flex-direction: column; overflow: hidden;
+  /* --glass-strong alone is 74 % white: the opponent names of the rows behind
+     read straight through the panel. The sky-2 layer closes the surface; the
+     glass under it keeps the warm cast the rest of the kit has. */
+  background:
+    linear-gradient(color-mix(in srgb, var(--sky-2) 94%, transparent),
+                    color-mix(in srgb, var(--sky-2) 94%, transparent)),
+    var(--glass-strong);
+  opacity: 0; transform: translateX(28px);
+  transition: opacity var(--d-panel) var(--ease), transform var(--d-panel) var(--ease);
+}
+.history .detail.in { opacity: 1; transform: none; }
+/* The panel takes focus on open so the next Tab lands on its own close button
+   rather than on the career behind the scrim. It is a scroll and tab anchor,
+   not a control, and a ring around a whole panel says "you are editing this".
+   The controls inside keep the global focus ring; the panel keeps its glass. */
+.history .detail:focus, .history .detail:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .06),
+    0 12px 40px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+.history .detail-x {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--muted); z-index: 1;
+  transition: background var(--d-ui), color var(--d-ui);
+}
+.history .detail-x:hover { color: var(--ink-2); background: rgba(255, 255, 255, .7); }
+
+.history .detail-body {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  padding: 26px 26px 22px;
+}
+/*
+ * THE CONTENT DOES NOT GET AN ENTRANCE OF ITS OWN.
+ *
+ * A staggered fade over the four parts of the card was the obvious flourish and
+ * it was wrong twice. The panel already slides in over a career that stands
+ * still — that IS the arrival, and a second animation inside the first reads as
+ * the card assembling itself late. Worse, it is not deterministic: the body is
+ * filled when `/api/match/:id` answers, which on a loaded arena can be seconds
+ * after the panel, so a capture — or a reader on a slow answer — meets the
+ * stagger mid-flight and sees a half-drawn card. The skeleton carries the wait;
+ * what replaces it is simply there.
+ */
+.history .detail-skel { display: flex; flex-direction: column; gap: var(--s4); }
+.history .sk-head { height: 54px; width: 62%; }
+.history .sk-fighters { height: 96px; }
+.history .sk-beats { flex: 1; min-height: 140px; }
+
+.history .detail-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s4); }
+.history .outcome {
+  font-size: 22px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  padding-right: .2em;
+}
+.history .outcome.o-win { color: var(--success-ink); }
+.history .outcome.o-loss { color: var(--accent-ink); }
+.history .outcome.o-draw { color: var(--muted); }
+.history .detail-delta { display: flex; align-items: baseline; gap: 8px; }
+.history .detail-delta .dv { font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+.history .detail-delta .dv.up { color: var(--success-ink); }
+.history .detail-delta .dv.down { color: var(--accent-ink); }
+.history .detail-delta .dv.muted { color: var(--muted); }
+/* An unrated fight prints the flag where the number would have been. */
+.history .detail-head .flag { align-self: center; flex: none; }
+
+.history .detail-fighters {
+  margin-top: var(--s5); padding: var(--s4) 0;
+  border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 12px;
+}
+/* Four columns on both rows, the last one 14px wide and empty on mine: the
+   opponent's row carries a chevron, and two ratings that do not line up because
+   one of them has a chevron after it is a table with a wobble in it. */
+.history .detail-fighters .f {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 14px;
+  align-items: center; gap: 12px;
+}
+/*
+ * The opponent is a door, not a caption (§6.6).
+ *
+ * It is the same affordance as a ladder row, so it is drawn as one: a chevron
+ * that is always visible (a cue that appears only under a pointer is no cue on
+ * a phone), a surface that lifts under the pointer, and the whole thing pulled
+ * out into its own padding so the hover has an edge to happen on.
+ */
+.history .detail-fighters .f-open {
+  margin: -6px -10px; padding: 6px 10px; border-radius: var(--r-card);
+  color: inherit; text-decoration: none;
+  transition: background var(--d-ui) var(--ease);
+}
+.history .f-open:hover, .history .f-open:focus-visible { background: rgba(255, 255, 255, .6); }
+.history .f-open:hover .name { color: var(--info-ink); }
+.history .f-open .fc { color: var(--sand); transition: color var(--d-ui) var(--ease), transform var(--d-ui) var(--ease); }
+.history .f-open:hover .fc, .history .f-open:focus-visible .fc { color: var(--stone); transform: translateX(2px); }
+.history .f .side { width: 10px; height: 10px; border-radius: 50%; }
+.history .f .side.s-own { background: var(--side-own); }
+.history .f .side.s-foe { background: var(--side-foe); }
+.history .f .name {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2);
+}
+.history .f .you {
+  font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--sand); border-radius: 4px; padding: 1px 5px;
+}
+.history .f .fm { margin-top: 5px; }
+.history .f .fm .mind { font-size: 10.5px; color: var(--muted); }
+.history .f .fm .mind-mark { width: 17px; height: 17px; flex: 0 0 17px; color: var(--muted); }
+.history .f .fr { font-size: 16px; font-weight: 500; color: var(--ink); }
+.history .detail-fighters .mid { display: flex; align-items: center; gap: 12px; }
+.history .detail-fighters .mid::before, .history .detail-fighters .mid::after {
+  content: ""; flex: 1; height: 1px; background: var(--hairline);
+}
+.history .detail-fighters .mid span {
+  font-size: 10px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
+}
+
+.history .detail-meta {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin: var(--s4) 0 var(--s5);
+  font-family: var(--font-body); font-size: 12.5px; color: var(--muted);
+}
+.history .detail-meta .num { font-size: 13px; font-weight: 600; color: var(--ink-2); font-family: var(--font-display); }
+.history .detail-meta .dotsep { color: var(--sand); }
+
+/* ── how it went ────────────────────────────────────────────────────────── */
+/* Two labels with the rule running BETWEEN them: the right one names the
+   column the numbers fall into, so it has to sit over them rather than behind
+   a line that runs past both. The 6px matches the beats' own scrollbar gutter,
+   which is what puts the label's right edge over the numbers' right edge. */
+.history .beats-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 12px; padding-right: 6px;
+}
+.history .beats-head .rule { flex: 1; height: 1px; background: var(--hairline); }
+.history .beats-head .beats-dmg { flex: none; }
+/* The fight rarely fits. The last visible line used to be cut clean in half
+   with nothing to say it was cut; the mask turns that edge into a fade, and
+   the bottom padding gives the real last beat somewhere to land clear of it. */
+/* `flex: 0 1 auto`, not `flex: 1`: nine beats are nine beats. Growing the box to
+   the panel's height parks the `Show all` toggle in a hole of its own, at the
+   far end of a scroll area with nothing in it. The panel is what gives way
+   instead — it is as tall as the fight it is telling (see `.detail`). It still
+   shrinks and scrolls when the fight is long. */
+.history .beats {
+  flex: 0 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; padding-bottom: 24px;
+  display: flex; flex-direction: column; gap: 10px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent 100%);
+}
+/* A sentence, not a log line: the clock, then who did what to whom, then what
+   it cost — three columns, so the numbers of a fight can be read down. The 14px
+   gutter in front carries the side dot. */
+.history .beat {
+  position: relative; padding-left: 14px;
+  /* A beat is worth its own height and never less. It is a flex item in a
+     column that shrinks, and a two-line retelling squeezed into one line's
+     worth of box does not clip — it overflows into the beat below it. The
+     scrollbar is what the overflow is for. */
+  flex: none;
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) 30px; gap: 10px;
+  align-items: baseline; font-family: var(--font-body); font-size: 12.5px; line-height: 1.5;
+}
+/*
+ * THE SIDE DOT, EXACTLY AS THE LIVE FEED DRAWS IT (§5.2).
+ *
+ * Six pixels in the margin, coloured by side. Two creatures may share a name —
+ * the dev ladder holds two STONE GOLEMs — and with every line in one ink the
+ * retelling of a mirror match could not be parsed at all: `STONE GOLEM lands a
+ * hit / STONE GOLEM misses / STONE GOLEM goes down` says nothing about who did
+ * what. The dot answers it before the sentence is read, and the actor's name in
+ * its side's ink answers it again inside the sentence — the same pair, in the
+ * same colours, as the feed the fight was watched on.
+ *
+ * `--sand` is the honest colour for a beat whose actor the log cannot name; a
+ * missing dot in a dotted column reads as a fault rather than as a silence.
+ */
+.history .beat::before {
+  content: ""; position: absolute; left: 0; top: 6px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--sand);
+}
+.history .beat.s-own::before { background: var(--side-own); }
+.history .beat.s-foe::before { background: var(--side-foe); }
+.history .beat .bt { font-family: var(--font-display); font-size: 11px; color: var(--stone); font-variant-numeric: tabular-nums; }
+.history .beat .bx { color: var(--muted); }
+/* The tie-breaker that tells two abilities of one set apart is no longer hung
+   off the end of the sentence as `· stun`: it is folded in as the word it is
+   (`its stunning kinetic lunge`, see `MARK_WORD` in screens/history.js), so the
+   retelling is prose all the way through and no middot reads as a dropped
+   word. Nothing here has to set it apart from the sentence it belongs to. */
+/* The name is set the way the name is set everywhere else on this panel. */
+.history .beat .nm {
+  font-family: var(--font-display); font-size: 11.5px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2);
+}
+.history .beat .ba {
+  text-align: right; font-family: var(--font-display); font-size: 12px; font-weight: 600;
+  color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+/* The two sides are the two colours of the arena floor (§2.1), so a glance
+   down the column says whose fight it was. */
+.history .beat.s-own .nm { color: var(--info-ink); }
+.history .beat.s-foe .nm { color: var(--accent-ink); }
+.history .beat .bq { color: var(--ink); font-style: italic; }
+.history .beats-none { padding: var(--s3) 0; }
+.history .beats-foot { flex: none; display: flex; justify-content: center; margin-top: 6px; }
+.history .beats-more { height: 30px; padding: 0 12px; font-size: 10.5px; }
+
+/* The action sits on the panel's floor whatever the retelling above it costs. */
+.history .detail-foot { margin-top: auto; padding-top: var(--s5); border-top: 1px solid var(--hairline); }
+.history .detail-foot .btn { width: 100%; }
+
+/* ── narrow rows ────────────────────────────────────────────────────────── */
+
+/* The mind column gives way first: the opponent's name is what is scanned. */
+@media (max-width: 1040px) {
+  .history .hrow { grid-template-columns: minmax(0, 214px) minmax(0, 1fr) 48px 68px 76px 14px; gap: var(--s3); }
+}
+
+/*
+ * WITH THE PANEL OPEN, THE ROW IS 468 PX NARROWER THAN THE WINDOW.
+ *
+ * The column sets above answer the VIEWPORT, and the viewport is not what the
+ * row is laid out in: the detail panel takes 468 px of it, the rail takes
+ * another 120–168, and the page its own padding. At 1280×720 with a fight open
+ * the wide set wants 590 px and has 588, so the mind column — the only one that
+ * can give — collapses to a mark and an ellipsis; at 1024×768 there are 380 px
+ * for a set that reads properly at 512. Both are acceptance sizes (§12), and
+ * both are the same screen doing the one thing this screen is for.
+ *
+ * So the row is told what it actually has. The thresholds are the widths at
+ * which each set stops leaving the mind column enough for `AIRENA REFERENCE`
+ * to be read — about 145 px — rather than the widths at which the row simply
+ * stops fitting: a column that has technically not overflowed but shows a mark
+ * and an ellipsis has still lost the fact it was holding.
+ */
+@media (min-width: 901px) and (max-width: 1400px) {
+  .history.detail-open .hrow {
+    grid-template-columns: minmax(0, 186px) minmax(0, 1fr) 46px 64px 74px 14px;
+    gap: var(--s3);
+  }
+}
+/* 1280×720 is an acceptance size (§12) and lands here: 616 px of content column
+   is not a table, it is a narrow page, and the two-line row is what a narrow
+   page has. Every field keeps its own room instead of four of them sharing a
+   line that cannot hold them. */
+@media (min-width: 901px) and (max-width: 1280px) {
+  .history.detail-open .hrow {
+    grid-template-columns: minmax(0, 1fr) auto auto 14px;
+    grid-template-areas: "n n d c" "m w r c";
+    gap: 5px 12px;
+  }
+  .history.detail-open .hrow .n { grid-area: n; }
+  .history.detail-open .hrow .m { grid-area: m; padding-left: 34px; }
+  .history.detail-open .hrow .w { grid-area: w; }
+  .history.detail-open .hrow .d { grid-area: d; }
+  .history.detail-open .hrow .r { grid-area: r; font-size: 12px; color: var(--muted); }
+  .history.detail-open .hrow .c { grid-area: c; display: flex; align-items: center; }
+  .history.detail-open .day-sum { white-space: normal; text-align: right; }
+  /* The header is measured against the same narrowed column: an inline run of
+     four stats wraps into `· 1,864 BEST RATING` here for the same reason it
+     does on a phone, and takes the same two-by-two grid. */
+  .history.detail-open .career-line {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;
+  }
+  .history.detail-open .stat { flex-wrap: wrap; gap: 6px; }
+  .history.detail-open .stat + .stat::before { content: none; }
+  .history.detail-open .stat .v { font-size: 18px; }
+  .history.detail-open .spark { display: none; }
+}
+
+/* The career header stops being an inline run. A middle dot that opens a line
+   reads as a bullet nobody wrote: at this width the run wrapped into
+   `· 1,864 BEST RATING`, so it becomes a 2 × 2 grid and the separators go. */
+@media (max-width: 900px) {
+  .history .career { margin-bottom: var(--s5); }
+  .history .career-line { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .history .stat { flex-wrap: wrap; gap: 6px; }
+  .history .stat + .stat::before { content: none; }
+  .history .stat .v { font-size: 17px; }
+  /* Half of a 390px screen has room for `BEST RATING 1,864` and nothing else;
+     the climb wrapped onto a line of its own and read as a stray mark. It is
+     given a fixed box before it is taken out of the flow, so that no later
+     rule — and no `display` a future hand restores — can let an inline SVG
+     with an intrinsic aspect ratio stretch to fill the column and push the
+     list off the bottom of the screen. */
+  .history .spark { flex: 0 0 auto; width: 96px; height: 20px; display: none; }
+  /* One column has no direction for a cascade to travel in, and twelve rows at
+     24 ms is a third of a second before the last of them moves. The stagger is
+     a wide-screen pleasure; on a phone the list simply arrives. */
+  .history .list.enter .day-head,
+  .history .list.enter .rows .hrow { animation-delay: 0s; }
+  /* The tab bar is what a row has to clear at the bottom here, not the page. */
+  .history .rows .hrow { scroll-margin: 92px 0 118px; }
+  /*
+   * THE CAREER ENDS WHERE THE NAVIGATION BEGINS.
+   *
+   * The tab bar floats over the page (ui/chrome.css), and a career is the
+   * longest list in the product: rows slid under 18 px of frosted glass and
+   * came out as an opponent's name you could almost read, with its rating and
+   * its clock beside it — the one place §12's "nothing under a panel" is not a
+   * near miss but a row of live facts behind a navigation bar. The scroller
+   * gives the bar its 50 px instead (2 + 46 + 2, the bar's own arithmetic) and
+   * fades into it, so the list runs out of page rather than under the chrome.
+   * The document's own 96 px of bottom padding still lets the last row scroll
+   * clear of the fade.
+   */
+  .doc.history {
+    margin-bottom: calc(50px + env(safe-area-inset-bottom));
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent 100%);
+  }
+}
+
+/* Stack early. In one line a row costs 412px of fixed columns, 5 gaps, 32px of
+   padding and — on a sparring row — a chip the name cannot shrink past: about
+   626px before the name gets a pixel. A tablet held upright does not have it,
+   and `.doc.history` hides its overflow, so the delta and the rating were cut
+   off rather than scrolled. Two lines fit everything at any phone width. */
+@media (max-width: 760px) {
+  .history .hrow {
+    grid-template-columns: minmax(0, 1fr) auto auto 14px;
+    grid-template-areas: "n n d c" "m w r c";
+    gap: 5px 12px;
+  }
+  .history .hrow .n { grid-area: n; }
+  /* The outcome circle hangs in a gutter of its own on the first line, so the
+     second line is indented past it and the two read as one block rather than
+     as a name that has been pushed off its own left edge. */
+  .history .hrow .m { grid-area: m; padding-left: 34px; }
+  .history .hrow .w { grid-area: w; }
+  .history .hrow .d { grid-area: d; }
+  .history .hrow .r { grid-area: r; font-size: 12px; color: var(--muted); }
+  /* No hover on a phone, so the only cue that a row opens something is the one
+     that is always drawn. It spans both lines of the row. */
+  .history .hrow .c { grid-area: c; display: flex; align-items: center; }
+  .history .day-sum { white-space: normal; text-align: right; }
+}
+
+/* ── the panel becomes a sheet ──────────────────────────────────────────── */
+
+/* It used to take the whole screen, inset 0. Two things followed from that and
+   neither was survivable on a phone: the chrome floats above `#screen`, so the
+   my-chip sat exactly on the close button and swallowed the tap — the × was
+   not even visible — and with the veil covered there was no tap-outside and no
+   Esc either, leaving the tab bar as the only way out.
+   The sheet starts below the chrome band (the chip ends at 56px), so the × is
+   the panel's own and the strip above it is veil again: tap there to close. */
+@media (max-width: 900px) {
+  /* The sheet is opaque and covers the document whole. Leaving the career
+     underneath merely invisible left every line of it in the accessibility
+     tree and measurably on top of the sheet's own text. */
+  .history.detail-open .doc.history { visibility: hidden; }
+  .history .detail {
+    top: 68px; right: 0; bottom: 0; left: 0; width: auto;
+    /* A sheet is not a card: it takes the screen it is given, so the desktop
+       panel's content-height rules are handed back. */
+    max-height: none; min-height: 0;
+    border-radius: var(--r-panel) var(--r-panel) 0 0; border-bottom: 0;
+    transform: translateY(20px);
+  }
+  .history .detail-veil { background: rgba(46, 46, 51, .34); }
+  .history .detail-body { padding: 58px 20px calc(78px + env(safe-area-inset-bottom)); }
+  /* A thumb target, and it reads as a button against the sheet. Forty-four,
+     which is what ui/components.css gives every other control on a phone and
+     what WCAG 2.2 asks of a target with no equivalent beside it — tapping the
+     veil also closes the sheet, but the × is the visible affordance and it was
+     the smallest thing on the screen. The sheet starts at 68px, so a 44px
+     button at `top: 12` still clears the my-chip above it. */
+  .history .detail-x {
+    top: 12px; right: 12px; width: 44px; height: 44px;
+    background: rgba(255, 255, 255, .62); border: 1px solid var(--glass-line);
+  }
+  .history .outcome { font-size: 19px; }
+  .history .detail-delta .dv { font-size: 26px; }
+}

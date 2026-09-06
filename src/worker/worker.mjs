@@ -1,39 +1,42 @@
 #!/usr/bin/env node
 /**
- * airena-worker — одалживает Airena вашу подписку Claude Code. По одному
- * заданию за раз, пока окно открыто; закрыли окно — одолжили ноль.
+ * airena-worker — lends Airena your Claude Code subscription. One task at a
+ * time, for as long as this window is open; close the window and you lend
+ * nothing.
  *
- * ── ЧТО УХОДИТ С ВАШЕЙ МАШИНЫ ─────────────────────────────────────────────
+ * ── WHAT LEAVES YOUR MACHINE ──────────────────────────────────────────────
  *
- * Только результат: текст ответа модели, число токенов, имя ответившей
- * модели, длительность и справочная цена, которую печатает сам CLI.
+ * The result only: the model's answer, its usage counters, the name of the
+ * model that answered, how long it took and the reference cost the CLI itself
+ * prints.
  *
- * ── ЧТО НЕ УХОДИТ НИКОГДА ─────────────────────────────────────────────────
+ * ── WHAT NEVER LEAVES ─────────────────────────────────────────────────────
  *
- * Ваши учётные данные Anthropic. Воркер не читает `~/.claude`, не открывает
- * keychain, не знает ни одного токена Anthropic и физически не может его
- * передать: единственное, что он умеет, — запустить бинарник `claude`, в
- * который вы уже вошли сами, и прочитать его stdout. Место ровно одно —
- * `spawn` в `runClaude` ниже, и туда уходит только текст задания.
+ * Your Anthropic credentials. The worker does not read `~/.claude`, does not
+ * open the keychain, knows no Anthropic secret and physically cannot pass one
+ * on: the single thing it can do is start the `claude` binary you already
+ * signed into yourself and read its stdout. There is exactly one such place —
+ * `spawn` in `runClaude` below — and only the text of the task goes into it.
  *
- * Модель запускается с `--tools ''`, `--strict-mcp-config`,
- * `--disable-slash-commands` и `--setting-sources ''`: у неё нет инструментов,
- * она не читает ваши файлы, не выполняет команд и не видит ваших настроек. Это
- * не вежливость к вам, а требование к серверу: генерация не должна зависеть от
- * того, на чьей машине она выполнилась.
+ * The model is started with `--tools ''`, `--strict-mcp-config`,
+ * `--disable-slash-commands` and `--setting-sources ''`: it has no tools, does
+ * not read your files, runs no commands and does not see your settings. That
+ * is not politeness towards you but a requirement on the server: a generation
+ * must not depend on whose machine it ran on.
  *
- * На диск воркер пишет один файл — `~/.airena-worker.json` с адресом сервера и
- * токеном ВОРКЕРА (не Anthropic), права 0600. Токен отзывается на сайте Airena
- * в один клик, файл можно удалить руками в любой момент.
+ * The worker writes one file to disk — `~/.airena-worker.json`, holding the
+ * server address and the WORKER's key (not Anthropic's), mode 0600. The key is
+ * revoked on the Airena site in one click, and the file can be deleted by hand
+ * at any moment.
  *
- * ── ЗАПУСК ────────────────────────────────────────────────────────────────
+ * ── RUNNING IT ────────────────────────────────────────────────────────────
  *
- *   node worker.mjs            обычная работа
- *   node worker.mjs --pair     привязаться заново
- *   node worker.mjs --once     одно задание и выход (для проверки)
+ *   node worker.mjs            ordinary work
+ *   node worker.mjs --pair     link to an account again
+ *   node worker.mjs --once     one task, then exit (for a check)
  *   node worker.mjs --help
  *
- * Зависимостей нет: только Node 18+ и его встроенные модули.
+ * No dependencies: Node 18+ and its built-in modules.
  */
 
 import { spawn } from 'node:child_process';
@@ -46,48 +49,49 @@ const DEFAULT_SERVER = 'https://airena.genex.technology';
 const CONFIG_PATH = path.join(os.homedir(), '.airena-worker.json');
 
 /*
- * Среда, которую НЕ наследует дочерний `claude`.
+ * The environment the child `claude` does NOT inherit.
  *
- * Измерено и стоило вечера: `claude`, запущенный из-под другого `claude`,
- * наследует сокет родителя и виснет, не напечатав ни байта — ни stdout, ни
- * stderr, даже под --debug. Снаружи это неотличимо от медленной модели. Тот же
- * список живёт в `src/brain/claude.js`; здесь он повторён, потому что этот файл
- * коллеге отдаётся одним куском и не имеет права ничего импортировать.
+ * Measured, and it cost an evening: `claude` started from under another
+ * `claude` inherits the parent's socket and hangs without printing a byte —
+ * no stdout, no stderr, not even under --debug. From outside that is
+ * indistinguishable from a slow model. The same list lives in
+ * `src/brain/claude.js`; it is repeated here because this file is handed over
+ * as one piece and has no right to import anything.
  */
 const STRIPPED = [
   'ANTHROPIC_BASE_URL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN',
   'CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT', 'CLAUDE_AGENT_SDK_VERSION',
 ];
 
-// ── аргументы ───────────────────────────────────────────────────────────────
+// ── arguments ───────────────────────────────────────────────────────────────
 
 const argv = process.argv.slice(2);
 const hasFlag = (f) => argv.includes(f);
 const flagValue = (f) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : null; };
 
 if (hasFlag('--help') || hasFlag('-h')) {
-  console.log(`airena-worker — одалживает Airena вашу подписку Claude Code.
+  console.log(`airena-worker — lends Airena your Claude Code subscription.
 
-  node worker.mjs                 работать: ждать задания и выполнять их
-  node worker.mjs --pair          привязаться к аккаунту Airena заново
-  node worker.mjs --once          выполнить одно задание и выйти
-  node worker.mjs --server <url>  другой сервер (по умолчанию ${DEFAULT_SERVER})
-  node worker.mjs --help          эта справка
+  node worker.mjs                 work: wait for tasks and run them
+  node worker.mjs --pair          link to an Airena account again
+  node worker.mjs --once          run one task and exit
+  node worker.mjs --server <url>  another server (default ${DEFAULT_SERVER})
+  node worker.mjs --help          this help
 
-Переменные среды:
-  AIRENA_SERVER       адрес сервера
-  AIRENA_CLAUDE_BIN   путь к бинарнику claude, если он лежит не там, где обычно
+Environment:
+  AIRENA_SERVER       server address
+  AIRENA_CLAUDE_BIN   path to the claude binary, if it is not in the usual place
 
-С машины уходит только ответ модели и счётчик токенов. Учётные данные Anthropic
-воркер не читает и не передаёт — он лишь запускает claude, в который вы вошли.
-Остановка — Ctrl+C.`);
+Only the model's answer and its usage counters leave this machine. The worker
+neither reads nor sends your Anthropic credentials — it only starts the claude
+you signed into. Stop it with Ctrl+C.`);
   process.exit(0);
 }
 
 const ONCE = hasFlag('--once');
 const FORCE_PAIR = hasFlag('--pair');
 
-// ── конфиг ──────────────────────────────────────────────────────────────────
+// ── config ──────────────────────────────────────────────────────────────────
 
 function readConfig() {
   try { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); } catch { return null; }
@@ -95,20 +99,22 @@ function readConfig() {
 
 function writeConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, `${JSON.stringify(cfg, null, 2)}\n`, { mode: 0o600 });
-  /* `mode` в writeFileSync действует только при СОЗДАНИИ файла: перепривязка
-     поверх старого конфига оставила бы 0644 и токен, читаемый всей машиной. */
+  /* `mode` in writeFileSync applies only when the file is CREATED: linking
+     again over an old config would leave 0644 and a key the whole machine
+     could read. */
   fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
 const cfg = readConfig();
-/* Флаг сильнее среды, среда сильнее сохранённого: иначе `--server` на разовый
-   запуск против тестового сервера молча уходил бы на боевой. */
+/* The flag beats the environment, the environment beats what was saved:
+   otherwise a one-off `--server` aimed at a test server would silently go to
+   the live one. */
 const SERVER = String(flagValue('--server') || process.env.AIRENA_SERVER || cfg?.server || DEFAULT_SERVER)
   .replace(/\/+$/, '');
 
 // ── HTTP ────────────────────────────────────────────────────────────────────
 
-/** Токен протух — единственная ошибка, после которой продолжать бессмысленно. */
+/** The key is dead — the one error after which carrying on is pointless. */
 class DeadToken extends Error {}
 
 async function api(route, { method = 'GET', body = null, token = null, timeoutMs = 15_000 } = {}) {
@@ -125,19 +131,19 @@ async function api(route, { method = 'GET', body = null, token = null, timeoutMs
   return res;
 }
 
-// ── печать статуса ──────────────────────────────────────────────────────────
+// ── status printing ─────────────────────────────────────────────────────────
 
 const TTY = Boolean(process.stdout.isTTY);
 let lastLen = 0;
 
-/** Строка, которую перепишут следующей. В логе (не TTY) её просто нет. */
+/** A line the next one overwrites. In a log (not a TTY) it simply is not there. */
 function transient(line) {
   if (!TTY) return;
   process.stdout.write(`\r${line.padEnd(lastLen)}`);
   lastLen = line.length;
 }
 
-/** Строка, которая остаётся в истории. */
+/** A line that stays in the history. */
 function commit(line) {
   if (TTY) { process.stdout.write(`\r${line.padEnd(lastLen)}\n`); lastLen = 0; }
   else console.log(line);
@@ -148,22 +154,21 @@ const mmss = (ms) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-const tokens = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
 /**
- * Короткая подпись задания для экрана.
+ * A short caption for the task, for the screen.
  *
- * Сервер не присылает названия существа — оно рождается уже внутри ответа
- * модели. Первые 40 символов запроса — единственное, что есть до генерации, и
- * они нужны исключительно чтобы человек за ноутбуком видел, что идёт работа, а
- * не зависание. Никуда не отправляется.
+ * The server does not send a creature's name — it is born inside the model's
+ * answer. The first 40 characters of the request are the only thing that
+ * exists before the generation, and they are here purely so the person at the
+ * laptop sees work rather than a freeze. Sent nowhere.
  */
 function label(prompt) {
   const flat = String(prompt || '').replace(/\s+/g, ' ').trim();
-  return flat.length > 40 ? `${flat.slice(0, 40)}…` : (flat || 'задание');
+  return flat.length > 40 ? `${flat.slice(0, 40)}…` : (flat || 'task');
 }
 
-// ── привязка ────────────────────────────────────────────────────────────────
+// ── linking ─────────────────────────────────────────────────────────────────
 
 function ask(question) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -172,18 +177,19 @@ function ask(question) {
 
 async function pair() {
   console.log(`
-airena-worker ещё не привязан к аккаунту.
+airena-worker is not linked to an account yet.
 
-  1. откройте ${SERVER}/worker в браузере, где вы уже вошли в Airena
-  2. там показан код из 6 символов
-  3. введите его сюда
+  1. open ${SERVER}/worker in the browser where you are already signed into Airena
+  2. it shows a 6-character code
+  3. type it in here
 `);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const raw = await ask('код: ');
-    /* Код читают с экрана и набирают руками: пробелы и дефис между группами —
-       норма, а не ошибка ввода, и отвергать их значит спорить с человеком. */
+    const raw = await ask('code: ');
+    /* The code is read off a screen and typed by hand: spaces and a dash
+       between the groups are normal, not a mistake, and rejecting them is
+       arguing with the person. */
     const code = String(raw).toUpperCase().replace(/[\s-]+/g, '');
-    if (!code) { console.log('пусто — попробуйте ещё раз'); continue; }
+    if (!code) { console.log('empty — try again'); continue; }
     let res;
     try {
       res = await api('/api/worker/pair/claim', {
@@ -191,42 +197,42 @@ airena-worker ещё не привязан к аккаунту.
         body: { code, hostname: os.hostname() },
       });
     } catch (e) {
-      console.log(`сервер недоступен: ${String(e.message || e).slice(0, 120)}`);
+      console.log(`the server is unreachable: ${String(e.message || e).slice(0, 120)}`);
       continue;
     }
     if (res.status === 404) {
-      console.log(`код не подошёл${attempt < 3 ? ' — код живёт недолго, обновите страницу и возьмите новый' : ''}`);
+      console.log(`that code did not work${attempt < 3 ? ' — a code does not live long, refresh the page and take a new one' : ''}`);
       continue;
     }
-    if (!res.ok) { console.log(`сервер ответил ${res.status}`); continue; }
+    if (!res.ok) { console.log(`the server answered ${res.status}`); continue; }
     const data = await res.json();
-    const name = data?.account?.name || 'аккаунт';
-    /* Имя аккаунта хранится вместе с токеном не для сервера, а для шапки: без
-       него каждый запуск начинался бы с лишнего похода на сервер только чтобы
-       напечатать, чью подписку одалживает эта машина. */
+    const name = data?.account?.name || 'account';
+    /* The account name is stored next to the key not for the server but for
+       the header line: without it every start would begin with an extra trip
+       to the server just to print whose subscription this machine lends. */
     writeConfig({ server: SERVER, token: data.token, account: name });
-    console.log(`✓ привязан как ${name}\n`);
+    console.log(`✓ linked as ${name}\n`);
     return { token: data.token, account: name };
   }
-  console.log('три попытки — и всё. Запустите ещё раз, когда возьмёте свежий код.');
+  console.log('three tries is all. Run it again once you have a fresh code.');
   process.exit(1);
 }
 
-// ── запуск claude ───────────────────────────────────────────────────────────
+// ── starting claude ─────────────────────────────────────────────────────────
 
 /**
- * Где лежит бинарник.
+ * Where the binary is.
  *
- * На PATH его может не быть: под nvm неинтерактивный логин-шелл не
- * инициализируется, и три установленных копии оказываются недостижимы. Поэтому
- * сначала явная настройка, потом обычное место установки, и лишь потом PATH.
+ * It may not be on PATH: under nvm a non-interactive login shell is not
+ * initialised, and three installed copies become unreachable. So: the explicit
+ * setting first, then the usual install location, and only then PATH.
  */
 const CLAUDE_BIN = process.env.AIRENA_CLAUDE_BIN
   || (fs.existsSync(path.join(os.homedir(), '.local/bin/claude'))
     ? path.join(os.homedir(), '.local/bin/claude')
     : 'claude');
 
-const NO_CLAUDE = 'бинарник claude не найден. Установите Claude Code и войдите в него: '
+const NO_CLAUDE = 'the claude binary was not found. Install Claude Code and sign in: '
   + 'npm i -g @anthropic-ai/claude-code && claude';
 
 function childEnv() {
@@ -247,14 +253,15 @@ const modelFamily = (name) => {
 };
 
 /**
- * Какая модель ОТВЕТИЛА.
+ * Which model ANSWERED.
  *
- * `modelUsage` — это КАРТА, и первый её ключ не ответ: CLI записывает туда и
- * свой фоновый трафик (сводки, заголовки), выставленный на маленькую модель.
- * Взятый оттуда `Object.keys(...)[0]` однажды приписал haiku все 83 существа,
- * которые на самом деле писал Opus, — и отчётность начала противоречить сама
- * себе. Решает совпадение семьи с заказанной, а если её нет — цена: ответ стоит
- * на три порядка дороже служебной болтовни, это не близкий случай.
+ * `modelUsage` is a MAP, and its first key is not the answer: the CLI also
+ * records its own background traffic there (summaries, titles), pointed at a
+ * small model. `Object.keys(...)[0]` once credited haiku with all 83 creatures
+ * Opus had actually written, and the reporting started contradicting itself.
+ * The decision goes to the family that matches the one asked for, and failing
+ * that to cost: an answer is three orders of magnitude dearer than the
+ * housekeeping chatter, so it is not a close call.
  */
 function resolveModel(modelUsage, requested) {
   const entries = Object.entries(modelUsage || {});
@@ -272,9 +279,9 @@ function resolveModel(modelUsage, requested) {
 let child = null;
 
 /**
- * Одна генерация. Не бросает: возвращает либо ответ, либо код отказа из трёх,
- * которые понимает сервер — `wall` (не уложились), `no_key` (нечем считать),
- * `http` (всё остальное).
+ * One generation. Never throws: it returns either the answer or one of the
+ * three refusal codes the server understands — `wall` (did not finish in
+ * time), `no_key` (nothing to run it with), `http` (everything else).
  */
 function runClaude({ prompt, system, model, effort, timeoutMs }) {
   const args = [
@@ -292,8 +299,8 @@ function runClaude({ prompt, system, model, effort, timeoutMs }) {
 
   return new Promise((resolve) => {
     const t0 = Date.now();
-    /* Аргументы массивом и без shell: текст задания приходит с сервера, и через
-       строку шелла он был бы не текстом, а командой. */
+    /* Arguments as an array and no shell: the task text comes from the server,
+       and through a shell string it would be a command rather than text. */
     const proc = spawn(CLAUDE_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'], env: childEnv() });
     child = proc;
     let out = '', err = '', settled = false;
@@ -304,11 +311,12 @@ function runClaude({ prompt, system, model, effort, timeoutMs }) {
       child = null;
       resolve(result);
     };
-    /* Стену держит клиент: сервер ждёт результат и не может отличить «модель
-       думает» от «процесс завис», а SIGTERM зависший CLI не берёт. */
+    /* The client holds the wall: the server is waiting for a result and cannot
+       tell "the model is thinking" from "the process hung", and a hung CLI
+       does not take SIGTERM. */
     const timer = setTimeout(() => {
       proc.kill('SIGKILL');
-      done({ ok: false, code: 'wall', message: `не уложился в ${Math.round(timeoutMs / 1000)} с`, durationMs: Date.now() - t0 });
+      done({ ok: false, code: 'wall', message: `did not finish within ${Math.round(timeoutMs / 1000)} s`, durationMs: Date.now() - t0 });
     }, timeoutMs);
 
     proc.stdout.on('data', (d) => { out += d; });
@@ -319,29 +327,29 @@ function runClaude({ prompt, system, model, effort, timeoutMs }) {
     proc.on('close', (code) => {
       const durationMs = Date.now() - t0;
       if (!out.trim()) {
-        done({ ok: false, code: 'http', message: `claude ничего не напечатал (выход ${code}): ${err.slice(0, 200)}`, durationMs });
+        done({ ok: false, code: 'http', message: `claude printed nothing (exit ${code}): ${err.slice(0, 200)}`, durationMs });
         return;
       }
       let env;
       try { env = JSON.parse(out); } catch {
-        done({ ok: false, code: 'http', message: 'ответ claude не разобрался как JSON', durationMs });
+        done({ ok: false, code: 'http', message: "claude's answer did not parse as JSON", durationMs });
         return;
       }
       /*
-       * `is_error` — единственный надёжный признак отказа. Отозванный токен
-       * приходит как `"subtype":"success"` со `"stop_reason":"stop_sequence"`,
-       * и чтение `stop_reason` превратило бы мёртвую сессию в «модель ничего не
-       * написала». Порядок: `is_error`, затем `api_error_status`, `stop_reason`
-       * — никогда.
+       * `is_error` is the only reliable sign of a refusal. A revoked sign-in
+       * arrives as `"subtype":"success"` with `"stop_reason":"stop_sequence"`,
+       * and reading `stop_reason` would turn a dead session into "the model
+       * wrote nothing". The order is `is_error`, then `api_error_status`, and
+       * `stop_reason` never.
        */
       if (env.is_error === true) {
         const status = typeof env.api_error_status === 'number' ? env.api_error_status : 0;
-        done({ ok: false, code: 'http', message: `claude ошибка ${status}: ${String(env.result).slice(0, 200)}`, durationMs });
+        done({ ok: false, code: 'http', message: `claude error ${status}: ${String(env.result).slice(0, 200)}`, durationMs });
         return;
       }
       const text = typeof env.result === 'string' ? env.result : '';
       if (!text.trim()) {
-        done({ ok: false, code: 'http', message: 'claude вернул пустой ответ — возможно, локальная сессия истекла: запустите claude и войдите', durationMs });
+        done({ ok: false, code: 'http', message: 'claude returned an empty answer — the local session may have expired: run claude and sign in', durationMs });
         return;
       }
       done({
@@ -359,28 +367,29 @@ function runClaude({ prompt, system, model, effort, timeoutMs }) {
   });
 }
 
-// ── выключение ──────────────────────────────────────────────────────────────
+// ── shutting down ───────────────────────────────────────────────────────────
 
 let ticker = null;
 let shuttingDown = false;
 
 async function shutdown(token, exitCode) {
-  /* Второй Ctrl+C — это «немедленно», а не «повтори прощание». */
+  /* A second Ctrl+C means "now", not "say goodbye again". */
   if (shuttingDown) process.exit(exitCode);
   shuttingDown = true;
   if (ticker) clearInterval(ticker);
-  if (child) { try { child.kill('SIGKILL'); } catch { /* уже мёртв */ } }
+  if (child) { try { child.kill('SIGKILL'); } catch { /* already dead */ } }
   process.stdout.write('\n');
   if (token) {
-    /* Три секунды и не больше: сервер и сам заметит пропажу воркера по
-       таймауту, а ждать сети на Ctrl+C — верный способ выглядеть зависшим. */
-    try { await api('/api/worker/bye', { method: 'POST', token, timeoutMs: 3000 }); } catch { /* и ладно */ }
+    /* Three seconds and no more: the server notices a missing worker by
+       timeout anyway, and waiting on the network at Ctrl+C is a sure way to
+       look hung. */
+    try { await api('/api/worker/bye', { method: 'POST', token, timeoutMs: 3000 }); } catch { /* never mind */ }
   }
-  console.log('воркер выключен');
+  console.log('worker stopped');
   process.exit(exitCode);
 }
 
-// ── главный цикл ────────────────────────────────────────────────────────────
+// ── main loop ───────────────────────────────────────────────────────────────
 
 async function handle(job, token) {
   const t0 = Date.now();
@@ -404,14 +413,13 @@ async function handle(job, token) {
   if (shuttingDown) return;
 
   if (r.ok) {
-    const total = r.usage.input_tokens + r.usage.output_tokens;
-    commit(`✓ готово · ${mmss(Date.now() - t0)} · ${tokens(total)} токенов`);
+    commit(`✓ done · ${mmss(Date.now() - t0)}`);
   } else {
-    /* no_key — это не сбой запроса, а сломанная установка: сервер получит отказ
-       и уйдёт на другого воркера, а человеку за ноутбуком надо сказать вслух и
-       целиком, а не обрезком в общей строке. */
+    /* no_key is not a failed request but a broken installation: the server
+       takes the refusal and moves to another worker, while the person at the
+       laptop has to be told out loud and in full, not by a clipped tail. */
     const tail = r.code === 'no_key' ? '' : ` · ${r.message.slice(0, 100)}`;
-    commit(`✗ ошибка · ${r.code} · ${mmss(Date.now() - t0)}${tail}`);
+    commit(`✗ failed · ${r.code} · ${mmss(Date.now() - t0)}${tail}`);
     if (r.code === 'no_key') commit(`  ${NO_CLAUDE}`);
   }
 
@@ -426,9 +434,9 @@ async function handle(job, token) {
       durationMs: r.durationMs,
     }
     : { requestId: job.requestId, ok: false, code: r.code, message: r.message };
-  /* Отчёт возвращается дольше, чем ходят опросы: сервер держит игрока в
-     ожидании именно этого ответа, и потерять его на коротком таймауте значит
-     потратить впустую всю генерацию. */
+  /* The report takes longer to come back than a poll does: the server is
+     keeping a player waiting for exactly this answer, and losing it to a short
+     timeout means throwing the whole generation away. */
   await api('/api/worker/result', { method: 'POST', body, token, timeoutMs: 60_000 });
 }
 
@@ -441,40 +449,41 @@ async function main() {
   process.on('SIGTERM', () => { shutdown(token, 0); });
 
   const host = (() => { try { return new URL(SERVER).host; } catch { return SERVER; } })();
-  console.log(`airena-worker${account ? ` · подключён как ${account}` : ''} · сервер ${host}`);
+  console.log(`airena-worker${account ? ` · linked as ${account}` : ''} · server ${host}`);
 
   let backoff = 1000;
   let waiting = false;
 
   while (!shuttingDown) {
     try {
-      if (!waiting) { transient('ждёт задания…'); if (!TTY) commit('ждёт задания…'); waiting = true; }
+      if (!waiting) { transient('waiting for a task…'); if (!TTY) commit('waiting for a task…'); waiting = true; }
       /*
-       * 40 секунд против 25, которые сервер держит соединение. Если клиентский
-       * таймаут окажется короче серверного, КАЖДЫЙ пустой опрос выглядит обрывом
-       * сети, воркер уходит в откат и перестаёт брать задания вовсе.
+       * 40 seconds against the 25 the server holds the connection for. If the
+       * client timeout is the shorter one, EVERY empty poll looks like a
+       * dropped network, the worker backs off and stops taking tasks at all.
        */
       const res = await api('/api/worker/next', { token, timeoutMs: 40_000 });
       backoff = 1000;
-      if (res.status === 204) continue;      // заданий нет — спрашиваем снова
-      if (!res.ok) throw new Error(`сервер ответил ${res.status}`);
+      if (res.status === 204) continue;      // no tasks — ask again
+      if (!res.ok) throw new Error(`the server answered ${res.status}`);
       const job = await res.json();
       waiting = false;
       await handle(job, token);
       if (ONCE) return shutdown(token, 0);
     } catch (e) {
       if (e instanceof DeadToken) {
-        commit('токен воркера больше не действует. Запустите с --pair и привяжитесь заново.');
+        commit('this worker is no longer linked to your account. Run it with --pair to link it again.');
         process.exit(1);
       }
       if (shuttingDown) return;
       /*
-       * Сеть падает, ноутбук засыпает, сервер перезапускают — и ничего из этого
-       * не повод гасить воркера, который человек запустил и ушёл. Откат растёт,
-       * чтобы лежащий сервер не получал шквал, и упирается в 30 секунд, чтобы
-       * вернувшийся получил воркера обратно быстро.
+       * The network drops, the laptop sleeps, the server is restarted — and
+       * none of that is a reason to kill a worker somebody started and walked
+       * away from. The backoff grows so a server that is down gets no squall,
+       * and stops at 30 seconds so one that comes back gets its worker back
+       * quickly.
        */
-      commit(`… связи нет (${String(e.message || e).slice(0, 80)}), повтор через ${Math.round(backoff / 1000)} с`);
+      commit(`… no connection (${String(e.message || e).slice(0, 80)}), retrying in ${Math.round(backoff / 1000)} s`);
       waiting = false;
       await new Promise((r) => setTimeout(r, backoff));
       backoff = Math.min(backoff * 2, 30_000);
@@ -484,6 +493,6 @@ async function main() {
 
 main().catch((e) => {
   process.stdout.write('\n');
-  console.error(`воркер упал: ${String(e?.stack || e)}`);
+  console.error(`worker crashed: ${String(e?.stack || e)}`);
   process.exit(1);
 });

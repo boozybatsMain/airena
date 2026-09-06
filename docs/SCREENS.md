@@ -24,36 +24,49 @@
 
 ---
 
-## 1. Правило языка — решено
+## 1. The language rule — decided, and reversed
 
-> **Весь текст, который видит игрок, — по-русски. Латиница допускается только в закрытом списке: вордмарк `Airena`, имена моделей (`Gemini 3.7 Flash`, `GLM 5.3 Flash`, `Fable`), имена существ ровно как их написал владелец. Всё остальное — включая HUD боя — переводится.**
+> **Every string a player sees is English** — client, server responses, viewer
+> HUD, worker CLI, generated names, quips, tactics cards, birth notes. No
+> Cyrillic anywhere a player can look. See `docs/REDESIGN.md` §1.1, which is
+> the binding contract; this section exists so that the older document does not
+> contradict it.
 
-**Обоснование из репозитория, а не из вкуса:**
+This section used to say the opposite, at length, and the reasons it gave were
+real at the time: the deny table in `src/server/limits.js` was written in
+Russian, the UI kit was commented in Russian, and English survived only in the
+developer harness. The product then went out on GENEX to an audience that does
+not read Russian, and a rule derived from the state of the repository lost to a
+fact about the players. The whole client was rewritten in English in the same
+pass (`docs/REDESIGN.md` §9).
 
-1. `src/server/limits.js:38` — таблица `DENY` уже написана по-русски и уже является игровым копирайтом («дневной бюджет генерации исчерпан», «гость не может создавать существо»). Сервер, который считает деньги, уже выбрал язык продукта.
-2. `src/client/ui/kit.css` — весь новый кит закомментирован по-русски и размечен `[эталон]/[новое]`; SPEC.md целиком русский; `preview/creature.html` — единственный макет продуктового экрана — русский.
-3. Английский живёт ровно в двух местах: `src/viewer/index.html` (`ARENA FEED`, `reading the fight`, `loading`, `Fight`, `Octopus/Gorilla`, ` — dead`) и `README.md`. Оба — **инструмент ревьюера**, а не продукт: `#controls`, `#legend` и `#code` §10.3 и F11 требуют удалить, а `Octopus/Gorilla` — это дев-теги мозгов, которых в продукте не будет (в продукте на плите стоит имя существа игрока).
+**What legacy Russian text still exists and what happens to it:** rows written
+before the switch — creature names, tactics cards, birth notes, `unfit`
+phrases, quips — may still sit in the database. The client does not translate
+them and does not show them: `latinOnly()` (`src/client/lib/format.js`, §7.6 of
+the redesign) returns an empty string for anything containing Cyrillic, and
+every screen passes legacy strings through it. On the development stand,
+`tools/anglicize.mjs` renames the creatures from a curated map.
 
-Английский в HUD, таким образом, не «решение, которое надо переигрывать», а остаток дев-обвязки, которая и так идёт под нож.
+### 1.1 Copy discipline (mandatory, checked at review)
 
-### 1.1 Копирайт-дисциплина (обязательна, проверяется на ревью)
-
-| Правило | Почему | Как |
+| Rule | Why | How |
 |---|---|---|
-| **Никогда не согласовывать глагол или прилагательное с именем существа** | имя пишет игрок, род неизвестен: «Мель выиграла» / «Мель выиграл» — лотерея | либо слово **«существо»** (средний род, всегда верно): «существо выиграло»; либо именная конструкция: «**МЕЛЬ · ПОБЕДА**», «Мель — 6 место» |
-| Числа — `tabular-nums`, разряды тонким пробелом | эталон HUD, `kit.css:66` | `4 318`, `1 240` |
-| Заголовки — капс + `letter-spacing`, но **русский капс шире латинского** | `.hcut`, `.t-cap` рассчитаны на латиницу | закладывать +12% ширины на все капс-заголовки, проверять переносы |
-| Слово «токен» запрещено (F4) | замороженное решение | «лимит генераций», «модель» |
-| **«Кит» в UI не пишем** | по-русски `кит` — животное; в игре про существ это активная путаница | UI: **«набор»** (набор умений). Внутренний термин в коде и SPEC остаётся `kit` |
-| **«Скилл» в UI не пишем** | -- | UI: **«умения»**. Внутренний термин `skills` |
-| Никогда не извиняться и не обвинять игрока | §5.1, §8.1 | «не собралось», «не вошло», «денег не взяли» |
-| Никогда не показывать ETA и проценты генерации | §10.3 запрещает спиннер, а фальшивый ETA хуже | именованные стадии |
+| **Never inflect a verb or an adjective to agree with a creature's name** | the name is written by the player and carries no gender or number you can trust | keep the name a label: `NEEDLE-79 · VICTORY`, `Needle-79 — 6th` |
+| Numbers use `tabular-nums`, thousands separated by a comma | §2.2 of the redesign | `4,318`, `1,240`, `−21` with a real minus |
+| Headings are uppercase with tracking | `--t-state`, `--t-label`, `--t-title` | latin subsets only; the fonts ship no Cyrillic |
+| The words `token`, `kit`, `skill`, `model`, `LLM`, `API`, `$` and a price are forbidden in copy | §1.4: no AI-playground vocabulary in front of a player | say *abilities*, *mind*, *allowance*; `tools/checkscope.mjs` fails the build on any of them in a string literal |
+| **One word per thing** — a bout is a **fight**, the daily allowance counts **generations**, creatures made by players are **player creatures** | §9.1: the product had seven nouns for three things, and one live frame printed `ARENA · MATCH #232998750` above the arena and `FIGHT #232998750` under the clock — one number, two words, which reads as two products sharing a screen | never *match*, *battle*, *bout*, *duel*, *creation*, *from players*; `tools/checkscope.mjs` fails on the nouns and grants exactly two exemptions — `Match found` (the matchmaking event, not the bout) and the wordmark's `Endless battles` |
+| Never apologise and never blame the player | §5.1, §8.1 | "it did not take shape", "this one is on us" |
+| Never show an ETA, a percentage or a spinner during generation | §10.3 forbids the spinner, and a false ETA is worse | named stages and elapsed time |
 
-### 1.2 Ловушка шрифта — блокер, который надо закрыть до первой русской строки
+### 1.2 Fonts
 
-`src/viewer/index.html:11` и `kit.css:49` берут **Rajdhani**. У Rajdhani в Google Fonts подмножества `latin, latin-ext, devanagari, vietnamese` — **кириллицы нет**. Весь одобренный вручную вид (§10.6) построен на шрифте, который на русском тексте молча провалится в `ui-monospace, sans-serif`. Это не мелочь: `preview/creature.html` (единственный русский макет) поэтому и подключает совсем другие шрифты — `Archivo / Public Sans / JetBrains Mono` (строка 4), то есть эталон и единственный русский макет уже нарисованы разными гарнитурами.
-
-**Решение (ADDITION A19, требует одной строки от основателя):** гибрид. Rajdhani остаётся **только** на числах, клоке, кулдаун-чипах и капс-метках из латиницы/цифр (там, где кириллицы нет по определению); для всего кириллического текста берётся одна кириллическая гарнитура того же технического характера — кандидат **Play** (квадратная, техно, есть кириллица) либо **Exo 2**. Приёмка: скриншот HUD и страницы существа рядом, ручное утверждение, как утверждался эталон. **До утверждения ни одна русская строка не считается готовой.** Самохост в `woff2` с сабсетом обязателен — Google Fonts round-trip стоит нам первого кадра (F6).
+Self-hosted latin subsets only: **Space Grotesk** for display and numbers,
+**Inter** for body text (`src/client/fonts/`, §2.2 of the redesign). The
+Rajdhani-versus-Cyrillic trap this section used to describe is gone with the
+requirement that produced it — nothing renders Cyrillic any more, so no
+Cyrillic face is needed.
 
 ---
 

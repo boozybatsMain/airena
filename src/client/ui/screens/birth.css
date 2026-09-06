@@ -1,0 +1,697 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   BIRTH (docs/REDESIGN.md §6.4) — waiting, then the reveal.
+
+   There is no panel around any of this on purpose: the creature being born is
+   the only thing on the screen, and a frame around it would make it an item in
+   an interface. A soft light stands in for the frame and keeps the small text
+   readable over whatever the arena is doing underneath.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.birth-wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 96px var(--chrome-pad) 64px calc(var(--chrome-pad) + 168px);
+  transition: padding var(--d-screen) var(--ease);
+}
+
+/* The reveal is the tallest thing this screen ever holds and the one frame the
+   product exists for, so it is given the chrome's margin back: at 900 px the
+   portrait alone is 44 vh and the sequence still has to end inside one screen,
+   with no scrollbar under the creature. */
+.birth-wrap:has(.birth-reveal) { padding-top: 80px; padding-bottom: 40px; }
+
+/* ── the ground this screen waits on ────────────────────────────────────── */
+
+/*
+ * A PLACE, NOT A DEFOCUS ERROR.
+ *
+ * Birth stands over the running arena behind `.ground-wash` (ui/base.css): a
+ * 10 px blur under a flat warm sheet at 66–76 %. Ten pixels is the worst of
+ * both — far too much to read the fight, nowhere near enough to stop reading
+ * it as a photograph someone forgot to focus. Measured on `birth-wait.png` it
+ * produced exactly that: formless grey-brown lobes, a band of posterisation
+ * across the middle, and one hard diagonal edge of arena geometry surviving
+ * the blur in the lower right, which is the only thing on the frame with a
+ * corner in it and therefore the first thing the eye finds.
+ *
+ * 28 px takes the geometry out entirely — what is left is warm light with no
+ * edges, which is what a soft ground is — and the flat sheet is re-cut into a
+ * composition: full strength up the left column where the wordmark and the
+ * rail stand, strongest again under the centre where every word on this screen
+ * is, and released towards the outer thirds so the frame has depth instead of
+ * being a sheet of paper. Nothing legible is over the released part.
+ *
+ * The HUD stays hidden here — `ui/base.css` owns that line for every veiled
+ * ground. The one case the shell cannot know about is the peek below, which
+ * lifts this veil on purpose.
+ */
+body[data-screen="birth"] .ground-wash {
+  background:
+    linear-gradient(90deg, rgba(235, 225, 217, .90) 0%, rgba(235, 225, 217, .56) 26%,
+      rgba(235, 225, 217, 0) 54%),
+    radial-gradient(76% 66% at var(--axis-x) 44%, rgba(235, 225, 217, .74) 0%,
+      rgba(235, 225, 217, .66) 48%, rgba(235, 225, 217, .54) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(.9);
+  backdrop-filter: blur(28px) saturate(.9);
+}
+/*
+ * The transition is declared on the unscoped-for-this-screen rule so the tint
+ * fades in BOTH directions; declared only inside the peek state it would
+ * animate the way in and cut on the way out. It has to out-specify
+ * `ui/base.css`'s own `body[data-ground="veil"] #stage .ground-wash`, which
+ * carries the opacity/visibility pair — hence `#stage` here too, and hence
+ * that pair is repeated. Only the SHOWN wash is ever addressed by this rule:
+ * `app.js` rewrites `data-screen` and `data-ground` in the same tick, so by
+ * the time this wash is being hidden the screen is no longer birth and the
+ * shell's own (delayed-visibility) transition is back in charge.
+ *
+ * `background` and not the filter beside it — see the peek rule below for why
+ * a `backdrop-filter` this screen animates is a blur nobody can be sure ever
+ * finishes.
+ */
+body[data-screen="birth"] #stage .ground-wash {
+  transition: opacity var(--d-screen) var(--ease), visibility 0s linear 0s,
+    background 420ms var(--ease);
+}
+
+@media (max-width: 900px) {
+  /* No rail to lift and no outer thirds worth releasing at 390 px: the column
+     is the whole screen, so the ground goes back to one even veil under it. */
+  body[data-screen="birth"] .ground-wash {
+    background: linear-gradient(180deg, rgba(235, 225, 217, .62) 0%,
+      rgba(235, 225, 217, .68) 52%, rgba(235, 225, 217, .74) 100%);
+  }
+}
+
+/*
+ * The stage area holds ONE cell and every state stands in it.
+ *
+ * Grid, not stacked flex children, because the wait and the reveal overlap for
+ * 780 ms during the handoff (`screens/birth.js`): they share this cell, so the
+ * leaving column and the arriving one cross-fade in place instead of pushing
+ * each other down the page. Both centre their own content inside the cell, so
+ * when the taller of the two is removed the cell shrinks around a centre that
+ * does not move — no jump under the portrait.
+ */
+.birth-stagearea {
+  margin: auto;
+  width: min(880px, 100%);
+  padding: 24px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  background: radial-gradient(ellipse 72% 62% at 50% 46%, rgba(244, 238, 232, .82), rgba(244, 238, 232, 0) 72%);
+}
+.birth-stagearea > * { grid-area: 1 / 1; width: 100%; }
+
+/* ── waiting ────────────────────────────────────────────────────────────── */
+
+/* One rhythm, counted in the space scale: 24 around the orbit, 16 down to the
+   clock, 8 to the median under it — the two time facts are one block — then 24
+   to the sentence the player wrote and 24 to the stage. The eye comes down the
+   column in even steps and every item is centred on the same axis. */
+.birth-wait { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.birth-orbit-hold { position: relative; width: 240px; height: 240px; margin: var(--s3) 0 var(--s2); }
+canvas.birth-orbit { position: relative; width: 240px; height: 240px; }
+/* A disc of sky under the geometry so the hairlines are never asked to hold
+   against whatever the arena is doing behind the veil. */
+.birth-orbit-hold::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 340px; height: 340px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(244, 238, 232, .72) 0%, rgba(244, 238, 232, .34) 46%, rgba(244, 238, 232, 0) 74%);
+}
+
+.birth-mind { display: flex; justify-content: center; }
+/*
+ * The clock is one step above `--t-num`, and this is the one screen where that
+ * is right: 22 px is the size a number takes in a stat tile, beside five other
+ * numbers. Here there is exactly one, it is the only thing on the screen that
+ * changes, and at tile size it sat under a 60 px state word reading as a
+ * caption to the mind badge above it rather than as the wait itself.
+ */
+.birth-elapsed {
+  margin-top: var(--s4); font-size: 28px; line-height: 1.1;
+  color: var(--ink-2); letter-spacing: .06em; font-variant-numeric: tabular-nums;
+}
+/* The median under the clock: the same measured number Create quoted on the
+   mind's card, in the register of a sentence. Absent — for a mind nobody has
+   measured — it takes no room at all rather than reserving a line. */
+.birth-typical { margin-top: var(--s2); color: var(--muted); }
+.birth-typical:empty { display: none; }
+
+/* The player's own sentence, in their own words, balanced: two lines of equal
+   measure under a centred column read as a quotation, and a long line over a
+   two-word orphan reads as a paragraph that ran out of room. */
+.birth-prompt {
+  margin-top: var(--s5); max-width: 52ch; text-wrap: balance;
+  font-family: var(--font-body); font-size: var(--t-body); line-height: 1.6; color: var(--muted);
+}
+.birth-prompt:empty { display: none; }
+/* Two separate facts — a retry is running, and it is taking longer than usual
+   — and at 4 px apart they read as one wrapped paragraph. 8 px is the same
+   step the clock and its median use one block up. */
+.birth-notes { display: flex; flex-direction: column; gap: var(--s2); max-width: 46ch; }
+.birth-notes:not(:empty) { margin-top: var(--s4); }
+
+/* ── the stage line ─────────────────────────────────────────────────────────
+   §6.4: ONE lower-case line, muted, under the sentence the player wrote.
+
+   It was a seven-row rail for a while — the passed stages solid, the current
+   one lit, the four still to come at `opacity: .35`. Two things were wrong
+   with it and both are worth writing down, because the shape is tempting.
+   It was a progress display in everything but the number (§1.5): four named
+   steps below the live one, no time against any of them, over stages that run
+   from four seconds to four minutes. And the dimming was `opacity` on the row,
+   which is the anti-pattern `ui/chrome.css` documents and abandoned for the
+   nav rail — it fades the LABEL, and the future stages measured 1.46:1.
+
+   What is left is what §6.4 asked for: the stage, and a dot that says the
+   thing is running. The scale question the rail was trying to answer is
+   answered honestly one line up, by the median (`.birth-typical`).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.birth-stage {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: var(--s5); color: var(--muted);
+  opacity: 0; transform: translateY(3px);
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+}
+.birth-stage.is-in { opacity: 1; transform: none; }
+.stage-words { line-height: 1.5; }
+
+/* The one live thing on the waiting screen. It breathes on a four-second
+   cycle — slow enough not to ask to be watched, present enough that a screen
+   frozen for two minutes on one stage still reads as running. Under reduced
+   motion `ui/base.css` pins every animation and it becomes a plain dot. */
+.stage-dot {
+  position: relative; flex: 0 0 6px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--info);
+}
+.stage-dot::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--info);
+  animation: stage-pulse 3600ms var(--ease) infinite;
+}
+@keyframes stage-pulse {
+  0% { opacity: .5; transform: scale(1); }
+  70%, 100% { opacity: 0; transform: scale(3.2); }
+}
+
+/* ── watching the arena while the generation runs ──────────────────────────
+   The link out of the wait that never leaves the wait: the veil lifts, the
+   fight behind it comes forward, and this column folds into one bar at the
+   bottom of the frame. Polling is untouched — the reveal takes the screen back
+   the moment the creature exists (`screens/birth.js`).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/*
+ * THE ONE THING TO PRESS LOOKS LIKE A THING TO PRESS.
+ *
+ * It was `.btn.ghost.small` — 10 px tracked label type in `--muted`, sitting
+ * at the bottom of four hundred pixels of empty warm ground, the faintest
+ * element on the screen and the only one that leads anywhere. The kit's
+ * SECONDARY (uikit.png) is `.btn`'s own glass, and that is what this is now: a
+ * pill, because it is an invitation rather than a form control, and 12.5 px
+ * because at 12 the label ran the full width of the column.
+ */
+.birth-peek-btn {
+  margin-top: var(--s6);
+  height: 40px; padding: 0 20px; border-radius: 999px;
+  font-size: 12.5px; letter-spacing: .14em; color: var(--ink-2);
+}
+/* The glyph is the verb: a play triangle says "watch", where an arrow only
+   said "elsewhere". `--stone` at rest, the interface's link blue when the
+   pointer arrives — the icon never competes with the label it belongs to.
+   Filled, because a 14 px outlined triangle drawn at a 1.4 px monoline weight
+   is mostly counter: at the size a button's glyph is actually drawn, a solid
+   shape is the same mark read correctly. */
+.birth-peek-btn .ic { width: 14px; height: 14px; flex: 0 0 14px; color: var(--stone); transition: color var(--d-ui) var(--ease); }
+.birth-peek-btn .ic-play { fill: currentColor; }
+.birth-peek-btn:hover .ic, .birth-peek-btn:focus-visible .ic { color: var(--info-ink); }
+
+/*
+ * THE VEIL LIFTS: ONE FLAT TINT, AND THE FOCUS PULLED IN ONE FRAME.
+ *
+ * Two details here are not taste, they are the difference between the fight
+ * being visible and only looking as though it is.
+ *
+ * `blur(0px)`, with the unit. Blink's filter-function parser forbids a
+ * unitless length, so `blur(0)` is dropped as invalid — and only that one
+ * declaration is dropped, which is the trap: the lifted background beside it
+ * still applies, so the veil looks lifted while the wash quietly keeps the
+ * 28 px blur of the rule this one overrides.
+ *
+ * And the blur is NOT transitioned, while the tint is. A `backdrop-filter`
+ * interpolation is run by the compositor, and a compositor that stops
+ * advancing frames — which is the normal condition of a headless window, and
+ * is documented in `tools/shots.mjs` for `.screen.entering` — leaves the
+ * property parked at an intermediate `blur(17px)` that nothing ever finishes.
+ * Measured: the peek capture came back with the arena sharp in the picture and
+ * three HUD names reported as covered by `div.ground`, because the shot forced
+ * the frame the probe had just been denied. A focus pulled in one frame under
+ * a tint that fades over 420 ms is also simply the better beat: the fight
+ * arrives, and the sheet over it goes.
+ *
+ * A flat tint rather than the gradient, for the same reason a scrim is not a
+ * surface: it is 26 % of one colour, so nothing about it can read as a panel
+ * over the two fighters' names.
+ */
+body[data-screen="birth"]:has(.birth-wrap.is-peek) .ground-wash {
+  background: rgba(235, 225, 217, .26);
+  -webkit-backdrop-filter: blur(0px) saturate(.95); backdrop-filter: blur(0px) saturate(.95);
+}
+/*
+ * THE HUD COMES BACK WITH THE FIGHT, NOT BEFORE IT.
+ *
+ * `#boot` — the viewer's CONNECTING TO THE ARENA card — is inside `#arena` and
+ * is dismissed (`.off`) by `app.js` on the first `match` or `idle`. Until then
+ * there is no fight for a HUD to describe, and the panels the peek uncovers
+ * are the static markup of `index.html`: two names reading `—` over `— / —`,
+ * standing behind the boot card that says the arena is not there yet. Waiting
+ * for `.off` costs nothing — a peek during boot shows the boot card, which is
+ * the true answer to "what is happening down there" — and it is what keeps the
+ * 620 ms of an arena still connecting from being photographed as two fighters
+ * under a panel.
+ */
+body[data-screen="birth"]:has(.birth-wrap.is-peek):has(#boot.off) #hud { display: block; }
+/*
+ * And a dismissed card is gone, not fading.
+ *
+ * `#boot.off` is `opacity: 0` under a 600 ms transition, and the peek uncovers
+ * it in whatever state that transition happens to be in — including, on a
+ * machine whose compositor is not advancing frames, parked at .8 for ever.
+ * The card is dismissed either way, so on this screen it simply stops being
+ * drawn: nothing is lost, because a boot card that is on its way out during a
+ * peek is a card the player never asked to see, and the alternative is a glass
+ * panel sitting over both fighters' names.
+ */
+body[data-screen="birth"]:has(.birth-wrap.is-peek) #boot.off { opacity: 0; transition: none; }
+
+/*
+ * A HALF-DRESSED HUD IS NOT SHOWN AT ALL.
+ *
+ * `dressHud()` lives inside `screens/live.js` and only runs while LIVE is
+ * mounted, so the HUD this peek uncovers is the RAW one the viewer writes:
+ * `.sub` still holds the provider id (`z-ai/glm-5.3-flash:think` — the exact
+ * string §1.4 forbids a player from ever seeing), the ability chips have no
+ * `data-label` and no `--glyph`, so they are six blank white circles under six
+ * blank captions. Two elements of the fight are worth less than nothing
+ * undressed; the names, the health bars, the clock and the feed are all
+ * dressed by the viewer itself and carry the moment on their own.
+ *
+ * `visibility`, so the panels keep their shape and nothing below them jumps.
+ * The negation is the handover: the day `dressHud()` moves into a shared
+ * `ui/hud.js` and sets `data-dressed` on `#hud`, this rule stops applying by
+ * itself and the peek gets the whole dressed HUD with no edit here.
+ */
+body[data-screen="birth"] #hud:not([data-dressed]) :is(.sub, .cds) { visibility: hidden; }
+
+.birth-wrap.is-peek { padding: 24px var(--chrome-pad) 24px calc(var(--chrome-pad) + 168px); }
+.birth-wrap.is-peek .birth-stagearea {
+  margin: auto auto 0; width: auto; max-width: min(680px, 100%); padding: 10px 10px 10px 18px;
+  background: var(--glass); border: 1px solid var(--glass-line); border-radius: var(--r-panel, 14px);
+  box-shadow: 0 12px 40px var(--shade);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15); backdrop-filter: blur(18px) saturate(1.15);
+}
+.birth-wrap.is-peek .birth-wait { flex-direction: row; align-items: center; gap: var(--s4); }
+.birth-wrap.is-peek .birth-word,
+.birth-wrap.is-peek .birth-orbit-hold,
+.birth-wrap.is-peek .birth-mind,
+.birth-wrap.is-peek .birth-typical,
+.birth-wrap.is-peek .birth-prompt,
+.birth-wrap.is-peek .birth-notes { display: none; }
+.birth-wrap.is-peek .birth-elapsed { margin: 0; font-size: 18px; }
+/* the bar keeps the clock and the stage — the two facts the column was made
+   of, in the same words, from the same nodes */
+.birth-wrap.is-peek .birth-stage { margin: 0; }
+.birth-wrap.is-peek .birth-peek-btn { margin: 0 0 0 auto; }
+
+/* ── the waiting column leaving ────────────────────────────────────────────
+   The words go first and the orbit last, so the point the orbit collapses into
+   is still on screen while SIGNAL ACQUIRED rises over it (§6.4 step 1).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.birth-wait.is-leaving { pointer-events: none; }
+.birth-wait.is-leaving > *:not(.birth-orbit-hold) {
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity 320ms var(--ease), transform 320ms var(--ease);
+}
+.birth-wait.is-leaving .birth-orbit-hold {
+  opacity: 0; transition: opacity 300ms var(--ease) 420ms;
+}
+
+/* ── failure ──────────────────────────────────────────────────────────────
+   The one screen in the product that has to say no. It is quieter than the
+   reveal by one step of everything: a smaller state word, no motion after the
+   card lands, and the palette's failure colour spent on a single 40 px mark
+   rather than on any of the type.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.birth-fail {
+  display: flex; flex-direction: column; align-items: center;
+  animation: birth-fail-in 420ms var(--ease) both;
+}
+@keyframes birth-fail-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* The coral is §2.2's colour for a defeat, and this is the only place on the
+   screen it is spent: a hairline that fades out at both ends, so it reads as a
+   mark over the sentence rather than as a divider between two things. */
+.birth-fail::before {
+  content: ""; width: 40px; height: 2px; border-radius: 2px; margin-bottom: var(--s5);
+  background: linear-gradient(90deg, rgba(255, 122, 92, 0), var(--accent), rgba(255, 122, 92, 0));
+}
+
+/*
+ * IT DID NOT TAKE SHAPE, ON ONE LINE.
+ *
+ * `--t-state` reaches 60 px at 1440, and twenty-one tracked characters of it
+ * measure ~1,100 px inside an 832 px column — so the product's one refusal
+ * broke as `IT DID NOT TAKE / SHAPE`, with the widow carrying the verb. A
+ * failure is also the wrong place for the loudest type in the interface. One
+ * step down does both: it holds a single line from 1100 px up, and it says the
+ * thing without shouting it.
+ */
+.birth-fail-word { font-size: clamp(26px, 3vw, 38px); text-wrap: balance; }
+
+/* The reason and what it cost are one block — 8 px apart, 16 px under the
+   word, and a clear 32 px above the two ways out. */
+.birth-reason { margin-top: var(--s4); max-width: 48ch; color: var(--ink-2); text-wrap: balance; }
+/* Wide enough that the whole sentence holds one line wherever there is room
+   for it — a fifty-character line broken in two under a forty-character one
+   above it made the block read as a paragraph rather than as two facts. Where
+   there is not room (a phone), `balance` splits it evenly instead of leaving
+   a two-word widow. */
+.birth-cost { margin-top: var(--s2); max-width: 56ch; color: var(--muted); text-wrap: balance; }
+.birth-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); margin-top: var(--s6); }
+
+/* ── reveal ─────────────────────────────────────────────────────────────── */
+
+.birth-reveal { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+/* The sequence can be ended by a gesture (`screens/birth.js`); the cursor is
+   the only place that says so, and only once there is something to end. */
+.birth-reveal.step-shape { cursor: pointer; }
+
+.reveal-word { opacity: 0; transition: opacity 600ms var(--ease); }
+.birth-reveal.step-word .reveal-word { opacity: 1; }
+
+/*
+ * THE PORTRAIT IS THE PAYOFF, SO IT IS THE BIGGEST THING ON THE SCREEN.
+ *
+ * `overflow: hidden` is load-bearing, not tidiness: the scan line lives inside
+ * this box and used to hang 4 % past both of its edges, which at 390 px put a
+ * blue rule straight across the viewport — through the chrome, the ground and
+ * nothing else. Clipped here, the beam reads as a machine looking at a body.
+ *
+ * `--portrait-h` is the one number the sweep and the box share, so a size
+ * change is a single line and the keyframes never go out of step with the
+ * height they travel (they did, in a duplicated mobile copy of the animation).
+ */
+.portrait-hold {
+  /*
+   * 44 vh, not 320 px. Measured at 1440×900 the body occupied a 400×320 box —
+   * about 8 % of the frame — and at that scale its parts read as detached: a
+   * floating slab over disconnected legs. The 390 px capture uses the same box
+   * on a quarter of the screen and reads far better, which is the proof that
+   * the fault was scale and framing rather than the model. This is the only
+   * moment the player meets the thing they made; it gets the frame.
+   */
+  --portrait-h: clamp(320px, 44vh, 480px);
+  position: relative; overflow: hidden;
+  /* nearly square on purpose: `ui/portrait.js` frames the body by whichever
+     field of view runs out first, so a wide box spends its extra width on
+     empty ground and draws a smaller creature */
+  width: min(560px, 84vw); height: var(--portrait-h);
+  margin: var(--s4) 0 var(--s4);
+  opacity: 0; transform: scale(.92);
+  transition: opacity 700ms var(--ease), transform 700ms var(--ease);
+}
+.birth-reveal.step-shape .portrait-hold { opacity: 1; transform: none; }
+
+/* A pool of light behind the specimen and a soft shade under it: the creature
+   stands in something instead of floating in the page. No edge, no panel —
+   §1.7, and the note at the top of this file.
+   The first version was white at 62 % over 56 % of the box: a hard-edged plate
+   that did not blend with the veiled ground and read as a lit rectangle behind
+   the body. Warm, wider, and falling off to nothing well inside the box is a
+   glow; the cool centre is the light the scan leaves behind. */
+.portrait-light {
+  position: absolute; inset: 0; z-index: 0; opacity: 0;
+  background:
+    radial-gradient(ellipse 34% 30% at 50% 44%, rgba(110, 168, 255, .12), rgba(110, 168, 255, 0) 72%),
+    radial-gradient(ellipse 72% 66% at 50% 46%, rgba(255, 253, 250, .72), rgba(250, 244, 238, .34) 46%, rgba(244, 238, 232, 0) 76%);
+  transition: opacity 700ms var(--ease);
+}
+.birth-reveal.step-shape .portrait-light { opacity: 1; }
+/* one bloom at the moment the body becomes matter, then nothing */
+.portrait-light::after {
+  content: ""; position: absolute; inset: 14% 20%; border-radius: 50%;
+  border: 1px solid rgba(110, 168, 255, .55); opacity: 0; transform: scale(.72);
+}
+.birth-reveal.step-body .portrait-light::after { animation: birth-bloom 760ms var(--ease) 1 both; }
+@keyframes birth-bloom {
+  0% { opacity: 0; transform: scale(.72); }
+  28% { opacity: .5; }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+/* Two shadows, not one: a wide soft pool that says where the ground is, and a
+   tight dark core under the body that says the body is touching it. A single
+   even ellipse reads as a smudge on the page. */
+.portrait-ground {
+  position: absolute; left: 50%; bottom: 10%; width: 58%; height: 38px; z-index: 1;
+  transform: translateX(-50%); opacity: 0;
+  background:
+    radial-gradient(ellipse 32% 44% at 50% 52%, rgba(46, 46, 51, .26), rgba(46, 46, 51, 0) 72%),
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(46, 46, 51, .16), rgba(46, 46, 51, 0) 72%);
+  transition: opacity 700ms var(--ease);
+}
+.birth-reveal.step-shape .portrait-ground { opacity: .9; }
+
+.portrait-box { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; color: var(--ink-2); }
+.portrait-box canvas { max-width: 100%; max-height: 100%; }
+/* The drawn stand-in now fills nearly the same frame the render does: at the
+   old 7 % inset in a 320 px box it was a small line drawing in a large empty
+   rectangle, which is the one thing a stand-in must not look like. */
+.portrait-box.is-drawn { padding: 4%; }
+
+/*
+ * THE BEAM HAS NO EDGES — NOT ON ANY AXIS.
+ *
+ * It was a 1.5 px rule with a horizontal falloff and a box-shadow: sharp top
+ * and bottom, soft left and right. In motion that is fine; in the ONE still
+ * image the whole product is judged on (`birth-reveal.png`, the sweep pinned
+ * mid-travel so a screenshot can show the beat at all) a hard blue line lying
+ * across the creature's middle does not read as a scan, it reads as the render
+ * having failed and cut the body in half.
+ *
+ * So the element is 40 px tall and the beam is a gradient inside it, falling
+ * off to nothing over 20 px in each direction; the horizontal falloff moved to
+ * a mask so both axes are soft without stacking two backgrounds. A still frame
+ * now shows a band of light crossing a whole creature instead of a seam
+ * through half of one.
+ */
+.portrait-scan {
+  position: absolute; left: 0; right: 0; top: 0; height: 40px; z-index: 3; opacity: 0;
+  background: linear-gradient(180deg,
+    rgba(110, 168, 255, 0) 0%,
+    rgba(110, 168, 255, .10) 32%,
+    rgba(110, 168, 255, .58) 48%,
+    rgba(110, 168, 255, .58) 52%,
+    rgba(110, 168, 255, .10) 68%,
+    rgba(110, 168, 255, 0) 100%);
+  -webkit-mask-image: linear-gradient(90deg,
+    transparent 4%, rgba(0, 0, 0, .35) 18%, #000 42%, #000 58%, rgba(0, 0, 0, .35) 82%, transparent 96%);
+  mask-image: linear-gradient(90deg,
+    transparent 4%, rgba(0, 0, 0, .35) 18%, #000 42%, #000 58%, rgba(0, 0, 0, .35) 82%, transparent 96%);
+}
+/*
+ * What the beam has already read: a tint that follows it down.
+ *
+ * Radial, not a linear band with straight sides — the first cut drew a hard
+ * blue rectangle the width of the portrait, which looks like a panel someone
+ * left switched on rather than like light. This one has no edges at all.
+ */
+.portrait-scan::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 60%; height: 72px;
+  background: radial-gradient(ellipse 58% 100% at 50% 100%, rgba(110, 168, 255, .16), rgba(110, 168, 255, 0) 72%);
+}
+/* The beam starts fully above the box (its own height) and leaves fully below
+   it, so neither end of the sweep shows a half-drawn band parked on an edge. */
+.birth-reveal.step-scan .portrait-scan { animation: birth-scan 900ms var(--ease) 1 both; }
+@keyframes birth-scan {
+  0% { opacity: 0; transform: translateY(-40px); }
+  10% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(var(--portrait-h)); }
+}
+
+/* the stand-in specimen: matter → silhouette → wireframe → matter.
+   The resting fill carries most of the shape, so it is set close to the line
+   weight: at .17 the body read as a smudge with dark legs attached, which is
+   not a creature the player is meant to be looking at. */
+svg.sil { width: 100%; height: 100%; }
+svg.sil .sil-fill { fill: rgba(255, 255, 255, .58); stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; transition: fill 320ms var(--ease), stroke 320ms var(--ease); }
+svg.sil .sil-line { stroke: var(--ink); transition: stroke 320ms var(--ease), stroke-width 320ms var(--ease); }
+svg.sil.is-sil .sil-fill { fill: rgba(46, 46, 51, .92); stroke: rgba(46, 46, 51, .92); }
+svg.sil.is-sil .sil-line { stroke: rgba(46, 46, 51, .9); }
+svg.sil.is-wire .sil-fill { fill: none; stroke: rgba(110, 168, 255, .95); stroke-width: 1.2; }
+svg.sil.is-wire .sil-line { stroke: rgba(110, 168, 255, .95); stroke-width: 1.6; }
+
+/* The sequence is written for the eye: a sweep, a wireframe, a name typed one
+   letter at a time. A screen reader is given the same event as one sentence,
+   once, when the creature is actually there. */
+.birth-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.reveal-name { min-height: 1.15em; margin-top: 0; }
+.reveal-name.typing::after {
+  content: ""; display: inline-block; width: .08em; height: .82em; margin-left: .1em;
+  background: var(--accent); vertical-align: -.06em; animation: caret 700ms steps(2, end) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+.reveal-mind {
+  display: flex; align-items: center; justify-content: center; gap: var(--s3); margin-top: var(--s3);
+  opacity: 0; transition: opacity 300ms var(--ease);
+}
+.reveal-mind .t-label { color: var(--muted); }
+.birth-reveal.step-mind .reveal-mind { opacity: 1; }
+
+.reveal-abilities { display: flex; justify-content: center; gap: var(--s5); margin-top: var(--s5); min-height: 88px; }
+/* One width for all three, so the row's rhythm is the gap and not the length
+   of each name: `KINETIC FAN` beside `KINETIC LUNGE · STUN` otherwise puts the
+   tiles at three different distances from each other. */
+.reveal-ability { flex: 0 0 116px; animation: reveal-rise 320ms var(--ease) both; }
+@keyframes reveal-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* WHICH TILE THE LINE BELOW IS ABOUT.
+   The blurb advances with the tiles and the last one holds through the final
+   beat; without a mark the sentence belongs to nobody, and a kit whose grammar
+   produced two abilities with the same name left the reader guessing which of
+   them had just been described. One `--info` hairline and a soft halo — the
+   selection colour the rest of the product already uses — never a second fill
+   that would make the row read as two materials. */
+.reveal-ability.is-reading .ability-ring {
+  border-color: rgba(110, 168, 255, .85);
+  box-shadow: 0 0 0 3px rgba(110, 168, 255, .14), 0 8px 22px var(--shade);
+}
+.reveal-ability.is-reading .ability-name-main { color: var(--ink-2); }
+
+/* What the tile that just landed actually does. One line, one register lower
+   than the name above it, holding the last ability through the final hold —
+   three uppercase words teach the player nothing on their own. */
+.reveal-blurb {
+  margin-top: var(--s3); min-height: 1.5em; max-width: 46ch;
+  color: var(--muted); opacity: 0; transform: translateY(4px);
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+}
+.reveal-blurb.is-in { opacity: 1; transform: none; }
+
+/* ── the frozen state (§10) ─────────────────────────────────────────────────
+   `?ui=birth-reveal` is a screenshot of a sequence, which is a contradiction
+   unless the sequence is pinned: every transition lands at its end value with
+   no travel, so the frame is beat 7 — the hold, the one still moment the
+   played reveal actually has. Nothing here touches the played reveal; the
+   class is only ever added by the debug path.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.birth-reveal.is-frozen .reveal-word,
+.birth-reveal.is-frozen .reveal-mind { opacity: 1; transition: none; }
+.birth-reveal.is-frozen .portrait-hold { opacity: 1; transform: none; transition: none; }
+.birth-reveal.is-frozen .portrait-light { opacity: 1; transition: none; }
+.birth-reveal.is-frozen .portrait-ground { opacity: .9; transition: none; }
+.birth-reveal.is-frozen .portrait-light::after { animation: none; }
+.birth-reveal.is-frozen .reveal-ability { animation: none; }
+.birth-reveal.is-frozen .reveal-blurb { opacity: 1; transform: none; transition: none; }
+/*
+ * THE SWEEP IS NOT IN THE PHOTOGRAPH AT ALL.
+ *
+ * It was pinned mid-travel here, on the argument that a beat which exists only
+ * as motion should still be visible in a still. Both attempts at a height for
+ * it failed the same way, and the failure is the argument's own: across the
+ * creature's middle (-380 ms) the beam read as a seam cutting the animal in
+ * two; clear of the body (-140 ms) it read — in review, twice — as "a stray
+ * 450 px blue horizontal streak floating above the creature, unattached to
+ * anything". A moving band of light is legible as light BECAUSE it moves. One
+ * frame of it is a rule ruled across a picture, and there is no y at which
+ * that stops being true.
+ *
+ * §10's frozen state is the END of the sequence — beat 7's hold, the still
+ * moment the player actually gets — and at beat 7 the scan finished four
+ * beats ago. So the capture now shows what the player is looking at then: a
+ * finished creature standing in the light the scan left behind
+ * (`.portrait-light`). The beat itself is unchanged in the played reveal,
+ * where it is 900 ms of travel and reads as it was drawn to.
+ */
+.birth-reveal.is-frozen .portrait-scan { animation: none; opacity: 0; }
+
+/* ── narrow, and short ──────────────────────────────────────────────────────
+   Only `--portrait-h` and the box's width change with the viewport: the sweep
+   reads its distance from the same variable, so there is one number to keep
+   right instead of a copy of the animation per breakpoint.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .birth-wrap { padding-left: calc(var(--chrome-pad) + 120px); }
+  .birth-wrap.is-peek { padding-left: calc(var(--chrome-pad) + 120px); }
+}
+
+/* a laptop at 720p has ~560 px of room between the chrome and the tab rail;
+   the portrait gives back what the sequence needs to stay in one screen. The
+   blurb stays: two lines of Inter are what makes three uppercase words mean
+   anything, and dropping them was how the reveal came to show two tiles named
+   the same word with nothing to tell them apart. The portrait pays instead —
+   it is the one element with 80 px of slack in it. */
+@media (max-height: 800px) and (min-width: 901px) {
+  .birth-wrap { padding-top: 72px; }
+  .birth-wrap:has(.birth-reveal) { padding-top: 64px; padding-bottom: 32px; }
+  .birth-orbit-hold, canvas.birth-orbit { width: 180px; height: 180px; }
+  .birth-orbit-hold { margin: var(--s3) 0 var(--s2); }
+  .portrait-hold { --portrait-h: clamp(220px, 36vh, 300px); width: min(420px, 84vw); margin: var(--s3) 0 var(--s3); }
+  .reveal-abilities { margin-top: var(--s4); }
+  .reveal-blurb { margin-top: var(--s2); }
+  .birth-elapsed { font-size: 26px; }
+  .birth-stage { margin-top: var(--s4); }
+  .birth-peek-btn { margin-top: var(--s5); }
+}
+
+@media (max-width: 900px) {
+  .birth-wrap { padding: 80px var(--chrome-pad) 96px; }
+  .birth-wrap:has(.birth-reveal) { padding-top: 72px; padding-bottom: 88px; }
+  .birth-wrap.is-peek { padding: 16px var(--chrome-pad) 88px; }
+  .birth-stagearea { padding: 16px 6px; }
+  .birth-orbit-hold, canvas.birth-orbit { width: 180px; height: 180px; }
+  .birth-orbit-hold { margin: var(--s3) 0 var(--s2); }
+  .birth-orbit-hold::before { width: 280px; height: 280px; }
+  .portrait-hold {
+    --portrait-h: clamp(240px, 34vh, 320px);
+    width: min(330px, 88vw); margin: var(--s4) 0 var(--s3);
+  }
+  .reveal-abilities { gap: var(--s3); margin-top: var(--s4); min-height: 84px; }
+  .reveal-ability { flex: 0 0 96px; }
+  /*
+   * THE SENTENCE STAYS ON A PHONE.
+   *
+   * It used to be dropped below 900 px, on the reasoning that three names and
+   * three sentences do not fit across 390 px. Only one sentence is ever shown
+   * — it advances with the tiles — and without it the phone's reveal was two
+   * tiles reading KINETIC LUNGE separated by a 9 px DAMAGE / STUN line, which
+   * is the moment the player is supposed to learn what they made. It is two
+   * lines of text, not a panel: the portrait gives up the height for it.
+   */
+  .reveal-blurb { margin-top: var(--s2); max-width: 38ch; }
+  .birth-prompt { font-size: 13px; }
+  .birth-elapsed { font-size: 26px; }
+  .birth-stage { margin-top: var(--s4); }
+  /* 44 px of target and the label at 12 px: on the screen where this button is
+     the only thing to press, it is the one place the phone gets MORE of the
+     control than the desktop, not less. */
+  .birth-peek-btn { margin-top: var(--s6); height: 44px; padding: 0 18px; font-size: 12px; }
+  .birth-actions .btn { flex: 1 1 auto; }
+  .birth-wrap.is-peek .birth-stagearea { padding: 8px 8px 8px 14px; }
+  .birth-wrap.is-peek .birth-wait { gap: var(--s3); }
+  .birth-wrap.is-peek .birth-elapsed { font-size: 16px; }
+}

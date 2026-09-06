@@ -95,7 +95,7 @@ function reference() {
 export async function viability(kit, { rounds = VIABILITY_ROUNDS, build = null } = {}) {
   const built = compileKit(kit);
   if (built.problems.length) {
-    return { ok: false, hits: 0, wins: 0, rounds: 0, why: 'набор не собирается' };
+    return { ok: false, hits: 0, wins: 0, rounds: 0, why: 'the set of abilities does not compile' };
   }
   const ref = reference();
   /* Сторона выбирается ФИКСИРОВАННО, а не по виду: видов нет, а прибор обязан
@@ -145,18 +145,18 @@ export async function viability(kit, { rounds = VIABILITY_ROUNDS, build = null }
       /* Чётные — кандидат на голубой стороне, нечётные — на оранжевой. */
       const flip = i % 2 === 1;
       const my = flip ? foe : mine;
-      const их = flip ? mine : foe;
+      const theirs = flip ? mine : foe;
       let out;
       try {
         out = await runIsolated(
-          { [my]: ref[my], [их]: ref[их] },
+          { [my]: ref[my], [theirs]: ref[theirs] },
           {
             seed: 900 + i * 7919,
-            kits: { [my]: built.defs, [их]: foeKit.defs },
+            kits: { [my]: built.defs, [theirs]: foeKit.defs },
             /* Своё тело — кандидату, соперник гантлета всегда на теле по
                умолчанию: гантлет — это прибор, и менять его вместе с
                испытуемым значит менять две вещи разом. */
-            builds: { [my]: build || DEFAULT_BUILD, [их]: DEFAULT_BUILD },
+            builds: { [my]: build || DEFAULT_BUILD, [theirs]: DEFAULT_BUILD },
           },
         );
       } catch { continue; }
@@ -170,7 +170,7 @@ export async function viability(kit, { rounds = VIABILITY_ROUNDS, build = null }
   }
   const shape = readShape(rates);
 
-  if (!played) return { ok: false, hits: 0, wins: 0, rounds: 0, why: 'бои не запустились' };
+  if (!played) return { ok: false, hits: 0, wins: 0, rounds: 0, why: 'the fights did not start' };
   /*
    * Порог — ноль попаданий, а не какой-то винрейт.
    *
@@ -180,7 +180,7 @@ export async function viability(kit, { rounds = VIABILITY_ROUNDS, build = null }
    * он не играет.
    */
   if (hits === 0) {
-    return { ok: false, hits, wins, rounds: played, why: 'ни одного попадания за все бои', shape, rates };
+    return { ok: false, hits, wins, rounds: played, why: 'not a single hit across all the fights', shape, rates };
   }
   /*
    * ФОРМА ЕДЕТ НАРУЖУ ВМЕСТЕ С ЧИСЛАМИ.

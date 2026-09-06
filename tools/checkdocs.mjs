@@ -100,15 +100,21 @@ const basePort = read('src/server/index.js').match(/const PORT = Number\(process
 /**
  * Query parameters the client reads, whatever it does with them.
  *
- * Обе поверхности, а не одна. Раньше здесь стоял только `src/viewer/main.js`, и
- * это было верно ровно до того дня, когда параметр начала читать САМА СТРАНИЦА:
- * `?api=` разбирается в `index.html` до загрузки модулей — иначе адрес бэкенда
- * был бы неизвестен тому же вьюверу. Гейт при этом объявлял документацию
- * враньём, хотя параметр читается и работает. Проверка не ослаблена: параметр
- * по-прежнему обязан читаться КОДОМ, просто код клиента живёт в двух файлах.
+ * ALL THREE SURFACES, NOT ONE. This used to name `src/viewer/main.js` alone,
+ * which was true right up to the day a parameter was read by THE PAGE ITSELF:
+ * `?api=` is parsed in `index.html` before a module loads, because otherwise
+ * the viewer would not know the backend's address. The gate called the
+ * documentation a liar about a parameter that is read and works.
+ *
+ * The third is the shell. `?ui=<state>` is how every screenshot state in the
+ * redesign is reached — `app.js` reads it once per navigation into
+ * `store.debug` — and it is the parameter this page documents most.
+ *
+ * The check is not weakened by either: a parameter must still be read by CODE.
+ * The client's code simply lives in three files.
  */
 const viewerParams = new Set(
-  ['src/viewer/main.js', 'src/client/index.html'].flatMap((f) => [
+  ['src/viewer/main.js', 'src/client/index.html', 'src/client/app.js'].flatMap((f) => [
     ...[...read(f).matchAll(/params\.get\('([a-z]+)'\)/g)].map((m) => m[1]),
     ...[...read(f).matchAll(/URLSearchParams\(location\.search\)\.get\('([a-z]+)'\)/g)].map((m) => m[1]),
   ]),
@@ -228,6 +234,25 @@ const CLAIMS = [
       if (!k) return ['<no provenance in brains/>', ''];
       const pairs = k / 2;
       return [String(Math.round(ms / 60000 / pairs)), (usd / pairs).toFixed(2)];
+    },
+  },
+  {
+    /*
+     * The three widths §12 accepts the product at, against the size matrix the
+     * capture tool actually walks. The set shipped two of them for three
+     * review rounds while every document said three, which is the exact rot a
+     * bound claim exists to catch: a width dropped from `shots.mjs`, or added
+     * to it, now has to be said here in the same breath.
+     */
+    what: 'the widths the capture run walks, in the screenshot section',
+    re: /the product at: (\d+)×(\d+) as `<state>\.png`, (\d+)×(\d+) as `<state>-w\.png` and\s+(\d+)×(\d+) as `<state>-m\.png`/,
+    want: () => {
+      const src = read('tools/shots.mjs');
+      const one = (name) => {
+        const m = src.match(new RegExp(`const ${name} = \\{ w: (\\d+), h: (\\d+)`));
+        return m ? [m[1], m[2]] : [`<tools/shots.mjs has no ${name}>`, ''];
+      };
+      return [...one('DESKTOP'), ...one('LAPTOP'), ...one('PHONE')];
     },
   },
   {

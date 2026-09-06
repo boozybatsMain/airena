@@ -126,10 +126,13 @@ export const BRAK_MAX = 0.30;
  * Anthropic и Google это исполняется провайдером, у остальных бюджет 0
  * означает «не начинать».
  */
+/* The labels are what the player reads on a mind card (docs/REDESIGN.md §6.3):
+   two words only — `quick` and `deep`. The internal depth is told apart by the
+   mode key, not by the label. */
 export const THINK_MODES = {
-  plain: { label: 'без размышления', budget: 0 },
-  think: { label: 'с размышлением', budget: 8000 },
-  high: { label: 'глубокое размышление', budget: 24000 },
+  plain: { label: 'quick', budget: 0 },
+  think: { label: 'deep', budget: 8000 },
+  high: { label: 'deep', budget: 24000 },
 };
 
 /** Урезанный бюджет для повтора — правило 4: спас все три сломанные модели. */
@@ -220,23 +223,23 @@ export async function buildCatalog({
     const at = bundle.lastIndexOf(':');
     const modelId = bundle.slice(0, at); const mode = bundle.slice(at + 1);
     const price = live[modelId];
-    if (!price) { rejected.push({ bundle, why: 'нет в прайсе OpenRouter' }); continue; }
-    if (BANNED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'исключена решением 28.08' }); continue; }
+    if (!price) { rejected.push({ bundle, why: 'not listed by the provider' }); continue; }
+    if (BANNED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'excluded by the decision of 28.08' }); continue; }
     /* Белый список действует и на замеренные связки: `MEASURED` — это
        калибровка цен, а не разрешение на работу. */
-    if (!ALLOWED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'не в списке разрешённых (решение 30.08)' }); continue; }
-    if (ROUTING_VARIANTS.test(modelId)) { rejected.push({ bundle, why: 'вариант маршрутизации, а не отдельный автор' }); continue; }
+    if (!ALLOWED.some((re) => re.test(modelId))) { rejected.push({ bundle, why: 'not on the allow list (decision of 30.08)' }); continue; }
+    if (ROUTING_VARIANTS.test(modelId)) { rejected.push({ bundle, why: 'a routing variant, not an author of its own' }); continue; }
     const think = THINK_MODES[mode];
-    if (!think) { rejected.push({ bundle, why: `неизвестный режим ${mode}` }); continue; }
+    if (!think) { rejected.push({ bundle, why: `unknown mode ${mode}` }); continue; }
 
     const ceiling = tokenCeiling(price, budgetUsd);
-    if (ceiling === null) { rejected.push({ bundle, why: `бюджета $${budgetUsd} не хватает на ${MIN_CODE_TOKENS} токенов кода` }); continue; }
+    if (ceiling === null) { rejected.push({ bundle, why: `an allowance of ${budgetUsd} USD does not cover ${MIN_CODE_TOKENS} tokens of code` }); continue; }
     if (think.budget && ceiling < think.budget + MIN_CODE_TOKENS) {
-      rejected.push({ bundle, why: `потолок ${ceiling} меньше размышления ${think.budget} + кода ${MIN_CODE_TOKENS}` });
+      rejected.push({ bundle, why: `a ceiling of ${ceiling} is below thinking ${think.budget} plus code ${MIN_CODE_TOKENS}` });
       continue;
     }
     const brak = brakRates[bundle];
-    if (brak != null && brak > BRAK_MAX) { rejected.push({ bundle, why: `брак ${Math.round(brak * 100)}% выше порога ${BRAK_MAX * 100}%` }); continue; }
+    if (brak != null && brak > BRAK_MAX) { rejected.push({ bundle, why: `a failure rate of ${Math.round(brak * 100)}% is above the ${BRAK_MAX * 100}% threshold` }); continue; }
 
     const m = MEASURED[bundle];
     const creatureUsd = m ? m.body + m.brain : estimateCreatureUsd(price, think.budget);

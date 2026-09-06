@@ -195,7 +195,17 @@ function burstMat(mode) {
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     const age = uniform(0), seed = uniform(0), displace = uniform(0.55), intensity = uniform(1);
-    const cA = uniform(new THREE.Color(1, 1, 1)), cB = uniform(new THREE.Color(1, 0.6, 0.2)), cC = uniform(new THREE.Color(0.6, 0.1, 0.02));
+    /*
+     * ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ — ТОЖЕ КАДР (ARENA-AAA, 06.09). Материал берётся
+     * из кольца, и цвета ему ставит вызывающий (`burst(..., colours)`); но
+     * `colours` необязателен, и тогда на экран выходит вот это. Было
+     * `(1, 0.6, 0.2)` / `(0.6, 0.1, 0.02)` — #FFCB7C при насыщенности 51 % и
+     * #CB5927 при 81 %, то есть ЧИСТЫЙ ЯНТАРЬ и ЧИСТЫЙ ОРАНЖ, оба громче
+     * кораллового баннера (47 % на кадре), который в этом мире единственный
+     * акцент (ARENA-BRIEF §5). Прижаты к полке палитры: C* ≤ 32, оттенок и
+     * светлота сохранены.
+     */
+    const cA = uniform(new THREE.Color(1, 1, 1)), cB = uniform(new THREE.Color(0.88, 0.62, 0.31)), cC = uniform(new THREE.Color(0.34, 0.15, 0.10));
     m.userData.u = { age, seed, displace, intensity, cA, cB, cC };
 
     /* Смещение по нормали: грубый fbm плюс «гребни» (|noise|), сила растёт с
@@ -317,7 +327,7 @@ function shockMat(hot) {
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
       blending: hot ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
-    const age = uniform(0), seed = uniform(0), intensity = uniform(1), colour = uniform(new THREE.Color(1, 0.8, 0.5));
+    const age = uniform(0), seed = uniform(0), intensity = uniform(1), colour = uniform(new THREE.Color(1, 0.8, 0.5));   /* #FFE7BC, C* 24 — внутри полки */
     /* `half` — полураствор сектора в радианах; π (по умолчанию) = целое
        кольцо. Нужен фронту волны конуса (радиация §6.5). Направление НЕ
        мапится в шейдере — меш поворачивается по Y (см. `shockwave`). */
@@ -663,7 +673,11 @@ class DecalField {
       const core = oneMinus(smoothstep(float(0.45), float(0.95), edge));
       const rim = smoothstep(float(0.62), float(0.82), edge).mul(oneMinus(smoothstep(float(0.95), float(1.05), edge)));
       const grain = mx_noise_float(p3.mul(7.0).add(2.2)).mul(0.5).add(0.5);
-      const body = mix(tint.mul(0.7), vec3(0.62, 0.91, 0.23), 0.55);
+      /* Константа кислотной зелени прижата под мир (ARENA-AAA, 06.09): было
+         #CEF584 при Lab C* 58 — вдвое цветнее любой ступени градуированной
+         палитры (C* ≤ 32), и она входит в пятно долей 0.55, то есть
+         перекрашивает его мимо палитры. Стало C* 34 при той же светлоте. */
+      const body = mix(tint.mul(0.7), vec3(0.694, 0.862, 0.425), 0.55);
       /* Блик: узкая полоса 0.08 радиуса в одном квадранте. */
       const spec = oneMinus(smoothstep(float(0.0), float(0.08), tabs(q.y.sub(q.x.mul(0.45)))))
         .mul(smoothstep(float(0.0), float(0.3), q.x)).mul(core).mul(grain.mul(0.4).add(0.6));
@@ -799,6 +813,39 @@ class DecalField {
     this.mat = new THREE.Matrix4();
   }
 
+  /*
+   * ── ПЛОЩАДЬ БЕЗ БОЯ НЕ НОСИТ СЛЕДОВ БОЯ (ARENA-AAA, приёмка 06.09) ──────
+   *
+   * `live-searching.png`: под HUD «NEXT FIGHT IN 8 / SCANNING 36 CREATURES»
+   * на полу горят обе метки прошлого боя. Частицы и меши уборка такта уже
+   * забирает (`Vfx.clearField`), а СЛЕД не забирал никто: он живёт не в
+   * сцене и не в пуле, а четырьмя числами в инстансном буфере, и гаснет
+   * сам — через `hold` (до восьми секунд) плюс `fade`. Поиск начинается
+   * раньше.
+   *
+   * Уборка переписывает те же четыре числа, что пишет `place`:
+   *   · проявившемуся ставится `hold = возраст` — уход начинается сейчас, и
+   *     идёт он своим полиномом 3t²−2t³ за `tail` секунд, то есть это
+   *     затухание, а не срез (заказ 04.09: «не моментально, а постепенно»);
+   *   · ещё НЕ проявившемуся (лужа навеса ждёт, пока колба долетит)
+   *     рождение уносится в далёкое будущее: `life` у него `born.select`,
+   *     то есть ноль на каждом кадре, и он не проявится вовсе;
+   *   · уже погасший не трогается — его слот и так свободен.
+   */
+  retire(now, tail = 0.3) {
+    const A = this.cfg.array;
+    for (let i = 0; i < MAX_DECALS; i++) {
+      const b = i * 4;
+      const born = A[b];
+      if (born > now) { A[b] = 1e6; continue; }
+      const age = now - born;
+      if (age >= A[b + 1] + A[b + 2]) continue;
+      A[b + 1] = age;
+      A[b + 2] = tail;
+    }
+    this.cfg.needsUpdate = true;
+  }
+
   place({ x, z, radius, rot, now, hold, fade, seed, tint, rise }) {
     const i = this.head; this.head = (this.head + 1) % MAX_DECALS;
     this.mat.makeRotationY(rot).scale(new THREE.Vector3(radius, 1, radius)).setPosition(x, 0, z);
@@ -911,6 +958,19 @@ const decalFields = new WeakMap();
  * остаётся часовой циферблат от пузыря, которого давно нет (жалоба
  * основателя). Проекции передают `hold` от собственной длительности умения.
  */
+/**
+ * Убрать все следы, которые этот слой положил на площадь: см. довод у
+ * `DecalField.retire`. Зовётся из `Vfx.clearField` — такт без боя.
+ * Возвращает число полей, по которым прошлись (для стенда и гейтов).
+ */
+export function retireDecals(vfx, now, tail = 0.3) {
+  const fields = decalFields.get(vfx);
+  if (!fields) return 0;
+  let n = 0;
+  for (const f of Object.values(fields)) { f.retire(now, tail); n++; }
+  return n;
+}
+
 export function decal(vfx, { type = 'soot', x, z, radius = 2, rot = null, hold = 2.5, fade = 2, tint = null, seed = null, at = 0, rise = null }) {
   /* `now` в наблюдателе — не роскошь: метку кладут и ИЗ ХОДА формы (лужа
      навеса — в момент, когда колба разбилась), и тогда её рождение — это

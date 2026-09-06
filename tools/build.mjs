@@ -112,6 +112,10 @@ function toFile(url) {
 function toUrl(ref, fromUrl, map) {
   let clean = String(ref || '').split('?')[0].split('#')[0].trim();
   if (!clean || /^(https?:|data:|mailto:|blob:)/.test(clean)) return null;
+  /* Server routes are not files: an image `src="/api/creature/…/icon/0"` is served by the backend. */
+  if (/^\/(api|ws)(\/|$)/.test(clean)) return null;
+  /* A bare mount directory (`/bodies/`) is a prefix a script builds URLs from, not a file to copy. */
+  if (clean.endsWith('/')) return null;
 
   if (!clean.startsWith('/') && !clean.startsWith('.')) {
     /* Голое имя модуля — только через карту импортов. */

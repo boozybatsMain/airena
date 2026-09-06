@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VERBOSE = process.argv.includes('--verbose');
 
-const css = readFileSync(join(ROOT, 'src/client/ui/kit.css'), 'utf8');
+const css = readFileSync(join(ROOT, 'src/client/ui/tokens.css'), 'utf8');
 
 /** Значения токенов из `:root` — только цвета, только hex и rgb/rgba. */
 function tokens() {
@@ -47,9 +47,56 @@ function value(v, depth = 0) {
   return m && T[m[1]] ? value(T[m[1]], depth + 1) : v;
 }
 
+/**
+ * Split on top-level commas — `color-mix()` arguments hold `var()` and
+ * `rgba()`, and a naive `split(',')` cuts those in half.
+ */
+function commas(s) {
+  const out = []; let depth = 0; let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '(') depth++;
+    else if (c === ')') depth--;
+    else if (c === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
+  }
+  out.push(s.slice(start));
+  return out.map((x) => x.trim()).filter(Boolean);
+}
+
+/**
+ * `color-mix()` IS A COLOUR, NOT A HIDING PLACE.
+ *
+ * The value reader below used to pull the first `var()` out of whatever it was
+ * handed, so `color-mix(in srgb, var(--accent) 20%, transparent)` — a 20 %
+ * wash — was judged as full-strength `--accent`, and `.sidetag[data-down]`
+ * (`--accent-ink` on that wash) was reported as 2.49:1 when the eye sees a pale
+ * tint under a dark red. Two of the three false alarms in round one were this
+ * one bug. So the mix is computed, in premultiplied alpha, the way the spec
+ * says: `p1·a1·c1 + p2·a2·c2` over `p1·a1 + p2·a2`.
+ */
+function mix(body) {
+  const parts = commas(body);
+  if (parts.length < 3) return null;
+  const pct = (s) => { const m = /(-?[\d.]+)%\s*$/.exec(s); return m ? Number(m[1]) / 100 : null; };
+  const bare = (s) => s.replace(/(-?[\d.]+)%\s*$/, '').trim();
+  const c1 = parse(bare(parts[1])); const c2 = parse(bare(parts[2]));
+  if (!c1 || !c2) return null;
+  let p1 = pct(parts[1]); let p2 = pct(parts[2]);
+  if (p1 === null && p2 === null) { p1 = 0.5; p2 = 0.5; }
+  else if (p1 === null) p1 = 1 - p2;
+  else if (p2 === null) p2 = 1 - p1;
+  const sum = p1 + p2;
+  if (!sum) return null;
+  p1 /= sum; p2 /= sum;
+  const a = p1 * c1[3] + p2 * c2[3];
+  if (!a) return [0, 0, 0, 0];
+  return [0, 1, 2].map((i) => (p1 * c1[3] * c1[i] + p2 * c2[3] * c2[i]) / a).concat(a);
+}
+
 /** Принимает и имя токена (`--ink`), и готовое значение (`#fff`, `rgba(...)`). */
 function parse(v) {
   const s = String(value(T[String(v).trim()] ?? v)).trim();
+  if (/^transparent$/i.test(s)) return [0, 0, 0, 0];
   let m = /^#([0-9a-f]{6})$/i.exec(s);
   if (m) return [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16), 1];
   m = /^#([0-9a-f]{3})$/i.exec(s);
@@ -59,6 +106,8 @@ function parse(v) {
     const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
     return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
   }
+  m = /^color-mix\(([\s\S]+)\)$/i.exec(s);
+  if (m) return mix(m[1]);
   return null;
 }
 
@@ -81,17 +130,16 @@ function ratio(fgTok, bgTok) {
  * запретить ровно ту крупную типографику, ради которой этап 5 и затеян.
  */
 const PAIRS = [
-  ['основной текст на странице', '--ink', '--bg-page'],
-  ['основной текст на плитке', '--ink', '--bg-cell'],
-  ['второстепенный текст на странице', '--dim', '--bg-page'],
-  ['второстепенный текст на плитке', '--dim', '--bg-cell'],
-  ['имя осьминога на сцене', '--name-cy', '--bg-scene', true],
-  ['имя гориллы на сцене', '--name-or', '--bg-scene', true],
-  ['цвет осьминога на странице', '--oct', '--bg-page', true],
-  ['цвет гориллы на странице', '--gor', '--bg-page', true],
-  ['опасность на странице', '--bad', '--bg-page'],
-  ['успех на странице', '--ok', '--bg-page'],
-  ['предупреждение на странице', '--warn', '--bg-page'],
+  ['primary text on the ground', '--ink', '--sky'],
+  ['headings on the ground', '--ink-2', '--sky'],
+  ['labels on the ground', '--muted', '--sky'],
+  ['primary text on light glass', '--ink', '--sky-2'],
+  ['labels on light glass', '--muted', '--sky-2'],
+  ['defeat / danger text', '--accent-ink', '--sky'],
+  ['victory / positive text', '--success-ink', '--sky'],
+  ['selection / link text', '--info-ink', '--sky'],
+  ['caution text', '--warning-ink', '--sky'],
+  ['tooltip text', '#F4EEE8', '--ink'],
 ];
 
 let bad = 0;
@@ -129,7 +177,7 @@ if (!bad && !VERBOSE) console.log(`  ✓ все ${PAIRS.length} пар прох�
     const Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
     return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
   };
-  const [a, b] = [lab('--oct'), lab('--gor')];
+  const [a, b] = [lab('--info'), lab('--accent')];
   const dE = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const pass = dE >= 10;
   if (!pass) bad++;
@@ -166,31 +214,61 @@ const baseOf = (sel) => sel.replace(/^([.#]?[\w-]+)(?:[.:][^\s]*)*/, '$1');
    `.btn.primary`, а не от соседа `.btn.ghost`. Без этой ступени наведение на
    яркую кнопку сравнивалось со светлым текстом обычной. */
 const statelessOf = (sel) => sel.replace(/:{1,2}[\w-]+(\([^)]*\))?/g, '');
+/*
+ * TWO PSEUDO-ELEMENTS ARE SIBLINGS, NOT A SURFACE AND ITS TEXT.
+ *
+ * `statelessOf` reduces `.t::before` and `.t::after` to the same `.t`, which
+ * made the gate read the second as text lying on the first. In `hud.css` those
+ * two are a 2 px burn bar and the label stacked under it in a flex column: they
+ * never touch, and the pair was reported as 2.49:1 in round one. A pseudo is
+ * still judged against its OWN element's fill — only against another pseudo's
+ * it is not.
+ */
+const PSEUDO = /::?(before|after|marker|placeholder|selection|backdrop|first-line|first-letter)\b/gi;
+const pseudoOf = (sel) => (sel.match(PSEUDO) || []).pop()?.replace(/^:+/, '') || '';
 function inksFor(rules, sel) {
   const base = baseOf(sel);
   const bare = statelessOf(sel);
+  const mine = pseudoOf(sel);
   const rank = (x) => {
     if (x.sel === sel) return 4;
+    const theirs = pseudoOf(x.sel);
+    if (theirs && mine && theirs !== mine) return 0;
     if (statelessOf(x.sel) === bare) return 3;
     if (x.sel.startsWith(base) && !x.sel.includes(' ')) return 2;
     if (x.sel.startsWith(`${sel} `) || x.sel.startsWith(`${base} `)) return 1;
     return 0;
   };
-  const cand = rules.filter((x) => x.fg && rank(x) > 0);
+  /*
+   * And a rule that paints its OWN background is its own surface. `.cd::after`
+   * (the cooldown pill: `--sky` on `--pane-dark`) was being judged against the
+   * ability tile behind it and reported as 1.21:1 — a reading of a colour pair
+   * that is never on screen. It is still judged, one line lower, against the
+   * fill it actually sits on.
+   */
+  const cand = rules.filter((x) => x.fg && (x.sel === sel || !x.bg) && rank(x) > 0);
   if (!cand.length) return [];
   const top = Math.max(...cand.map(rank));
   return cand.filter((x) => rank(x) === top);
 }
 
 const rules = [];
-for (const file of ['src/client/ui/app.css', 'src/client/ui/kit.css']) {
+for (const file of ['src/client/ui/base.css', 'src/client/ui/components.css', 'src/client/ui/chrome.css', 'src/client/ui/hud.css',
+  ...['live', 'create', 'birth', 'creature', 'history', 'ladder', 'worker'].map((n) => `src/client/ui/screens/${n}.css`)]) {
   const text = readFileSync(join(ROOT, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   for (const m of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const sel = m[1].trim().split('\n').pop().trim();
     if (!sel || sel.startsWith('@')) continue;
     const bg = /(?:^|[^-\w])background(?:-color)?\s*:\s*([^;]+)/.exec(m[2]);
     const fg = /(?:^|[^-\w])color\s*:\s*([^;]+)/.exec(m[2]);
-    const one = (v) => (v ? (v[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|var\(--[a-z0-9-]+\)/) || [null])[0] : null);
+    /* A value that IS a mix is kept whole (`parse` computes it); a mix buried
+       in a gradient still reduces to its first stop, as it always did. */
+    const one = (v) => {
+      if (!v) return null;
+      const raw = v[1].trim().replace(/\s*!important$/, '');
+      if (/^color-mix\(/i.test(raw) && raw.endsWith(')')) return raw;
+      return (raw.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|var\(--[a-z0-9-]+\)/) || [null])[0];
+    };
     rules.push({ file, sel, bg: one(bg), fg: one(fg) });
   }
 }
@@ -209,7 +287,7 @@ for (const r of rules) {
    * читался как 1.53:1 при настоящих 6.98. Проверка, знающая цвет темы
    * наизусть, врёт при первой её смене — здесь это уже второй такой случай.
    */
-  const bgSeen = bgPx[3] < 1 ? over(bgPx, parse('--bg-page')) : bgPx;
+  const bgSeen = bgPx[3] < 1 ? over(bgPx, parse('--sky')) : bgPx;
   /*
    * База селектора — то, к чему прицеплено состояние. `.card.on` это `.card`
    * плюс состояние, и текст внутри него описан правилами `.card .hd`, а не
@@ -256,14 +334,21 @@ if (!bad) console.log(`  ✓ ${pairs} пар «зашитый фон — тек�
  * Судятся только СЫРЫЕ литералы: заливка ролевым токеном (`var(--oct)` в
  * полосе бюджета) — это краска, а не поверхность, и она обязана быть контрастной.
  */
-const pageDark = lum(parse('--bg-page')) < 0.5;
+const pageDark = lum(parse('--sky')) < 0.5;
 /*
  * `#vfxflash` — не поверхность, а ВСПЫШКА. Белый здесь и есть эффект: ось
  * `screen: 'flash'` из VFX-IR (§9.2) на долю секунды заливает кадр светом,
  * а `opacity` в покое ровно ноль. Судить её по правилу «тёмная страница —
  * тёмные плашки» значит требовать тёмной вспышки.
  */
-const DARK_OK = [/\.plate \.t\b/, /#ff4d3d/, /#vfxflash/];
+/*
+ * `.portrait-shadow` is not a surface but a CONTACT SHADOW: the blurred dark
+ * ellipse under the specimen on §6.5 that puts the portrait on the ground. It
+ * holds no text and nothing is read on it. Asking a shadow to sit on the light
+ * side of the luminance midpoint is asking for a shadow that does not shade —
+ * the same argument `#vfxflash` already carries here.
+ */
+const DARK_OK = [/\.plate \.t\b/, /#ff4d3d/, /#vfxflash/, /\.portrait-shadow/];
 let fills = 0;
 for (const r of rules) {
   if (!r.bg || r.bg.startsWith('var(')) continue;
@@ -271,7 +356,7 @@ for (const r of rules) {
   const px = parse(r.bg);
   if (!px) continue;
   /* Полупрозрачное — поверх страницы: важно то, что увидит глаз. */
-  const page = parse('--bg-page');
+  const page = parse('--sky');
   const seen = px[3] < 1 ? over(px, page) : px;
   const fillDark = lum(seen) < 0.35;
   const fillLight = lum(seen) > 0.65;

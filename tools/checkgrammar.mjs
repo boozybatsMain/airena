@@ -317,37 +317,6 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
     unread.length ? `никто не читает: ${unread.join(', ')}` : `${Object.keys(CHANNELS).length} каналов`);
 }
 
-// ── 7b. русские имена атомов в карточке гостя совпадают с реестром ────────
-{
-  /*
-   * Карточка стартового существа показывается ДО того, как загрузится
-   * `/api/grammar`: это первый экран гостя, и лишний запрос на критическом
-   * пути стоит дороже, чем копия словаря. Поэтому `arena.js` держит свои
-   * DELIV_SHORT и EFF_SHORT — и как всякая копия, они умеют разъезжаться с
-   * оригиналом молча. Разъедутся — гость увидит `burn` вместо «горение»
-   * ровно там, где мы объясняем ему, чем одно существо отличается от
-   * другого.
-   */
-  const src = readFileSync(join(ROOT, 'src/client/screens/arena.js'), 'utf8');
-  const dictOf = (name) => {
-    const m = src.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\n\\};`));
-    if (!m) return null;
-    const out = {};
-    for (const pair of m[1].matchAll(/(\w+):\s*'([^']*)'/g)) out[pair[1]] = pair[2];
-    return out;
-  };
-  const dv = dictOf('DELIV_SHORT');
-  const ef = dictOf('EFF_SHORT');
-  const bad = [];
-  if (!dv || !ef) bad.push('словарь не найден в arena.js');
-  else {
-    for (const [id, d] of Object.entries(DELIVERIES)) if (dv[id] !== d.ru) bad.push(`доставка ${id}: «${dv[id]}» вместо «${d.ru}»`);
-    for (const [id, e] of Object.entries(EFFECTS)) if (ef[id] !== e.ru) bad.push(`эффект ${id}: «${ef[id]}» вместо «${e.ru}»`);
-  }
-  ok('словарь атомов в карточке гостя совпадает с реестром', bad.length === 0,
-    bad.length ? bad.join('; ') : `${Object.keys(DELIVERIES).length} доставок и ${Object.keys(EFFECTS).length} эффектов`);
-}
-
 // ── 8. копия стартовых наборов в клиент не вернулась ──────────────────────
 {
   /*

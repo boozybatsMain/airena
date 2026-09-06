@@ -14,6 +14,8 @@
 
 import { BUILD_AXES, axisCost } from '../core/config.js';
 import { randomUUID } from 'node:crypto';
+import { abilitiesOf } from '../skills/describe.js';
+import { iconUrls, iconUrlsMany } from './forge/icons.js';
 
 /**
  * ДВЕ СТОРОНЫ АРЕНЫ. ЭТО ЦВЕТА, И БОЛЬШЕ НИЧЕГО.
@@ -100,20 +102,24 @@ export function sideResult(result) {
  * в снапшот, в лог, в экспорт, в поддержку. Функция построена так, что забыть
  * это нельзя: она перечисляет поля явно, а не вычитает лишние из строки.
  */
-const BODY_RU = {
-  hp: ['живучее', 'хрупкое'],
-  maxSpeed: ['быстрое', 'медленное'],
-  accel: ['резкое', 'вялое на разгоне'],
-  turnRate: ['вёрткое', 'неповоротливое'],
-  radius: ['мелкое', 'крупное'],
-  jumpHeight: ['прыгучее', 'низкое в прыжке'],
+/*
+ * One line about the BODY, in two words: the axis it paid most for and the one
+ * it paid least for. Player-visible, therefore English (docs/REDESIGN.md §1).
+ */
+const BODY_WORDS = {
+  hp: ['tough', 'fragile'],
+  maxSpeed: ['fast', 'slow'],
+  accel: ['quick off the mark', 'sluggish off the mark'],
+  turnRate: ['nimble', 'ponderous'],
+  radius: ['small', 'bulky'],
+  jumpHeight: ['springy', 'earthbound'],
 };
 
-/** «мелкое, но хрупкое» — самая дорогая ось тела и самая дешёвая. */
+/** "small but fragile" — the body's most expensive axis and its cheapest. */
 function bodyLine(buildJson) {
   let b = null;
   try { b = buildJson ? JSON.parse(buildJson) : null; } catch { b = null; }
-  if (!b) return 'тело обычное';
+  if (!b) return 'an ordinary body';
   const share = [];
   for (const [name, a] of Object.entries(BUILD_AXES)) {
     const v = Number(b[name]);
@@ -123,16 +129,117 @@ function bodyLine(buildJson) {
     const span = (a.max - a.min) / a.per;
     share.push({ name, at: span ? axisCost(name, v) / ((a.weight ?? 1) * span) : 0.5 });
   }
-  if (share.length < 2) return 'тело обычное';
+  if (share.length < 2) return 'an ordinary body';
   share.sort((x, y) => y.at - x.at);
   const top = share[0]; const bot = share[share.length - 1];
-  /* Ровное тело незачем описывать крайностями: они будут выдуманными. */
-  if (top.at - bot.at < 0.2) return 'тело ровное';
-  return `${BODY_RU[top.name][0]}, но ${BODY_RU[bot.name][1]}`;
+  /* An even body should not be described by extremes: they would be invented. */
+  if (top.at - bot.at < 0.2) return 'an even body';
+  return `${BODY_WORDS[top.name][0]}, but ${BODY_WORDS[bot.name][1]}`;
 }
 
-export function card(row, { viewerId = null } = {}) {
+/**
+ * Which generation of its owner this creature is.
+ *
+ * 1-based, ordered by birth, counting EVERY creature the owner ever made —
+ * retired ones included. A generation number that renumbered itself when an
+ * older creature was retired would rewrite the player's own history: their
+ * third creature would suddenly claim to be their second.
+ *
+ * Library creatures have no owner and no lineage, so they are always 01.
+ */
+export function generationOf(db, row) {
+  if (!db || !row.owner_id || row.is_library) return 1;
+  try {
+    /* Count everything born before this one, plus this one. `id` breaks the tie
+       for two creatures written in the same millisecond, exactly the way the
+       ladder breaks a rating tie — a stable order beats a pretty one. */
+    const n = db.prepare(`SELECT count(*) AS n FROM creature
+      WHERE owner_id = ? AND (created_at < ? OR (created_at = ? AND id <= ?))`)
+      .get(row.owner_id, row.created_at, row.created_at, row.id).n;
+    return Math.max(1, n);
+  } catch { return 1; }
+}
+
+/**
+ * The generation number of MANY creatures, in one query.
+ *
+ * `generationOf` above is a `COUNT(*)` per creature, and the session already
+ * calls it once per row of a lineage. The batch form asks the same question
+ * once per OWNER — every creature that owner ever made, in birth order — and
+ * numbers the whole line by walking it. Retired creatures are counted here for
+ * the same reason they are counted there: a generation number that renumbered
+ * itself when an older creature was retired would rewrite the player's history.
+ *
+ * Returns `id → generation`; ids it cannot place are simply absent, and the
+ * caller falls back to `generationOf`.
+ */
+export function generationsOf(db, rows) {
+  const out = new Map();
+  const list = (Array.isArray(rows) ? rows : []).filter(Boolean);
+  if (!db || !list.length) return out;
+  const owners = [...new Set(list.filter((r) => r.owner_id && !r.is_library).map((r) => r.owner_id))];
+  for (const r of list) if (!r.owner_id || r.is_library) out.set(r.id, 1);
+  if (!owners.length) return out;
+  try {
+    /* Chunked for the same reason `iconUrlsMany` is: SQLite binds 999
+       variables by default and a season has more owners than that. */
+    for (let at = 0; at < owners.length; at += 400) {
+      const part = owners.slice(at, at + 400);
+      const all = db.prepare(`SELECT id, owner_id FROM creature
+        WHERE owner_id IN (${part.map(() => '?').join(',')})
+        ORDER BY owner_id, created_at, id`).all(...part);
+      let owner = null; let n = 0;
+      for (const c of all) {
+        if (c.owner_id !== owner) { owner = c.owner_id; n = 0; }
+        n += 1;
+        out.set(c.id, n);
+      }
+    }
+  } catch { return out; }
+  return out;
+}
+
+/**
+ * Many cards at once — the list form of `card()`.
+ *
+ * Two of the card's fields cost a query each (`icons`, `generation`), which is
+ * nothing for one creature and two hundred round-trips for a hundred-row
+ * ladder. This resolves both in two statements for the whole list and hands
+ * each `card()` its own answer. Same output, exactly: a caller can swap
+ * `rows.map((r) => card(r, o))` for `cards(rows, o)` and read nothing new.
+ */
+export function cards(rows, { viewerId = null, db = null } = {}) {
+  const list = (Array.isArray(rows) ? rows : []).filter(Boolean);
+  if (!list.length) return [];
+  const icons = iconUrlsMany(db, list.map((r) => r.id));
+  const gens = generationsOf(db, list);
+  return list.map((r) => card(r, {
+    viewerId,
+    db,
+    icons: icons.get(r.id) || null,
+    generation: gens.get(r.id) ?? null,
+  }));
+}
+
+/**
+ * The public card of a creature. THE ONLY way a creature leaves the server.
+ *
+ * `db` is optional and only three fields need it — generation, icons and
+ * nothing else reads the database. A caller without one still gets a complete,
+ * honest card: generation 01 and no icons, which is exactly what a creature
+ * looks like before its glyphs are drawn.
+ *
+ * `icons` and `generation` are the two fields that cost a query. A caller
+ * holding a LIST has already resolved both in one statement each (`cards()`
+ * above) and passes them in; `null` means "ask the database yourself", which
+ * is what every single-creature caller does.
+ */
+export function card(row, { viewerId = null, db = null, icons = null, generation = null } = {}) {
   if (!row) return null;
+  const kit = safeJson(row.kit_json, []);
+  /* Resolved once: the abilities below carry their own glyph, and the `icons`
+     array is the same three strings under the name §8.2 gives them. */
+  const slots = icons || iconUrls(db, row.id, 3);
   return {
     id: row.id,
     name: row.name,
@@ -151,7 +258,27 @@ export function card(row, { viewerId = null } = {}) {
      */
     bodyLine: bodyLine(row.build_json),
     bodyRef: row.body_ref,
-    kit: safeJson(row.kit_json, []),
+    kit,
+    /*
+     * The abilities as the PLAYER reads them: a name, and one paragraph of
+     * plain facts. `kit` above is the grammar's own four-axis record — the
+     * client must never have to translate that itself, because the numbers it
+     * would need (26 damage, 4 seconds of burn) live in the registry on the
+     * server. See `src/skills/describe.js`.
+     */
+    /* Each ability carries the address of its own glyph, `null` where none has
+       been drawn. A screen that has the ability has the picture — it does not
+       have to know how an icon URL is spelled, and `null` lets it draw the
+       procedural fallback without first asking the network for a 404. */
+    abilities: abilitiesOf(kit).map((a) => ({ ...a, icon: slots[a.slot] ?? null })),
+    /*
+     * Three URLs or three nulls, one per ability slot. Null is a normal answer
+     * — the glyph has not been drawn yet, or there is no key to draw it with —
+     * and the client draws its procedural fallback instead of an empty box.
+     */
+    icons: slots,
+    /* Which of the owner's creatures this is, counting from the first. */
+    generation: generation ?? generationOf(db, row),
     unfit: safeJson(row.unfit_json, []),
     model: row.brain_model,
     constantsVersion: row.constants_version,
@@ -186,12 +313,17 @@ export function card(row, { viewerId = null } = {}) {
 const safeJson = (s, dflt) => { try { return JSON.parse(s); } catch { return dflt; } };
 
 /**
- * Имя. Генерируется из промпта игрока моделью вместе с китом, но должно быть
- * и без модели: генерация может упасть, а существо без имени — это строка «—»
- * в таблице лидеров, то есть баг, который видят все.
+ * The name. The model writes it from the player's description, but there has to
+ * be one WITHOUT the model too: generation can fail, and a creature with no
+ * name is a dash in the ladder — a bug everyone sees.
+ *
+ * English syllables, because the name is the most player-visible string the
+ * product has (docs/REDESIGN.md §1) and a fallback that came out in Cyrillic
+ * would be hidden by `latinOnly()` on the client — leaving the dash we are
+ * here to prevent.
  */
-const SYLL_A = ['ВЕР', 'КОР', 'НАЛ', 'ТИР', 'ОСК', 'ДРА', 'ГЛЕЙ', 'ФАР', 'ЗЕН', 'МОР', 'ХАЛ', 'ПРЕ'];
-const SYLL_B = ['ТУС', 'НАКС', 'ВИР', 'ДОН', 'МАР', 'ЛЕК', 'СИМ', 'РАН', 'ТАЛ', 'ГОР', 'ВЕЙ', 'КАД'];
+const SYLL_A = ['VER', 'KOR', 'NAL', 'TYR', 'OSK', 'DRA', 'GLEI', 'FAR', 'ZEN', 'MOR', 'HAL', 'PRE'];
+const SYLL_B = ['TUS', 'NAX', 'VIR', 'DON', 'MAR', 'LEK', 'SIM', 'RAN', 'TAL', 'GOR', 'VEY', 'KAD'];
 
 export function fallbackName(seedStr) {
   let h = 2166136261;
@@ -202,12 +334,12 @@ export function fallbackName(seedStr) {
   return `${a}${b}-${n}`;
 }
 
-/** Имя допустимо, если оно читается в таблице и не притворяется чужим. */
+/** A name is acceptable if it reads in the ladder and imitates nobody. */
 export function sanitizeName(raw, seedStr) {
   if (typeof raw !== 'string') return fallbackName(seedStr);
   const s = raw.trim().replace(/\s+/g, ' ').slice(0, 22);
-  /* Разрешаем буквы, цифры, дефис и пробел. Всё остальное — это либо разметка,
-     либо попытка нарисовать в таблице лидеров то, чего там быть не должно. */
+  /* Letters, digits, hyphen and space. Anything else is either markup or an
+     attempt to draw something in the ladder that does not belong there. */
   if (!/^[\p{L}\p{N} '\-]{2,22}$/u.test(s)) return fallbackName(seedStr);
   return s.toUpperCase();
 }
@@ -330,12 +462,17 @@ export function history(db, id, limit = 20) {
 }
 
 /**
- * Сводка «что было, пока тебя не было».
+ * WHILE YOU WERE AWAY — the recap card of §6.1, in one query each.
  *
- * Игрок, зашедший через три дня, пропустил ~4000 боёв. Показать их списком —
- * значит показать стену; показать только «рейтинг 1180» — значит не показать
- * ничего. Поэтому сводка отвечает на три вопроса: куда сдвинулся рейтинг,
- * сколько раз существо переучилось, и один бой, который стоит посмотреть.
+ * A player who comes back after three days missed about four thousand fights.
+ * Listing them is a wall; printing "1,180 rating" is nothing at all. So the
+ * summary answers the three questions a returning owner actually has: where the
+ * rating moved, how many times the creature re-learned, and which single fight
+ * is worth watching.
+ *
+ * It is deliberately a summary and not a feed: the career itself is HISTORY,
+ * one click away, and a recap that tries to be the history has to be dismissed
+ * before the arena can be seen.
  */
 export function sinceSummary(db, id, sinceMs) {
   const agg = db.prepare(`
@@ -351,9 +488,10 @@ export function sinceSummary(db, id, sinceMs) {
     `SELECT count(*) AS n FROM adaptation WHERE creature_id = ? AND at >= ? AND accepted = 1`,
   ).get(id, sinceMs).n;
 
-  /* Один бой на посмотреть — самый крупный сдвиг рейтинга. Не «последний»:
-     последний почти всегда скучный, а крупный сдвиг — это тот, где что-то
-     случилось. */
+  /* One fight to watch: the largest rating swing, not the most recent one. The
+     most recent fight is almost always an ordinary one, while a large swing is
+     by definition the fight where something happened — an upset, a streak
+     broken, a first win against someone far above. */
   const highlight = db.prepare(`
     SELECT id, seed, started_at FROM match
     WHERE (a_id = ? OR b_id = ?) AND ended_at >= ?

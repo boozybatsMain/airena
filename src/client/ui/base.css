@@ -1,0 +1,285 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base: fonts, reset, typography utilities, layers.
+   ────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url('/fonts/spacegrotesk-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+html { color-scheme: light; }
+body {
+  overflow: hidden;
+  background: var(--sky);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--t-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* The page itself never scrolls — `#screen > .screen` does, so the chrome, the
+   ground and the arena stay put under it. (The four document screens used to
+   repeat `overflow: hidden` here; `body` above already says it.) */
+
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+button:disabled { cursor: default; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+canvas { display: block; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 3px; border-radius: 4px; }
+::selection { background: rgba(110, 168, 255, .35); }
+
+/* ── visually hidden, and the one control that comes back ───────────────── */
+/* Present for a screen reader, absent for everything else. `clip-path` rather
+   than `display: none`: a hidden element is not announced at all. */
+.sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; white-space: nowrap; border: 0; clip-path: inset(50%);
+}
+/*
+ * SKIP TO NAVIGATION.
+ *
+ * `#chrome` is the last layer in the document (§4.2), which is right for
+ * painting and wrong for the keyboard: the four rail links are the last tab
+ * stops on every page, so a ladder showing a hundred rows puts a hundred
+ * buttons between the reader and the way out of it. This is the way past, and
+ * it is the first thing in the document.
+ *
+ * Above `--z-tip`: it has to be readable over an open modal veil as well as
+ * over the arena.
+ */
+.skip {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; white-space: nowrap; border: 0; clip-path: inset(50%);
+}
+.skip:focus-visible, .skip:focus {
+  position: fixed; top: 14px; left: 14px; z-index: 60;
+  width: auto; height: 44px; margin: 0; padding: 0 20px; clip-path: none; overflow: visible;
+  display: inline-flex; align-items: center;
+  border-radius: var(--r-card);
+  font-family: var(--font-display); font-size: 11.5px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2);
+  background: rgba(255, 255, 255, .94);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .06), 0 14px 40px var(--shade);
+}
+
+/* ── type utilities ─────────────────────────────────────────────────────── */
+.t-state {
+  font-size: var(--t-state); font-weight: 300; letter-spacing: var(--track-state);
+  text-transform: uppercase; line-height: 1; color: var(--ink-2);
+  /* the last letter's tracking would otherwise push the block off-centre */
+  padding-left: var(--track-state);
+}
+.t-hero {
+  font-size: var(--t-hero); font-weight: 500; letter-spacing: var(--track-hero);
+  text-transform: uppercase; line-height: 1.05; color: var(--ink-2);
+}
+.t-title { font-size: var(--t-title); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2; }
+.t-label {
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--muted); line-height: 1.3;
+}
+.t-num { font-size: var(--t-num); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: .02em; line-height: 1; }
+.t-body { font-family: var(--font-body); font-size: var(--t-body); font-weight: 400; line-height: 1.55; color: var(--ink); }
+.t-small { font-family: var(--font-body); font-size: var(--t-small); line-height: 1.5; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--success-ink); }
+.down { color: var(--accent-ink); }
+.muted { color: var(--muted); }
+
+/* ── layers (docs/REDESIGN.md §4.2) ─────────────────────────────────────── */
+#arena { position: fixed; inset: 0; z-index: var(--z-arena); background: transparent; pointer-events: none; }
+#arena > * { pointer-events: auto; }
+/* The viewer appends its canvas to <body>; it lives under every layer but above the ground. */
+body > canvas { position: fixed; inset: 0; z-index: -1; display: block; }
+/*
+ * THE GROUND CROSS-FADES; IT DOES NOT SWAP.
+ *
+ * This was one element, and `body[data-ground]` rewrote its background-image,
+ * the veil gradient on `::after` and a `backdrop-filter` — three properties a
+ * browser cannot interpolate — synchronously inside `render()`. So Create →
+ * Creature replaced the entire world in a single frame while the screens above
+ * it cross-faded for 600 ms over the result: the one cut §1.8 forbids, on the
+ * most-travelled navigation in the product.
+ *
+ * Two layers instead, stacked and permanent (`index.html`): `.ground-photo`
+ * carries the backdrop and its veil, `.ground-wash` the flat blur the veiled
+ * screens stand on. `data-ground` now only decides which of the two is opaque,
+ * and opacity is a property that fades. `visibility` goes with it, delayed by
+ * the length of the fade, so a hidden wash is not a full-screen backdrop blur
+ * the compositor keeps evaluating behind every battle.
+ */
+#stage { position: fixed; inset: 0; z-index: var(--z-stage); pointer-events: none; }
+#stage .ground {
+  position: absolute; inset: 0; opacity: 0; visibility: hidden;
+  transition: opacity var(--d-screen) var(--ease), visibility 0s linear var(--d-screen);
+}
+/* `#stage` is spelled out on both sides: an id beats any number of attributes
+   and classes, and `#stage .ground` would otherwise hold every layer at zero
+   for ever — the ground simply never appeared. */
+body[data-ground="stage"] #stage .ground-photo,
+body[data-ground="veil"] #stage .ground-wash {
+  opacity: 1; visibility: visible;
+  transition: opacity var(--d-screen) var(--ease), visibility 0s linear 0s;
+}
+.ground-photo { background: url('/img/arena.jpg') center 40% / cover no-repeat; }
+/* The veil is a haze over the world, not a lid on it.
+ *
+ * The first version bought contrast for `--muted` labels with
+ * `brightness(1.7)`, a 3 px blur and an 80 % curtain. It bought it: the
+ * multiply clipped every highlight to flat white, the blur smeared the arena's
+ * signage into bands, and on all forty captures the photograph read as a
+ * half-loaded image. The lesson sits under the numbers — a veil thick enough
+ * to make small grey text legible over a photograph has already deleted the
+ * photograph.
+ *
+ * So the veil is thin and does one job: hold the picture back far enough that
+ * glass reads on top of it. Contrast is carried by the TEXT and by the
+ * surfaces text stands on (`ui/components.css`, "labels on the photographic
+ * ground"). `saturate` stays — half a step of warmth out is what separates a
+ * backdrop from a wallpaper. No blur, no brightness.
+ *
+ * The radial is a vignette in reverse: nothing in the middle third where the
+ * planet and the upper arch are, a fifth of a veil at the corners, so the
+ * frame closes softly instead of ending at the bezel. */
+.ground-photo::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(122% 80% at 50% 32%, rgba(235, 225, 217, 0) 44%, rgba(235, 225, 217, .20) 100%),
+    linear-gradient(180deg, rgba(235, 225, 217, .46) 0%, rgba(235, 225, 217, .40) 45%, rgba(235, 225, 217, .60) 100%);
+  -webkit-backdrop-filter: saturate(.88);
+  backdrop-filter: saturate(.88);
+}
+/* The photograph's busiest quarter is its left edge — precisely where the
+   wordmark and the nav rail stand. A feathered scrim lifts that column instead
+   of raising the veil over the whole page until the image disappears. It sits
+   under `::after`, so the veil still covers it, and only on the image ground:
+   over the live arena the chrome is meant to float. 460 px, not 380: the rail
+   labels run to ~150 px and the scrim has to be past its half-strength stop
+   before the content column starts at 196 px. */
+.ground-photo::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 460px; max-width: 46vw;
+  background: linear-gradient(90deg,
+    rgba(235, 225, 217, .94) 0%, rgba(235, 225, 217, .88) 34%,
+    rgba(235, 225, 217, .45) 62%, rgba(235, 225, 217, 0) 100%);
+}
+@media (max-width: 900px) { .ground-photo::before { display: none; } }
+/*
+ * Under a document screen the battle is not on screen, so its HUD goes with it.
+ *
+ * `display`, not `visibility`: the overlap probe skips only what has no
+ * `offsetParent`, and a merely-invisible HUD kept reporting its fighter names,
+ * `109 / 180` and its ability chips as collisions with the history and ladder
+ * tables — 14 to 22 per capture that nobody could see.
+ *
+ * AND IN ONE FRAME, NOT ON THE SCREEN'S CLOCK — this was tried the other way.
+ * `transition-property: display` with `transition-behavior: allow-discrete`
+ * lets the box wait for the fade it belongs to, which is the right idea and the
+ * wrong dependency: the flip lands at the END of a transition, and a transition
+ * only ends if the environment keeps advancing frames. Headless Chrome does not
+ * always — the same stall that used to leave `.screen.entering` on seconds
+ * after mount — and a HUD whose `display` flip never arrives is a full set of
+ * fighter panels, ability chips and health readouts rendered at opacity 0 over
+ * the ladder and the specimen: sixteen text-on-text collisions per capture, and
+ * in a player's browser a layer that eats nothing but exists. A visual nicety
+ * may not be built on a promise the browser can decline to keep. The ground
+ * fading in over the same 600 ms is what covers the cut.
+ */
+body[data-ground="stage"] #hud { display: none; }
+/* Create/Birth sit over the LIVE arena behind a light veil, not the image.
+   The battle keeps running underneath, so its HUD is hidden here too: the
+   fighter panels, their names and the row of ability tiles were reading
+   straight through the create card and the birth screen. */
+/* The wash the veiled screens stand on: the live arena, held back far enough
+   that a glass card reads over it, with the same warm ground everywhere else
+   has. A hair of vertical ramp — heavier at the bottom, where the fighter
+   panels are — so it is a haze over a place rather than a sheet of paper. */
+.ground-wash {
+  background: linear-gradient(180deg, rgba(235, 225, 217, .66) 0%, rgba(235, 225, 217, .70) 52%, rgba(235, 225, 217, .76) 100%);
+  -webkit-backdrop-filter: blur(10px) saturate(.85); backdrop-filter: blur(10px) saturate(.85);
+}
+/* Same `display: none` as above; `ui/screens/birth.css` asked the shell to own
+   this line once for Birth and Create both, and here it is. */
+body[data-ground="veil"] #hud { display: none; }
+
+/*
+ * WHERE THE MIDDLE OF THIS SCREEN IS (`--axis-x`, ui/tokens.css).
+ *
+ * A document screen reserves `--rail-w` on the left and `--chrome-pad` on the
+ * right, so its content is centred half a rail right of the viewport's centre.
+ * Live reserves nothing: the arena is the whole frame and its own composition
+ * — phase word, VS, clock, orbit, the two fighter panels — stands on 50 %.
+ * Anything centred INSIDE A SCREEN reads this token instead of guessing. The
+ * chrome does not: fixed furniture stands on the viewport and never moves when
+ * the page behind it changes (`ui/chrome.css`, the season chip).
+ */
+body[data-ground="stage"], body[data-ground="veil"] { --axis-x: calc(50vw + var(--rail-w) / 2); }
+
+#screen { position: fixed; inset: 0; z-index: var(--z-screen); pointer-events: none; }
+#screen > .screen {
+  position: absolute; inset: 0; pointer-events: auto; overflow-y: auto; overflow-x: hidden;
+  opacity: 1; transition: opacity var(--d-screen) var(--ease), transform var(--d-screen) var(--ease);
+}
+/*
+ * THE SCROLLBAR IS PART OF THE PAGE.
+ *
+ * A document screen is the one place this interface hands a native control a
+ * whole edge of the frame, and the default is a light-grey groove with a
+ * mid-grey slab in it — the only cold, hard-edged, unrounded object in a
+ * product made of warm glass, and on Ladder and History it runs the full height
+ * beside them. So it takes the palette: no track at all, a stone thumb with the
+ * pill radius everything else here uses, and three pixels of transparent border
+ * so it floats clear of the edge instead of being welded to it.
+ */
+#screen > .screen { scrollbar-width: thin; scrollbar-color: rgba(141, 127, 115, .5) transparent; }
+#screen > .screen::-webkit-scrollbar { width: 10px; height: 10px; }
+#screen > .screen::-webkit-scrollbar-track { background: transparent; }
+#screen > .screen::-webkit-scrollbar-thumb {
+  background: rgba(141, 127, 115, .38); background-clip: content-box;
+  border: 3px solid transparent; border-radius: var(--r-pill);
+}
+#screen > .screen::-webkit-scrollbar-thumb:hover { background: rgba(141, 127, 115, .62); background-clip: content-box; }
+
+#screen > .screen.entering { opacity: 0; transform: translateY(8px); }
+#screen > .screen.leaving { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+/* the live screen is transparent to the pointer except its own controls */
+#screen > .screen[data-screen="live"] { pointer-events: none; overflow: hidden; }
+#screen > .screen[data-screen="live"] * { pointer-events: auto; }
+#screen > .screen[data-screen="live"] .passthrough, #screen > .screen[data-screen="live"] .passthrough * { pointer-events: none; }
+
+#overlay { position: fixed; inset: 0; z-index: var(--z-overlay); pointer-events: none; }
+#overlay > * { pointer-events: auto; }
+
+#tip {
+  position: fixed; z-index: var(--z-tip); pointer-events: none; opacity: 0;
+  transform: translateY(4px); transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+  max-width: 280px; padding: 12px 14px; border-radius: var(--r-card);
+  background: var(--pane-dark); color: #F4EEE8; backdrop-filter: blur(14px);
+  box-shadow: 0 12px 34px rgba(46, 46, 51, .25);
+}
+#tip.on { opacity: 1; transform: none; }
+#tip .tip-title { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #fff; }
+#tip .tip-body { margin-top: 5px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.5; color: rgba(244, 238, 232, .85); }
+
+/* reduced motion: everything snaps */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+/* screen scaffolding shared by document screens */
+.doc {
+  min-height: 100%; padding: 120px var(--chrome-pad) 96px calc(var(--chrome-pad) + var(--rail-w));
+}
+.doc-inner { max-width: 1180px; margin: 0 auto; }
+/* The bottom padding clears the tab bar, and the tab bar grows by the home
+   indicator's inset — so the page's own bottom has to grow with it. */
+@media (max-width: 900px) { .doc { padding: 92px var(--chrome-pad) calc(110px + env(safe-area-inset-bottom)); } }

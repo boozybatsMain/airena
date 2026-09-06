@@ -331,8 +331,18 @@ function spikes(vfx, P, { x, y, z, n = 40, speed = 13, life = 0.32, size = 0.26,
       len: len[0] + r() * (len[1] - len[0]), wk: 0.8 + r() * 0.5, phase: phase + i,
     });
   }
-  const white = new THREE.Color(0.9, 0.95, 1.0);
-  const blueC = new THREE.Color(0.05, 0.25, 0.9), tailB = P[2].clone().multiplyScalar(0.7);
+  /*
+   * ГРАДУИРОВКА ПОД МИР (ARENA-AAA, 06.09). `white` шло L* 97.6 — светлее
+   * копинга (#F4EEE8, L* 94), который в этом мире потолок всему
+   * (ARENA-BRIEF §3); стало L* 93.1, тот же холодный оттенок. `blueC` —
+   * ядро искры, #3F89F3 при насыщенности 74 % и C* 61, то есть громче
+   * кораллового баннера; прижато до 55 % / C* 39. Полка здесь мягче, чем у
+   * ступеней палитры (45 %), и это не поблажка: искра рисуется В ПУЛЕ
+   * СВЕЧЕНИЯ, аддитивно, поверх пола L* 88-90, и на экране от её
+   * насыщенности остаётся треть — проверяется по кадрам, а не по константе.
+   */
+  const white = new THREE.Color(0.79, 0.84, 0.88);
+  const blueC = new THREE.Color(0.11, 0.25, 0.60), tailB = P[2].clone().multiplyScalar(0.7);
   const fill = (c1, c2, glow, sizeK) => (i, s) => {
     const k = list[i];
     s.pos(k.x, k.y, k.z);

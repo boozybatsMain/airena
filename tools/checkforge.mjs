@@ -91,7 +91,9 @@ if (forge) {
   const txt = parseUserPrompt(g);
   for (const el of Object.values(g.elements)) {
     if (!Array.isArray(el.forms) || el.forms.length >= Object.keys(DELIVERIES).length) continue;
-    ok(`промпт кузницы называет формы «${el.ru}»`, txt.includes(`${el.id} (${el.ru}; только доставки `));
+    /* The prompt is English since the §9 sweep; the phrase the gate pins moved
+       with it («только доставки» → "deliveries only"). Reworded, not deleted. */
+    ok(`промпт кузницы называет формы «${el.ru}»`, txt.includes(`${el.id} (${el.ru}; deliveries only `));
   }
   /*
    * КАЛИТКА, А НЕ ЖИЛЕЦ (та же правка, что в `checkgrammar` 04.09). Здесь

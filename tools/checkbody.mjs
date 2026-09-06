@@ -444,7 +444,7 @@ ok('бюджет сборки больше бюджета кадра', BODY_FUEL
     + 'g.userData.pose=(s)=>{g.rotation.y=s.t;};return g;}';
   const a = analyseBody(heavy);
   const r = a.ok ? await posesRun(a.source) : { ok: true, message: 'разбор отказал раньше' };
-  ok('тело дороже потолка отрисовки отвергается', !r.ok && /вызовов отрисовки/.test(String(r.message)),
+  ok('тело дороже потолка отрисовки отвергается', !r.ok && /вызовов отрисовки|draw calls/.test(String(r.message)),
     r.ok ? 'ПРОШЛО, А НЕ ДОЛЖНО' : String(r.message).slice(0, 64));
 
   for (const f of ['bodies/octopus.js', 'bodies/gorilla.js']) {

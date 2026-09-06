@@ -177,14 +177,14 @@ export function crossSiteRefused(req) {
        Дыра открывается переменной окружения, то есть решением человека, а не
        формой запроса: подделать `Origin` браузер не даёт, а совпасть со
        списком случайно нельзя. */
-    if (!sameHost && !corsAllows(origin)) return { code: 'cross_site', message: 'запрос пришёл с чужой страницы' };
+    if (!sameHost && !corsAllows(origin)) return { code: 'cross_site', message: 'the request came from another page' };
   } else if (hasCookie) {
-    return { code: 'no_origin', message: 'запрос без источника, но с сессией' };
+    return { code: 'no_origin', message: 'the request has no origin but carries a session' };
   }
 
   const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   if (type && type !== 'application/json') {
-    return { code: 'bad_type', message: 'тело должно быть application/json' };
+    return { code: 'bad_type', message: 'the body has to be application/json' };
   }
   return null;
 }

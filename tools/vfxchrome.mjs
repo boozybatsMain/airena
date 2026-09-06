@@ -23,7 +23,10 @@ export const CHROME_DEFAULT = '/Applications/Google Chrome.app/Contents/MacOS/Go
    (`vfxstand.js`): см. `src/viewer/vfxfixture.js`, файл без three и DOM. */
 export { BLUE, ORANGE, CAMS, fxFor } from '../src/viewer/vfxfixture.js';
 
-export async function launchChrome({ chrome = process.env.CHROME || CHROME_DEFAULT, w = 1600, h = 900 } = {}) {
+/* `extraFlags` — e.g. `['--disable-frame-rate-limit', '--disable-gpu-vsync']`
+   for a throughput measurement (`arenashot.mjs`): without them every tier
+   reads 60 fps, which is the cap, not the cost. Frame captures leave it off. */
+export async function launchChrome({ chrome = process.env.CHROME || CHROME_DEFAULT, w = 1600, h = 900, extraFlags = [] } = {}) {
   const profile = join(tmpdir(), `airena-vfxshot-${process.pid}`);
   rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
@@ -31,17 +34,38 @@ export async function launchChrome({ chrome = process.env.CHROME || CHROME_DEFAU
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--mute-audio',
     '--enable-unsafe-webgpu', '--enable-features=WebGPU', '--ignore-gpu-blocklist',
-    '--use-angle=metal', `--window-size=${w},${h}`, 'about:blank',
+    '--use-angle=metal', ...extraFlags, `--window-size=${w},${h}`, 'about:blank',
   ];
   const proc = spawn(chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   proc.stderr.on('data', (d) => { stderr += d; });
   const portFile = join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !existsSync(portFile); i++) await sleep(100);
-  if (!existsSync(portFile)) { proc.kill(); throw new Error(`Chrome не поднял DevTools: ${stderr.slice(-400)}`); }
-  const [port, path] = readFileSync(portFile, 'utf8').trim().split('\n');
+  /*
+   * EXISTENCE IS NOT CONTENT.
+   *
+   * Chrome creates this file and writes its two lines a moment later. Waiting
+   * only for the file to appear read an empty one on a loaded machine and built
+   * `ws://127.0.0.1:undefined` — a capture run died on `Invalid URL` while
+   * three agents were photographing screens at once. So the wait is for a port
+   * and a path, not for a name in a directory.
+   */
+  const read = () => {
+    if (!existsSync(portFile)) return null;
+    try {
+      const lines = readFileSync(portFile, 'utf8').trim().split('\n');
+      return lines.length >= 2 && /^\d+$/.test(lines[0]) ? lines : null;
+    } catch { return null; }
+  };
+  let devtools = null;
+  for (let i = 0; i < 150 && !devtools; i++) { devtools = read(); if (!devtools) await sleep(100); }
+  if (!devtools) { proc.kill(); throw new Error(`Chrome не поднял DevTools: ${stderr.slice(-400)}`); }
+  const [port, path] = devtools;
   const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`, { perMessageDeflate: false, maxPayload: 256 * 1024 * 1024 });
-  await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+  await new Promise((res, rej) => {
+    const bell = setTimeout(() => rej(new Error(`Chrome не принял CDP на порту ${port} за 15 с`)), 15000);
+    ws.once('open', () => { clearTimeout(bell); res(); });
+    ws.once('error', (e) => { clearTimeout(bell); rej(e); });
+  });
   return { proc, ws, profile };
 }
 
@@ -75,12 +99,14 @@ export class Cdp {
 }
 
 /** Открыть страницу вьювера: `evaluate`, `shot`, собранные ошибки консоли. */
-export async function openPage(cdp, url, { w = 1600, h = 900 } = {}) {
+export async function openPage(cdp, url, { w = 1600, h = 900, dpr = 1 } = {}) {
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', newWindow: true, width: w, height: h });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false }, sessionId);
+  /* `dpr` 2 emulates a Retina page: `devicePixelRatio` reads 2 and a
+     `setPixelRatio(min(dpr, 2))` renderer draws four times the pixels. */
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: dpr, mobile: false }, sessionId);
   const errors = [];
   cdp.on((m) => {
     if (m.sessionId !== sessionId) return;

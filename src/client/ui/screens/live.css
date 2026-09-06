@@ -1,0 +1,1553 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIVE — the words over the arena and the cards that interrupt it.
+   (docs/REDESIGN.md §6.1, §6.2. The HUD itself lives in ui/hud.css.)
+   ────────────────────────────────────────────────────────────────────────── */
+
+.screen[data-screen="live"] { font-family: var(--font-display); }
+
+/*
+ * THE PICTURE BELONGS TO THE RENDERER. THE SHELL DRAWS NO VEIL OVER IT.
+ *
+ * This was a full-viewport wash — .28–.38 of `--sky-2` down the whole frame —
+ * raised for `searching`, `idle` and `connecting`. It had a history of getting
+ * lighter (.62 over a blur, then .38 flat) and the direction was right; the
+ * founder's rule (`reports/arena/ARENA-AAA.md`, and the lead's note on it)
+ * finishes the argument: the HUD draws NO full-viewport veil, scrim or wash
+ * under any beat. Contrast is measured, not felt — floor L 88–90, the fighters
+ * the darkest objects — and a third of a wash over the finished frame moves
+ * every one of those numbers, lifts the darks, flattens the tiers against the
+ * sky and re-quantizes the post graph's dither out of the picture.
+ *
+ * Nothing above it loses its ground, because nothing above it was standing on
+ * the veil: the phase word and its sub-line carry `--photo-halo`, the status
+ * strip carries its own, the orbit stands on a radial disc of its own
+ * (`.live-mid::before`), the feed and the scan pill are glass, and the fighter
+ * panels have the one scrim the rule allows (`ui/hud.css`, `#hud::after`,
+ * ≤ .1, and never higher than the panels' own top edge).
+ *
+ * `screens/live.js` no longer mounts the node at all, and no rule here
+ * replaces it: there is nothing left to raise by accident.
+ */
+
+/* ── the phase word, top centre ─────────────────────────────────────────── */
+
+.live-top {
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+  width: min(860px, calc(100% - 2 * var(--chrome-pad)));
+  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+}
+/* an `h1`, so heading navigation lands somewhere on the default route (§27,
+   §29); the UA's own size and margin are neutralised, `.t-state` carries the
+   type */
+h1.live-word { margin: 0; font-weight: inherit; }
+.live-word {
+  color: var(--ink-2); text-shadow: 0 2px 12px rgba(244, 238, 232, .92), 0 0 26px rgba(244, 238, 232, .7);
+  /* `--d-ui`, not 160 ms: the word, the panels, the clock and the feed all
+     leave on ONE clock so the card that replaces them lands on a cleared stage
+     rather than over a HUD still at 77 % (§35, §39) */
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease),
+    font-size var(--d-screen) var(--ease), letter-spacing var(--d-screen) var(--ease);
+  /* an unforeseen phrase wraps rather than clipping at both edges of a 360 px
+     Android, where the screen is `overflow: hidden` (§32, §36) */
+  overflow-wrap: anywhere;
+}
+.live-word:empty { display: none; }
+/*
+ * THE WORD ANSWERS ITS QUESTION AND THEN GETS OUT OF THE WAY.
+ *
+ * At second 28 of a fight the largest element on the screen was the word
+ * FIGHTING — answering what two health bars, a clock and two moving creatures
+ * had already answered — while the fight itself had about 800 × 420 px between
+ * a 175 px top band, 300 px of fighter panels and the feed. Three seconds in,
+ * the word steps down to label size and gives the arena ~90 px back; any phase
+ * change brings it straight back to full (§21).
+ */
+.live-word.rest { font-size: 22px; letter-spacing: .28em; opacity: .6; margin-top: 0; }
+/*
+ * ONE CHOREOGRAPHY, NOT FOUR CLOCKS.
+ *
+ * searching → VS → fighting → result → searching is the loop the player watches
+ * dozens of times a session, and the 60 px word at the top of it changed by
+ * assignment: an instant swap dead centre, four times a minute. It now steps
+ * aside and comes back — but only when the STEM of the phrase changes, so the
+ * per-second countdown still ticks without strobing (`screens/live.js`, §45).
+ */
+.live-word.swap, .live-line.swap { opacity: 0; transform: translateY(-6px); }
+.live-line { transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease); }
+/*
+ * A LONG STATE WORD IS A DIFFERENT SIZE OF WORD.
+ *
+ * `FIGHTING` at 60 px is the product; `SEARCHING FOR OPPONENT` at 60 px is two
+ * lines whose first one runs under the season chip, and `NO FREE OPPONENT —
+ * RETRYING` is worse. The class is set by `screens/live.js` on the count of
+ * characters, because that is the thing CSS cannot see. The step down keeps the
+ * sentence on one line at 1440 and gives it clearance from the chip.
+ */
+.live-word.long { font-size: clamp(28px, 3.4vw, 44px); letter-spacing: .2em; margin-top: 22px; }
+/*
+ * A card that interrupts owns the moment — AND THE RULE HANGS OFF `body`.
+ *
+ * Two dominant things at once (a 60 px word behind a recap the player is meant
+ * to read) is the away screen's whole defect. It was keyed on a class on the
+ * SCREEN ELEMENT, and `live-vs-m.json` recorded that element as `screen
+ * entering` with neither class on it: at 390 px the VS card was drawn over the
+ * whole fighter panel, the HP bar, a live cooldown ring and the fight clock.
+ * §4.2 already says CSS keys on `body` attributes, `markVs()` already writes
+ * `body[data-card]`, and no node that can be replaced under a card decides
+ * whether the card owns the screen (§38, §39).
+ */
+body[data-card] :is(.live-word, .live-line, .live-note) { opacity: .22; }
+/*
+ * THE WORD AND ITS SUB-LINE ARE ONE BLOCK.
+ *
+ * §5.2 pairs them, and the VS card faded only the word — leaving `ARENA ·
+ * FIGHT #16013462` hanging in the middle of an empty band with nothing above
+ * it, which reads as a caption whose picture failed to load. The card owns the
+ * screen for 2.4 s; the whole block steps aside for it and comes back with the
+ * fight (§14).
+ */
+body[data-card="vs"] .live-top {
+  opacity: 0; transition: opacity var(--d-ui) var(--ease);
+}
+.live-line {
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  /*
+   * `--ink-soft`, NOT `--muted`.
+   *
+   * `--muted` is specified against `--sky`; here the ground is a photograph of
+   * an arena. Measured on the phone capture against the true background under
+   * each line: `SCANNING 36 CREATURES NEAR 1,590 MMR` 3.49:1 and `ARENA · FIGHT
+   * #16013462` 4.07:1 — 3.40:1 at 1440. The halo lifts the pixels immediately
+   * behind a glyph but not the ground the eye adapts to; the token exists for
+   * exactly this (`ui/tokens.css`) (§28).
+   */
+  color: var(--ink-soft); font-variant-numeric: tabular-nums;
+  text-shadow: var(--photo-halo);
+}
+.live-line:empty { display: none; }
+/*
+ * The waiting state needs a subject: a countdown over an empty arena with an
+ * idle body in it does not say whose body that is. The note names the creature
+ * and shows the mind that is doing the waiting (§20).
+ */
+.live-note {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  font-family: var(--font-body); font-size: var(--t-small); color: var(--ink-soft);
+  text-shadow: var(--photo-halo);
+}
+.live-note:empty { display: none; }
+.live-note .mind { font-size: 10.5px; letter-spacing: .1em; color: var(--ink-soft); }
+
+/* ── the middle: orbit while the arena looks for an opponent ────────────── */
+
+/*
+ * THE ORBIT STANDS ON THE CREATURE, NOT ON THE MIDDLE OF AN EMPTY FLOOR.
+ *
+ * The wait was a 300 px animation dead centre over bare arena tiles while the
+ * player's own creature — the thing they had just made, the reason they are on
+ * this screen — was a forty-pixel speck at the right-hand edge. The one
+ * dominant thing (§1.6) had no subject. `screens/live.js` reads the creature's
+ * projected point off the viewer's own nameplate and publishes it here; the
+ * ring is now a marker over a body rather than a decoration over nothing, and
+ * at 140 px it stops being the largest object on the screen (§19, §22, §75).
+ */
+/* 700 ms out, because `orbit.collapse()` gathers over 700: at 320 the beat
+   that ENDS the wait was invisible for its last 380 ms (§45) */
+.live-mid {
+  position: absolute; left: var(--axis-x, 50vw); top: 46%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  opacity: 0; transition: opacity var(--d-ui) var(--ease);
+}
+.live-mid.out { transition: opacity 700ms var(--ease); }
+.live-mid.in { opacity: 1; }
+.live-mid.out { opacity: 0; }
+/*
+ * TWO SIZES, BECAUSE IT IS TWO DIFFERENT THINGS.
+ *
+ * Standing on the creature it is a MARKER and 140 px is right. Centred, with
+ * no body resolved, it is the SUBJECT of the wait — §6.1's "orbit animation
+ * centre" — and the capture showed it as a 140 px smudge at (340, 680) on
+ * empty floor, low and left of both visible bodies, because a stale projection
+ * was being used as a place. `screens/live.js` now only claims a body when the
+ * point is fresh and inside the frame; otherwise the search is on the axis,
+ * at the size a subject gets (§5, §9).
+ */
+.live-mid[data-at="body"] { left: var(--mid-x, 50%); top: var(--mid-y, 50%); }
+/*
+ * AND IT STEPS BACK UNDER A CARD.
+ *
+ * `.live-word`, `.live-line` and `.live-note` all dim for a card and this did
+ * not: the away recap was read over a 140 px canvas and a 300 px sky disc
+ * protruding half-clipped from the card's bottom edge, still animating,
+ * because `phaseNow()` is `searching` throughout the recap (§5, §41).
+ */
+body[data-card] .live-mid { opacity: .16; }
+body[data-card="away"] .live-mid { opacity: 0; }
+.live-mid:empty { display: none; }
+/*
+ * THE ONLY MOVING THING ON THE BIGGEST EMPTY SCREEN IN THE PRODUCT.
+ *
+ * Measured at roughly 1.2:1 against the bright arena floor: a 1 px hairline at
+ * .28 alpha, on a canvas held at .62 opacity. The identical animation reads
+ * clearly on the Birth screen only because Birth draws it at full strength.
+ *
+ * Three things fix it here and none of them touch `ui/orbit.js`. The canvas
+ * goes to full opacity. It gets a ground of its own — a soft disc of sky under
+ * it — so the rings are never asked to hold against a dark wall. And the
+ * strokes are doubled optically: two zero-offset ink drop-shadows thicken the
+ * alpha channel the canvas actually drew, which is the one filter that reaches
+ * canvas pixels. (Raising the ring alphas in `ui/orbit.js` itself is the proper
+ * other half of this and belongs to that file's owner.)
+ */
+.live-mid::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 340px; height: 340px;
+  transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(244, 238, 232, .62) 0%, rgba(244, 238, 232, .38) 42%,
+    rgba(244, 238, 232, .14) 64%, rgba(244, 238, 232, 0) 80%);
+}
+.live-mid[data-at="body"]::before { width: 260px; height: 260px; }
+.live-mid[data-at="body"] .live-orbit { width: 140px; height: 140px; }
+/*
+ * THE SEARCH NAMES WHAT IT IS SEARCHING.
+ *
+ * The sub-line already says `SCANNING 36 CREATURES NEAR 1,555 MMR` and the ring
+ * under it drew nothing but rings — the one screen a returning player spends
+ * most of their session on had no content at all. `screens/live.js` cycles the
+ * real creatures in that rating band through the middle of the ring, one every
+ * 700 ms, so the wait is the arena visibly looking rather than a decoration
+ * over an empty floor (§12).
+ */
+/* a pill, because the middle of the ring is also where the orbit's own core
+   sits and bare type over an arena floor is not a reading */
+.live-scan {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: row; align-items: baseline; gap: 9px;
+  padding: 6px 14px 7px; border-radius: 999px;
+  background: rgba(255, 255, 255, .74);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1); backdrop-filter: blur(12px) saturate(1.1);
+  border: 1px solid var(--glass-line); box-shadow: 0 8px 22px var(--shade);
+  text-align: center; pointer-events: none; max-width: 220px;
+  animation: scan-in 260ms var(--ease) both;
+}
+.live-scan:empty { display: none; }
+.live-scan .sn {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.live-scan .sr {
+  font-size: 9.5px; font-weight: 500; letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; flex: 0 0 auto;
+}
+@keyframes scan-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 5px)); } to { opacity: 1; } }
+.live-mid[data-at="body"] .live-scan { display: none; }
+
+.live-orbit {
+  position: relative; width: 260px; height: 260px; opacity: 1;
+  filter:
+    drop-shadow(0 0 .5px rgba(46, 46, 51, .95))
+    drop-shadow(0 0 .5px rgba(46, 46, 51, .85))
+    drop-shadow(0 0 .8px rgba(46, 46, 51, .5));
+}
+
+/* ── the floating card at the bottom (visitor, replay controls) ─────────── */
+
+/*
+ * WHOSE WAIT THIS IS, BOTTOM CENTRE.
+ *
+ * The countdown at the top names a moment; this names the creature it happens
+ * to and how the last fight went. It only exists in the states with no fight on
+ * screen — during a fight the two panels say everything (§19, §22).
+ */
+.live-status {
+  position: absolute; left: 50%; bottom: calc(72px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); max-width: calc(100% - 2 * var(--chrome-pad));
+  text-align: center;
+  font-size: var(--t-label); font-weight: 600; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--ink); font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(244, 238, 232, .95), 0 0 12px rgba(244, 238, 232, .82);
+  /* opacity only: `live-rise` ends on `transform: none`, and with `both` fill
+     that overwrites the `translateX(-50%)` this line is centred by — the line
+     came out hanging off the right of the axis it belongs on */
+  animation: status-in 520ms var(--ease) both;
+  /* it dissolves under a card the way the word, the orbit and the feed around
+     it already do, instead of blinking out in one frame (§36, §41) */
+  transition: opacity var(--d-ui) var(--ease);
+  /* the block itself is scenery; only the link inside it is a control */
+  pointer-events: none;
+}
+@keyframes status-in { from { opacity: 0; } to { opacity: 1; } }
+.live-status:empty { display: none; }
+body[data-card] .live-status { opacity: 0; }
+
+/*
+ * THE MINUTE BETWEEN FIGHTS IS MOST OF A RETURNING SESSION, AND IT WAS THE
+ * EMPTIEST FRAME IN THE PRODUCT.
+ *
+ * The whole reward for the fight that just delivered +24 was
+ * `STONE GOLEM · LAST FIGHT WON +24` in ~10 px grey at the bottom edge, under
+ * 60 px of NEXT FIGHT IN 8 and an empty floor, with no way back into it. The
+ * strip carries the same result in the result card's own typography — the
+ * outcome word, the signed delta, the rating move — and the door back into the
+ * fight it is about (§12, §18).
+ */
+.live-last {
+  width: min(360px, calc(100vw - 2 * var(--chrome-pad))); box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 14px 22px 13px; border-radius: var(--r-panel);
+  background: var(--glass-strong); -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--glass-line); box-shadow: 0 12px 40px var(--shade);
+  text-transform: none; letter-spacing: normal;
+}
+.live-last .ll-w {
+  font-size: 20px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  line-height: 1; text-shadow: none;
+}
+/* the same outcome, the same two colours the result card lands on: blue means
+   the player won, coral means the opponent did (§1, §13) */
+.live-last .ll-w.win { color: var(--info-ink); }
+.live-last .ll-w.loss { color: var(--accent-ink); }
+.live-last .ll-w.draw { color: var(--muted); }
+.live-last .ll-d {
+  margin-top: 4px; font-size: 28px; font-weight: 500; letter-spacing: .06em;
+  line-height: 1; font-variant-numeric: tabular-nums; text-shadow: none;
+}
+.live-last .ll-d.win { color: var(--info-ink); }
+.live-last .ll-d.loss { color: var(--accent-ink); }
+.live-last .ll-d.draw { color: var(--muted); }
+.live-last .ll-m {
+  margin-top: 5px; font-family: var(--font-body); font-size: var(--t-small);
+  font-weight: 400; letter-spacing: .02em; text-transform: none; color: var(--muted);
+  font-variant-numeric: tabular-nums; text-shadow: none;
+}
+.live-last .ll-a {
+  margin-top: 9px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--info-ink); text-decoration: none; text-shadow: none;
+  border-bottom: 1px solid transparent; padding-bottom: 2px; pointer-events: auto;
+  transition: border-color var(--d-ui) var(--ease);
+}
+.live-last .ll-a:hover, .live-last .ll-a:focus-visible { border-bottom-color: currentColor; outline: none; }
+/* the plain one-line form keeps the ellipsis it always had */
+.live-status > .ll-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.live-cta {
+  position: absolute; left: 50%; bottom: 116px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  /* 196 px of vertical snap, several times a minute, on the first screen a
+     stranger sees (§36, §40) */
+  transition: bottom var(--d-screen) var(--ease);
+}
+.live-cta:empty { display: none; }
+/*
+ * WHILE A FIGHT IS ON SCREEN THE CARD STANDS IN THE CENTRE COLUMN, ABOVE THE
+ * CLOCK — not on the fight. At 312 px it sat at the exact height the camera
+ * aims the pair (measured: over the jellyfish's ring at 1440×900, on the
+ * Salt Bull's head and shoulders at 1280×720). The column `hud.css` reserves
+ * for VS and the clock (50vw ± 148) is empty above the clock's block, which
+ * starts 200 px up (176 under 800 px of height): the card docks directly
+ * above it, between the two fighter panels, under the band the camera keeps
+ * the fighters in.
+ */
+body[data-phase="fighting"] .live-cta,
+body[data-phase="result"] .live-cta,
+body[data-phase="vs"] .live-cta { bottom: 234px; }
+@media (max-height: 800px) {
+  body[data-phase="fighting"] .live-cta,
+  body[data-phase="result"] .live-cta,
+  body[data-phase="vs"] .live-cta { bottom: 206px; }
+}
+.live-card {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 26px 34px; border-radius: var(--r-panel); text-align: center;
+  background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--glass-line); box-shadow: 0 12px 40px var(--shade);
+  animation: live-rise 520ms var(--ease) both;
+}
+.live-card .hd { font-family: var(--font-body); font-size: 14px; color: var(--ink-2); }
+.live-card .sub { font-family: var(--font-body); font-size: var(--t-small); color: var(--muted); }
+
+@keyframes live-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ── overlays (VS, result, away, replay) ────────────────────────────────── */
+
+.live-ov { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.live-ov > * { pointer-events: auto; }
+/*
+ * A CARD STANDS BESIDE THE FIGHT, NOT ON IT.
+ *
+ * Dead centre is where a modal goes, and on the two beats that are ABOUT two
+ * creatures it is the one place a card may not go: the camera aims the pair at
+ * the middle of the frame, so the card landed exactly on them. Measured at
+ * 1440×900 — the VS card spans y 331–568 and the fighters stand y 450–630, and
+ * counting fighter-dark pixels (L* < 62) outside the card in `live-vs.png`
+ * gives 206 on the left strip and ZERO on the right and below: the beat that
+ * introduces the two creatures showed neither of them in the world.
+ *
+ * So the VS card leaves the middle band: it rides up into the top third —
+ * under the sky and the deck, above the floor the pair stand on — and the
+ * strip the camera keeps the bodies in is clear beneath it.
+ *
+ * The RESULT card keeps the middle at this width, and deliberately: it is 420
+ * wide on a 1440 frame, so the two side strips it leaves are the widest clear
+ * regions on the screen, and `clearAim()` in `src/viewer/main.js` already
+ * reads the card's rect and re-aims the camera into one of them. A card that
+ * moves for a solver that is already solving for it only makes the region it
+ * is handed smaller. On a phone there is no side strip at all, and the card
+ * docks — see the ≤ 900 block (§37, §43, §47).
+ *
+ * `.live-ov` is `pointer-events: none` and the padding is on the grid, so the
+ * card moves without any of its own geometry changing.
+ */
+/*
+ * AND IT HUGS THE TOP, BECAUSE THE SOLVER IS MEASURING WHAT IS LEFT.
+ *
+ * At `clamp(84px, 19vh, 190px)` the card still landed on the pair: at 1440×900
+ * the two fighters totalled 2,027 px outside it — 0.16 % of the frame, in two
+ * blobs jammed against the card's bottom-right corner — and at 1280×720 the
+ * card's box ran y 137–370 with the player's dark mass beginning at y 371, so
+ * the bottom edge decapitated the taller fighter. `clearAim()` in
+ * `src/viewer/main.js` reads this card's rect and hands the camera the largest
+ * clear region; every pixel the card sits lower is height taken off the "below
+ * it" candidate, which is the only one that spans the full width. Pulled to
+ * the top band the candidate grows from about h 0.47 to h ≥ 0.60 across the
+ * whole 1.76 of width, and the establishing camera can solve the pair at
+ * `TALL_WANT` instead of falling back to the arena portrait (§12, §13).
+ */
+body[data-card="vs"] .live-ov { align-items: start; padding-top: clamp(60px, 8vh, 104px); }
+
+/*
+ * AND THE RESULT CARD STANDS BESIDE THE WINNER, NOT ON IT.
+ *
+ * Centring the result was defensible while `clearAim()` was the only thing
+ * deciding the shot: the card is 420 px on a 1440 frame, so the two strips it
+ * leaves are the widest clear regions on the screen and the solver picks one.
+ * But "the widest clear region" is a tie between two half-frames, and the beat
+ * the whole loop pays off in should not be settled by a tiebreak — the winner
+ * should be somewhere the reader can predict, and the card somewhere it can
+ * never be.
+ *
+ * So the card commits to a half and the solver is handed one candidate that is
+ * obviously the best: `screens/live.js` writes `body[data-card-side]` from
+ * `window.__airenaBeat` when the viewer publishes which side of the frame the
+ * winner is standing on, and otherwise from the one thing that is always true
+ * — the player's own panel is the LEFT one at every width and in every slot
+ * (`ui/hud.css`, the ownership mirror), so the card takes the other half and
+ * the winner keeps the half the player already reads as theirs.
+ *
+ * Desktop and tablet only: a phone has no side strip and the ≤ 900 block docks
+ * both cards to the bottom, which is the same argument solved with the other
+ * axis (§37, §43, §47).
+ */
+@media (min-width: 901px) {
+  body[data-card-side="right"] .live-ov {
+    justify-items: end; padding-right: clamp(28px, 5vw, 96px);
+  }
+  body[data-card-side="left"] .live-ov {
+    justify-items: start; padding-left: clamp(28px, 5vw, 96px);
+  }
+}
+
+/*
+ * GLASS IS AN EDGE, NOT A BLUR — AND THE SURFACE IS NEVER PART OF THE ENTRANCE.
+ *
+ * A 22 px blur at .74 fill over a dark mech does not read as glass; it reads as
+ * a smudge. Over a subject with this much contrast the surface has to be
+ * defined by its hairline and its shadow, and the fill has to be opaque enough
+ * that what is behind it cannot bruise the type standing on it.
+ *
+ * .94, and it is that from the FIRST FRAME. `ov-in` used to fade the whole card
+ * from 0 to 1 over 420 ms, so for a fifth of a second every word on it was
+ * riding the arena — and the only capture of the real `#/live` caught exactly
+ * that: the VICTORY card at alpha .36 with a mech's legs reading through
+ * `VICTORY / OVER FURNACE / +3 MMR / WATCH IT AGAIN`, measured at about 1.3:1.
+ * A card that interrupts is opaque or it is not a card, so the entrance is
+ * TRANSFORM ONLY: it arrives by moving, not by materialising (§5, §18, §21).
+ */
+.ov-card {
+  position: relative;
+  padding: 34px 44px; border-radius: var(--r-panel); text-align: center;
+  background: rgba(255, 255, 255, .94);
+  -webkit-backdrop-filter: blur(16px) saturate(1.12); backdrop-filter: blur(16px) saturate(1.12);
+  border: 1px solid var(--glass-line);
+  /*
+   * A CONTACT SHADOW, BECAUSE A DROP SHADOW IS A VEIL WITH A GRADIENT ON IT.
+   *
+   * There is no scrim behind the card (see `.live-ov`, below) and the shadow
+   * quietly became one. Measured on `live-vs.png`: at rows y 308–340 inside the
+   * card's x-range the picture read L 64–75 while the identical rows clear of
+   * it read L 80–84 — a 16–17 L drop across an 882 × 36 px band — and the coral
+   * banner under the card came out L 58.3/60.5 against 71.4/79.9 for the same
+   * banner beside it, 19.4 L. `live-result-loss.png` did the same at −18 L over
+   * 420 px. In `live-vs.png` the darkest object in the frame is the flashed
+   * fighter at L 56.1: only 4.4 L below a shadow band, so the fighter stopped
+   * winning the value hierarchy by any margin a reader can use. The founder's
+   * rule gives the picture to the renderer; a tenth of it darkened by a
+   * box-shadow is the HUD taking it back through the side door.
+   *
+   * The hairline and the .94 fill are what say "surface" — they always were.
+   * The shadow's only remaining job is contact: a short, weak drop that says
+   * the card is a few millimetres off the plaza. Acceptance (§6): the picture's
+   * L under a card is within 6 L of the same rows clear of it.
+   */
+  box-shadow: 0 6px 18px rgba(46, 46, 51, .11), inset 0 1px 0 rgba(255, 255, 255, .7);
+  /* 200 ms of delay, `both`: the HUD leaves over `--d-ui` and the card arrives
+     on a cleared stage instead of printing both fighters' names, ratings, minds
+     and win rates twice for a fifth of a second (§35, §39) */
+  animation: ov-in 380ms var(--ease) 200ms both;
+}
+/* the VS card is the one that lands over two lit bodies: glass.strong, deeper blur */
+.ov-card.strong {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .95), rgba(252, 249, 245, .9));
+  -webkit-backdrop-filter: blur(24px) saturate(1.15); backdrop-filter: blur(24px) saturate(1.15);
+  /* the VS card sits ON the floor the pair stand on, where the result card's
+     falls on empty distance: at `0 8px 22px / .13` the contact rows measured
+     −7.7 L against the same rows clear of it (live-vs.png, y 270–300), so the
+     strong card takes the SHORTER shadow of the two and keeps its separation
+     from the deeper blur and the gradient fill instead (§6) */
+  box-shadow: 0 6px 16px rgba(46, 46, 51, .10), inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+/* leaving is the one time alpha may move: there is nothing left to read */
+.ov-card.out { animation: ov-out 320ms var(--ease) both; pointer-events: none; }
+@keyframes ov-in { from { transform: translateY(16px) scale(.985); } to { transform: none; } }
+@keyframes ov-out { to { opacity: 0; transform: translateY(-10px) scale(.99); } }
+/*
+ * A `?ui=` STATE IS A PHOTOGRAPH OF A DESIGN, NOT OF A TRANSITION.
+ *
+ * The capture is taken on a wall-clock delay that knows nothing about when a
+ * card was raised, so the flagship states were being shot mid-entrance. Under
+ * the debug attribute the cards simply are (§65).
+ */
+body[data-sim] .ov-card, body[data-sim] .ov-card.out { animation: none; opacity: 1; transform: none; }
+/*
+ * AND NEITHER IS THE SCREEN'S OWN ARRIVAL.
+ *
+ * `app.js` mounts every screen as `.screen.entering` at opacity 0 and drops the
+ * class two animation frames later, under a 620 ms cross-fade. On a page that
+ * is also driving a WebGPU arena those two frames are not free: measured across
+ * one capture run, the live states came back at .00, .30, .80, .92 and .997 —
+ * five different pictures of one design, and three of them ghosts. The fade is
+ * a transition between screens; a `?ui=` state has no screen to come from
+ * (§10, §65).
+ */
+body[data-sim] #screen > .screen[data-screen="live"] { opacity: 1 !important; transform: none !important; }
+
+/* VS ------------------------------------------------------------------- */
+/*
+ * THE ONE PRE-FIGHT BEAT, AND IT WAS A TEXT STRIP.
+ *
+ * The uikit's MATCHUP card is image-led edge to edge: both fighters bleed into
+ * the two ends of the card and the names stand on them. Ours was an 879 × 180
+ * white rectangle (4.9:1) with a small rendered body on one side and a
+ * full-contrast brown line-drawing on the other — two fighters introduced as
+ * two different kinds of object, which is the one thing a matchup card may not
+ * do. Both faces now bleed into the card's ends behind a sky→transparent
+ * scrim, the drawn mark drops to a watermark when there is no body to render,
+ * and the card is tall enough to be a moment rather than a toolbar (§1, §4,
+ * §47, §57).
+ *
+ * Both sides render the same rows — name, rating, record, mind, pill — whether
+ * or not the pill has anything in it, so the two names sit on ONE line with VS
+ * on the axis between them, which is the only geometry this card can have.
+ */
+/* the card lands as a beat rather than sliding in like a panel (§6.1) */
+/*
+ * 190 px, AND THE PAIR STANDS UNDER IT.
+ *
+ * The card already left the middle band for the top third (`.live-ov`, above),
+ * and the height it kept there was still deciding the shot: `clearAim()` in
+ * `src/viewer/main.js` reads this card's rect and hands the establishing camera
+ * the largest region clear of it, and at 232 px on a 900 px frame the "below
+ * it" candidate — the only one that spans the full 1.76 of width — started at
+ * ndc y ≈ 0.32. Every pixel of card height is height taken off the one region
+ * the two fighters can both stand in.
+ *
+ * The row's content is 124 px at this width (name 24, rating 13, record 13,
+ * mind 20, pill 22, four 8 px gaps), so a 140 px floor still holds the four
+ * reserved rows and the 78 px hairlines beside VS with room over them, and
+ * 24 px of vertical padding brings the whole card to ~190 px — under the 200
+ * the brief asks for, and about 42 px more of clear frame under it (§13, §47).
+ */
+.vs-card {
+  width: min(880px, calc(100vw - 2 * var(--chrome-pad))); padding: 24px 40px;
+  max-height: 200px; overflow: hidden;
+  animation: vs-in 260ms var(--ease) 200ms both;
+}
+@keyframes vs-in { from { transform: scale(.965); } to { transform: none; } }
+/*
+ * A CARD MAY NOT OUTLIVE THE ATTRIBUTE THAT GOVERNS EVERYTHING BENEATH IT.
+ *
+ * `body[data-card="vs"]` is what stands the fighter panels, the clock and the
+ * feed down; `live-fighting.png` caught a fully opaque VS card over
+ * `data-phase="fighting"` with all of them drawn behind it and the feed already
+ * reading `STORM defeated STONE GOLEM · now`. One frame saying "here is the
+ * matchup" and "the matchup is over" at once destroys every other number on the
+ * screen. The exit still runs — `.out` is the card on its way off (§49, §54).
+ */
+body:not([data-card="vs"]) .vs-card:not(.out) { display: none; }
+/*
+ * NO SCRIM BEHIND A CARD. NOT FOR VS, NOT FOR THE RESULT, NOT FOR THE RECAP.
+ *
+ * There used to be a full-viewport wash here — a `--sky-2` noise tile at .30
+ * under any card and .18 under the result — raised on the argument that a card
+ * which interrupts owns the stage. It owned rather more than the stage.
+ * Measured on strips clear of every card: `live-vs` L p5→p95 spread 11.7 and
+ * meanSat 8.7 %, `live-result-win` 9.5 / 8.2 %, against the stand's 13.4 /
+ * 11.6 % and 15.7 / 12.1 %. The darks lifted +9 L; the far tiers came out
+ * BRIGHTER than the floor in front of them, which inverts depth and erases the
+ * fog spec outright; the coral banner drifted from #FF7A5C to #FA9A84; the
+ * planet and the moon all but left the frame.
+ *
+ * The founder's rule settles it: the picture belongs to the renderer, and the
+ * HUD draws no full-viewport veil under any beat. A card that interrupts
+ * separates itself the way every other glass surface in this product does —
+ * by its own .94 fill, its hairline and a shadow deep enough to seat it on a
+ * near-white plaza (`.ov-card`, above) — and the arena around it keeps the
+ * stand's values, which is the whole point of showing the arena at all.
+ *
+ * If a beat is ever judged to need more separation than the card itself can
+ * give, it belongs in the post graph as a `cardWash` uniform mixed in after
+ * the vignette (`src/viewer/main.js`), where it would dither itself and stop
+ * fighting the vignette — not as a composited layer over the finished frame.
+ */
+.vs-row {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px;
+  min-height: 140px;
+}
+/* stretched, so the bleed and the side's edge rule reach the card's own top
+   and bottom rather than only the height of the four text rows */
+.vs-side { position: relative; display: flex; align-items: center; align-self: stretch; min-width: 0; }
+.vs-side.s-blue { justify-content: flex-start; padding-left: 92px; }
+.vs-side.s-orange { justify-content: flex-end; padding-right: 92px; }
+/* the bleed is absolutely positioned and therefore paints above in-flow
+   content: the column has to claim the layer back or the scrim erases the
+   names it exists to support */
+.vs-col { position: relative; z-index: 1; display: grid; gap: 8px; justify-items: start; text-align: left; min-width: 0; }
+.vs-side.s-orange .vs-col { justify-items: end; text-align: right; }
+/* the rows that can be empty still hold their place: that is the whole point */
+.vs-rate { min-height: 13px; }
+.vs-note { min-height: 13px; }
+.vs-mind { min-height: 20px; display: flex; align-items: center; }
+.vs-you.ghost { visibility: hidden; }
+
+/*
+ * THE FIGHTER BLEEDS INTO THE END OF THE CARD.
+ *
+ * `ui/portrait.js` poses the same source the arena is fighting with; the
+ * id-seeded mark stays underneath as a watermark, so the end of the card is
+ * never a hole waiting for a body fetch and never a clip-art animal either.
+ * The negative insets match the card's own padding, so the image reaches the
+ * rounded edge (§1, §4).
+ */
+/*
+ * THE PICTURE FADES; NOTHING IS PAINTED OVER IT.
+ *
+ * The first pass laid a sky→transparent scrim on top of the portrait, and a
+ * near-opaque white rectangle over a near-white card is a VISIBLE rectangle —
+ * both captures showed a lighter block with a hard edge where the gradient
+ * ended. A mask removes the image instead of covering it, so what stands
+ * behind the names is the card's own surface and the fighter simply runs out.
+ */
+/*
+ * INSIDE THE RADIUS, NOT CLIPPED BY IT.
+ *
+ * At `-30 / -40` the picture reached the card's own corner and the 14 px radius
+ * cut a fighter through the shoulder — on `live-vs-m.png` both portraits bled
+ * out of the left rounded corner and were sliced mid-body by the viewport. The
+ * insets now stop 16 px short of the card's edge on every side, which is
+ * comfortably outside a 14 px arc, and the mask still runs the image out into
+ * the card's surface (§3).
+ */
+.vs-bleed {
+  position: absolute; top: -14px; bottom: -14px; width: 184px;
+  pointer-events: none; overflow: hidden;
+}
+.vs-side.s-blue .vs-bleed {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+  mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+}
+.vs-side.s-orange .vs-bleed {
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+  mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+}
+.vs-side.s-blue .vs-bleed { left: -24px; }
+.vs-side.s-orange .vs-bleed { right: -24px; }
+.vs-bleed > svg {
+  position: absolute; left: 50%; top: 50%; width: 150px; height: 150px;
+  transform: translate(-50%, -50%);
+  /* a watermark under the type, not a drawing beside a rendered body: 12 %
+     of the column's OWN side, a single filled mass with no stroke of its own.
+     At plain `--ink` the two halves of the card presented two identical grey
+     animals — the largest object in each half carrying no side at all — and a
+     matchup card's first job is to separate the two creatures before any text
+     is read (§3, §9). */
+  opacity: .12; color: color-mix(in srgb, var(--vs-side, var(--ink)) 55%, var(--ink));
+}
+/*
+ * THE CROP IS A BOX, NOT A SCALED CANVAS.
+ *
+ * The fit algorithm frames a whole body with generous margin, and in a 184 px
+ * end-panel that leaves the fighter reading as a thumbnail — so the picture was
+ * enlarged with `transform: scale(1.25)`, which enlarges the RENDER: 184 px of
+ * pixels stretched over 230. `ui/portrait.js` sizes its renderer from the box
+ * it is handed, so the enlargement belongs to the box. `.portrait-fit` is the
+ * same crop — 125 % of the panel, hung so the point that was the transform's
+ * origin stays where it was — and the canvas inside it is drawn at full
+ * resolution and clipped by `.vs-bleed`'s own `overflow: hidden` (§9.1).
+ */
+.vs-bleed > .portrait-fit {
+  position: absolute; left: -12.5%; top: -13.5%; width: 125%; height: 125%;
+  pointer-events: none;
+}
+.vs-bleed .portrait-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  opacity: 0; transition: opacity 420ms var(--ease);
+}
+/*
+ * THE SIDE'S EDGE IS THE CARD'S EDGE.
+ *
+ * The accent was a 2 px rule inset ~28 px from the card's right edge, leaving a
+ * sliver of white outside it — a stray line rather than a card edge — and there
+ * was no matching stripe on the own-creature side at all. It is now a 4 px
+ * full-height bar running flush to the card's rounded edge (the card clips it
+ * with `overflow: hidden`), mirrored in `--info` on the left (§5).
+ */
+.vs-side::before {
+  content: ""; position: absolute; top: -30px; bottom: -30px; width: 4px; z-index: 2;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--vs-side) 35%, transparent),
+    var(--vs-side) 24%, var(--vs-side) 76%,
+    color-mix(in srgb, var(--vs-side) 35%, transparent));
+}
+.vs-side.s-blue::before { left: -40px; }
+.vs-side.s-orange::before { right: -40px; }
+.vs-bleed.has-face .portrait-canvas { opacity: 1; }
+.vs-bleed.has-face > svg { opacity: 0; transition: opacity 300ms var(--ease); }
+.vs-side.s-blue { --vs-side: var(--side-own); --vs-side-ink: var(--info-ink); }
+.vs-side.s-orange { --vs-side: var(--side-foe); --vs-side-ink: var(--accent-ink); }
+/*
+ * ONE LINE, OR THE CARD LOSES THE THING IT IS FOR. A two-word name wrapping on
+ * one side and not on the other puts the two fighters on two different lines —
+ * measured at 15 px apart — which is the one geometry a matchup card may not
+ * have. So the name never wraps, and the size is what fits the column.
+ */
+.vs-name {
+  font-size: clamp(17px, 1.55vw, 22px); font-weight: 500; letter-spacing: .11em;
+  text-transform: uppercase; line-height: 1.1; color: var(--ink-2);
+  display: flex; align-items: center; gap: 11px; max-width: 100%;
+  white-space: nowrap;
+}
+/*
+ * THE DOT IS THE PLAYER'S SIDE, NOT THE ARENA'S SLOT.
+ *
+ * This read the other way round for a while, on REDESIGN §2.1's rule that side
+ * colour belongs to the floor and never moves. The founder's addendum
+ * (`reports/arena/ARENA-AAA.md` §1) supersedes it: blue is the player's
+ * creature and orange the opponent's on every surface, so the column decides
+ * the colour and `screens/live.js` decides the column from ownership — the
+ * player's facts go in `.s-blue` on the left whichever slot the server handed
+ * out. A spectator has no side, and the columns fall back to the slots.
+ */
+.vs-side.s-blue .vs-name::after, .vs-side.s-orange .vs-name::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px;
+  background: var(--vs-side);
+}
+.vs-rate {
+  font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/* who this creature has actually been: a rating with no record behind it says
+   nothing about whether the number can be trusted (§47) */
+.vs-note {
+  font-size: 10px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  /* `--stone` measured about 3.5:1 on the card's own surface at 10 px */
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/*
+ * VS SITS ON THE CARD'S OWN CENTRE LINE, BETWEEN TWO HAIRLINES.
+ *
+ * At 52 px it was competing with the two names it is meant to set against each
+ * other; at 34 px in `--t-state`'s own tracking it is a mark rather than a
+ * headline, and a faded rule on each side says what it divides (§2).
+ */
+.vs-mid { position: relative; display: grid; place-items: center; padding: 0 20px; }
+.vs-mid::before, .vs-mid::after {
+  content: ""; position: absolute; top: 50%; width: 1px; height: 78px;
+  transform: translateY(-50%);
+  background: linear-gradient(180deg, transparent, var(--hairline) 22%, var(--hairline) 78%, transparent);
+}
+.vs-mid::before { left: 0; }
+.vs-mid::after { right: 0; }
+.vs-word {
+  font-size: 34px; font-weight: 300;
+  letter-spacing: var(--track-state); padding-left: var(--track-state);
+  color: var(--ink-2); line-height: 1;
+}
+/*
+ * THE OWNERSHIP MARKER WEARS THE SIDE IT MARKS — AND NOW THEY AGREE.
+ *
+ * The pill used to be hard-wired to blue while the dot beside it took the
+ * arena's slot colour, so `live-fighting.png` showed STONE GOLEM with a coral
+ * side dot and a blue YOU pill eight pixels apart. Under the addendum both are
+ * blue on the player's column and both coral on the opponent's, so the pill is
+ * a restatement of the colour rather than an argument with it. The HUD's own
+ * `.sidetag` uses the same formula (§48, §56).
+ */
+.vs-you {
+  height: 22px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--vs-side-ink, var(--info-ink));
+  background: color-mix(in srgb, var(--vs-side, var(--info)) 30%, transparent);
+  border: 1.25px solid color-mix(in srgb, var(--vs-side, var(--info)) 38%, transparent);
+}
+
+/* result ---------------------------------------------------------------- */
+/*
+ * A MOMENT, NOT A FORM — AND THE SAME OBJECT FOR EVERY OUTCOME.
+ *
+ * The card was nine centred lines, and the two outcomes were not even the same
+ * shape: the win measured 457 × 436 and the loss 422 × 407, so the beat the
+ * whole loop pays off in arrived as two different dialogs. It also landed dead
+ * centre over the arena, hiding the creature at the exact second it won, and
+ * its bottom edge sliced the fighter panel underneath ('YOU' read as 'YO').
+ *
+ * The shell is fixed — 420 wide, 360 tall, whatever happened — the content is
+ * §6.2's five lines with the rating move, the rank move and the milestone
+ * folded into ONE delta row, and above 1100 px the card stands beside the
+ * winner instead of on top of it (§1, §2, §12, §15).
+ */
+.res-card {
+  width: min(420px, calc(100vw - 2 * var(--chrome-pad)));
+  min-height: 360px; box-sizing: border-box;
+  padding: 30px 34px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+}
+/*
+ * IT CARRIES ITS OWN SUBJECT, SO IT NO LONGER HAS TO GUESS WHERE THE WINNER IS.
+ *
+ * The card was pinned to a fixed left margin "beside the winner" while nothing
+ * consulted where the winner actually was: on `live-result-loss.png` its right
+ * half landed squarely on the coral winner, and on `live-result-win.png` the
+ * arena behind it was empty — the composition's premise met in neither. It is
+ * centred at every width now, the arena behind it is undimmed (§37, §43), and the
+ * winner's own portrait stands at the top of the card, so the moment has a
+ * subject wherever the camera came to rest (§2, §22, §64).
+ */
+.res-face {
+  position: relative; width: 72px; height: 72px; margin-bottom: 14px; flex: 0 0 72px;
+  border-radius: 50%; overflow: hidden;
+  background: var(--sky-2); border: 1px solid var(--glass-line);
+  box-shadow: 0 6px 18px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.res-face > svg {
+  position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+  transform: translate(-50%, -50%); opacity: .3; color: var(--ink);
+}
+/*
+ * AND THE WINNER'S FACE IS RENDERED AT THE SIZE IT IS SEEN AT.
+ *
+ * The fit algorithm frames a whole body with generous margin, which inside a
+ * 72 px circle leaves the winner reading as a speck — so the canvas carried
+ * `transform: scale(1.75)`, and 72 px of render stretched over 126 is exactly
+ * the pixelated, aliased crop the review found at the top of the victory card.
+ * The crop is now a 175 % box that `ui/portrait.js` renders into at full
+ * resolution, hung so the old transform origin lands where it did, and the
+ * circle clips it as before (§9.1).
+ */
+.res-face > .portrait-fit {
+  position: absolute; left: -37.5%; top: -39%; width: 175%; height: 175%;
+  pointer-events: none;
+}
+.res-face .portrait-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  opacity: 0; transition: opacity 420ms var(--ease);
+}
+.res-face.has-face .portrait-canvas { opacity: 1; }
+.res-face.has-face > svg { opacity: 0; transition: opacity 300ms var(--ease); }
+/* the first result a player ever sees says which one it is (§74) */
+.res-first {
+  margin-bottom: 8px; font-size: var(--t-label); font-weight: 600;
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--info-ink);
+}
+/* and the one thing a stranger cannot know: that nothing is asked of them */
+.res-calm {
+  margin-top: 12px; font-family: var(--font-body); font-size: var(--t-small);
+  color: var(--muted); max-width: 32ch; line-height: 1.5;
+}
+/*
+ * THE RESULT IS ON THE OWNERSHIP AXIS, NOT A GOOD/BAD ONE.
+ *
+ * VICTORY measured #1F6B45 — `--success-ink`, 1,777 px of it — and the whole
+ * `live-result-win.png` frame carried 246 blue pixels against 6,112 green:
+ * the player's own victory beat contained essentially none of the player's
+ * colour, and the word was the most saturated element on the screen in a
+ * fourth hue. DEFEAT measured #A83A22 — `--accent-ink` — which is the RIGHT
+ * answer for the wrong reason: it is the opponent's ink, and on a defeat the
+ * opponent is exactly who the sentence is about.
+ *
+ * So the pair goes on one axis and the axis is ownership. Blue: you won.
+ * Coral: they won. The two cards can then be told apart by hue before a word
+ * is read, which is the whole of what the addendum asks a result surface to
+ * do, and green leaves the screen (`reports/arena/ARENA-AAA.md` §1;
+ * ARENA-BRIEF §5 allows two accents and this is both of them).
+ */
+.res-word { line-height: 1; }
+.res-word.win { color: var(--info-ink); }
+.res-word.loss { color: var(--accent-ink); }
+.res-word.draw { color: var(--muted); }
+/*
+ * AND THE PORTRAIT SAYS WHOSE IT IS.
+ *
+ * `.res-face` is the biggest object on the card and it carried a plain glass
+ * hairline: on `live-result-loss.png` that is the OPPONENT's silhouette with
+ * nothing on it saying so, which is the one case where a reader most needs the
+ * mark. The card already knows — the circle holds the WINNER (`screens/live.js`
+ * picks `over.winner`, falling back to the player's own creature on a draw) —
+ * so the ring is decided by the card's outcome class and needs no attribute of
+ * its own (§6).
+ */
+:is(.res-card.win, .res-card.draw) .res-face {
+  box-shadow: 0 0 0 2px var(--side-own), 0 6px 18px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.res-card.loss .res-face {
+  box-shadow: 0 0 0 2px var(--side-foe), 0 6px 18px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+/* `OVER NEEDLE-79` / `TO NEEDLE-79` names the OPPONENT on both cards, and it
+   measured `--muted` #6B5F55 on both — a warm grey on the one surface the
+   addendum names by name. It is the other creature, so it wears the other
+   creature's ink (§6). */
+.res-foe {
+  margin-top: 10px; font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--accent-ink);
+}
+/*
+ * WHY IT ENDED — THE QUESTION THE CARD NEVER ANSWERED.
+ *
+ * `knocked out` existed only in History; on LIVE the beat that reports a
+ * knockout did not say there had been one. §9.1's four strings, in the same
+ * label type as the name above them (§48, §54).
+ */
+.res-reason {
+  margin-top: 5px; font-size: 10px; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted);
+}
+.res-reason:empty { display: none; }
+/*
+ * THE MOMENT OF TRIUMPH WAS THE LEAST COLOURFUL THING ON THE SCREEN.
+ *
+ * `+24 MMR` was ink-green type on white with nothing around it. It sits on a
+ * wash of its own colour now — 10 % mint for a win, 10 % coral for a defeat —
+ * so the delta reads as an event rather than as a field, while the ink stays
+ * `--success-ink` / `--accent-ink`, which is what keeps 40 px of type over 4.5:1
+ * (`--success` itself measures about 1.8:1 on this surface) (§2).
+ */
+.res-delta {
+  margin-top: 14px; padding: 8px 20px 9px; border-radius: var(--r-card, 10px);
+  font-size: clamp(26px, 3vw, 40px); font-weight: 500; letter-spacing: .1em;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.res-delta.win {
+  color: var(--info-ink);
+  background: color-mix(in srgb, var(--info) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--info) 34%, transparent);
+}
+.res-delta.loss {
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.res-delta.draw { color: var(--muted); background: none; box-shadow: none; }
+/* an unrated fight: the word, not a zero and two arrows that point at themselves */
+.res-delta.flat { color: var(--muted); font-size: clamp(20px, 2.2vw, 28px); letter-spacing: .18em; text-transform: uppercase; }
+/*
+ * ONE ROW FOR WHAT THE FIGHT DID.
+ *
+ * `1,585 → 1,609`, `#4 → #1` and `NEW BEST · TOP 3` are three statements about
+ * one event; stacked as three centred lines they read as a form, and the
+ * staggered reveal meant the rank — the single most consequential number on a
+ * defeat — was the last and faintest thing on the card. Side by side they are
+ * one sentence with the milestone as its chip (§1, §16, §64).
+ */
+/*
+ * TWO LINES, AS §6.2 WRITES THEM.
+ *
+ * `1,214 → 1,238` and `#782 → #739` are two facts the spec gives two lines,
+ * and side by side with a middot between them they read as one long string of
+ * digits and arrows. Stacked, the rating move takes the ink and the rank move
+ * is the footnote under it; the milestone stays a chip on the rank line (§6.2).
+ */
+.res-moves {
+  margin-top: 14px; display: flex; flex-direction: column; align-items: center;
+  gap: 5px; max-width: 100%;
+}
+.res-rankrow { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.res-move, .res-rank {
+  font-size: 15px; font-weight: 500; letter-spacing: .08em; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.res-rank { color: var(--muted); font-size: 13px; }
+.res-sep { color: var(--sand); }
+.res-move:empty, .res-rank:empty { display: none; }
+.res-rankrow:not(:has(> :not(:empty))) { display: none; }
+.res-note { font-family: var(--font-body); font-size: var(--t-small); color: var(--muted); max-width: 34ch; }
+/*
+ * THE PROGRESSION ARRIVES; IT DOES NOT SIMPLY EXIST — BUT IT NEVER ARRIVES
+ * FROM NOTHING.
+ *
+ * The veil used to start at opacity 0, so every frame of a 420 ms reveal sat
+ * under 3:1 and the loss capture caught the whole delta row at 1.2–1.3:1 on a
+ * card whose entire subject it is. It starts at .35 instead — visible from the
+ * first frame, still a beat — and `screens/live.js` writes the resting state
+ * unconditionally once the animation has had its time, so no capture and no
+ * throttled tab can leave a number invisible (§29, §64).
+ */
+.res-moves, .res-best {
+  transition: opacity 420ms var(--ease), transform 420ms var(--ease);
+}
+.res-moves.veiled, .res-best.veiled { opacity: .35; transform: translateY(7px); }
+
+/* the milestone is a chip on the delta row, not a fourth centred line */
+.res-best {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 9px;
+  border-radius: 999px; font-size: 9px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
+}
+/* `NEW BEST · TOP 3` is a statement about the player's own creature, so it
+   takes the player's colour; `LOST 3 IN A ROW` was pure amber (#705608 on
+   #FBF2DB), the accent ARENA-BRIEF §5 bans by name and a fourth hue besides.
+   A counterweight is not a caution: it steps back to ink on stone (§1, §15). */
+.res-best.up {
+  color: var(--info-ink); background: color-mix(in srgb, var(--info) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 34%, transparent);
+}
+.res-best.down {
+  color: var(--ink-2); background: color-mix(in srgb, var(--stone) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stone) 30%, transparent);
+}
+.res-best:empty { display: none; }
+.res-card.milestone { animation: ov-in 380ms var(--ease) both, res-glow 600ms var(--ease) 520ms 1; }
+/* the glow is the card agreeing with its own delta pill: the player's blue */
+@keyframes res-glow {
+  0% { box-shadow: 0 28px 84px rgba(46, 46, 51, .22), 0 0 0 0 rgba(110, 168, 255, .55); }
+  45% { box-shadow: 0 28px 84px rgba(46, 46, 51, .22), 0 0 0 7px rgba(110, 168, 255, .34); }
+  100% { box-shadow: 0 28px 84px rgba(46, 46, 51, .22), 0 0 0 0 rgba(110, 168, 255, 0); }
+}
+.res-card.loss.milestone { animation: ov-in 380ms var(--ease) both; }
+
+/* the ways out of the fight that just happened */
+.res-acts {
+  margin-top: 18px; display: flex; align-items: center; justify-content: center;
+  gap: 10px 16px; flex-wrap: wrap; max-width: 100%;
+}
+.res-again, .res-more {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 10px; font-weight: 500; letter-spacing: .15em;
+  text-transform: uppercase; text-decoration: none;
+  border-bottom: 1px solid transparent; padding-bottom: 2px;
+  transition: border-color var(--d-ui) var(--ease), color var(--d-ui) var(--ease);
+}
+.res-again { font-weight: 600; color: var(--info-ink); }
+/*
+ * THE SECOND OFFER IS QUIETER BY WEIGHT, NOT BY COLOUR.
+ *
+ * On the defeat card `WHAT WENT WRONG →` was grey and `WATCH IT AGAIN →` was
+ * blue, so the more useful of the two read as disabled. They are the same ink;
+ * the difference is 500 against 600 (§73).
+ */
+.res-more { font-weight: 500; color: var(--info-ink); }
+:is(.res-again, .res-more):hover, :is(.res-again, .res-more):focus-visible {
+  border-bottom-color: currentColor; outline: none;
+}
+/*
+ * ONE FOOTER, ONE GRID, TWO EDGES.
+ *
+ * `NEXT FIGHT IN 8 / FIGHT #16013462` was a space-between row and
+ * `YOUR CREATURE → / LADDER →` was a centred row under it — two alignment
+ * systems in eight lines of card. One two-column grid puts the countdown over
+ * the creature door on a shared left edge and the fight's number over the
+ * ladder door on a shared right edge (§2).
+ */
+.res-foot {
+  margin-top: auto; padding-top: 16px; border-top: 1px solid var(--hairline); width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; align-items: baseline;
+  font-size: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.res-foot > * { justify-self: start; }
+.res-foot > :nth-child(2n) { justify-self: end; text-align: right; }
+.res-next-t { color: var(--ink-2); }
+/* `MATCH #16013462` measured 2.97:1 at .7 opacity, on the card that is the
+   beat of the whole loop: the token, at full strength (§64) */
+.res-id { color: var(--muted); }
+/*
+ * THE TWO HALVES OF THE LOOP, IN THE FOOTER WHERE A GHOST ACTION BELONGS.
+ *
+ * They used to be a band of their own between the replay and the countdown,
+ * which made the card four stacked rows of actions. Under the hairline, at
+ * label size, they are what they are: always open, never competing with the
+ * one primary above them (§48, §74, §76).
+ */
+.res-door {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 9.5px; font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; text-decoration: none; color: var(--muted);
+  border-bottom: 1px solid transparent; padding-bottom: 2px;
+  transition: border-color var(--d-ui) var(--ease), color var(--d-ui) var(--ease);
+}
+.res-door:hover, .res-door:focus-visible { color: var(--ink-2); border-bottom-color: currentColor; outline: none; }
+.res-door svg { opacity: .7; }
+/* `SPARRING · NOT RATED` is a fact about the bout, not a caution — and amber
+   is the accent the brief bans on this screen (§15) */
+.res-flag {
+  margin-top: 8px; font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* away recap ------------------------------------------------------------ */
+/*
+ * ONE NUMBER AND A FOOTNOTE.
+ *
+ * The recap was a three-row table — VICTORIES / MMR / RANK — under a heading,
+ * with the phase word twice its size behind it. A player coming back after
+ * eighteen fights is owed one fact big enough to feel: how far the creature
+ * climbed. Everything else is the sentence under it.
+ */
+.away-card { min-width: 380px; max-width: min(460px, calc(100vw - 2 * var(--chrome-pad))); display: flex; flex-direction: column; align-items: center; gap: 0; }
+.away-hd { font-size: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+/*
+ * THE RECAP IS A STATEMENT ABOUT THE PLAYER'S CREATURE, SO IT IS BLUE.
+ *
+ * `+391` rendered `--success-ink` and the frame carried 2,900 green pixels
+ * against 1,080 blue. This is the beat that reintroduces the player's own
+ * creature after an absence — the natural home of the player's colour — and it
+ * is the sibling of the result card's delta pill, so it takes the same ground:
+ * the two "your creature did this" surfaces now read as one system (§8).
+ */
+.away-big {
+  margin-top: 14px; padding: 6px 20px 8px; border-radius: var(--r-card, 10px);
+  font-size: clamp(46px, 5.4vw, 74px); font-weight: 500; letter-spacing: .04em;
+  line-height: 1; color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.away-big.up {
+  color: var(--info-ink); background: color-mix(in srgb, var(--info) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);
+}
+.away-big.down {
+  color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+.away-cap {
+  margin-top: 10px; font-size: var(--t-label); letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--muted);
+}
+.away-line {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--hairline); width: 100%;
+  display: flex; align-items: baseline; justify-content: center; gap: 8px; flex-wrap: wrap;
+  font-size: 14px; font-weight: 500; letter-spacing: .06em; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.away-line .dot { color: var(--sand); }
+/* §6.1's own words: `18 BATTLES` / `11 VICTORIES`, the number then its label */
+.away-line .d-n { font-size: 20px; font-weight: 500; }
+.away-line .d-l {
+  margin-left: -3px; font-size: var(--t-label); font-weight: 500;
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted);
+}
+/* one moment out of eighteen fights, and the server already picks it (§78) */
+.away-pick {
+  margin-top: 16px; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 14px; border-radius: var(--r-card, 10px); text-decoration: none;
+  background: rgba(255, 255, 255, .55); border: 1px solid var(--hairline);
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--ink-2);
+  transition: background var(--d-ui) var(--ease), border-color var(--d-ui) var(--ease);
+}
+.away-pick:hover, .away-pick:focus-visible {
+  background: rgba(255, 255, 255, .8); border-color: var(--glass-line); outline: none;
+}
+.away-pick svg { color: var(--info-ink); }
+/* good news is worth colouring: a climb of 133 points printed in plain ink is
+   a number, not an event — and the colour it is worth is the creature's own */
+.away-line .d.up { color: var(--info-ink); }
+.away-line .d.down { color: var(--accent-ink); }
+/*
+ * WHERE IT WENT, AND WHERE IT NOW STANDS.
+ *
+ * §6.1 pairs `1,214 → 1,347 MMR` with `#782 → #391`. The card carried only the
+ * rank pair, so the recap stated the MOVEMENT twice and the POSITION never.
+ * The rating line is the stronger of the two and takes the ink; the rank line
+ * sits under it as the footnote it is.
+ */
+.away-move {
+  margin-top: 10px; font-size: 13px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+/* `391 PLACES CLIMBED` over `#782 → #391` put the same three digits in the same
+   card carrying two unrelated meanings; the hero is signed and the rank the
+   creature now holds takes the ink, so a delta can never read as a rank (§70) */
+.away-rank {
+  margin-top: 5px; font-size: var(--t-label); letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.away-rank .r-now { color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.away-acts { margin-top: 24px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: center; }
+/* the eighteen fights the card is about were unreachable from it */
+.away-more {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--info-ink); text-decoration: none;
+  border-bottom: 1px solid transparent; padding-bottom: 2px;
+  transition: border-color var(--d-ui) var(--ease);
+}
+.away-more:hover, .away-more:focus-visible { border-bottom-color: currentColor; outline: none; }
+
+/* replay ----------------------------------------------------------------- */
+.replay-card { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.replay-card .acts { display: flex; gap: 12px; }
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  /*
+   * ONE LINE FOR THE STATE AND THE FIGHT IT NAMES.
+   *
+   * `FIGHTING` at 34 px over `ARENA · FIGHT #16013462` was two bands of the top
+   * of an 844 px screen before the battle had any room at all. At 22 px with
+   * the number inline it is one 26 px row, and the arena keeps the difference
+   * (§10, §13).
+   */
+  .live-top {
+    top: 68px; gap: 4px 9px;
+    flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: center;
+  }
+  .live-word, .live-word.long {
+    font-size: 22px; letter-spacing: .2em; margin-top: 0;
+  }
+  /* a full sentence takes its own line; only the fight's number goes inline */
+  .live-line:not([data-short]) { flex: 1 0 100%; }
+  .live-line[data-short] { font-size: 0; letter-spacing: 0; }
+  .live-line[data-short]::after {
+    content: attr(data-short); font-size: 10.5px; font-weight: 500;
+    letter-spacing: var(--track-label);
+  }
+  /*
+   * THE NOTE IS SAID TWICE ON A PHONE AND ONLY ONCE THERE IS ROOM FOR.
+   *
+   * `STONE GOLEM · GLM 5.3 FLASH` under the phase word repeats the chrome's
+   * my-chip two inches above it and the status line at the bottom of the same
+   * screen — and at 390 px it also landed inside the folded feed. The name
+   * stays where it is already read (§10, §13).
+   */
+  .live-note { display: none; }
+  /*
+   * The clock is pinned at 140 px on a phone (`ui/hud.css`) and the note is the
+   * third line of a block that starts at 74. While a fight is on screen, the
+   * two met: `STONE GOLEM is waiting for an opponent` ran straight through the
+   * `VS 00:15` pill. The note belongs to the states with no fight in them; the
+   * chrome's own chip says the same name during a fight (§12, no overlaps).
+   */
+
+  /*
+   * THE VISITOR'S INVITATION CLEARS BOTH FIGHTERS.
+   *
+   * Both fighter panels now stand at the bottom of a phone, so a card hung
+   * 200 px up landed inside them: measured on the capture as `EMBER FAN` and
+   * `STONE GOLEM` printed through `You are watching the arena.` A stranger
+   * watching a fight is offered one thing, and it is not a feed — so the feed
+   * stands down and the card takes its place above the fighters (§12, §35).
+   */
+  .live-cta {
+    bottom: calc(440px + env(safe-area-inset-bottom));
+    width: calc(100% - 2 * var(--chrome-pad));
+  }
+  /*
+   * AND THE PHASE RULE IS RESTATED AT MATCHING SPECIFICITY.
+   *
+   * `body[data-phase="fighting"] .live-cta { bottom: 312px }` scores (0,2,1)
+   * and the rule above scores (0,1,0), so the desktop offset won on the phone
+   * and the card landed at 312 — covering MANTIS REAPER's name, `#33 · 1,240
+   * MMR`, its health bar and its three ability tiles outright, leaving a
+   * stranger's first fight with one fighter in it. Same selectors, same block,
+   * the mobile number (§14, §15, §50, §55, §65, §67).
+   */
+  /*
+   * AND ON A PHONE IT HANGS FROM THE TOP, NOT FROM THE MIDDLE.
+   *
+   * 440 px up a 844 px screen is y 314–404 — the lower half of the band the
+   * camera keeps the fighters in, and `live-visitor-m.png` caught it with the
+   * card's top edge across a creature's legs. There is no room at the bottom
+   * (two panels and a tab bar) and none in the middle (the fight), so it takes
+   * the one strip that is furniture already: under the folded feed pill, which
+   * ends at 136. The fight keeps everything below (§12).
+   */
+  body[data-phase="fighting"] .live-cta,
+  body[data-phase="result"] .live-cta,
+  body[data-phase="vs"] .live-cta { top: 146px; bottom: auto; }
+  /*
+   * THE WORLD KEEPS RUNNING BEHIND THE INVITATION.
+   *
+   * `body:has(.live-cta:not(:empty)) #feedwrap { opacity: 0 }` removed the feed
+   * entirely for a visitor, so the one screen that must make a stranger want a
+   * creature showed two robots and no evidence that anything else was
+   * happening. The feed is folded to a 36 px pill on a phone anyway: it costs
+   * one row and it is the only thing on screen saying the arena is populated
+   * (§14, §16).
+   */
+  .live-status { bottom: calc(120px + env(safe-area-inset-bottom)); font-size: 10px; }
+  /* one row, not a stacked card: the invitation is a bar the fight reads over */
+  .live-card {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 10px 12px 10px 18px; width: 100%; min-height: 56px;
+    box-sizing: border-box; text-align: left;
+  }
+  .live-card .hd { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+  /* the bar is one row: the invitation and its button share 358 px */
+  .live-card .btn { flex: 0 0 auto; font-size: 10.5px; padding: 0 14px; letter-spacing: .12em; }
+  .live-last { width: 100%; padding: 12px 18px 11px; }
+  .live-last .ll-w { font-size: 17px; }
+  .live-last .ll-d { font-size: 24px; }
+  .live-orbit { width: 188px; height: 188px; }
+  .live-mid::before { width: 250px; height: 250px; }
+  .live-mid[data-at="body"] .live-orbit { width: 112px; height: 112px; }
+  .live-mid[data-at="body"]::before { width: 200px; height: 200px; }
+  /* a centred card at 390 px covers whatever is behind it; at .74 glass the
+     feed's hairline and label read straight through the words */
+  .ov-card {
+    padding: 24px 22px; width: calc(100vw - 2 * var(--chrome-pad));
+    background: rgba(255, 255, 255, .94);
+  }
+  /*
+   * Stacked, and no taller than the arena can spare: the whole point of the
+   * card is the two creatures behind it, and a sheet that fills the screen
+   * introduces them to an empty room.
+   */
+  /*
+   * THE CARD STACKS THE TWO FIGHTERS THE WAY THE FIGHT WILL.
+   *
+   * The card put mine on top and the foe below; `ui/hud.css` puts the foe on
+   * top and mine at the bottom, where the thumb is. So the card taught one
+   * reading direction and the fight immediately reversed it. `order` keeps the
+   * DOM order (the player's column first, which is what carries the blue) and
+   * shows the opponent above the player, which is the stack the next 90
+   * seconds use (§47, §56).
+   */
+  /* `align-self` would override the overlay grid's dock below; the card
+     sits where the overlay puts it */
+  .vs-card { max-height: 62vh; align-self: end; padding: 20px 22px; }
+  .vs-row {
+    grid-template-columns: 1fr; grid-auto-flow: row; gap: 12px; min-height: 0;
+  }
+  /* the two rows reach the card's own left edge, so the side mark below can
+     be drawn at the box's own edge instead of 22 px outside it — see the rule
+     under it for why that mattered (§2) */
+  .vs-side, .vs-side.s-blue, .vs-side.s-orange {
+    flex-direction: row; justify-content: flex-start;
+    /*
+     * `gap: 0`, AND IT IS WHY THE TWO NAMES NOW SHARE A LEFT EDGE.
+     *
+     * Measured on `live-vs-m.png`: `NEEDLE-79` and its rating started at x 109
+     * and `STONE GOLEM` and its rating at x 124 — the two fighters on a
+     * stacked matchup card introduced on two different left edges, 15 px
+     * apart, which is a version of the one geometry this card may not have.
+     * The 15 is the 14 px flex gap plus a pixel of bearing: one of the two
+     * rows was spending a gap the other was not. The gap buys nothing here
+     * either way — `.vs-bleed` is absolutely positioned, so the art is not a
+     * flex item and the space it stands in is `padding-left`, not a gap —
+     * so removing it costs no layout and takes the discrepancy with it.
+     */
+    gap: 0;
+    margin-left: -22px; padding: 0 0 0 106px;
+    align-self: auto;
+  }
+  .vs-col, .vs-side.s-orange .vs-col { justify-items: start; text-align: left; gap: 5px; }
+  /* inside the card's radius on the phone too: at `left: -22px` both portraits
+     ran out of the card's own rounded corner and were cut mid-body (§3) */
+  .vs-bleed, .vs-side.s-blue .vs-bleed, .vs-side.s-orange .vs-bleed {
+    top: 0; bottom: 0; left: 16px; right: auto; width: 96px;
+  }
+  /*
+   * STACKED, EACH ROW WEARS ITS OWN SIDE — AND IT IS A WASH, NOT AN EDGE.
+   *
+   * Measured on `live-vs-m.png` (390×844) the whole card band y 435–750 held
+   * 800 blue pixels — a 4×121 `--info` bar at the card's left edge — against
+   * 52 coral, all of them the single 8×8 name dot. There was no coral bar at
+   * any threshold: the opponent's half of a matchup card carried no side at
+   * all on the one device where the card IS the screen.
+   *
+   * Three attempts to make the 4 px rule appear on the opponent's row failed
+   * identically — restating the pseudo-element per side with every property
+   * written out, pulling the column to the card's edge so its offset could be
+   * zero, and finally dropping the pseudo-element for the column's own
+   * background. The blue one drew all three times; the coral one drew none.
+   * The measurement says why, even if it does not say the cause: the two rows
+   * are not in the same place. Their text starts at x 109 and x 124 — the
+   * opponent's column sits about 15 px further left than the player's, far
+   * enough that anything pinned to its left EDGE lands outside the card and is
+   * taken by `overflow: hidden`. (That misalignment is a defect of its own and
+   * is left in the report; it is not this rule's to fix.)
+   *
+   * So the side stops being a 4 px line that has to hit an exact pixel and
+   * becomes the row's own GROUND: a wash of the side colour running in from
+   * the row's left edge and gone by two thirds across. It cannot be clipped
+   * out of existence by a dozen pixels of offset, it separates the two halves
+   * of the card before any text is read — which is the whole of what the
+   * addendum asks a matchup surface for — and on a stacked card it reads
+   * better than an edge rule ever did (§2, §9).
+   */
+  .vs-side, .vs-side.s-blue, .vs-side.s-orange {
+    border-radius: 10px;
+    background-image: linear-gradient(90deg,
+      color-mix(in srgb, var(--vs-side) 26%, transparent) 0,
+      color-mix(in srgb, var(--vs-side) 15%, transparent) 36%,
+      color-mix(in srgb, var(--vs-side) 6%, transparent) 64%,
+      transparent 92%);
+    background-repeat: no-repeat;
+  }
+  .vs-side::before, .vs-side.s-blue::before, .vs-side.s-orange::before { content: none; }
+  .vs-side.s-orange .vs-bleed {
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+    mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+  }
+  /* mine below the foe, as the HUD stacks them */
+  .vs-side.own { order: 2; }
+  .vs-side.foe { order: 0; }
+  .vs-mid { order: 1; justify-self: center; padding: 0 24px; }
+  .vs-mid::before, .vs-mid::after { height: 30px; }
+  .vs-name { font-size: 19px; gap: 9px; }
+  .vs-side.s-orange .vs-name { flex-direction: row-reverse; }
+  .vs-word { font-size: 22px; }
+  .res-card, .away-card { min-width: 0; }
+  .res-face { width: 60px; height: 60px; flex-basis: 60px; margin-bottom: 10px; }
+  .res-foot { gap: 8px 12px; }
+  /*
+   * ON A PHONE BOTH CARDS DOCK LOW, BECAUSE THERE IS NO SIDE STRIP.
+   *
+   * `.res-card` is `min(420px, 100vw − 2·--chrome-pad)` — 362 of 390 px — and
+   * centred it ran y 137–581. In ndc that is x −0.93…0.93 by y 0.68…−0.38
+   * against `hudBand` yTop 0.58 / yBot −0.37, so every one of `clearAim()`'s
+   * four candidates in `src/viewer/main.js` came out with a negative width or
+   * height, `_clear.w` fell to 0, and every phone result dropped through to
+   * the stand shot. Measured: 1,418 dark pixels outside the card, all of them
+   * in a 14 px sliver against the left bezel. The victory beat had no winner
+   * in it.
+   *
+   * Docked to the bottom the whole top band is clear — at 844 px tall the
+   * card's top edge lands near y 430, ndc y0 ≈ −0.02, which gives the
+   * "above it" candidate the full width by about 0.6 of height, several times
+   * the solver's guard — and the winner gets the top half of the phone. The
+   * VS card takes the same dock for the same reason.
+   *
+   * 96 px clears the tab bar (84 px with the notch inset) with a margin, and
+   * the offset is on the overlay grid so neither card's own box moves.
+   */
+  body[data-card="result"] .live-ov,
+  body[data-card="vs"] .live-ov {
+    align-items: end; padding-top: 0;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .res-card { min-height: 0; padding: 22px 20px; margin-bottom: 0; }
+  .res-acts { margin-top: 14px; }
+  .away-big { font-size: 52px; }
+  .away-line { font-size: 12.5px; gap: 6px; }
+  /*
+   * 44 px, AND PAIRED WITH THE BUTTON ABOVE THEM.
+   *
+   * `Watch it again` and `See the fights` are inline-flex links with no height:
+   * about 16 px of touch target on a phone, and on the away card a 44 px
+   * CONTINUE sat 19 px above one of them — failing WCAG 2.5.8 on the size AND
+   * on the spacing exception at once. Padding gives them the height; the
+   * tightened gap keeps them reading as one pair rather than as two strays.
+   */
+  .away-acts { gap: 8px; flex-direction: column; width: 100%; }
+  .away-acts .btn { width: 100%; }
+  .res-acts { gap: 6px 20px; }
+  .res-again, .res-more, .away-more {
+    min-height: 44px; padding: 12px 6px 10px; align-items: center; justify-content: center;
+  }
+  .res-acts { margin-top: 4px; }
+  .replay-card .acts { flex-direction: column; width: 100%; }
+  .replay-card .acts .btn { width: 100%; }
+}
+
+/* ── a phone turned sideways ─────────────────────────────────────────────── */
+
+@media (max-width: 900px) and (max-height: 560px) {
+  /* sideways there IS a middle to spare again — the two panels are short
+     columns on the left and right edges — so the cards go back to the centre
+     rather than docking onto the panels the portrait block clears */
+  body[data-card="result"] .live-ov,
+  body[data-card="vs"] .live-ov { align-items: center; padding-top: 0; padding-bottom: 0; }
+  .vs-card { align-self: center; }
+  .live-top { top: 6px; gap: 4px; }
+  .live-word, .live-word.long { font-size: 22px; letter-spacing: .2em; margin-top: 0; }
+  .live-line { font-size: 9.5px; }
+  .live-note { display: none; }
+  /* the bottom 50–84 px belong to `#chrome .rail`; everything the fight needs
+     stands above it (§26, §28) */
+  .live-status { bottom: calc(56px + env(safe-area-inset-bottom)); font-size: 9.5px; }
+  .live-cta { bottom: calc(116px + env(safe-area-inset-bottom)); }
+  body[data-phase="fighting"] .live-cta,
+  body[data-phase="result"] .live-cta,
+  body[data-phase="vs"] .live-cta { bottom: calc(116px + env(safe-area-inset-bottom)); }
+  .live-last { padding: 9px 16px 8px; }
+  .live-last .ll-w { font-size: 14px; }
+  .live-last .ll-d { font-size: 19px; }
+  .live-last .ll-m, .live-last .ll-a { display: none; }
+  .live-orbit { width: 96px; height: 96px; }
+  .live-mid::before { width: 190px; height: 190px; }
+  .ov-card { padding: 16px 20px; }
+  .vs-card { max-height: none; padding: 16px 20px; }
+  /* sideways there IS an across again: the two fighters face each other */
+  .vs-row { grid-template-columns: 1fr auto 1fr; gap: 12px; min-height: 0; }
+  .vs-side.own, .vs-side.foe { order: 0; }
+  /* sideways the two columns face each other across the card again, so the
+     portrait branch's left-edge wash (drawn as the column's own background)
+     and the pull-out margin that goes with it are both given back, and the
+     pseudo-element the desktop block writes takes over — mirrored, as it is
+     at every width above 900 (§2) */
+  .vs-side, .vs-side.s-blue, .vs-side.s-orange {
+    margin-left: 0; background-image: none; border-radius: 0;
+  }
+  .vs-side::before, .vs-side.s-blue::before, .vs-side.s-orange::before {
+    content: ""; width: 4px; z-index: 3;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--vs-side) 35%, transparent),
+      var(--vs-side) 24%, var(--vs-side) 76%,
+      color-mix(in srgb, var(--vs-side) 35%, transparent));
+  }
+  .vs-side.s-blue { flex-direction: row; padding: 0 0 0 74px; }
+  .vs-side.s-orange { flex-direction: row-reverse; padding: 0 74px 0 0; }
+  .vs-side.s-orange .vs-col { justify-items: end; text-align: right; }
+  .vs-side.s-blue .vs-bleed { left: -4px; right: auto; width: 84px; }
+  .vs-side.s-orange .vs-bleed { right: -4px; left: auto; width: 84px; }
+  .vs-side.s-blue::before { left: -20px; right: auto; top: -6px; bottom: -6px; }
+  .vs-side.s-orange::before { right: -20px; left: auto; top: -6px; bottom: -6px; }
+  .vs-side.s-orange .vs-bleed {
+    -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+    mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, .8) 44%, transparent 84%);
+  }
+  .vs-mid { order: 0; padding: 0 16px; }
+  .vs-mid::before, .vs-mid::after { height: 44px; }
+  .vs-name { font-size: 16px; }
+  .vs-note { display: none; }
+  .vs-word { font-size: 22px; }
+  .res-card { min-width: 0; min-height: 0; gap: 0; margin-bottom: 0; padding: 16px 20px; }
+  .res-face { display: none; }
+  .res-calm { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-card, .ov-card.out, .live-card, .vs-card, .res-card.milestone { animation: none; }
+  .live-scan { animation: none; }
+  .res-face .portrait-canvas, .res-face.has-face > svg { transition: none; }
+  .live-status, .live-cta { transition: none; }
+  .res-moves, .res-best { transition: none; }
+  .res-moves.veiled, .res-best.veiled { opacity: 1; transform: none; }
+  .live-status { animation: none; }
+  .live-mid, .live-word, .live-line { transition: none; }
+  .vs-bleed .portrait-canvas, .vs-bleed.has-face > svg { transition: none; }
+}

@@ -275,12 +275,12 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
       try { await hit.handler(req, res); }
       catch (e) {
         console.error(`  ${req.method} ${path}: ${e.stack}`);
-        if (!res.headersSent) fail(res, 500, 'internal', 'сервер не справился');
+        if (!res.headersSent) fail(res, 500, 'internal', 'the server could not handle it');
       }
       return;
     }
 
-    if (path.startsWith('/api/')) return fail(res, 404, 'no_route', 'нет такого маршрута');
+    if (path.startsWith('/api/')) return fail(res, 404, 'no_route', 'no such route');
 
     /* Хеш-роуты (A3): любой путь без расширения — это клиент, и он сам
        разберётся по хешу. Отдаём index.html, а не 404. */
@@ -288,7 +288,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     if (wantsPage) return sendIndex(res);
     if (serveStatic(req, res, MOUNTS, path)) return;
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-    res.end('нет такого файла');
+    res.end('no such file');
   });
 
   /**
@@ -300,7 +300,7 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
     const v = buildStamp(ROOT, DEV);
     let html;
     try { html = readFileSync(join(ROOT, 'src/client/index.html'), 'utf8'); }
-    catch { res.writeHead(500); return res.end('нет index.html'); }
+    catch { res.writeHead(500); return res.end('index.html is missing'); }
     const body = stampHtml(html, v);
     res.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
@@ -432,16 +432,16 @@ export function createApp({ dbFile = process.env.AIRENA_DB || join(ROOT, 'data/a
         sub.replayAt = nowMs;
         sub.replayBusy = true;
         const m = db.prepare('SELECT * FROM match WHERE id = ?').get(msg.matchId);
-        if (!m) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'такого боя нет' })); return; }
+        if (!m) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'there is no such fight' })); return; }
         if (m.constants_version !== constantsVersion()) {
           sub.replayBusy = false;
           ws.send(JSON.stringify({ type: 'error', code: 'stale_constants',
-            message: 'этот бой шёл на других константах и точно не повторится' }));
+            message: 'this fight ran on other constants and cannot be replayed' }));
           return;
         }
         const a = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.a_id);
         const b = db.prepare('SELECT * FROM creature WHERE id = ?').get(m.b_id);
-        if (!a || !b) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'участника боя больше нет' })); return; }
+        if (!a || !b) { sub.replayBusy = false; ws.send(JSON.stringify({ type: 'error', message: 'one of the fighters is gone' })); return; }
         live.open({
           /*
            * СТРОКА МАТЧА ЧИТАЕТСЯ ЧЕРЕЗ МОСТ ИМЁН СТОРОН.
@@ -568,7 +568,7 @@ function makeCatalog() {
     if (refreshing) return refreshing;
     refreshing = buildCatalog()
       .then((c) => { snapshot = { ...c, at: Date.now() }; return c; })
-      .catch((e) => { console.error(`  каталог моделей: ${e.message}`); return snapshot; })
+      .catch((e) => { console.error(`  mind catalog: ${e.message}`); return snapshot; })
       .finally(() => { refreshing = null; });
     return refreshing;
   };
@@ -606,7 +606,7 @@ export async function verifyEmbedToken(token) {
     /* Отказ пишется в лог с причиной, а игроку уходит одна строка без деталей:
        по разнице между «подпись не сошлась» и «токен для другой игры» подбор
        становится дешевле, а починку это всё равно делаем мы, а не он. */
-    if (!claim) console.error(`  личность отклонена: ${REFUSED[why.code] || why.code || 'без причины'}`);
+    if (!claim) console.error(`  identity refused: ${REFUSED[why.code] || why.code || 'no reason given'}`);
     return claim;
   }
 
@@ -623,7 +623,7 @@ export async function verifyEmbedToken(token) {
 function listen(server, port, attemptsLeft = 12) {
   server.once('error', (err) => {
     if (err.code === 'EADDRINUSE' && attemptsLeft > 0) {
-      console.log(`  ${port} занят, пробую ${port + 1}`);
+      console.log(`  ${port} is busy, trying ${port + 1}`);
       listen(server, port + 1, attemptsLeft - 1);
       return;
     }
@@ -651,32 +651,32 @@ function listen(server, port, attemptsLeft = 12) {
 function refuseToStartWithoutIdentity() {
   if (DEV) { announceMode(); return; }
   if (identityReady()) {
-    console.error(`  личность: подпись платформы, ключи ${JWKS_URL}`);
-    console.error(`  игра: ${[OUR_SLUG && `slug ${OUR_SLUG}`, OUR_PROJECT && `project ${OUR_PROJECT}`].filter(Boolean).join(', ')}`);
+    console.error(`  identity: platform signature, keys ${JWKS_URL}`);
+    console.error(`  game: ${[OUR_SLUG && `slug ${OUR_SLUG}`, OUR_PROJECT && `project ${OUR_PROJECT}`].filter(Boolean).join(', ')}`);
     /* Ключи читаются на старте, а не при первом игроке: иначе первая же
        попытка войти платит за поход в сеть, а падение JWKS обнаруживается
        не в логе запуска, а на игроке. */
     warmKeys().then((n) => {
-      if (n) console.error(`  ключей платформы прочитано: ${n}`);
-      else console.error('  ВНИМАНИЕ: ключи платформы не прочитаны — вход не сработает, пока она не ответит');
+      if (n) console.error(`  platform keys read: ${n}`);
+      else console.error('  WARNING: platform keys were not read — sign-in will not work until it answers');
     });
     return;
   }
   if (process.env.AIRENA_ALLOW_NO_IDENTITY === '1') {
-    console.error('\n  ВНИМАНИЕ: личность игроков не проверяется (AIRENA_ALLOW_NO_IDENTITY=1).');
-    console.error('  Аккаунт завести нельзя, генерация недоступна. Только для стенда.\n');
+    console.error('\n  WARNING: player identity is not verified (AIRENA_ALLOW_NO_IDENTITY=1).');
+    console.error('  No account can be created and generation is unavailable. Test stand only.\n');
     return;
   }
-  console.error('\n  Не поднимаюсь: не знаю, какая игра на платформе — моя.\n');
-  console.error('  Подпись токена я проверить умею, но подписи мало: токен выписан для');
-  console.error('  ОДНОЙ игры, и без сверки я приму токен любой чужой игры платформы.');
-  console.error('  Тогда её игрок заводит аккаунт здесь, и это не ошибка входа, а чужой');
-  console.error('  вход, выглядящий как свой.\n');
-  console.error('  Что делать:');
-  console.error('    AIRENA_GENEX_SLUG=<slug>           — наша игра на платформе (npx genex list)');
-  console.error('    AIRENA_GENEX_PROJECT=<id>          — или её идентификатор');
-  console.error('    AIRENA_DEV=1 …                     — дев-режим, токен принимается как base64url');
-  console.error('    AIRENA_ALLOW_NO_IDENTITY=1 …       — поднять всё равно (стенд без генерации)\n');
+  console.error('\n  Refusing to start: I do not know which game on the platform is mine.\n');
+  console.error('  I can verify the signature, but a signature is not enough: a pass is issued');
+  console.error('  for ONE game, and without that check I would accept a pass from any other');
+  console.error('  game on the platform. Its player would then open an account here — not a');
+  console.error('  sign-in error, but a foreign sign-in that looks like ours.\n');
+  console.error('  What to do:');
+  console.error('    AIRENA_GENEX_SLUG=<slug>           — our game on the platform (npx genex list)');
+  console.error('    AIRENA_GENEX_PROJECT=<id>          — or its identifier');
+  console.error('    AIRENA_DEV=1 …                     — dev mode, the pass is read as base64url');
+  console.error('    AIRENA_ALLOW_NO_IDENTITY=1 …       — start anyway (stand without generation)\n');
   process.exit(78);
 }
 
@@ -692,11 +692,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   app.server.once('listening', () => {
     const { port } = app.server.address();
     const cat = app.catalog.current();
-    console.log(`\n  airena   http://localhost:${port}${DEV ? '   (дев-режим)' : ''}`);
-    console.log(`  константы ${constantsVersion()}`);
-    console.log(`  каталог  ${cat.bundles.filter((b) => b.tier === 'free').length} бесплатных, ${cat.bundles.filter((b) => b.tier === 'paid').length} платных связок`);
+    console.log(`\n  airena   http://localhost:${port}${DEV ? '   (dev mode)' : ''}`);
+    console.log(`  constants ${constantsVersion()}`);
+    console.log(`  catalog   ${cat.bundles.filter((b) => b.tier === 'free').length} free, ${cat.bundles.filter((b) => b.tier === 'paid').length} paid bundles`);
     const n = app.db.prepare(`SELECT count(*) AS n FROM creature WHERE state='active'`).get().n;
-    console.log(`  существ  ${n}${n ? '' : '  — пусто, запусти: node tools/seed.mjs'}\n`);
+    console.log(`  creatures ${n}${n ? '' : '  — empty, run: node tools/seed.mjs'}\n`);
   });
   listen(app.server, PORT);
 }

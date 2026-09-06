@@ -180,6 +180,38 @@ const TOP_DEFAULT = 10;
 export const TOP_MAX = 200;
 
 /**
+ * WHERE ONE CREATURE STANDS — one number, one query.
+ *
+ * `ladderView` answers this too, but it also reads the top ten, the prize
+ * board, the window around you and two counts: four extra queries for a chip
+ * in the corner of the screen that says `#782`. `/api/session` is polled every
+ * twenty seconds by every open tab, so that cost is paid over and over.
+ *
+ * THE ORDER HERE IS THE ORDER THERE, and it has to be copied exactly, not
+ * approximately: `rating DESC, fights DESC, id ASC`. The first version of the
+ * ladder's own rank ordered by rating and id alone, and on equal ratings the
+ * table and the player's own row disagreed — the same creature was seventh in
+ * the list and "eighth of 26" in its own line. One screen, two answers to
+ * "where am I", which is the only question the ladder exists to answer.
+ *
+ * Returns null for a creature that does not exist.
+ */
+export function rankOf(db, creatureId, season = null) {
+  if (!db || !creatureId) return null;
+  const c = db.prepare('SELECT id, rating, fights, season FROM creature WHERE id = ?').get(creatureId);
+  if (!c) return null;
+  const s = season ?? c.season;
+  const better = db.prepare(`
+    SELECT count(*) AS n FROM creature
+    WHERE state = 'active' AND season = ?
+      AND (rating > ?
+        OR (rating = ? AND fights > ?)
+        OR (rating = ? AND fights = ? AND id < ?))
+  `).get(s, c.rating, c.rating, c.fights, c.rating, c.fights, c.id).n;
+  return better + 1;
+}
+
+/**
  * Таблица строится ОТ ИГРОКА (§10.4): топ-10, окно вокруг своей строки,
  * процентиль. Аркадный столбик на тысячу строк запрещён как форма.
  */

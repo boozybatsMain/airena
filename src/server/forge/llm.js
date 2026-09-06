@@ -107,12 +107,12 @@ export async function callModel({
       ? sub.callRemoteSubscription({ modelId, messages, effort, signal, ...worker })
       : sub.callSubscription({ modelId, messages, effort, signal });
   }
-  if (!apiKey) throw new LlmError('no_key', 'OPENROUTER_API_KEY не задан');
+  if (!apiKey) throw new LlmError('no_key', 'OPENROUTER_API_KEY is not set');
   if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
-    throw new LlmError('bad_call', 'maxTokens обязателен и вычисляется из бюджета, а не выбирается');
+    throw new LlmError('bad_call', 'maxTokens is required and is derived from the allowance, not chosen');
   }
   if (!Number.isFinite(thinkBudget) || thinkBudget < 0) {
-    throw new LlmError('bad_call', 'thinkBudget обязателен и задаётся явно для каждой связки');
+    throw new LlmError('bad_call', 'thinkBudget is required and is set explicitly for every bundle');
   }
 
   const body = {
@@ -154,8 +154,8 @@ export async function callModel({
     clearTimeout(timer);
     const wall = Date.now() - started >= wallMs - 50;
     throw new LlmError(wall ? 'wall' : 'network', wall
-      ? `модель не ответила за ${Math.round(wallMs / 1000)} с`
-      : `сеть: ${e.message}`, { elapsedMs: Date.now() - started });
+      ? `the mind did not answer within ${Math.round(wallMs / 1000)} s`
+      : `network: ${e.message}`, { elapsedMs: Date.now() - started });
   }
   clearTimeout(timer);
 
@@ -283,7 +283,7 @@ export async function callWithRepair({
      * а «ты не уместился» — то есть просьбу быть короче.
      */
     if (!error && r.finishReason === 'length') {
-      reject({ code: 'truncated', message: `ответ оборван на нашем потолке в ${maxTokens} токенов, а не дописан` });
+      reject({ code: 'truncated', message: `the answer was cut off at our ceiling of ${maxTokens} tokens instead of being finished` });
       tries.push({ attempt: i, thinkBudget: budget, ok: false, error: 'truncated', costUsd: r.costUsd, elapsedMs: r.elapsedMs, chars: r.text.length });
       if (onAttempt) onAttempt(tries[tries.length - 1]);
       budget = budget > RETRY_THINK_BUDGET ? RETRY_THINK_BUDGET : 0;
@@ -311,7 +311,7 @@ export async function callWithRepair({
    * Без этого нельзя ни доказать «ошибки не по нашей вине», ни починить те,
    * что по нашей.
    */
-  throw new LlmError('rejected', 'модель не вернула годного ответа', {
+  throw new LlmError('rejected', 'the mind returned nothing usable', {
     tries, costUsd: spent, reject: lastReject, cause: lastError ?? null,
   });
 }
@@ -331,6 +331,6 @@ export function extractJson(text) {
   const raw = m ? m[1] : text;
   const start = raw.indexOf('{');
   const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) throw new LlmError('bad_json', 'в ответе нет объекта JSON');
+  if (start < 0 || end <= start) throw new LlmError('bad_json', 'the answer holds no JSON object');
   return JSON.parse(raw.slice(start, end + 1));
 }

@@ -79,7 +79,7 @@ export class Jobs {
       const ids = stuck.map((j) => j.id);
       this.db.prepare(
         `UPDATE job SET state = 'failed', error_code = 'server_restarted',
-                error_msg = 'сервер перезапустился во время генерации', updated_at = ?
+                error_msg = 'The server restarted while your creature was being made.', updated_at = ?
          WHERE id IN (${ids.map(() => '?').join(',')})`,
       ).run(Date.now(), ...ids);
       /*
@@ -122,7 +122,7 @@ export class Jobs {
     const id = `j_${randomUUID().slice(0, 12)}`;
     const now = Date.now();
     this.db.prepare(`INSERT INTO job (id, account_id, kind, state, stage, progress, creature_id,
-        payload_json, created_at, updated_at) VALUES (?,?,?,'queued','в очереди',0,?,?,?,?)`)
+        payload_json, created_at, updated_at) VALUES (?,?,?,'queued','in the queue',0,?,?,?,?)`)
       .run(id, accountId, kind, creatureId, JSON.stringify({ ...payload, bundle: bundle.bundle }), now, now);
     this.queue.push({ id, bundle });
     return this.db.prepare('SELECT * FROM job WHERE id = ?').get(id);
@@ -160,7 +160,17 @@ export class Jobs {
          * Возврат условный (`AND free_creature_used = 1`) и по владельцу
          * задания — чужого права он не трогает.
          */
-        this.update(item.id, { state: 'failed', error_code: 'internal', error_msg: String(e.message).slice(0, 200) });
+        /*
+         * `error_msg` IS PLAYER COPY: the birth screen prints it as the reason
+         * the creature did not take shape, in a card of whole sentences. A
+         * thrown exception's `message` — `Cannot read properties of undefined`,
+         * a stack frame, an SQL fragment — is not a sentence anyone should
+         * read there, and it is not even true from the player's side: what
+         * happened is that something broke on ours. The exception itself stays
+         * useful, so it goes to the operator's log instead of to the card.
+         */
+        console.warn(`  job ${item.id} threw: ${String(e?.stack || e?.message || e).slice(0, 400)}`);
+        this.update(item.id, { state: 'failed', error_code: 'internal', error_msg: 'Something broke on our side.' });
         try {
           const row = this.db.prepare('SELECT account_id, kind FROM job WHERE id = ?').get(item.id);
           if (row && row.kind !== 'refactor' && row.account_id) {
@@ -202,7 +212,7 @@ export class Jobs {
     const ids = stale.map((j) => j.id);
     this.db.prepare(
       `UPDATE job SET state = 'failed', error_code = 'server_restarted',
-              error_msg = 'сервер перезапустился во время генерации', updated_at = ?
+              error_msg = 'The server restarted while your creature was being made.', updated_at = ?
        WHERE id IN (${ids.map(() => '?').join(',')})`,
     ).run(now, ...ids);
     const back = this.db.prepare(
@@ -275,7 +285,7 @@ export class Jobs {
     this.update(id, { cost_usd: out.costUsd || 0, attempts: (row.attempts || 0) + 1 });
 
     if (!out.ok) {
-      this.update(id, { state: 'failed', error_code: out.code, error_msg: out.message, progress: 1, stage: 'не получилось' });
+      this.update(id, { state: 'failed', error_code: out.code, error_msg: out.message, progress: 1, stage: 'it did not work out' });
       /* Право на бесплатное существо возвращается: E5 говорит, что за
          неудавшуюся генерацию игрок не платит, а единственная валюта, которой
          он тут платит, — это его единственная попытка. */
@@ -303,8 +313,11 @@ export class Jobs {
         kitActive: true,
         season: this.ctx.kv.get('season', { n: 1 }).n,
       });
+      /* Ability icons are drawn after the creature exists, never in its way:
+         the import is dynamic so this file does not depend on the module. */
+      import('./forge/icons.js').then((m) => m.ensureIcons?.(this.db, c.id)).catch(() => {});
       /* Флаг уже поставлен атомарно на приёме запроса — см. api.js. */
-      this.update(id, { state: 'done', creature_id: c.id, progress: 1, stage: 'готово' });
+      this.update(id, { state: 'done', creature_id: c.id, progress: 1, stage: 'ready' });
       trackEvent(this.db, {
         name: 'create_done', accountId: row.account_id,
         props: { jobId: id, ms: Date.now() - started, attempts: 1, fallback: out.note?.length ? 1 : 0 },
@@ -322,7 +335,7 @@ export class Jobs {
    */
   async finishRefactor(row, out, id) {
     const c = this.db.prepare('SELECT * FROM creature WHERE id = ?').get(row.creature_id);
-    if (!c) { this.update(id, { state: 'failed', error_code: 'no_creature', error_msg: 'существо исчезло' }); return; }
+    if (!c) { this.update(id, { state: 'failed', error_code: 'no_creature', error_msg: 'The creature is gone.' }); return; }
     this.update(id, { stage: STAGE_RU.duel, progress: 0.95 });
 
     const score = await this.ctx.duel(out.brainSource, c.brain_source, null,
@@ -333,8 +346,8 @@ export class Jobs {
                      VALUES (?,?,?,?,?,?,?,?)`).run(
       `a_${randomUUID().slice(0, 12)}`, c.id, Date.now(), 'refactor',
       better
-        ? `Новый мозг выиграл ${score.candidate} из ${score.rounds} у прежнего — заменён.`
-        : `Новый мозг выиграл ${score.candidate} из ${score.rounds} у прежнего — прежний оставлен.`,
+        ? `The new mind won ${score.candidate} of ${score.rounds} against the old one — replaced.`
+        : `The new mind won ${score.candidate} of ${score.rounds} against the old one — the old one was kept.`,
       score.incumbent, score.candidate, better ? 1 : 0,
     );
 
@@ -346,26 +359,30 @@ export class Jobs {
     }
     this.update(id, {
       state: 'done', creature_id: c.id, progress: 1,
-      stage: better ? 'мозг заменён' : 'прежний мозг оказался лучше',
+      stage: better ? 'the mind was replaced' : 'the previous mind held up better',
     });
     trackEvent(this.db, { name: 'refactor_done', accountId: row.account_id, props: { creatureId: c.id, better: better ? 1 : 0 } });
   }
 }
 
-/** Что показывает экран ожидания. Спиннер запрещён (§10.3) — стадии настоящие. */
+/**
+ * What the birth screen shows. No spinner (§10.3) — the stages are real.
+ *
+ * The export keeps its historical name; the values are English (docs/REDESIGN.md §9).
+ */
 export const STAGE_RU = {
-  parse: 'читаю описание',
-  brain: 'модель пишет мозг',
-  brain_retry: 'первая попытка не удалась, пробую ещё',
-  /* Самая длинная стадия: тело рисуется дольше мозга в разы. */
-  body: 'дорисовываю тело',
-  /* Без этой строки экран ожидания на второй попытке тела показывал бы
-     `body_retry` латиницей: `stage` падает на `STAGE_RU[s] || s`. */
-  body_retry: 'тело не вышло с первого раза, рисую другой моделью',
-  validate: 'проверяю мозг двумя пробными боями',
-  duel: 'свожу новый мозг со старым, 200 боёв',
-  card: 'записываю, как оно собирается драться',
-  done: 'готово',
+  parse: 'reading the description',
+  brain: 'writing its mind',
+  brain_retry: 'the first attempt failed, trying again',
+  /* The longest stage by far: the body takes several times as long as the mind. */
+  body: 'drawing the body',
+  /* Without this line the birth screen would print the raw code `body_retry`
+     on a second attempt: `stage` falls back to `STAGE_RU[s] || s`. */
+  body_retry: 'the body did not come out the first time, drawing with another mind',
+  validate: 'two trial fights',
+  duel: 'sparring the new mind against the old, 200 fights',
+  card: 'writing how it fights',
+  done: 'ready',
 };
 
 /** Набор существа как он лежит в базе — для рефактора (F3). */

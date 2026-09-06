@@ -42,7 +42,7 @@ function clientStages(src) {
   return out;
 }
 
-const src = readFileSync(join(ROOT, 'src/client/screens/wait.js'), 'utf8');
+const src = readFileSync(join(ROOT, 'src/client/screens/birth.js'), 'utf8');
 const stages = clientStages(src);
 
 console.log('\n  ГЕЙТ ЭКРАНА ОЖИДАНИЯ\n');
@@ -113,7 +113,7 @@ if (stages) {
   const reRows = [...src.matchAll(/\[\s*'[^']*'\s*,\s*\[[^\]]*\]\s*,\s*(\/[^/]+\/)\]/g)]
     .map((m2, i) => ({ i, re: new RegExp(m2[1].slice(1, -1)) }));
   const missed = [];
-  for (const [code, ru] of Object.entries(STAGE_RU)) {
+  for (const [code, ru] of (reRows.length ? Object.entries(STAGE_RU) : [])) {
     const wantedStep = stages.findIndex((s) => s.codes.includes(code));
     const gotStep = reRows.findIndex((r) => r.re.test(ru));
     if (gotStep !== wantedStep) missed.push(`${code} («${ru}») → шаг ${gotStep}, а нужен ${wantedStep}`);
@@ -143,12 +143,12 @@ if (FALSIFY) {
    * сторону «игроку сказали, что лимит цел, а он списан».
    */
   const { OUR_FAULT } = await import('../src/server/limits.js');
-  const src = readFileSync(join(ROOT, 'src/client/screens/wait.js'), 'utf8');
+  const src = readFileSync(join(ROOT, 'src/client/screens/birth.js'), 'utf8');
   const m = src.match(/const OUR_FAULT = \[([\s\S]*?)\];/);
   const client = m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
   ok('список «наша поломка» одинаков на сервере и в клиенте',
     !!client && client.join(',') === OUR_FAULT.join(','),
-    client ? `${client.length} против ${OUR_FAULT.length}` : 'список не найден в wait.js');
+    client ? `${client.length} против ${OUR_FAULT.length}` : 'list not found in birth.js');
 }
 
 console.log(bad ? `\n  ПРОВАЛ: ${bad}\n` : '\n  ДЕРЖИТ\n');

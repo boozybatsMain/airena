@@ -56,7 +56,7 @@ export async function call(path, { method = 'GET', body = null, signal = null } 
        поедет вовсе. Главный путь всё равно заголовок — D22. */
     res = await fetch(base() + path, { method, headers, signal, body: body ? JSON.stringify(body) : null, credentials: 'include' });
   } catch (e) {
-    throw new ApiError(0, 'offline', 'Сервер не отвечает. Бои идут на нём, так что ничего не потеряно.');
+    throw new ApiError(0, 'offline', 'The server is not answering. The fights run on it, so nothing is lost.');
   }
   /* Сервер отдаёт свежий токен на первом же ответе — гость заводится молча. */
   const fresh = res.headers.get('x-airena-session');
@@ -67,7 +67,7 @@ export async function call(path, { method = 'GET', body = null, signal = null } 
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
 
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error || 'http', data?.message || `Ошибка ${res.status}`, data || {});
+    throw new ApiError(res.status, data?.error || 'http', data?.message || `Error ${res.status}`, data || {});
   }
   return data;
 }

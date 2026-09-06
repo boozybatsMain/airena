@@ -78,7 +78,8 @@
 import * as THREE from 'three';
 import * as TSL from 'three/tsl';
 import {
-  TIME, clamp01, col, easeOutBack, markGlow, mulberry, pooled, rnd, seedOf, setFade, shared, withFade,
+  TIME, clamp01, col, easeOutBack, markGlow, mulberry, pooled, rnd, seedOf, setFade, shared,
+  sideRole, sideWash, withFade,
 } from './core.js';
 import * as kit from './kit.js';
 
@@ -92,12 +93,35 @@ export const READY = true;
 
 /* ── цвета сверх трёх ступеней палитры (решение 7: нейтральные разрешены) ── */
 
-/** Щель трещины: глубокий сине-зелёный, почти чёрный. */
-const GAP = vec3(0.03, 0.16, 0.20);
+/*
+ * ── ГРАДУИРОВКА МОРОЗА ПОД МИР (ARENA-AAA §2, приёмка 06.09) ─────────────
+ *
+ * Судья 06.09 назвал лёд ТРЕТЬИМ АКЦЕНТОМ, и замер у него точный:
+ * `live-visitor-m.png` (355,380) — #5C9592, насыщенность 32 % при L* 58, то
+ * есть сине-зелёная масса темнее и насыщеннее обоих колец бойцов; а на
+ * `live-result-loss-w.png` купол лёг серо-зелёной дымкой поверх умирающего
+ * бойца на том самом кадре, где нужен ОДИН предмет. ARENA-BRIEF §5 держит в
+ * мире ровно два насыщенных цвета: коралл на баннере и синий своей стороны.
+ * Бирюзы среди них нет.
+ *
+ * Лечится это в двух местах, и оба здесь ни при чём по отдельности:
+ *   · ступени палитры (#7fe3e0 → #83D0E1, #1f8f9d → #4A7686) градуируются
+ *     централизованно в `vfx.js` (`gradeStop`): оттенок тянется к
+ *     санкционированному синему 216°, цветность прижимается к C* ≤ 32;
+ *   · СВОИ цвета этого файла — ниже, тем же правилом и в тех же единицах.
+ * Мороз остаётся морозом (оттенок 196…205°, то есть холодная синь), но
+ * перестаёт быть бирюзой — цветом, которого в этом мире нет.
+ */
+
+/** Щель трещины: глубокая холодная синь, почти чёрная. */
+/* Было `(0.03, 0.16, 0.20)` — на экране #306F7C при насыщенности 61 %:
+   самая насыщенная бирюза во всём слое, и она лежит на полу тонкой линией,
+   где её видно лучше всего. Стало #4B616B (C* 10, насыщенность 30 %). */
+const GAP = vec3(0.07, 0.12, 0.15);
 /** Морозный пар: светлый, чуть холодный — на белом полу он тает в фон сам. */
-const MIST = new THREE.Color(0.84, 0.93, 0.95);
+const MIST_SRC = new THREE.Color(0.77, 0.84, 0.88);   /* #E4ECF1, L* 92.9 ≤ копинг */
 /** Плотная вуаль ПЕРЕД кристаллами: холоднее, чтобы не выбеливать их. */
-const MIST2 = new THREE.Color(0.58, 0.8, 0.85);
+const MIST2_SRC = new THREE.Color(0.58, 0.76, 0.85);   /* #C8E2ED, h 198: синь, не бирюза */
 /**
  * Туча в устье зоны — ХОЛОДНЫЙ СУМРАК, а не белила.
  *
@@ -108,9 +132,101 @@ const MIST2 = new THREE.Color(0.58, 0.8, 0.85);
  * не пересветом, её ступени сдвинуты в тень: тёмная — вдвое темнее `MIST2`,
  * светлая — сам `MIST2`, до белого дело не доходит вовсе.
  */
-const CLOUD = new THREE.Color(0.24, 0.34, 0.39);
+const CLOUD_SRC = new THREE.Color(0.24, 0.32, 0.39);   /* #869AA8, h 205 */
 /** Вторая ступень тучи. Светлее первой ровно настолько, чтобы клуб «дышал». */
-const CLOUD2 = new THREE.Color(0.38, 0.50, 0.55);
+const CLOUD2_SRC = new THREE.Color(0.38, 0.48, 0.55);   /* #A6B8C4, h 204 */
+
+/*
+ * ── МАССА МОРОЗА ЖИВЁТ В МИРЕ, ФОРМА МОРОЗА ОСТАЁТСЯ ЛЬДОМ ────────────────
+ *
+ * Приговор судьи 06.09, дословно и с прибором: «семейство мороза кладёт
+ * ЕДИНСТВЕННУЮ холодную массу в тёплом мире прямо поверх одного из бойцов».
+ * Замер по `live-fighting.png`: купол 2 060 px на x[584-769] y[405-504],
+ * медиана b* −3.3 при L* 78.6, площадь рядом b* +9.5 — 12.8 пункта поперёк
+ * оси, которую `environment.js` держит своей дисциплиной. Со шлейфом холодная
+ * масса доходит до 7 220 px и накрывает верхнюю половину противника: «силуэт
+ * читается сквозь холодное стекло ровно там, где глаз разделяет двоих».
+ * Приёмочное правило: масса эффекта площадью больше 1 000 px не имеет права
+ * сидеть ниже b* 0 — холодным в этом мире бывает только знак стороны.
+ *
+ * ЧТО ИМЕННО ПРИВОДИТСЯ К МИРУ, А ЧТО НЕТ. Мороз состоит из ДВУХ разных
+ * вещей, и путать их нельзя:
+ *   · МАССА — пар, вуаль, туча, оболочка купола. Она большая, полупрозрачная
+ *     и лежит поверх бойцов; ей и адресовано правило. Она уходит на ось мира
+ *     (`sideWash`: b* ≥ 0, C* ≤ 12) и НАКЛОНЯЕТСЯ К СТОРОНЕ КАСТЕРА — своя
+ *     остаётся нейтрально-холодной, чужая теплеет. Это и есть требование
+ *     ARENA-AAA §1 «тинты эффектов, производные от стороны», выполненное в
+ *     тех единицах, в которых мир его терпит.
+ *   · ФОРМА — кристаллы, копьё, осколки, кант купола, трещины, иней. Она
+ *     маленькая, линейная, и именно она говорит «это лёд». Её палитра
+ *     (`P`, градуированная в `vfx.js`) НЕ ТРОГАЕТСЯ: увести и её значило бы
+ *     получить серый эффект без стихии — цена, которой судья не просил.
+ *
+ * ЧЕСТНАЯ ЦЕНА ПРАВИЛА. Пол по b* НЕ БЕСПЛАТЕН, и вот его счёт: почти вся
+ * цветность мороза лежала в минус-b*, поэтому после подъёма до нуля масса
+ * садится на C* 0.2…4.4 — это бледно-серая взвесь, а не голубая. Холод
+ * теперь несут ТРИ вещи, и ни одна из них не масса: форма (кристаллы, копья,
+ * иней), тонкие холодные линии (`GAP` в трещинах) и КОНТРАСТ — серое пятно
+ * на поле с b* +8 глаз читает холодным само по себе. Если приёмка решит, что
+ * мороза стало мало, крутить надо `MASS_C` и пол по b* здесь, а не палитру:
+ * палитра стоит по смыслу стихии, эти два числа — по правилу мира.
+ *
+ * Цвета массы пересчитываются на роль («своя» / «чужая»), а не на слот:
+ * `applySides` меняет слот между матчами, роль — нет. Пересчёт кэшируется,
+ * рабочие копии обновляются в начале каждой формы (`massSet`), а формы с
+ * отложенной эмиссией (купол сыплет пар всю свою жизнь) держат ССЫЛКУ НА
+ * НАБОР, а не на рабочую копию: следующий каст другой стороны не имеет права
+ * перекрасить чужой пар на лету.
+ */
+/*
+ * Доля пути к оттенку стороны у массы.
+ *
+ * 0.45, А НЕ 0.7, И ЭТО ЗАМЕР. Пол по b* делает основную работу сам: у
+ * морозной массы почти вся цветность лежит в МИНУС b*, и после подъёма до
+ * нуля от неё остаётся один a*. При 0.7 этот остаток тоже съедался — туча
+ * выходила C* 0.2, то есть ровно серой, и разница между своей и чужой
+ * пропадала вместе с морозом. При 0.45 (и с зажимом громкости ПЕРЕД
+ * поворотом — см. `worldTone`) замер такой: своя туча a* −1.4, чужая +1.7;
+ * своя вуаль −4.4, чужая −0.9; своя оболочка купола −3.3, чужая +0.2. Обе
+ * стороны стоят на b* 0, то есть внутри правила, но своя холоднее чужой на
+ * всех трёх ступенях, и это видно, когда два купола стоят рядом.
+ */
+const MASS_K = 0.45;
+/** Потолок цветности массы: площадь мира держит C* 8-11. */
+const MASS_C = 12;
+const MASSES = new Map();
+
+/** Рабочие копии — то, что читают места эмиссии. Обновляет `massSet`. */
+const MIST = MIST_SRC.clone();
+const MIST2 = MIST2_SRC.clone();
+const CLOUD = CLOUD_SRC.clone();
+const CLOUD2 = CLOUD2_SRC.clone();
+/** Тело пара. Было `P[1]` — самая холодная ступень палитры (b* −16). */
+const HAZE = new THREE.Color();
+
+/** Набор массы под сторону каста; заодно обновляет рабочие копии. */
+function massSet(P, who) {
+  /* Ключ — РОЛЬ, а не слот: `applySides` меняет, какой слот «свой», между
+     матчами, и кэш по слоту отдал бы прошлому бою чужой набор. */
+  const key = sideRole(who);
+  let m = MASSES.get(key);
+  const w = { k: MASS_K, bFloor: 0, cap: MASS_C };
+  if (!m) {
+    m = {
+      mist: sideWash(MIST_SRC, who, w),
+      mist2: sideWash(MIST2_SRC, who, w),
+      cloud: sideWash(CLOUD_SRC, who, w),
+      cloud2: sideWash(CLOUD2_SRC, who, w),
+      haze: sideWash(P[1], who, w),
+      /* Оболочка купола — самая большая масса семейства: те же единицы. */
+      shell: sideWash(P[2], who, w),
+    };
+    MASSES.set(key, m);
+  }
+  MIST.copy(m.mist); MIST2.copy(m.mist2);
+  CLOUD.copy(m.cloud); CLOUD2.copy(m.cloud2); HAZE.copy(m.haze);
+  return m;
+}
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 /** Атомы, которые доставка кладёт НА КАСТЕРА: их удар не бьёт по его куполу. */
@@ -238,7 +354,29 @@ function geo() {
  * свечение при оседании. Оба — униформы, общие на кольцо ключа.
  */
 function crystalMat(key, P) {
-  return pooled(`ice:${key}`, () => {
+  /*
+   * ── КОЛЬЦО КРИСТАЛЛА ИМЕНУЕТСЯ КРИСТАЛЛОМ (ARENA-AAA, приёмка 06.09) ────
+   *
+   * Ключ шёл `ice:${key}`, где `key` — имя ФОРМЫ («wall», «rain», «lance»,
+   * «dash»…), то есть жил в одном пространстве имён с материалами модуля
+   * (`ice:slab`, `ice:dome`, `ice:lance`, `ice:column`…). Одно имя уже
+   * совпало: луч зовёт `lanceMat` на ствол копья и `crystalMat('lance')` на
+   * поле кристаллов вдоль него — оба получали ключ `ice:lance`, а это
+   * `MeshBasicNodeMaterial` с `userData.u.span` против
+   * `MeshStandardNodeMaterial` с `userData.grow`.
+   *
+   * ЧЕСТНО ПРО ЦЕНУ: сегодня это ещё не падает. Оба вызова стоят подряд и
+   * всегда парой, поэтому кольцо наполняется через один и каждый забирает
+   * СВОЙ материал — совпадение имён держится на чётности, которую ничто не
+   * охраняет. Ровно эта чётность уже ломалась у кинетики (`kin:cone`: луч
+   * берёт оболочку конуса Маха, конус — плиту, порядок кастов в бою не
+   * чередуется) — и там цена оказалась не кадром: модуль бросил, а `play`
+   * уводит пару «стихия:доставка» в карантин ДО КОНЦА СЕССИИ, то есть
+   * доставка перестаёт рисоваться вовсе. Своё пространство имён закрывает
+   * класс ошибки целиком: имя формы больше не может совпасть с именем
+   * материала — ни здесь, ни у той формы, которую напишут завтра.
+   */
+  return pooled(`ice:crystal:${key}`, () => {
     const m = new THREE.MeshStandardNodeMaterial({ metalness: 0.05, roughness: 0.2 });
     const fade = withFade(m);
     const grow = uniform(1);
@@ -466,7 +604,17 @@ function domeMat(P) {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const fade = withFade(m);
     const crack = uniform(0), hitDir = uniform(new THREE.Vector3(0, 1, 0)), hitAge = uniform(1);
-    m.userData.u = { crack, hitDir, hitAge };
+    /*
+     * ОБОЛОЧКА КРАСИТСЯ УНИФОРМАМИ, А НЕ ЗАХВАЧЕННОЙ ПАЛИТРОЙ. Материал в
+     * пуле один на всю сессию (ключ `ice:dome` без палитры), то есть первый
+     * каст решал бы цвет за обе стороны; массу же надо красить по стороне
+     * каста (см. `massSet`). Униформа стоит до первой отрисовки — граф
+     * собирается один раз, пересборки от смены цвета нет.
+     */
+    const cShell = uniform(new THREE.Color(0.2, 0.2, 0.2));
+    const cRim = uniform(new THREE.Color(0.6, 0.6, 0.6));
+    const cHot = uniform(new THREE.Color(1, 1, 1));
+    m.userData.u = { crack, hitDir, hitAge, cShell, cRim, cHot };
 
     const n = normalWorld;
     const fres = oneMinus(tabs(tdot(normalView, positionViewDirection))).pow(2.0).clamp(0, 1);
@@ -483,12 +631,33 @@ function domeMat(P) {
     const dd = tlen(n.sub(hitDir));
     const ring = oneMinus(smoothstep(float(0.0), float(0.14), tabs(dd.sub(hitAge.mul(2.0))))).mul(oneMinus(hitAge));
 
-    const base = mix(mix(col(P[2]), col(P[1]), fres.mul(0.8).add(0.1)), GAP, crackLine.mul(0.85));
-    m.colorNode = mix(base, col(P[0]), vein.mul(0.35).add(ring).clamp(0, 1));
-    m.opacityNode = fres.pow(1.2).mul(0.6).add(0.1)
-      .add(vein.mul(0.28)).add(crackLine.mul(0.65)).add(ring.mul(0.7))
+    const base = mix(mix(cShell, cRim, fres.mul(0.8).add(0.1)), GAP, crackLine.mul(0.85));
+    m.colorNode = mix(base, cHot, vein.mul(0.35).add(ring).clamp(0, 1));
+    /*
+     * ── КУПОЛ БОЛЬШЕ НЕ ВУАЛЬ НАД ЧУЖИМ СИЛУЭТОМ ─────────────────────────
+     *
+     * Судья 06.09: купол «отцентрован на MINE HEDGEHOG, верхняя половина
+     * противника внутри него, и силуэт читается сквозь холодное стекло —
+     * ровно там, где глаз разделяет двоих». Приёмочное правило записано в
+     * тех же единицах: КУПОЛ НЕ ИМЕЕТ ПРАВА ПОДНЯТЬ ПИКСЕЛИ ТЕЛА ПОД СОБОЙ
+     * БОЛЬШЕ ЧЕМ НА 6 L*.
+     *
+     * Тело видно сквозь ПЕРЕДНЮЮ грань, где `fres` (кант) равен нулю, — то
+     * есть закрывают его ровно два слагаемых: ровная заливка и прожилки.
+     * Было 0.10 + 0.28 = до 0.38 непрозрачности. Пересчёт на замеренном
+     * бойце (#1A140E, L* 6.8) под оболочкой L* 47: 0.38 даёт +16.4 L*,
+     * 0.21 → +9.3, 0.15 → +6.6, 0.11 → +4.9. Поэтому 0.05 + 0.10: по всей
+     * передней грани прибавка не больше пяти уровней, силуэт остаётся
+     * силуэтом. Кант (`fres`), трещины и волна удара не тронуты — это
+     * события и форма щита, а не вуаль; трещины к тому же появляются только
+     * после попадания.
+     */
+    m.opacityNode = fres.pow(1.2).mul(0.6).add(0.05)
+      .add(vein.mul(0.10)).add(crackLine.mul(0.65)).add(ring.mul(0.7))
       .mul(fade).clamp(0, 1);
-    return markGlow(m, fres.mul(0.3).add(vein.mul(0.35)).add(ring).mul(fade).clamp(0, 1));
+    /* В свечение уходит кант и волна: помеченная прожилками оболочка на
+       белом полу давала те самые «белые круглые кляксы» (GLOW_TRIM). */
+    return markGlow(m, fres.mul(0.3).add(vein.mul(0.18)).add(ring).mul(fade).clamp(0, 1));
   });
 }
 
@@ -523,6 +692,21 @@ function wallIceMat(P) {
       metalness: 0.02, roughness: 0.42, transparent: true, depthWrite: true,
     });
     const fade = withFade(m);
+    /*
+     * ПЛИТА — ТОЖЕ МАССА, И БОЛЬШАЯ. Она не вуаль, а солид, но правило
+     * приёмки («ни одна масса эффекта площадью больше 1 000 px не сидит ниже
+     * b* 0») знает не про роль предмета, а про площадь, и плита её берёт с
+     * запасом. Поэтому тело красится униформами из того же набора
+     * (`massSet`), что пар и купол: СВЕТЛОТА при этом не меняется ни на
+     * десятую — `worldTone` трогает только пару (a*, b*), — а значит замеры
+     * плотности, которыми плиту доводили до уровня ящика арены (|ΔL| 33.8 →
+     * 90.3), остаются в силе. Холодным на плите остаётся то, что тонкое:
+     * трещины (`GAP`) и кант.
+     */
+    const cBody = uniform(new THREE.Color(0.2, 0.2, 0.2));
+    const cLit = uniform(new THREE.Color(0.6, 0.6, 0.6));
+    const cHot = uniform(new THREE.Color(1, 1, 1));
+    m.userData.u = { cBody, cLit, cHot };
     const h = positionGeometry.y.clamp(0, 1);
     const fres = oneMinus(tabs(tdot(normalView, positionViewDirection))).pow(2.0).clamp(0, 1);
     const veins = mx_fractal_noise_float(positionWorld.mul(1.7), 4, 2.0, 0.5, 1).mul(0.5).add(0.5);
@@ -533,16 +717,16 @@ function wallIceMat(P) {
     /* Тело: глубокая ступень палитры внизу, светлая вверху. Против БЕЛОГО
        пола плотность даёт именно тёмный низ — светлый лёд на светлом полу и
        есть та «клякса», на которую жаловалась приёмка. */
-    const body = mix(col(P[2]), col(P[1]), h.pow(0.85).mul(0.2).add(grain.mul(0.1)).clamp(0, 1));
-    const withRime = mix(body, col(P[0]).mul(0.9), rime.mul(0.16));
+    const body = mix(cBody, cLit, h.pow(0.85).mul(0.2).add(grain.mul(0.1)).clamp(0, 1));
+    const withRime = mix(body, cHot.mul(0.9), rime.mul(0.16));
     const withCracks = mix(withRime, GAP, cracks.mul(0.8));
     /* 0.82 — не вкус, а замер. ВЕРХНЯЯ грань освещена в лоб: без множителя
        она светила 181.7 при полу 221.7, то есть плита сверху была бледнее
        бежевого ящика арены (153) — ровно «клякса», которую увидела приёмка.
        Множитель садит её к уровню ящика; ниже опускать нельзя — тёмно-синяя
        плита начинает читаться пустотой, а не льдом. */
-    m.colorNode = mix(withCracks, col(P[0]), fres.mul(0.22)).mul(0.82);
-    m.emissiveNode = col(P[0]).mul(fres.pow(1.8).mul(0.35).mul(fade));
+    m.colorNode = mix(withCracks, cHot, fres.mul(0.22)).mul(0.82);
+    m.emissiveNode = cHot.mul(fres.pow(1.8).mul(0.35).mul(fade));
     /* Плита ПЛОТНАЯ: сквозь неё видно ровно настолько, чтобы читался лёд, а
        не матовый камень. Каждая сотая прозрачности подмешивает БЕЛЫЙ ПОЛ
        (221.7) и тянет плиту назад в бледность: на 0.86 сверху набегало
@@ -566,7 +750,7 @@ function rimeRingMat(P) {
     const lip = smoothstep(float(0.9), float(0.96), d).mul(oneMinus(smoothstep(float(0.97), float(1.0), d)));
     const n1 = mx_noise_float(vec3(q.mul(6.0), 5.0));
     const crack = oneMinus(smoothstep(float(0.0), float(0.06), tabs(n1))).mul(band);
-    m.colorNode = mix(mix(col(P[1]), vec3(0.94, 0.99, 1.0), grain.mul(0.6)), GAP, crack.mul(0.8)).add(lip.mul(0.3));
+    m.colorNode = mix(mix(col(P[1]), vec3(0.799, 0.836, 0.853), grain.mul(0.6)), GAP, crack.mul(0.8)).add(lip.mul(0.3));
     m.opacityNode = band.mul(grain.mul(0.5).add(0.45)).add(lip.mul(0.6)).mul(fade).clamp(0, 1);
     return markGlow(m, lip.mul(fade).mul(0.8));
   });
@@ -593,7 +777,9 @@ function lanceMat(P) {
     const rime = mx_fractal_noise_float(vec3(uv().x.mul(6.0), along.mul(1.4), 7.0), 3, 2.0, 0.5, 1).mul(0.5).add(0.5);
     const frosted = smoothstep(float(0.5), float(0.7), rime);
     const body = mix(mix(col(P[2]), col(P[1]), core), col(P[0]), hot);
-    m.colorNode = mix(body, vec3(0.95, 0.99, 1.0), frosted.mul(0.45));
+    /* Белила инея опущены с L* 99.3 до L* 93.1: потолок мира — копинг
+       #F4EEE8 (L* 94), и лёд был единственным, что его перебивало. */
+    m.colorNode = mix(body, vec3(0.805, 0.835, 0.850), frosted.mul(0.45));
     /* Ствол тоже гаснет к остриё: сужается он геометрией (`taperTube`), но
        без спада альфы у самой вершины остаётся яркая точка среза. */
     const tip = oneMinus(smoothstep(float(0.78), float(1.0), uv().y));
@@ -677,9 +863,19 @@ function shards(vfx, P, { x, y = 0.4, z, n = 20, radius = 0.3, speed = 4, up = 4
   });
 }
 
-/** Морозный пар: цвет элемента, тающий в светлый. */
-function frostMist(vfx, P, o) {
-  kit.mist(vfx, { colour: P[1], colour2: MIST, life: 1.6, size: 1.1, rise: 0.7, ...o });
+/**
+ * Морозный пар: масса, тающая в светлый.
+ *
+ * `M` — набор массы (`massSet`). Обязателен ВЕЗДЕ, где эмиссия отложена
+ * (ход носителя, хук, тик статуса): рабочие копии `HAZE`/`MIST` держат
+ * ПОСЛЕДНИЙ каст, и без явного набора пар одной стороны докрашивался бы
+ * набором другой, если та успела кастануть первой.
+ */
+function frostMist(vfx, P, o, M = null) {
+  kit.mist(vfx, {
+    colour: M ? M.haze : HAZE, colour2: M ? M.mist : MIST,
+    life: 1.6, size: 1.1, rise: 0.7, ...o,
+  });
 }
 
 /** Светящаяся взвесь: мелкие точки в аддитивный пул. */
@@ -756,7 +952,7 @@ function frostHit(vfx, { x, z, y = 1.0, radius = 2.5, colours, strength = 1, wav
  * оси, потом наклон оси к `(lx, 1, lz)`: наклон читается в мировых осях, и
  * стена у дальнего края честно ложится ОТ кастера.
  */
-function field(vfx, P, items, { key, life, shatterAt = null, sink = 0.7, growEnd = null, rng = Math.random, shardN = 0, mistN = 0, hooks = [], onFrame = null, at = null }) {
+function field(vfx, P, items, { key, life, shatterAt = null, sink = 0.7, growEnd = null, rng = Math.random, shardN = 0, mistN = 0, hooks = [], onFrame = null, at = null, mass = null }) {
   const G = geo().q;
   const buckets = [[], [], []];
   for (const c of items) {
@@ -821,7 +1017,7 @@ function field(vfx, P, items, { key, life, shatterAt = null, sink = 0.7, growEnd
     }
     if (shatterAt != null && !shattered && t >= shatterAt) {
       shattered = true;
-      shatterFx(vfx, P, items, rng, shardN, mistN, T0 + shatterAt);
+      shatterFx(vfx, P, items, rng, shardN, mistN, T0 + shatterAt, mass);
     }
     if (onFrame) onFrame(t);
   });
@@ -829,7 +1025,7 @@ function field(vfx, P, items, { key, life, shatterAt = null, sink = 0.7, growEnd
 }
 
 /** Шаттер поля: осколки из тел кристаллов, пар от оснований, вспышка. */
-function shatterFx(vfx, P, items, rng, shardN, mistN, at = null) {
+function shatterFx(vfx, P, items, rng, shardN, mistN, at = null, M = null) {
   if (!items.length) return;
   let cx = 0, cz = 0;
   for (const c of items) { cx += c.x; cz += c.z; }
@@ -863,7 +1059,7 @@ function shatterFx(vfx, P, items, rng, shardN, mistN, at = null) {
     s.pos(c.x, rnd(0.2, 0.6, rng), c.z);
     s.vel(rnd(-0.6, 0.6, rng), rnd(0.5, 1.2, rng), rnd(-0.6, 0.6, rng));
     s.gravity(0, -0.2, 0);
-    s.color(P[1], MIST);
+    s.color(M ? M.haze : HAZE, M ? M.mist : MIST);
     s.life(born + rng() * 0.1, rnd(1.0, 1.8, rng), rnd(0.7, 1.4, rng), kit.SHAPE.smoke);
     s.ext(rnd(-0.6, 0.6, rng), 1.9, 0, 0.1);
   });
@@ -881,6 +1077,7 @@ function shatterFx(vfx, P, items, rng, shardN, mistN, at = null) {
  * ~1.6 с и ЛОПАЕТСЯ: осколки, пар, кристаллы оседают в пол. След — иней.
  */
 export function cone(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const fp = kit.footprint(e, ctx);
   const range = fp.range, half = fp.half, area = fp.area;
   if (range < 0.5) return false;
@@ -1031,7 +1228,7 @@ export function cone(vfx, e, P, ctx) {
       s.pos(e.x + Math.sin(a) * d, rnd(0.1, 0.5, rng), e.z + Math.cos(a) * d);
       s.vel(dx * 1.4 + rnd(-0.6, 0.6, rng), rnd(0.6, 1.4, rng), dz * 1.4 + rnd(-0.6, 0.6, rng));
       s.gravity(0, -0.25, 0);
-      s.color(P[1], MIST2);
+      s.color(HAZE, MIST2);
       s.life(at + rng() * 0.05, rnd(1.4, 2.4, rng), rnd(0.9, 1.7, rng), kit.SHAPE.smoke);
       s.ext(rnd(-0.6, 0.6, rng), 2.2, 0, 0.1);
     });
@@ -1075,12 +1272,13 @@ export function cone(vfx, e, P, ctx) {
     s.pos(e.x + Math.sin(a) * d, rnd(0.2, 1.2, rng), e.z + Math.cos(a) * d);
     s.vel(Math.sin(a) * rnd(0.6, 1.4, rng), rnd(0.3, 0.9, rng), Math.cos(a) * rnd(0.6, 1.4, rng));
     s.gravity(0, -0.15, 0);
-    s.color(P[1], MIST2);
+    s.color(HAZE, MIST2);
     s.life(veilAt + rng() * 0.15, rnd(1.6, 2.8, rng), rnd(1.0, 1.9, rng), kit.SHAPE.smoke);
     s.ext(rnd(-0.5, 0.5, rng), 2.0, 0, 0.1);
   });
 
   field(vfx, P, items, {
+    mass: mset,
     key: 'wave', life: LIFE, shatterAt: SHATTER, sink: SINK, growEnd: TRAVEL, rng, hooks,
     shardN: kit.countFor(170, area, REF, 700), mistN: kit.countFor(40, area, REF, 160),
   });
@@ -1101,6 +1299,7 @@ export function cone(vfx, e, P, ctx) {
  * горловине висит туча из пара — и сосулька теперь ВЫХОДИТ ИЗ ТЕЛА.
  */
 export function zone(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const fp = kit.footprint(e, ctx);
   const REF = kit.REF_AREA.zone;
   const rng = mulberry(seedOf(e) ^ 0xa1d);
@@ -1261,6 +1460,7 @@ export function zone(vfx, e, P, ctx) {
 
   /* Наросты: рождаются ударом, лопаются в конце зоны. */
   field(vfx, P, items, {
+    mass: mset,
     key: 'rain', life: D + S.sink + 0.2, shatterAt: D + 0.02, sink: S.sink, growEnd: D, rng,
     shardN: kit.countFor(80, area, REF, 400), mistN: kit.countFor(20, area, REF, 100),
   });
@@ -1381,7 +1581,7 @@ export function zone(vfx, e, P, ctx) {
   const per = Math.max(2, kit.countFor(5, area, REF, 40));
   for (let k = 0; k < nb; k++) {
     const at = vfx.now + k * 0.35;
-    frostMist(vfx, P, { x: e.x, y: 0.25, z: e.z, n: per, radius: R * 0.9, at, r: rng, size: 1.0, rise: 0.5 });
+    frostMist(vfx, P, { x: e.x, y: 0.25, z: e.z, n: per, radius: R * 0.9, at, r: rng, size: 1.0, rise: 0.5 }, mset);
     motes(vfx, P, { x: e.x, y: H, z: e.z, n: 3, radius: R * 0.7, at, r: rng, rise: -0.6, life: 0.7, size: 0.16 });
   }
   vfx.flashLight(e.x, 3.5, e.z, P[1], 10, 0.5, R * 3);
@@ -1447,6 +1647,8 @@ function crackDome(vfx, st, x, z, P) {
 }
 
 function domeShatterFx(vfx, st, P) {
+  /* the frost's mass palette follows the side that owns the dome (undeclared before this line: checkscreens caught it) */
+  const mset = massSet(P, st.who);
   /* Случай — от сида купола, а не от `Math.random`: повтор боя обязан дать
      тот же разлёт осколков (A2). */
   const { x, z, R, CY, rng } = st;
@@ -1462,7 +1664,7 @@ function domeShatterFx(vfx, st, P) {
     s.ext(rnd(-9, 9, rng), 0.7, 0, 0.8);
   });
   kit.burst(vfx, { x, y: CY, z, radius: R * 0.45, endRadius: R * 1.35, life: 0.5, mode: 'frost', colours: P, intensity: 0.9, displace: 0.5 });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 22, radius: R * 0.9, size: 1.2, rise: 0.8, r: rng });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 22, radius: R * 0.9, size: 1.2, rise: 0.8, r: rng }, mset);
   /* Иней ложится В МОМЕНТ ШАТТЕРА, то есть уже ПОСЛЕ конца купола: считать
      его выдержку от `duration` было бы ровно тем, что запретил основатель —
      след, переживающий свою форму. Поэтому у него короткий остаток события
@@ -1473,6 +1675,9 @@ function domeShatterFx(vfx, st, P) {
 
 export function self(vfx, e, P, ctx) {
   const who = e.who || 'blue';
+  /* Набор массы держится ССЫЛКОЙ: купол сыплет пар всю свою жизнь, и каст
+     другой стороны не имеет права перекрасить его на лету. */
+  const mset = massSet(P, who);
   const old = DOMES.get(who);
   if (old) { old.alive = false; old.group.visible = false; }
   const rng = mulberry(seedOf(e) ^ 0x5e1);
@@ -1502,6 +1707,8 @@ export function self(vfx, e, P, ctx) {
   const mat = domeMat(P);
   const u = mat.userData.u;
   u.crack.value = 0; u.hitAge.value = 1;
+  /* Цвет оболочки — массы стороны; блик остаётся палитрой (это форма). */
+  u.cShell.value.copy(mset.shell); u.cRim.value.copy(mset.haze); u.cHot.value.copy(P[0]);
   const dome = new THREE.Mesh(geo().dome, mat);
   dome.renderOrder = 4;
   dome.frustumCulled = false;
@@ -1519,7 +1726,7 @@ export function self(vfx, e, P, ctx) {
   DOMES.set(who, st);
 
   kit.burst(vfx, { x: e.x, y: CY, z: e.z, radius: R * 0.3, endRadius: R * 0.95, life: 0.45, mode: 'frost', colours: P, intensity: 0.8, displace: 0.35 });
-  frostMist(vfx, P, { x: e.x, y: 0.2, z: e.z, n: 16, radius: RR, size: 1.0, rise: 0.6, r: rng });
+  frostMist(vfx, P, { x: e.x, y: 0.2, z: e.z, n: 16, radius: RR, size: 1.0, rise: 0.6, r: rng }, mset);
   vfx.flashLight(e.x, CY, e.z, P[1], 14, 0.4, R * 3);
 
   vfx.spawnMesh(group, LIFE + MELT + 0.2, () => {
@@ -1559,7 +1766,7 @@ export function self(vfx, e, P, ctx) {
         s.pos(st.x + Math.cos(a) * RR * 0.7, 0.15, st.z + Math.sin(a) * RR * 0.7);
         s.vel(Math.cos(a) * 0.5, 0.35, Math.sin(a) * 0.5);
         s.gravity(0, -0.1, 0);
-        s.color(P[1], MIST);
+        s.color(mset.haze, mset.mist);
         s.life(now, rnd(1.2, 1.8, rng), rnd(0.7, 1.1, rng), kit.SHAPE.smoke);
         s.ext(rnd(-0.5, 0.5, rng), 1.8, 0, 0.1);
       });
@@ -1582,6 +1789,7 @@ export function self(vfx, e, P, ctx) {
  * и лопается.
  */
 export function beam(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const fp = kit.footprint(e, ctx);
   const len = fp.len;
   if (!(len > 0.3)) return false;
@@ -1678,7 +1886,7 @@ export function beam(vfx, e, P, ctx) {
     const f = (k + 0.5) / B, d = 0.3 + f * (len - 0.6);
     const at = vfx.now + f * TRAVEL;
     const px = e.x0 + dx * d, pz = e.z0 + dz * d;
-    frostMist(vfx, P, { x: px, y: 0.2, z: pz, n: Math.ceil(nMist / B), radius: 0.6, at, r: rng, size: 0.8, rise: 0.9 });
+    frostMist(vfx, P, { x: px, y: 0.2, z: pz, n: Math.ceil(nMist / B), radius: 0.6, at, r: rng, size: 0.8, rise: 0.9 }, mset);
     shards(vfx, P, { x: px, y: 0.2, z: pz, n: Math.ceil(nShard / B), radius: 0.5, speed: 2.5, up: 4.5, life: 0.7, size: 0.15, at, r: rng, dir: [dx, dz] });
   }
 
@@ -1689,16 +1897,17 @@ export function beam(vfx, e, P, ctx) {
       if (e.hit) {
         kit.burst(vfx, { x: e.x1, y: 1.0, z: e.z1, radius: 0.8, endRadius: 2.2, life: 0.6, mode: 'frost', colours: P, intensity: 1.1 });
         shards(vfx, P, { x: e.x1, y: 0.6, z: e.z1, n: 48, radius: 0.6, speed: 6, up: 6, life: 0.9, size: 0.22, r: rng });
-        frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 18, radius: 1.6, r: rng, size: 1.5 });
+        frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 18, radius: 1.6, r: rng, size: 1.5 }, mset);
         kit.decal(vfx, { type: 'frost', x: e.x1, z: e.z1, radius: S.hitRadius * 0.9, tint: P[1], hold: S.decalHold == null ? LIFE - TRAVEL : S.decalHold, fade: S.decalFade });
         frostHit(vfx, { x: e.x1, z: e.z1, radius: S.hitRadius, colours: P, strength: 1.2 });
       } else {
-        frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 8, radius: 0.8, r: rng });
+        frostMist(vfx, P, { x: e.x1, y: 0.3, z: e.z1, n: 8, radius: 0.8, r: rng }, mset);
         vfx.flashLight(e.x1, 1.0, e.z1, P[1], 10, 0.2, 6);
       }
     },
   }];
   field(vfx, P, items, {
+    mass: mset,
     key: 'lance', life: LIFE, shatterAt: SHATTER, sink: SINK, growEnd: TRAVEL, rng, hooks,
     shardN: kit.countFor(150, fp.area, REF, 560), mistN: kit.countFor(30, fp.area, REF, 120),
   });
@@ -1713,6 +1922,7 @@ export function beam(vfx, e, P, ctx) {
  * прибытия — взрыв, куст кристаллов, осколки, след, ударный набор.
  */
 function projectile(vfx, e, P, ctx, arc) {
+  const mset = massSet(P, e.who);
   const fp = kit.footprint(e, ctx);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
      поля, даёт прежний кадр (см. `kit.tune`). */
@@ -1822,7 +2032,7 @@ function projectile(vfx, e, P, ctx, arc) {
       landed = true;
       o.visible = false;
       if (light) light.userData.born = vfx.now - 0.05;
-      landing(vfx, P, { x: x1, z: z1, y: arc ? 0.35 : 1.0, rng, R: R0, at: T0 + travel });
+      landing(vfx, P, { x: x1, z: z1, y: arc ? 0.35 : 1.0, rng, R: R0, at: T0 + travel, who: e.who });
     }
   });
 
@@ -1835,7 +2045,7 @@ function projectile(vfx, e, P, ctx, arc) {
       s.pos(px + rnd(-0.15, 0.15, rng), py + rnd(-0.15, 0.15, rng), pz + rnd(-0.15, 0.15, rng));
       s.vel(rnd(-0.4, 0.4, rng), rnd(0.1, 0.5, rng), rnd(-0.4, 0.4, rng));
       s.gravity(0, -0.3, 0);
-      s.color(P[1], MIST);
+      s.color(HAZE, MIST);
       s.life(at, rnd(0.5, 0.9, rng), rnd(0.35, 0.65, rng), kit.SHAPE.smoke);
       s.ext(rnd(-1, 1, rng), 1.8, 0, 0.1);
     });
@@ -1868,10 +2078,11 @@ const CLUSTER_SHATTER = CLUSTER_LIFE - 0.75;
  * а не пять независимых чисел: иначе взрыв, осколки, пар и иней спорят о том,
  * какого размера был удар. Так же считает `fire.js`.
  */
-function landing(vfx, P, { x, z, y, rng, R, at = null }) {
+function landing(vfx, P, { x, z, y, rng, R, at = null, who = null }) {
+  const mset = massSet(P, who);
   kit.burst(vfx, { x, y: Math.max(0.8, y), z, radius: R * 0.57, endRadius: R * 1.5, life: 0.6, mode: 'frost', colours: P, squash: 0.85, intensity: 1.1 });
   shards(vfx, P, { x, y: 0.4, z, n: 44, radius: R * 0.43, speed: 6, up: 6, life: 0.9, size: 0.22, r: rng, at });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 16, radius: R * 1.07, r: rng, size: 1.4, at });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 16, radius: R * 1.07, r: rng, size: 1.4, at }, mset);
   frostHit(vfx, { x, z, radius: R * 1.43, colours: P, strength: 1.15 });
   const items = [];
   for (let i = 0; i < 11; i++) {
@@ -1882,7 +2093,7 @@ function landing(vfx, P, { x, z, y, rng, R, at = null }) {
       h: 1.2 + rng() * 1.5, w: 0.7 + rng() * 0.6, born: 0.02 + rng() * 0.08,
     });
   }
-  field(vfx, P, items, { key: 'cluster', life: CLUSTER_LIFE, shatterAt: CLUSTER_SHATTER, sink: 0.65, growEnd: 0.1, rng, shardN: 60, mistN: 14, at });
+  field(vfx, P, items, { key: 'cluster', life: CLUSTER_LIFE, shatterAt: CLUSTER_SHATTER, sink: 0.65, growEnd: 0.1, rng, shardN: 60, mistN: 14, at, mass: mset });
 }
 
 export function bolt(vfx, e, P, ctx) { return projectile(vfx, e, P, ctx, false); }
@@ -1897,6 +2108,7 @@ export function lob(vfx, e, P, ctx) { return projectile(vfx, e, P, ctx, true); }
  * атомы класса SELF (щит, лечение) на кастере его купол не бьют.
  */
 export function impact(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const x = e.x, z = e.z;
   const rng = mulberry(seedOf(e) ^ 0x11c);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -1925,7 +2137,7 @@ export function impact(vfx, e, P, ctx) {
   }
   kit.burst(vfx, { x, y: 1.05, z, radius: S.burstR, endRadius: S.burstEnd, life: 0.5, mode: 'frost', colours: P });
   shards(vfx, P, { x, y: 0.9, z, n: 24, speed: 4.5, up: 4, life: 0.75, size: 0.17, r: rng });
-  frostMist(vfx, P, { x, y: 0.3, z, n: 8, radius: 0.8, life: 1.3, size: 0.9, rise: 0.5, r: rng });
+  frostMist(vfx, P, { x, y: 0.3, z, n: 8, radius: 0.8, life: 1.3, size: 0.9, rise: 0.5, r: rng }, mset);
   kit.decal(vfx, { type: 'frost', x, z, radius: S.decalR, tint: P[1], hold: S.decalHold, fade: S.decalFade });
   frostHit(vfx, { x, z, radius: S.hitRadius, colours: P, strength: 0.8 });
   return true;
@@ -1939,6 +2151,7 @@ export function impact(vfx, e, P, ctx) {
  * Выброс при выходе рисуют cone/beam/bolt/lob сами (`kit.muzzle`).
  */
 export function charge(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const who = e.who;
   const rng = mulberry(seedOf(e) ^ 0xc4a);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -1959,7 +2172,7 @@ export function charge(vfx, e, P, ctx) {
     s.pos(e.x + ox, S.y + oy, e.z + oz);
     s.vel(-ox / life, -oy / life, -oz / life);
     s.gravity(0, 0, 0);
-    s.color(P[1], MIST);
+    s.color(HAZE, MIST);
     s.life(born + rng() * secs * 0.3, life, rnd(0.35, 0.7, rng), kit.SHAPE.smoke);
     s.ext(rnd(-1, 1, rng), 0.5, 0, 0.1);
   });
@@ -1993,6 +2206,7 @@ export function charge(vfx, e, P, ctx) {
  */
 
 export function dash(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const seed = seedOf(e);
   const rng = mulberry(seed);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -2032,13 +2246,13 @@ export function dash(vfx, e, P, ctx) {
     });
   }
   const LIFE = T + S.stand + S.sink;
-  field(vfx, P, items, { key: 'dash', life: LIFE, shatterAt: T + S.stand, sink: S.sink, rng, shardN: 12, mistN: 8 });
+  field(vfx, P, items, { key: 'dash', life: LIFE, shatterAt: T + S.stand, sink: S.sink, rng, shardN: 12, mistN: 8, mass: mset });
   /* Пар и след — ПОЛОСОЙ вдоль трассы, а не одним круглым облаком в
      середине: судья не отличил рывок от блинка — «то же пятно льда пиксель
      в пиксель». Круглое облако радиусом в полдлины и есть то пятно. */
   for (let i = 0; i < S.marks; i++) {
     const f = (i + 0.5) / S.marks;
-    frostMist(vfx, P, { x: A[0] + ux * len * f, y: 0.4, z: A[1] + uz * len * f, n: 6, radius: 0.7, at: vfx.now + f * T, r: rng });
+    frostMist(vfx, P, { x: A[0] + ux * len * f, y: 0.4, z: A[1] + uz * len * f, n: 6, radius: 0.7, at: vfx.now + f * T, r: rng }, mset);
     /* Метка рождается на доле `f` пути (`at: f·T`), поэтому её выдержка —
        `LIFE − f·T`: вся полоса гаснет одним фронтом вместе с лентой, а не
        хвостом, где дальняя метка живёт дольше ближней. */
@@ -2046,13 +2260,14 @@ export function dash(vfx, e, P, ctx) {
   }
   if (e.hit) {
     shards(vfx, P, { x: B[0], y: 0.9, z: B[1], n: 22, radius: 0.5, speed: 6, up: 6, life: 0.9, at: vfx.now + T, r: rng });
-    frostMist(vfx, P, { x: B[0], y: 0.9, z: B[1], n: 12, radius: 1.2, at: vfx.now + T, r: rng });
+    frostMist(vfx, P, { x: B[0], y: 0.9, z: B[1], n: 12, radius: 1.2, at: vfx.now + T, r: rng }, mset);
     vfx.flashLight(B[0], 1.0, B[1], P[1], 14, 0.3, 6);
   }
   return true;
 }
 
 export function blink(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const seed = seedOf(e);
   const rng = mulberry(seed);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -2075,7 +2290,7 @@ export function blink(vfx, e, P, ctx) {
        силуэт. */
     kit.burst(vfx, { x, y: 1.0, z, radius: S.burstR, endRadius: S.burstEnd, life: 0.4, mode: 'frost', colours: [P[0], P[1], P[2]], intensity: 1.0, at });
     kit.debris(vfx, { x, y: 0.8, z, n: 18, radius: 0.6, colour: P[1], glowColour: P[0], speed: 6, up: 6, life: 1.0, size: 0.2, at: vfx.now + at, r: rng });
-    frostMist(vfx, P, { x, y: 0.7, z, n: 14, radius: 1.0, at: vfx.now + at, r: rng });
+    frostMist(vfx, P, { x, y: 0.7, z, n: 14, radius: 1.0, at: vfx.now + at, r: rng }, mset);
     kit.decal(vfx, { type: 'frost', x, z, radius: S.decalR, hold: S.decalHold, fade: S.decalFade, tint: P[2], seed: (seed % 9) + 1, at });
   }
   vfx.flashLight(e.x1, 1.0, e.z1, P[0], 16, 0.3, 6);
@@ -2083,6 +2298,7 @@ export function blink(vfx, e, P, ctx) {
 }
 
 export function jump(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const seed = seedOf(e);
   const rng = mulberry(seed);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -2110,7 +2326,7 @@ export function jump(vfx, e, P, ctx) {
   /* Отрыв — иневое кольцо; в воздухе НИЧЕГО; посадка — морозная волна и
      венец кристаллов. */
   kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: S.takeoffR, hold: S.decalHold == null ? dur + S.crownLife : S.decalHold, fade: S.decalFade, tint: P[2], seed: (seed % 9) + 1 });
-  frostMist(vfx, P, { x: e.x, y: 0.3, z: e.z, n: 14, radius: 1.0, r: rng });
+  frostMist(vfx, P, { x: e.x, y: 0.3, z: e.z, n: 14, radius: 1.0, r: rng }, mset);
   /* КОЛЬЦО ИНЕЯ на отрыве: судья увидел «крошечное бесцветное серое пятно
      без всякой морозной приметы» — отрыв обязан быть морозным, иначе он
      неотличим от штатной пыли. */
@@ -2139,7 +2355,7 @@ export function jump(vfx, e, P, ctx) {
         h: 0.5 + rng() * 0.5, w: 0.12 + rng() * 0.1, born: rng() * 0.06, v: i % 3,
       });
     }
-    field(vfx, P, items, { key: 'jump', life: S.crownLife, shatterAt: S.crownLife * 0.5, sink: S.crownLife * 0.5, rng, shardN: 16, mistN: 10 });
+    field(vfx, P, items, { key: 'jump', life: S.crownLife, shatterAt: S.crownLife * 0.5, sink: S.crownLife * 0.5, rng, shardN: 16, mistN: 10, mass: mset });
     kit.decal(vfx, { type: 'frost', x: lx, z: lz, radius: S.landR * hk, hold: S.decalHold == null ? S.crownLife : S.decalHold, fade: S.decalFade, tint: P[2], seed: ((seed + 3) % 9) + 1 });
     vfx.flashLight(lx, 0.8, lz, P[1], 14, 0.3, 7);
     vfx.screen.shake(0.2);
@@ -2148,6 +2364,7 @@ export function jump(vfx, e, P, ctx) {
 }
 
 export function wall(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const seed = seedOf(e);
   const rng = mulberry(seed);
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
@@ -2203,6 +2420,10 @@ export function wall(vfx, e, P, ctx) {
    * должна быть.
    */
   const slab = new THREE.Mesh(geo().box, wallIceMat(P));
+  {
+    const su = slab.material.userData.u;
+    su.cBody.value.copy(mset.shell); su.cLit.value.copy(mset.haze); su.cHot.value.copy(P[0]);
+  }
   slab.position.set(e.x, 0, e.z);
   slab.rotation.y = 0;
   slab.castShadow = true;
@@ -2223,6 +2444,14 @@ export function wall(vfx, e, P, ctx) {
    * не подменяет её.
    */
   const dome = new THREE.Mesh(geo().dome, domeMat(P));
+  /* Оболочка стены берёт материал щита — значит и его цветовые униформы
+     ставятся здесь: иначе она носила бы цвет прошлого купола (или заводскую
+     заглушку, если купола в этом бою ещё не было). */
+  {
+    const du2 = dome.material.userData.u;
+    du2.cShell.value.copy(mset.shell); du2.cRim.value.copy(mset.haze); du2.cHot.value.copy(P[0]);
+    du2.crack.value = 0; du2.hitAge.value = 1;
+  }
   dome.position.set(e.x, 0, e.z);
   /* Третье измерение коробки берётся из записи (`height`), а не повторяется
      здесь числом: полусфера ровно в полвысоты стены — это её оболочка. */
@@ -2250,6 +2479,7 @@ export function wall(vfx, e, P, ctx) {
    * мгновении — с высоты гребня.
    */
   const crest = field(vfx, P, items, {
+    mass: mset,
     key: 'wall',
     life: D,
     shatterAt: D - gOut,
@@ -2261,13 +2491,13 @@ export function wall(vfx, e, P, ctx) {
       at: D - gOut,
       fn: () => {
         shards(vfx, P, { x: e.x, y: S.height, z: e.z, n: 18, radius: W * 0.45, speed: 3.5, up: 4, life: 0.85, size: 0.2, r: rng });
-        frostMist(vfx, P, { x: e.x, y: S.height * 0.8, z: e.z, n: 10, radius: W * 0.45, r: rng, size: 1.0 });
+        frostMist(vfx, P, { x: e.x, y: S.height * 0.8, z: e.z, n: 10, radius: W * 0.45, r: rng, size: 1.0 }, mset);
       },
     }],
   });
   crest.position.y = S.height - 0.06;
   kit.decal(vfx, { type: 'frost', x: e.x, z: e.z, radius: Math.max(W, Dd) * 0.6, hold: S.decalHold == null ? D : S.decalHold, fade: S.decalFade, tint: P[2], seed: (seed % 9) + 1 });
-  frostMist(vfx, P, { x: e.x, y: 0.4, z: e.z, n: 16, radius: W * 0.5, r: rng });
+  frostMist(vfx, P, { x: e.x, y: 0.4, z: e.z, n: 16, radius: W * 0.5, r: rng }, mset);
   return true;
 }
 
@@ -2275,6 +2505,7 @@ export function wall(vfx, e, P, ctx) {
 const ICE_STATUS = new Map();
 
 export function status(vfx, e, P, ctx) {
+  const mset = massSet(P, e.who);
   const who = e.who || 'orange';
   /* ОПИСЬ НАСТРАИВАЕМОГО. Значения — сегодняшние, поэтому запись, не несущая
      поля, даёт прежний кадр (см. `kit.tune`). */
@@ -2341,7 +2572,7 @@ export function status(vfx, e, P, ctx) {
         s.life(vfx.now, 0.5, 0.07 + rng() * 0.05, kit.SHAPE.dot);
         s.ext(0, 0.5, 0, 0.6);
       });
-      frostMist(vfx, P, { x: p.x, y: H * 0.5, z: p.z, n: 3, radius: R, r: rng });
+      frostMist(vfx, P, { x: p.x, y: H * 0.5, z: p.z, n: 3, radius: R, r: rng }, mset);
     }
   });
   return true;

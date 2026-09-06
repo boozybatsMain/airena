@@ -36,11 +36,11 @@ const SECRET = (() => {
   const v = process.env.AIRENA_SECRET;
   if (v && v.length >= 24) return v;
   if (!DEV) {
-    throw new Error('AIRENA_SECRET не задан (нужно ≥24 символов). '
-      + 'Подписывать сессии значением из исходников нельзя: токен станет форгируемым.');
+    throw new Error('AIRENA_SECRET is not set (24 characters or more are needed). '
+      + 'Sessions must not be signed with a value from the sources: they would become forgeable.');
   }
-  if (v) console.warn('  AIRENA_SECRET короче 24 символов — в продакшене это откажет');
-  console.warn('  дев-режим: сессии подписаны значением из исходников, в продакшене так нельзя');
+  if (v) console.warn('  AIRENA_SECRET is shorter than 24 characters — production will refuse it');
+  console.warn('  dev mode: sessions are signed with a value from the sources, never do this in production');
   return 'dev-secret-not-for-production';
 })();
 

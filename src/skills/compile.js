@@ -285,7 +285,7 @@ export function compileKit(kit, { size = KIT_SIZE, fixedCooldown = null } = {}) 
 export function readable(def) {
   const d = DELIVERIES[def.kind];
   const eff = def.effects.map((e) => EFFECTS[e.id]?.ru || e.id).join(' + ');
-  const ch = def.channel ? ` по каналу «${CHANNELS[def.channel]?.ru || def.channel}»` : '';
+  const ch = def.channel ? ` through the ${CHANNELS[def.channel]?.ru || def.channel} channel` : '';
   return `${d?.ru || def.kind}: ${eff}${ch}`;
 }
 

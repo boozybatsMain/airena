@@ -98,29 +98,29 @@ function table(obj) { return Object.assign(Object.create(null), obj); }
  */
 export const DELIVERIES = table({
   beam: {
-    id: 'beam', ru: 'луч', klass: TARGETED, cost: 5,
-    silhouette: 'цилиндр от кастера к точке попадания',
+    id: 'beam', ru: 'Beam', klass: TARGETED, cost: 5,
+    silhouette: 'a cylinder from the caster to the point of impact',
     windup: 0.65, recover: 0.10, range: 24, needsLos: true,
-    doc: 'мгновенно по прямой, останавливается о препятствие',
+    doc: 'instant, along a straight line, stopped by the first obstacle',
   },
   cone: {
-    id: 'cone', ru: 'конус', klass: TARGETED, cost: 4, power: 1.7,
-    silhouette: 'клин конуса от кастера',
+    id: 'cone', ru: 'Fan', klass: TARGETED, cost: 4, power: 1.7,
+    silhouette: 'a cone wedge spreading from the caster',
     windup: 0.28, recover: 0.28, range: 3.4, halfAngle: 0.96, needsLos: true,
     /* Слабость называется в том же `doc`, что и сила: D160 сделал три доставки
        уклоняемыми прыжком, и умолчать об этом на карточке умения значит
        продать игроку конус, не сказав, чем за него платят. */
-    doc: 'вблизи, широко, быстро; идёт по земле — того, кто оторвался от неё, не задевает',
+    doc: 'close, wide and fast; it runs along the ground and misses anyone who has left it',
   },
   bolt: {
-    id: 'bolt', ru: 'снаряд', klass: TARGETED, cost: 4,
-    silhouette: 'спрайт болта, летящий по прямой',
+    id: 'bolt', ru: 'Bolt', klass: TARGETED, cost: 4,
+    silhouette: 'a bolt sprite flying in a straight line',
     windup: 0.34, recover: 0.16, range: 18, speed: 22, needsLos: false,
-    doc: 'летит время, его можно обойти',
+    doc: 'it takes time to arrive and can be side-stepped',
   },
   lob: {
-    id: 'lob', ru: 'навес', klass: TARGETED, cost: 4,
-    silhouette: 'дуга лоба с меткой приземления',
+    id: 'lob', ru: 'Mortar', klass: TARGETED, cost: 4,
+    silhouette: 'a lobbed arc with a landing marker',
     windup: 0.5, recover: 0.2, range: 15, speed: 12, needsLos: false, arc: true,
     /*
      * `splash` — РАДИУС ПОРАЖЕНИЯ В ТОЧКЕ ПРИЗЕМЛЕНИЯ, и до 04.09 у навеса
@@ -171,31 +171,31 @@ export const DELIVERIES = table({
      * 1.8 — середина плоского участка и самая далёкая от зоны его половина.
      */
     splash: 1.8,
-    doc: 'перелетает препятствия и в полёте не задевает никого; бьёт кругом там, где приземлился',
+    doc: 'it flies over obstacles and touches nobody on the way; it strikes in a circle where it lands',
   },
   zone: {
-    id: 'zone', ru: 'зона', klass: WORLD, cost: 5,
-    silhouette: 'диск зоны на полу',
+    id: 'zone', ru: 'Field', klass: WORLD, cost: 5,
+    silhouette: 'a disc of the field lying on the floor',
     windup: 0.45, recover: 0.25, range: 12, radius: 3.0, duration: 3.0, needsLos: false,
-    doc: 'область, которая работает несколько секунд; лежит на полу — оторвавшийся от земли пропустит одно-два срабатывания, но не весь каст',
+    doc: 'an area that keeps working for several seconds; it lies on the floor, so anyone off the ground misses a tick or two but not the whole cast',
   },
   dash: {
-    id: 'dash', ru: 'рывок', klass: TARGETED, cost: 4,
-    silhouette: 'лента рывка за телом',
+    id: 'dash', ru: 'Lunge', klass: TARGETED, cost: 4,
+    silhouette: 'a trail ribbon behind the body',
     windup: 0.18, recover: 0.26, distance: 8.0, needsLos: true,
-    doc: 'кастер едет вперёд и бьёт всех по пути; едет по земле — того, кто оторвался от неё, не задевает',
+    doc: 'the caster charges forward and hits everything on the way; it runs along the ground and misses anyone who has left it',
   },
   blink: {
-    id: 'blink', ru: 'мигание', klass: SELF, cost: 5,
-    silhouette: 'два кольца — откуда и куда',
+    id: 'blink', ru: 'Blink', klass: SELF, cost: 5,
+    silhouette: 'two rings, one where it left and one where it arrived',
     windup: 0.0, recover: 0.18, distance: 7.5, iframes: 0.28, needsLos: false,
-    doc: 'мгновенное перемещение с неуязвимостью',
+    doc: 'instant displacement with a moment of invulnerability',
   },
   self: {
-    id: 'self', ru: 'на себя', klass: SELF, cost: 3,
-    silhouette: 'оболочка вокруг тела',
+    id: 'self', ru: 'Aura', klass: SELF, cost: 3,
+    silhouette: 'a shell around the body',
     windup: 0.30, recover: 0.18, needsLos: false,
-    doc: 'применяется к кастеру',
+    doc: 'applied to the caster',
   },
   /*
    * ПРЫЖОК — ДОСТАВКА, А НЕ ПОДАРОК ВСЕМ. Решение основателя 01.09.
@@ -245,8 +245,8 @@ export const DELIVERIES = table({
    * мигание (5) и зона (5).
    */
   jump: {
-    id: 'jump', ru: 'прыжок', klass: SELF, cost: 5,
-    silhouette: 'дуга прыжка и круг тени под телом',
+    id: 'jump', ru: 'Leap', klass: SELF, cost: 5,
+    silhouette: 'a leap arc and a shadow circle under the body',
     /*
      * ЗАМАХ 0.06, А НЕ 0.10 У ЗАХАРДКОЖЕННОГО ПРЫЖКА, И ЭТО ЗАМЕР.
      *
@@ -285,7 +285,7 @@ export const DELIVERIES = table({
      * видно как решение.
      */
     moveScale: 1, turnScale: 1,
-    doc: 'кастер уходит в воздух почти на секунду — это самое долгое умение в грамматике, и всё это время он не может отдать ни одной команды, а скорость заморожена такой, какой была на отрыве; зато наземные доставки (конус, зона, рывок) проходят под ним',
+    doc: 'the caster goes airborne for almost a second — the longest ability in the grammar, and for all of it no command can be issued while the speed stays frozen at take-off; in exchange the ground deliveries (Fan, Field, Lunge) pass underneath',
   },
 });
 
@@ -312,20 +312,20 @@ export const DELIVERIES = table({
  * 1260 боёв, кулдаун фиксирован. Столбец «лучший» — максимум по доставкам.
  *
  *     атом            лучший   снаряд   зона
- *     урон              100%      97      100
- *     горение            90%      90       82
- *     лечение            72%      57       72
- *     оглушение          65%      65       35
- *     отброс             61%      50       61
- *     немота             61%      26       61
- *     обездвиживание     59%      59       43
- *     щит                52%      52       28
- *     стена              51%      44       51
- *     ослабление         51%      49       51
- *     усиление           49%      43       49
- *     ослепление         45%      29       45
- *     притяжение         39%      29       39
- *     очищение           30%      30       17
+ *     Damage            100%      97      100
+ *     Burn               90%      90       82
+ *     Heal               72%      57       72
+ *     Stun               65%      65       35
+ *     Knockback          61%      50       61
+ *     Silence            61%      26       61
+ *     Root               59%      59       43
+ *     Shield             52%      52       28
+ *     Wall               51%      44       51
+ *     Weaken             51%      49       51
+ *     Boost              49%      43       49
+ *     Blind              45%      29       45
+ *     Pull               39%      29       39
+ *     Cleanse            30%      30       17
  *
  * ЕДИНОЙ ПРИВЯЗКИ НЕТ: набор из двух умений берёт 30.4% через снаряд и 14.9%
  * через зону. Это не шум — это то же самое, что и расхождение атомов: сколько
@@ -372,20 +372,20 @@ export const DELIVERIES = table({
  *   for v in bolt zone; do node tools/kitbalance.mjs --atoms --via=$v; done
  */
 export const EFFECTS = table({
-  damage: { id: 'damage', ru: 'урон', klass: TARGETED, cost: 7, vfx: 'вспышка удара по цели', mag: 26 },
-  burn: { id: 'burn', ru: 'горение', klass: TARGETED, cost: 7, vfx: 'тлеющий шлейф на теле цели', mag: 7.0, duration: 4 },
-  knock: { id: 'knock', ru: 'отброс', klass: TARGETED, cost: 5, vfx: 'волна от точки удара', mag: 2.4 },
-  pull: { id: 'pull', ru: 'притяжение', klass: TARGETED, cost: 3, vfx: 'сходящиеся к кастеру линии', mag: 3.0 },
-  stun: { id: 'stun', ru: 'оглушение', klass: TARGETED, cost: 6, vfx: 'кольцо над головой цели', duration: 0.9 },
-  root: { id: 'root', ru: 'обездвиживание', klass: TARGETED, cost: 5, vfx: 'скобы у ног цели', duration: 1.4 },
-  shield: { id: 'shield', ru: 'щит', klass: SELF, cost: 4, vfx: 'оболочка по силуэту тела', mag: 40, duration: 5 },
-  heal: { id: 'heal', ru: 'лечение', klass: SELF, cost: 6, vfx: 'восходящие искры', mag: 26 },
-  cleanse: { id: 'cleanse', ru: 'очищение', klass: SELF, cost: 3, vfx: 'сброшенная оболочка' },
-  blind: { id: 'blind', ru: 'ослепление', klass: TARGETED, cost: 5, mind: true, vfx: 'помеха на силуэте цели', duration: 2.5 },
-  silence: { id: 'silence', ru: 'немота', klass: TARGETED, cost: 6, mind: true, vfx: 'перечёркнутый знак каста', duration: 2.2 },
-  wall: { id: 'wall', ru: 'стена', klass: WORLD, cost: 5, vfx: 'вырастающая плита', duration: 5, size: [4, 1] },
-  boost: { id: 'boost', ru: 'усиление', klass: SELF, cost: 4, needsChannel: true, vfx: 'подсветка по каналу', mag: 1.35, duration: 5 },
-  weaken: { id: 'weaken', ru: 'ослабление', klass: TARGETED, cost: 4, needsChannel: true, vfx: 'приглушение по каналу', mag: 0.7, duration: 4 },
+  damage: { id: 'damage', ru: 'Damage', klass: TARGETED, cost: 7, vfx: 'a flash of impact on the target', mag: 26 },
+  burn: { id: 'burn', ru: 'Burn', klass: TARGETED, cost: 7, vfx: 'a smouldering trail on the body of the target', mag: 7.0, duration: 4 },
+  knock: { id: 'knock', ru: 'Knockback', klass: TARGETED, cost: 5, vfx: 'a wave from the point of impact', mag: 2.4 },
+  pull: { id: 'pull', ru: 'Pull', klass: TARGETED, cost: 3, vfx: 'lines converging on the caster', mag: 3.0 },
+  stun: { id: 'stun', ru: 'Stun', klass: TARGETED, cost: 6, vfx: 'a ring above the head of the target', duration: 0.9 },
+  root: { id: 'root', ru: 'Root', klass: TARGETED, cost: 5, vfx: 'clamps at the feet of the target', duration: 1.4 },
+  shield: { id: 'shield', ru: 'Shield', klass: SELF, cost: 4, vfx: 'a shell tracing the silhouette of the body', mag: 40, duration: 5 },
+  heal: { id: 'heal', ru: 'Heal', klass: SELF, cost: 6, vfx: 'rising sparks', mag: 26 },
+  cleanse: { id: 'cleanse', ru: 'Cleanse', klass: SELF, cost: 3, vfx: 'a shell shrugged off' },
+  blind: { id: 'blind', ru: 'Blind', klass: TARGETED, cost: 5, mind: true, vfx: 'interference over the silhouette of the target', duration: 2.5 },
+  silence: { id: 'silence', ru: 'Silence', klass: TARGETED, cost: 6, mind: true, vfx: 'a struck-through cast sign', duration: 2.2 },
+  wall: { id: 'wall', ru: 'Wall', klass: WORLD, cost: 5, vfx: 'a slab growing out of the floor', duration: 5, size: [4, 1] },
+  boost: { id: 'boost', ru: 'Boost', klass: SELF, cost: 4, needsChannel: true, vfx: 'a glow along the channel', mag: 1.35, duration: 5 },
+  weaken: { id: 'weaken', ru: 'Weaken', klass: TARGETED, cost: 4, needsChannel: true, vfx: 'a dimming along the channel', mag: 0.7, duration: 4 },
 });
 
 /**
@@ -393,13 +393,13 @@ export const EFFECTS = table({
  * стоит больше канала, который двигает число.
  */
 export const CHANNELS = table({
-  speed: { id: 'speed', ru: 'скорость', cost: 2 },
-  turn: { id: 'turn', ru: 'поворот', cost: 2 },
-  damage: { id: 'damage', ru: 'урон', cost: 3 },
-  armor: { id: 'armor', ru: 'броня', cost: 3 },
-  cooldown: { id: 'cooldown', ru: 'кулдаун', cost: 3 },
-  range: { id: 'range', ru: 'дальность', cost: 2 },
-  vision: { id: 'vision', ru: 'обзор', cost: 4, mind: true },
+  speed: { id: 'speed', ru: 'Speed', cost: 2 },
+  turn: { id: 'turn', ru: 'Turning', cost: 2 },
+  damage: { id: 'damage', ru: 'Damage', cost: 3 },
+  armor: { id: 'armor', ru: 'Armour', cost: 3 },
+  cooldown: { id: 'cooldown', ru: 'Cooldown', cost: 3 },
+  range: { id: 'range', ru: 'Range', cost: 2 },
+  vision: { id: 'vision', ru: 'Vision', cost: 4, mind: true },
 });
 
 /**
@@ -415,17 +415,17 @@ export const CHANNELS = table({
 const ALL_FORMS = Object.keys(DELIVERIES);
 
 export const ELEMENTS = table({
-  kinetic: { id: 'kinetic', ru: 'кинетика', cost: 0, palette: ['#d8e2ea', '#9fb4c4', '#5d7183'], read: 'удар', forms: ALL_FORMS },
-  ember: { id: 'ember', ru: 'жар', cost: 0, palette: ['#ffd9a0', '#ff9a4d', '#c8431c'], read: 'перегрев', forms: ALL_FORMS },
+  kinetic: { id: 'kinetic', ru: 'Kinetic', cost: 0, palette: ['#d8e2ea', '#9fb4c4', '#5d7183'], read: 'a blunt strike', forms: ALL_FORMS },
+  ember: { id: 'ember', ru: 'Ember', cost: 0, palette: ['#ffd9a0', '#ff9a4d', '#c8431c'], read: 'overheating', forms: ALL_FORMS },
   /* Мороз и дуга были двумя оттенками одного голубого: замер по пикселям
      давал между ними разницу меньше порога различимости, и «элемент владеет
      палитрой» (§9.2) превращалось в «элемент владеет подписью». Мороз уведён
      в бирюзу, дуга — в электрический синий. Измеряется в Lab: ни одна из
      десяти пар не должна сходиться ближе ΔE 10, порога, ниже которого цвета
      на движущейся частице уже неразличимы. Проверяет `tools/checkgrammar.mjs`. */
-  frost: { id: 'frost', ru: 'мороз', cost: 0, palette: ['#e8fbff', '#7fe3e0', '#1f8f9d'], read: 'обледенение и хрупкость', forms: ALL_FORMS },
-  arc: { id: 'arc', ru: 'дуга', cost: 0, palette: ['#eef8ff', '#8ecbff', '#0a5cff'], read: 'электричество', forms: ALL_FORMS },
-  void: { id: 'void', ru: 'пустота', cost: 0, palette: ['#e6dcff', '#a98cf0', '#4b2f8c'], read: 'фантастика, но однозначна', forms: ALL_FORMS },
+  frost: { id: 'frost', ru: 'Frost', cost: 0, palette: ['#e8fbff', '#7fe3e0', '#1f8f9d'], read: 'icing and brittleness', forms: ALL_FORMS },
+  arc: { id: 'arc', ru: 'Arc', cost: 0, palette: ['#eef8ff', '#8ecbff', '#0a5cff'], read: 'electricity', forms: ALL_FORMS },
+  void: { id: 'void', ru: 'Void', cost: 0, palette: ['#e6dcff', '#a98cf0', '#4b2f8c'], read: 'unearthly, but unmistakable', forms: ALL_FORMS },
 
   /*
    * ЧЕТЫРЕ НОВЫЕ СТИХИИ (решение основателя 03.09, docs/VFX-PLAN.md §6).
@@ -465,10 +465,10 @@ export const ELEMENTS = table({
    * Палитры проверены формулой ΔE гейта `checkgrammar`: ни одна пара из
    * девяти стихий не сходится ближе 21.7 при пороге 10.
    */
-  gravity: { id: 'gravity', ru: 'гравитация', cost: 0, palette: ['#eef0f4', '#6f7a8c', '#141821'], read: 'тяжесть и притяжение', forms: ['zone', 'self', 'lob'] },
-  time: { id: 'time', ru: 'время', cost: 0, palette: ['#fff4e4', '#d4b48a', '#4a2c10'], read: 'замедление времени', forms: ['zone', 'self', 'blink'], unreleased: true },
-  acid: { id: 'acid', ru: 'кислота', cost: 0, palette: ['#f4ffb0', '#9ee83a', '#3d7a12'], read: 'разъедание', forms: ['cone', 'lob', 'zone', 'bolt'] },
-  radiation: { id: 'radiation', ru: 'радиация', cost: 0, palette: ['#fffbe0', '#ffe14a', '#4b4f18'], read: 'заражение', forms: ['zone', 'lob', 'cone'] },
+  gravity: { id: 'gravity', ru: 'Gravity', cost: 0, palette: ['#eef0f4', '#6f7a8c', '#141821'], read: 'weight and attraction', forms: ['zone', 'self', 'lob'] },
+  time: { id: 'time', ru: 'Time', cost: 0, palette: ['#fff4e4', '#d4b48a', '#4a2c10'], read: 'time slowing down', forms: ['zone', 'self', 'blink'], unreleased: true },
+  acid: { id: 'acid', ru: 'Acid', cost: 0, palette: ['#f4ffb0', '#9ee83a', '#3d7a12'], read: 'corrosion', forms: ['cone', 'lob', 'zone', 'bolt'] },
+  radiation: { id: 'radiation', ru: 'Radiation', cost: 0, palette: ['#fffbe0', '#ffe14a', '#4b4f18'], read: 'contamination', forms: ['zone', 'lob', 'cone'] },
 
   /*
    * ЛАЗЕР — простой красный луч (заказ основателя: «обычный базовый красный
@@ -482,7 +482,7 @@ export const ELEMENTS = table({
    * ΔE 30.4 при пороге 10. Красный жара (`ember` #ff9a4d) держится в 24.6:
    * лазер холоднее и темнее в глубине, огонь теплее и светлее.
    */
-  laser: { id: 'laser', ru: 'лазер', cost: 0, palette: ['#ffdede', '#e63030', '#6e0a12'], read: 'лазерный ожог', forms: ['beam', 'bolt'] },
+  laser: { id: 'laser', ru: 'Laser', cost: 0, palette: ['#ffdede', '#e63030', '#6e0a12'], read: 'a laser burn', forms: ['beam', 'bolt'] },
 });
 
 /**
@@ -674,19 +674,19 @@ export function costOf(skill) {
  */
 export function validateSkill(skill) {
   const bad = [];
-  if (!skill || typeof skill !== 'object') return [{ code: 'shape', ru: 'умение не объект' }];
-  if (!DELIVERIES[skill.delivery]) bad.push({ code: 'delivery', ru: `нет такой доставки: ${skill.delivery}` });
+  if (!skill || typeof skill !== 'object') return [{ code: 'shape', ru: 'the ability is not an object' }];
+  if (!DELIVERIES[skill.delivery]) bad.push({ code: 'delivery', ru: `no such delivery: ${skill.delivery}` });
   const eff = Array.isArray(skill.effects) ? skill.effects : [];
-  if (eff.length < 1 || eff.length > 3) bad.push({ code: 'effects_count', ru: 'эффектов должно быть от 1 до 3' });
-  if (new Set(eff).size !== eff.length) bad.push({ code: 'effects_dup', ru: 'эффекты повторяются' });
-  for (const e of eff) if (!EFFECTS[e]) bad.push({ code: 'effect', ru: `нет такого эффекта: ${e}` });
-  if (skill.element && !ELEMENTS[skill.element]) bad.push({ code: 'element', ru: `нет такого элемента: ${skill.element}` });
+  if (eff.length < 1 || eff.length > 3) bad.push({ code: 'effects_count', ru: 'an ability carries from 1 to 3 effects' });
+  if (new Set(eff).size !== eff.length) bad.push({ code: 'effects_dup', ru: 'the effects repeat' });
+  for (const e of eff) if (!EFFECTS[e]) bad.push({ code: 'effect', ru: `no such effect: ${e}` });
+  if (skill.element && !ELEMENTS[skill.element]) bad.push({ code: 'element', ru: `no such element: ${skill.element}` });
 
   const needsChannel = eff.some((e) => EFFECTS[e]?.needsChannel);
   if (needsChannel && !CHANNELS[skill.channel]) {
-    bad.push({ code: 'channel', ru: '«усиление» и «ослабление» обязаны назвать канал' });
+    bad.push({ code: 'channel', ru: 'Boost and Weaken have to name a channel' });
   }
-  if (!needsChannel && skill.channel) bad.push({ code: 'channel_extra', ru: 'канал задан, но его некому крутить' });
+  if (!needsChannel && skill.channel) bad.push({ code: 'channel_extra', ru: 'a channel is named, but nothing here turns it' });
 
   /*
    * L1 — первое из двух исключений в грамматике (второе — E1 ниже).
@@ -708,7 +708,7 @@ export function validateSkill(skill) {
         /* Имя доставки берётся из таблицы, а не выбирается тернарником: с
            появлением прыжка SELF-класс носят три доставки, и захардкоженная
            развилка на две назвала бы прыжок «на себя». */
-        bad.push({ code: 'L1', ru: `«${EFFECTS[e]?.ru || e}» нельзя доставить: «${DELIVERIES[skill.delivery].ru}» применяется к кастеру` });
+        bad.push({ code: 'L1', ru: `${EFFECTS[e]?.ru || e} cannot be delivered: ${DELIVERIES[skill.delivery].ru} applies to the caster` });
       }
     }
   }
@@ -725,30 +725,30 @@ export function validateSkill(skill) {
   const d0 = DELIVERIES[skill.delivery];
   const el = ELEMENTS[skill.element];
   if (d0 && el && Array.isArray(el.forms) && !el.forms.includes(skill.delivery)) {
-    bad.push({ code: 'E1', ru: `«${el.ru}» не бывает «${d0.ru}»: у этой стихии только ${el.forms.map((f) => DELIVERIES[f]?.ru || f).join(', ')}` });
+    bad.push({ code: 'E1', ru: `${el.ru} does not come as ${d0.ru}: this element only has ${el.forms.map((f) => DELIVERIES[f]?.ru || f).join(', ')}` });
   }
 
   const cost = costOf(skill);
-  if (cost > SKILL_BUDGET) bad.push({ code: 'budget', ru: `умение стоит ${cost} очков из ${SKILL_BUDGET}` });
+  if (cost > SKILL_BUDGET) bad.push({ code: 'budget', ru: `the ability costs ${cost} points out of ${SKILL_BUDGET}` });
   return bad;
 }
 
 export function validateKit(kit, { size = KIT_SIZE } = {}) {
   const bad = [];
-  if (!Array.isArray(kit)) return [{ code: 'shape', ru: 'набор не массив' }];
+  if (!Array.isArray(kit)) return [{ code: 'shape', ru: 'the set of abilities is not an array' }];
   /* `size: null` — только для измерительных инструментов, которые сравнивают
      наборы из одного и двух умений. Бюджет и запрет дублей действуют всегда:
      ослабить их значило бы мерить не ту игру, которая выйдет. */
-  if (size !== null && kit.length !== size) bad.push({ code: 'size', ru: `в наборе ровно ${size} умения, получено ${kit.length}` });
+  if (size !== null && kit.length !== size) bad.push({ code: 'size', ru: `a set holds exactly ${size} abilities, got ${kit.length}` });
   kit.forEach((s, i) => {
     for (const b of validateSkill(s)) bad.push({ ...b, slot: i });
   });
   const total = kit.reduce((s, k) => s + costOf(k), 0);
-  if (total > KIT_BUDGET) bad.push({ code: 'kit_budget', ru: `набор стоит ${total} очков из ${KIT_BUDGET}` });
+  if (total > KIT_BUDGET) bad.push({ code: 'kit_budget', ru: `the set costs ${total} points out of ${KIT_BUDGET}` });
   /* Три одинаковых скилла — это один скилл с тремя кулдаунами. Читаемости
      ноль, а именно она — предмет §8. */
   const sig = kit.map((s) => `${s.delivery}:${(s.effects || []).join('+')}`);
-  if (new Set(sig).size < sig.length) bad.push({ code: 'kit_dup', ru: 'два умения в наборе делают одно и то же' });
+  if (new Set(sig).size < sig.length) bad.push({ code: 'kit_dup', ru: 'two abilities in the set do the very same thing' });
   /*
    * НЕРЕЛИЗНАЯ СТИХИЯ (docs/VFX-PLAN.md §7.5) — правило НАБОРА, и это
    * намеренно. `compileKit` пробрасывает наружу только `size`, `kit_budget` и
@@ -762,27 +762,27 @@ export function validateKit(kit, { size = KIT_SIZE } = {}) {
     /* «не выпущена», а не «ещё не выпущена»: у флага две причины, и вторая —
        не ожидание, а запрет. Время закрыто заказом основателя, и обещать
        игроку в тексте отказа скорую выдачу значит обещать за основателя. */
-    if (el?.unreleased) bad.push({ code: 'element_unreleased', slot: i, ru: `стихия «${el.ru}» не выпущена` });
+    if (el?.unreleased) bad.push({ code: 'element_unreleased', slot: i, ru: `the element ${el.ru} is not released` });
   });
 
   /* L2: набор обязан уметь закончить бой — см. комментарий к DAMAGING. */
   if (size !== null && damagingCount(kit) < MIN_DAMAGING_SKILLS) {
     bad.push({
       code: 'L2',
-      ru: 'в наборе нет ни одного умения, снимающего здоровье — таким набором бой не закончить',
+      ru: 'nothing in the set takes health away — a fight cannot be finished with it',
     });
   }
   return bad;
 }
 
-/** Читаемое имя скилла на русском — для карточки и для «не вошло». */
+/** A readable name for one ability — for the card and for the "did not fit" list. */
 export function describe(skill) {
   const d = DELIVERIES[skill.delivery];
   const eff = (skill.effects || []).map((e) => EFFECTS[e]?.ru || e).join(' + ');
   const el = ELEMENTS[skill.element];
   const ch = skill.channel ? CHANNELS[skill.channel] : null;
   const bits = [`${d?.ru || skill.delivery}: ${eff}`];
-  if (ch) bits.push(`по каналу «${ch.ru}»`);
+  if (ch) bits.push(`through the ${ch.ru} channel`);
   if (el) bits.push(`· ${el.ru}`);
   return bits.join(' ');
 }
@@ -834,24 +834,24 @@ export function readingCount() {
 export function selfTest() {
   const errs = [];
   for (const [id, a] of Object.entries(EFFECTS)) {
-    if (!a.vfx) errs.push(`эффект ${id} без VFX-сигнатуры`);
-    if (!a.klass) errs.push(`эффект ${id} без класса`);
-    if (!Number.isFinite(a.cost)) errs.push(`эффект ${id} без цены`);
+    if (!a.vfx) errs.push(`effect ${id} has no VFX signature`);
+    if (!a.klass) errs.push(`effect ${id} has no class`);
+    if (!Number.isFinite(a.cost)) errs.push(`effect ${id} has no cost`);
   }
   for (const [id, d] of Object.entries(DELIVERIES)) {
-    if (!d.silhouette) errs.push(`доставка ${id} без силуэта`);
-    if (!Number.isFinite(d.cost)) errs.push(`доставка ${id} без цены`);
+    if (!d.silhouette) errs.push(`delivery ${id} has no silhouette`);
+    if (!Number.isFinite(d.cost)) errs.push(`delivery ${id} has no cost`);
   }
   for (const [id, e] of Object.entries(ELEMENTS)) {
-    if (!Array.isArray(e.palette) || e.palette.length !== 3) errs.push(`элемент ${id} без палитры из трёх цветов`);
-    if (e.cost !== 0) errs.push(`элемент ${id} стоит очков — элемент только визуал`);
+    if (!Array.isArray(e.palette) || e.palette.length !== 3) errs.push(`element ${id} has no palette of three colours`);
+    if (e.cost !== 0) errs.push(`element ${id} costs points — an element is visual only`);
   }
-  if (Object.keys(DELIVERIES).length !== 9) errs.push('доставок должно быть 9');
-  if (Object.keys(EFFECTS).length !== 14) errs.push('эффектов должно быть 14');
-  if (Object.keys(CHANNELS).length !== 7) errs.push('каналов должно быть 7');
-  if (Object.keys(releasedElements()).length !== 9) errs.push('выпущенных элементов должно быть 9');
+  if (Object.keys(DELIVERIES).length !== 9) errs.push('there must be 9 deliveries');
+  if (Object.keys(EFFECTS).length !== 14) errs.push('there must be 14 effects');
+  if (Object.keys(CHANNELS).length !== 7) errs.push('there must be 7 channels');
+  if (Object.keys(releasedElements()).length !== 9) errs.push('there must be 9 released elements');
   for (const [id, e] of Object.entries(ELEMENTS)) {
-    if (e.forms && e.forms.some((f) => !DELIVERIES[f])) errs.push(`элемент ${id}: forms называет несуществующую доставку`);
+    if (e.forms && e.forms.some((f) => !DELIVERIES[f])) errs.push(`element ${id}: forms names a delivery that does not exist`);
   }
   return errs;
 }

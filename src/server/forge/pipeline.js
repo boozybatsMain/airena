@@ -32,7 +32,7 @@ import { forgeBody } from './body.js';
 import { viability } from './viability.js';
 import { BUILD_AXES, BUILD_BUDGET, normalizeBuild } from '../../core/config.js';
 import { constantsVersion } from '../../core/version.js';
-import { EFFECTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
+import { EFFECTS, ELEMENTS, KIT_BUDGET, KIT_SIZE, costOf, describe, grammar, validateKit, validateSkill } from '../../skills/registry.js';
 import { compileKit } from '../../skills/compile.js';
 import { canonicalIr, vfxGrammar } from '../../vfx/ir.js';
 
@@ -114,8 +114,8 @@ const sparringFor = () => SPARRING.blue;
  */
 export const KIT_PRESETS = Object.assign(Object.create(null), {
   keeper: {
-    ru: 'Держит дистанцию',
-    why: 'бьёт издалека и уходит, когда подошли',
+    ru: 'Keeps its distance',
+    why: 'strikes from far off and pulls away when it is closed on',
     /*
      * У пресета есть ТЕЛО, и это не украшение.
      *
@@ -141,8 +141,8 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
     ],
   },
   breaker: {
-    ru: 'Ломает вблизи',
-    why: 'входит в упор и не даёт разорвать дистанцию',
+    ru: 'Breaks in close',
+    why: 'closes to point blank and does not let the distance open again',
     kit: [
       /* Обездвиживание висит на КОНУСЕ, а не на рывке, и это разница между
          «не даёт уйти» и «не даёт жить». На рывке оно достаётся бесплатно:
@@ -163,8 +163,8 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
     ],
   },
   saboteur: {
-    ru: 'Портит чувства',
-    why: 'бьёт по тому, чем противник принимает решения',
+    ru: 'Ruins the senses',
+    why: 'strikes at whatever the opponent makes its decisions with',
     /*
      * ХРЕБЕТ, а потом уже характер.
      *
@@ -197,57 +197,61 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
   },
 });
 
-const PARSE_SYSTEM = `Ты переводишь описание существа, написанное игроком, в закрытую грамматику.
-Отвечай ТОЛЬКО объектом JSON, без пояснений.
+const PARSE_SYSTEM = `You translate a creature description written by a player into a closed grammar.
+Answer with a JSON object ONLY, no explanations.
 
-Поля:
-  name       — короткое имя существа, 2-22 символа, заглавными. Русский или латиница.
-  build      — ТЕЛО ЭТОГО СУЩЕСТВА: шесть своих чисел. Ни от кого не наследуется,
-               видов и заготовок нет. Каждое число стоит очки, у набора есть
-               потолок — таблица с ценами ниже. Считай, прежде чем писать.
+Fields:
+  name       — the creature's short name, 2-22 characters, uppercase. English only.
+  build      — THIS CREATURE'S BODY: six numbers of its own. Nothing is inherited,
+               there are no species and no presets. Every number costs points and
+               the set has a ceiling — the cost table is below. Add it up before
+               you write.
                {hp, maxSpeed, accel, turnRate, radius, jumpHeight}
-  colour     — свой цвет существа, "#rrggbb". Он ничего не делает в бою, только
-               вид. Не назван — подберём сами.
-  kit        — РОВНО 3 скилла. Каждый: {delivery, effects:[1..3], channel?, element}.
-  unfit      — массив строк: понятия из описания игрока, которых в грамматике НЕТ.
-               Пиши их словами игрока. Пустой массив, если вошло всё.
-  why        — одно предложение по-русски: почему такой кит подходит описанию.
+  colour     — the creature's own colour, "#rrggbb". It does nothing in a fight,
+               only looks. Not named — we pick one ourselves.
+  kit        — EXACTLY 3 abilities. Each: {delivery, effects:[1..3], channel?, element}.
+  unfit      — array of strings: ideas from the player's description that are NOT
+               in the grammar. Write them in the player's own words. Empty array
+               if everything fitted.
+  why        — one sentence in English: why this set of abilities suits the description.
 
-ЖЁСТКИЕ ПРАВИЛА:
-  • Бери значения только из перечисленных ниже. Придуманное значение — брак.
-  • Доставки, которые применяются К КАСТЕРУ — "self", "blink", "jump", — допускают
-    только эффекты shield, heal, cleanse, boost, wall. Ударить ими нельзя.
-  • Эффекты boost и weaken ОБЯЗАНЫ назвать channel.
-  • СТИХИЯ ОПИСАНИЯ БЕРЁТСЯ БОЛЬШИНСТВОМ, а не одним умением из трёх. Если из
-    описания однозначно следует одна стихия — «дерётся холодом», «раскалённая
-    туша», «плюётся едкой дрянью», — её обязаны нести НЕ МЕНЬШЕ ДВУХ умений.
-    Существо, которому холодным достался только щит, а бьёт оно серой
-    кинетикой, — это другое существо, и игрок увидит именно это: на экране
-    стихия и есть единственное, чем умение опознаётся. Третье умение свободно:
-    им и добирается то, чего стихии не хватает.
-  • Элемент — только визуал. Он не даёт никакой механики — и именно поэтому
-    выбирать его надо ПО ОПИСАНИЮ, а не по силе: это единственная ось, на
-    которой видно, кого игрок просил. Холод и лёд — frost, огонь и жар —
-    ember, электричество и молния — arc, кислота и разъедание — acid,
-    заражение и распад — radiation, тяжесть, вес и притяжение — gravity,
-    замедление и остановка времени — time, лазерный луч — laser, бездна,
-    провал и антиматерия — void, чистый удар, камень и металл — kinetic.
-    Ничего из перечисленного в описании нет — бери тот, что ближе по образу,
-    и не бери kinetic по умолчанию: серый удар подходит существу, которое
-    БЬЁТ, а не любому.
-  • Стихия и эффект обязаны говорить одно и то же. Кислота и огонь жгут
-    (burn), мороз и время замедляют (weaken/speed) и держат (root),
-    гравитация тянет (pull) и давит (weaken), радиация жжёт и слепит
-    (burn, blind), пустота отнимает голос (silence), кинетика отбрасывает
-    (knock) и оглушает (stun), лазер и дуга бьют насквозь (damage).
-    Это не запрет — это то, по чему зритель узнаёт умение, не читая карточку.
-  • НИКОГДА не подменяй просьбу игрока похожей. Не влезло — пиши в unfit.
-    Молчаливая подмена хуже отказа: существо выглядит нормальным и делает не то.
-  • НАБОРОМ ДОЛЖНО БЫТЬ МОЖНО ЗАКОНЧИТЬ БОЙ. Ослепление, немота, притяжение и
-    щит здоровье не снимают. Минимум одно умение с эффектом "damage" или
-    "burn" обязательно, два — лучше: существо с одним источником урона
-    проигрывает почти всё. Характер это не отменяет — его несёт то же умение:
-    "навес: урон + ослепление" и слепит, и бьёт.`;
+HARD RULES:
+  • Take values only from the lists below. An invented value is a defect.
+  • Deliveries that apply TO THE CASTER — "self", "blink", "jump" — allow only
+    the effects shield, heal, cleanse, boost, wall. They cannot strike with them.
+  • The effects boost and weaken MUST name a channel.
+  • THE ELEMENT OF THE DESCRIPTION IS CARRIED BY THE MAJORITY, not by one ability
+    out of three. If one element clearly follows from the description — "fights
+    with cold", "a red-hot carcass", "spits caustic filth" — then NO FEWER THAN
+    TWO abilities must carry it. A creature whose only cold thing is its shield
+    while it strikes with grey kinetics is a different creature, and that is
+    exactly what the player sees: on screen the element is the only thing an
+    ability is recognised by. The third ability is free: it makes up whatever
+    the element cannot.
+  • The element is looks only. It grants no mechanics at all — and that is
+    precisely why it must be chosen BY THE DESCRIPTION and not by strength: it is
+    the one axis on which who the player asked for is visible. Cold and ice are
+    frost, fire and heat are ember, electricity and lightning are arc, acid and
+    corrosion are acid, infection and decay are radiation, weight, mass and
+    attraction are gravity, slowing and stopped time are time, a laser beam is
+    laser, the abyss, the fall and antimatter are void, a plain blow, stone and
+    metal are kinetic. If none of that is in the description, take the one
+    closest to the image, and do not take kinetic by default: a grey blow suits
+    a creature that STRIKES, not just any creature.
+  • The element and the effect must say the same thing. Acid and fire burn
+    (burn), frost and time slow (weaken/speed) and hold (root), gravity pulls
+    (pull) and presses (weaken), radiation burns and blinds (burn, blind), the
+    void takes the voice away (silence), kinetics knocks back (knock) and stuns
+    (stun), laser and arc strike straight through (damage). This is not a ban —
+    it is what a spectator recognises an ability by without reading a card.
+  • NEVER substitute something similar for what the player asked for. It did not
+    fit — write it into unfit. A silent substitution is worse than a refusal: the
+    creature looks fine and does the wrong thing.
+  • THE ABILITIES MUST BE ABLE TO END A FIGHT. Blind, silence, pull and shield take no
+    health off. At least one ability with the effect "damage" or "burn" is
+    required, two is better: a creature with a single source of damage loses
+    almost everything. That does not cancel character — the same ability carries
+    it: "mortar: damage + blind" both blinds and hits.`;
 
 /**
  * ЗАМЕР ПРАВИЛА «БОЛЬШИНСТВОМ» (04.09). Описание «Стужа: выстуживает воздух,
@@ -271,51 +275,56 @@ export function parseUserPrompt(g) {
   const list = (o) => Object.values(o).map((x) => `${x.id} (${x.ru}, ${x.cost})`).join(', ');
   const axes = Object.entries(BUILD_AXES).map(([name, a]) => {
     const ru = {
-      hp: 'здоровье', maxSpeed: 'предельная скорость, м/с', accel: 'ускорение',
-      turnRate: 'скорость разворота', radius: 'радиус тела, м',
-      jumpHeight: 'высота прыжка, м',
+      hp: 'health', maxSpeed: 'top speed, m/s', accel: 'acceleration',
+      turnRate: 'turn rate', radius: 'body radius, m',
+      jumpHeight: 'jump height, m',
     }[name];
     const dir = a.inverse
-      ? `дороже МЕНЬШЕЕ: цена = (${a.max} − значение) / ${a.per}`
-      : `цена = (значение − ${a.min}) / ${a.per}`;
-    return `\n  ${name} (${ru}) от ${a.min} до ${a.max}, по умолчанию ${a.def}; ${dir}`;
+      ? `the SMALLER costs more: cost = (${a.max} − value) / ${a.per}`
+      : `cost = (value − ${a.min}) / ${a.per}`;
+    return `\n  ${name} (${ru}) from ${a.min} to ${a.max}, default ${a.def}; ${dir}`;
   }).join('');
 
-  return `ТЕЛО СУЩЕСТВА. Шесть чисел, и все они твои: заготовок нет, наследовать
-не от кого. У каждого числа есть цена в очках, у тела — потолок ${BUILD_BUDGET}.
+  return `THE CREATURE'S BODY. Six numbers, and every one of them is yours: there
+are no presets and nobody to inherit from. Every number costs points,
+and the body has a ceiling of ${BUILD_BUDGET}.
 ${axes}
 
-Радиус — это и есть размер существа: мелкая цель дороже, потому что по ней
-труднее попасть. Крупное тело дешевле, но в него легче попасть, и медленным
-или живучим оно становится не само — за это платят отдельными осями.
+The radius IS the creature's size: a small target costs more because it is
+harder to hit. A large body is cheaper, but it is easier to hit, and it does not
+become slow or tough by itself — those are paid for on their own axes.
 
-Урон тело не даёт вообще. Урон живёт в умениях. Крупное существо не бьёт
-сильнее — оно просто больше.
+The body grants no damage at all. Damage lives in the abilities. A large
+creature does not hit harder — it is only bigger.
 
-Посчитай сумму ПЕРЕД тем, как писать. Перебор не отклоняется, но сжимается
-пропорционально, и существо получится не тем, что ты задумал.
+Add the sum up BEFORE you write. Going over is not rejected, it is squeezed
+proportionally, and the creature comes out as something other than you intended.
 
-НЕДОБОР ТОЖЕ ОШИБКА: неистраченные очки просто пропадают, и существо выходит
-слабее без всякой причины. Трать потолок целиком — если тело выходит дешёвым,
-значит где-то можно взять больше, не отнимая у замысла.
+SPENDING TOO LITTLE IS A MISTAKE TOO: unspent points simply vanish, and the
+creature comes out weaker for no reason at all. Spend the whole ceiling — if the
+body comes out cheap, then somewhere you can take more without taking anything
+away from the idea.
 
-Каждый атом стоит очки. Цена скилла = доставка + сумма эффектов
-+ канал, плюс надбавка за комбинацию: два эффекта +2, три эффекта +5.
+Every atom costs points. The cost of an ability = delivery + the sum of its
+effects + channel, plus a surcharge for the combination: two effects +2, three
+effects +5.
 
-Умение НЕ решает, когда ему сработать: его всегда вызывает мозг. Если по
-описанию существо должно отвечать на удар — это задача мозга, а не набора.
+An ability does NOT decide when to fire: the mind always calls it. If the
+description says the creature should answer a blow, that is the mind's job and
+not the kit's.
 
-ДОСТАВКИ: ${Object.values(g.deliveries).map((x) => `\n  ${x.id} (${x.ru}, ${x.cost}) — ${x.doc}`).join('')}
-ЭФФЕКТЫ: ${list(g.effects)}
-КАНАЛЫ: ${list(g.channels)}
-ЭЛЕМЕНТЫ (цена 0, только вид). Выбирается НЕ наугад: у каждого есть то, чем он
-читается на экране, и оно обязано следовать из описания игрока. После тире —
-что зритель видит; если после имени стоит «только доставки», других форм у этой
-стихии не бывает вовсе, и умение с чужой формой будет браком.${Object.values(g.elements).map((x) => `\n  ${x.id} (${x.ru}${Array.isArray(x.forms) && x.forms.length < Object.keys(g.deliveries).length ? `; только доставки ${x.forms.join('/')}` : ''})${x.read ? ` — ${x.read}` : ''}`).join('')}
+DELIVERIES: ${Object.values(g.deliveries).map((x) => `\n  ${x.id} (${x.ru}, ${x.cost}) — ${x.doc}`).join('')}
+EFFECTS: ${list(g.effects)}
+CHANNELS: ${list(g.channels)}
+ELEMENTS (cost 0, looks only). Not chosen at random: each has the thing it is
+read by on screen, and that has to follow from the player's description. After
+the dash — what the spectator sees; if the name is followed by "deliveries only",
+that element has no other forms at all, and an ability with a foreign form is a
+defect.${Object.values(g.elements).map((x) => `\n  ${x.id} (${x.ru}${Array.isArray(x.forms) && x.forms.length < Object.keys(g.deliveries).length ? `; deliveries only ${x.forms.join('/')}` : ''})${x.read ? ` — ${x.read}` : ''}`).join('')}
 
-Потолок одного скилла — ${g.budgets.skill} очков, всего набора — ${g.budgets.kit}.
-Посчитай КАЖДЫЙ скилл перед тем, как его записать. Скилл дороже потолка —
-это брак, и его придётся заменить на стартовый.`;
+The ceiling for one ability is ${g.budgets.skill} points, for the whole set
+${g.budgets.kit}. Count EVERY ability before you write it down. An ability over
+the ceiling is a defect and will have to be replaced with a starter one.`;
 }
 
 /**
@@ -372,7 +381,7 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
     return {
       name: fallbackName(prompt),
       kit: start.kit,
-      unfit: [{ phrase: prompt.slice(0, 80), why: 'разбор описания не удался, поставлен стартовый набор' }],
+      unfit: [{ phrase: prompt.slice(0, 80), why: 'reading the description failed, a starter set of abilities was used' }],
       why: start.why,
       costUsd: e.costUsd || 0,
       degraded: true,
@@ -384,7 +393,7 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   catch {
     return {
       name: fallbackName(prompt), kit: start.kit,
-      unfit: [{ phrase: prompt.slice(0, 80), why: 'модель вернула не-JSON, поставлен стартовый набор' }],
+      unfit: [{ phrase: prompt.slice(0, 80), why: 'the mind answered in a shape the arena could not read, so a starter set of abilities was used' }],
       why: start.why, costUsd: raw.costUsd, degraded: true,
     };
   }
@@ -426,9 +435,44 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   const heavy = built.build.hp >= BUILD_AXES.hp.def && built.build.maxSpeed <= BUILD_AXES.maxSpeed.def;
   const fallback = heavy ? KIT_PRESETS.breaker : KIT_PRESETS.keeper;
 
+  /* One seed for the whole kit, drawn from the sentence the player wrote, and
+     shifted by the slot so three unnamed elements do not all land on the same
+     letter of the alphabet. */
+  const elementSeed = hashOf(prompt);
   let kit = Array.isArray(obj.kit) ? obj.kit.slice(0, KIT_SIZE) : [];
-  kit = kit.map((s) => normalizeSkill(s));
+  kit = kit.map((s, i) => normalizeSkill(s, elementSeed + i));
   const repaired = [];
+
+  /*
+   * AN ELEMENT THAT DOES NOT EXIST, OR IS NOT OUT YET, IS A COLOUR — NOT A
+   * BROKEN ABILITY.
+   *
+   * `validateSkill` does not see this: `time` is in the table, so a time zone
+   * passes every per-slot rule. `validateKit` does see it, but only at the
+   * very end, where the single remedy left is replacing the WHOLE set with a
+   * starter preset. A creature written around slowing time therefore lost all
+   * three of its abilities — shapes, effects and channels the mind had read
+   * correctly out of the player's sentence — over a palette that is worth zero
+   * points. The set that came back in their place was the preset, and that is
+   * where two of the three names on the reveal came from.
+   *
+   * Repaired here, one slot at a time, in the same breath as E1 below: the
+   * ability keeps everything the player asked for and changes the one axis
+   * that costs nothing.
+   */
+  for (let i = 0; i < kit.length; i++) {
+    if (!kit[i]) continue;
+    const was = ELEMENTS[kit[i].element];
+    if (was && !was.unreleased) continue;
+    const picked = elementFor(kit[i], elementSeed + i);
+    if (picked === kit[i].element) continue;
+    kit[i] = { ...kit[i], element: picked };
+    repaired.push({
+      slot: i,
+      why: `${was ? `${was.ru} is not in the arena yet` : 'there is no such element'}`
+        + ` — the element was replaced with ${elementWord(picked)}`,
+    });
+  }
 
   for (let i = 0; i < KIT_SIZE; i++) {
     const bad = kit[i] ? validateSkill(kit[i]) : [{ code: 'shape' }];
@@ -440,12 +484,22 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
      * своё умение вместо своего с другим цветом (docs/VFX-PLAN.md §7.5).
      */
     if (bad.every((b) => b.code === 'E1')) {
-      kit[i] = { ...kit[i], element: 'kinetic' };
-      repaired.push({ slot: i, why: `${bad[0].ru} — стихия заменена на кинетику` });
+      /* The NEAREST legal element, not a stone by default. "A time beam" is
+         repaired into a laser beam and "a gravity fan" into an ember one —
+         the shape and the effects the player asked for survive, and the half
+         that could not exist is answered by the half that can. */
+      const picked = elementFor(kit[i], elementSeed + i);
+      kit[i] = { ...kit[i], element: picked };
+      repaired.push({ slot: i, why: `${bad[0].ru} — the element was replaced with ${elementWord(picked)}` });
       continue;
     }
+    /* A slot replaced wholesale swallows any earlier note about its element:
+       "the element was replaced with arc" is not true of an ability that is no
+       longer on the creature, and two lines about one slot read as two
+       failures. */
+    for (let r = repaired.length - 1; r >= 0; r--) if (repaired[r].slot === i) repaired.splice(r, 1);
     kit[i] = fallback.kit[i];
-    repaired.push({ slot: i, why: 'не собрался по правилам грамматики' });
+    repaired.push({ slot: i, why: 'did not come together under the rules of the grammar' });
   }
 
   /* Два скилла, делающих одно и то же, — это один скилл с двумя кулдаунами:
@@ -457,7 +511,7 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
     const spare = fallback.kit.find((f) => !seen.has(sig(f)));
     if (!spare) continue;
     kit[i] = spare; seen.add(sig(spare));
-    repaired.push({ slot: i, why: 'повторял другое умение того же набора' });
+    repaired.push({ slot: i, why: 'repeated another ability of the same set' });
   }
 
   /* Бюджет кита: снимаем самый дорогой лишний эффект с самого дорогого
@@ -468,11 +522,44 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
     const at = kit.map((k, i) => [costOf(k), i]).sort((a, b) => b[0] - a[0])[0][1];
     if ((kit[at].effects || []).length > 1) {
       const dropped = kit[at].effects.pop();
-      repaired.push({ slot: at, why: `не влезал в бюджет — снят эффект «${EFFECT_RU(dropped)}»` });
+      repaired.push({ slot: at, why: `did not fit the budget — the effect “${EFFECT_RU(dropped)}” was removed` });
     } else {
       kit[at] = fallback.kit[at];
-      repaired.push({ slot: at, why: 'не влезал в бюджет набора' });
+      repaired.push({ slot: at, why: 'did not fit the ability budget' });
     }
+  }
+
+  /*
+   * ── AND NO TWO ABILITIES MAY CARRY THE SAME NAME ────────────────────────
+   *
+   * The name a player reads is ELEMENT + DELIVERY and nothing else (§9.1), so
+   * two abilities that differ only in their effects — a kinetic lunge that
+   * knocks back and a kinetic lunge that stuns — arrive on the reveal screen
+   * as KINETIC LUNGE and KINETIC LUNGE. The dedup above cannot catch it: it
+   * compares delivery and effects, which is exactly the pair that differs.
+   *
+   * The tie-break in §9.1 (a quieter `· STUN` line) exists for the kit where
+   * two abilities really are the same shape and the difference matters. It is
+   * not a licence to hand out the same name twice when moving a free, purely
+   * visual axis makes the two abilities legible from across the screen.
+   *
+   * So the element moves, and only the element: the delivery and the effects
+   * are what the player described and they are untouched. It is not written
+   * into `unfit` either — nothing the player asked for failed here, and
+   * "Not in the grammar: ability 2 as written" would be a false confession.
+   */
+  const named = new Set();
+  for (let i = 0; i < kit.length; i++) {
+    const key = (x) => `${x.element}:${x.delivery}`;
+    if (!named.has(key(kit[i]))) { named.add(key(kit[i])); continue; }
+    const free = elementRanking(kit[i], elementSeed + i)
+      .find((el) => !named.has(`${el}:${kit[i].delivery}`));
+    /* No free element for this shape means the arena genuinely has fewer
+       colours than the kit has abilities of one shape. Leave it: a repeated
+       name is a smaller lie than an illegal ability. */
+    if (!free) { named.add(key(kit[i])); continue; }
+    kit[i] = { ...kit[i], element: free };
+    named.add(key(kit[i]));
   }
 
   /* Последний рубеж: если после всей починки кит всё ещё вне правил, ставим
@@ -480,12 +567,17 @@ export async function parsePrompt({ prompt, bundle, call = callWithRepair }) {
   if (validateKit(kit).length) {
     kit = fallback.kit.slice();
     repaired.length = 0;
-    repaired.push({ slot: -1, why: 'набор не сошёлся целиком — поставлен стартовый' });
+    repaired.push({ slot: -1, why: 'the abilities did not come together at all — a starter set was used' });
   }
 
+  /* In slot order, because that is the order the three tiles are in on the
+     creature page: the repairs are collected by pass, not by ability, and
+     "ability 1 … ability 3 … ability 2" reads as a list of three unrelated
+     failures rather than a walk along one creature. */
+  repaired.sort((a, b) => a.slot - b.slot);
   for (const r of repaired) {
     unfit.push({
-      phrase: r.slot < 0 ? 'набор умений' : `умение ${r.slot + 1}`,
+      phrase: r.slot < 0 ? 'the ability set as written' : `ability ${r.slot + 1} as written`,
       why: r.why,
     });
   }
@@ -525,42 +617,158 @@ const normalizeSize = (v) => {
   return Number.isFinite(n) ? Math.max(0.75, Math.min(1.5, n)) : 1;
 };
 
-const normalizeSkill = (s) => (s && typeof s === 'object' ? {
-  delivery: String(s.delivery || 'beam'),
-  effects: Array.isArray(s.effects) ? s.effects.map(String).slice(0, 3) : [],
-  ...(s.channel ? { channel: String(s.channel) } : {}),
-  element: String(s.element || 'kinetic'),
-} : null);
+/**
+ * ── WHICH ELEMENT AN ABILITY GETS WHEN NOBODY CHOSE ONE ─────────────────────
+ *
+ * Both places that had to name an element named `kinetic`: the normaliser, for
+ * a skill the mind returned without one, and the E1 repair, for a skill whose
+ * element cannot take that shape. The result was measurable on the screen the
+ * whole product is built around — the reveal read KINETIC FAN / KINETIC LUNGE /
+ * KINETIC LUNGE, two identical names on the one card that is supposed to prove
+ * the creature came out of the player's own sentence.
+ *
+ * An element costs nothing (registry, 28.08: it is visual only), so choosing a
+ * fitting one is free in every sense — no number moves, no balance shifts, and
+ * the name stops being three copies of the same word. The order of preference:
+ *
+ *   1. WHAT THE ABILITY DOES. Burning is embers, holding is frost, stunning is
+ *      an arc, pulling is gravity. This is the strongest signal there is: the
+ *      effect is the half of the ability the player wrote down.
+ *   2. WHAT SHAPE IT COMES IN. A fan close to the ground is a flamethrower, a
+ *      field on the floor is contamination, a blink is void. Nine deliveries,
+ *      nine different answers, so a kit of three shapes cannot come out
+ *      monochrome by default.
+ *   3. THE CREATURE'S OWN DRAW. Everything still legal, rotated by a hash of
+ *      the player's own prompt, so two creatures described differently get
+ *      different colours and one creature described twice gets the same one.
+ *
+ * Every candidate is filtered through E1 first (`ELEMENTS[x].forms` — gravity
+ * is only a field, a self-cast or a lob; the laser is only a beam or a bolt),
+ * and `unreleased` elements never appear: time is closed by the founder's own
+ * order and this must not be the door it comes back through.
+ */
+const ELEMENT_BY_EFFECT = [
+  ['burn', 'ember'],
+  ['pull', 'gravity'],
+  ['stun', 'arc'],
+  ['silence', 'arc'],
+  ['shield', 'frost'],
+  ['heal', 'frost'],
+  ['root', 'frost'],
+  ['weaken', 'acid'],
+  ['blind', 'radiation'],
+  ['wall', 'gravity'],
+  ['boost', 'arc'],
+  ['knock', 'kinetic'],
+];
+
+const ELEMENT_BY_DELIVERY = {
+  beam: 'laser',
+  cone: 'ember',
+  bolt: 'arc',
+  lob: 'acid',
+  zone: 'radiation',
+  dash: 'kinetic',
+  blink: 'void',
+  self: 'frost',
+  jump: 'kinetic',
+};
+
+/** Released elements in table order — the pool the hash draws from. */
+const RELEASED_ELEMENTS = Object.keys(ELEMENTS).filter((id) => !ELEMENTS[id].unreleased);
+
+/** E1 in one line: does this element come in this shape at all? */
+const elementFits = (id, delivery) => {
+  const e = ELEMENTS[id];
+  if (!e || e.unreleased) return false;
+  return !Array.isArray(e.forms) || e.forms.includes(delivery);
+};
+
+/**
+ * FNV-1a over the player's prompt.
+ *
+ * The seed has to be reproducible and it has to belong to this creature; the
+ * creature's id does not exist yet at parse time, and the sentence the player
+ * typed is the thing the creature is made of anyway. Same words in, same
+ * colours out — which is what makes a re-run of a failed generation look like
+ * the same creature rather than a new one.
+ */
+function hashOf(str) {
+  let h = 2166136261;
+  const t = String(str || '');
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/** Every element this ability could legally wear, best first. */
+function elementRanking(skill, seed = 0) {
+  const delivery = String(skill?.delivery || 'beam');
+  const effects = Array.isArray(skill?.effects) ? skill.effects : [];
+  const out = [];
+  const add = (id) => { if (id && elementFits(id, delivery) && !out.includes(id)) out.push(id); };
+
+  for (const [effect, id] of ELEMENT_BY_EFFECT) if (effects.includes(effect)) add(id);
+  add(ELEMENT_BY_DELIVERY[delivery]);
+  const pool = RELEASED_ELEMENTS.filter((id) => elementFits(id, delivery));
+  const at = pool.length ? seed % pool.length : 0;
+  for (let i = 0; i < pool.length; i++) add(pool[(at + i) % pool.length]);
+
+  /* A delivery no element admits to cannot exist — every released element but
+     four takes all nine shapes — but a grammar can be edited, and a repair
+     that returns `undefined` would be worse than one that returns a stone. */
+  if (!out.length) out.push('kinetic');
+  return out;
+}
+
+/** The one it should wear. */
+const elementFor = (skill, seed = 0) => elementRanking(skill, seed)[0];
+
+/** How the chosen element reads in a sentence the player is shown. */
+const elementWord = (id) => String(ELEMENTS[id]?.ru || id).toLowerCase();
+
+const normalizeSkill = (s, seed = 0) => {
+  if (!s || typeof s !== 'object') return null;
+  const shape = {
+    delivery: String(s.delivery || 'beam'),
+    effects: Array.isArray(s.effects) ? s.effects.map(String).slice(0, 3) : [],
+    ...(s.channel ? { channel: String(s.channel) } : {}),
+  };
+  /* An element the mind actually named is kept as written — even a wrong one,
+     because E1 below repairs it knowing what it was trying to be. Only silence
+     is answered by the table above. */
+  return { ...shape, element: s.element ? String(s.element) : elementFor(shape, seed) };
+};
 
 /**
  * Почему понятие не влезло. Игроку показывается прямо (§8.1, правило 3):
  * «Не вошло: „чует кровь“ — реакции на раненого противника пока не существует.»
  */
 const UNFIT_HINTS = [
-  [/кров|раненн?|подранк/i, 'реакции на раненого противника пока не существует'],
+  [/blood|wound|injur|bleed|кров|раненн?|подранк/i, 'there is no reaction to a wounded opponent yet'],
   /* «Прыгает» больше НЕ повод для отказа: с D160 прыжок — доставка грамматики,
      и правило должно стоять раньше общего «летает», иначе игроку, написавшему
      «прыгучий», ответят, что полёта нет. */
-  [/прыг|скач|отталкива/i, null],
-  [/лет|полёт|крыл|парит|планир/i, 'длительного полёта в арене нет — есть прыжок как умение, всё остальное по земле'],
-  [/яд|отрав|токсин/i, 'яд машине ничто — словарь стихий проверяется на правдоподобие против робота'],
-  [/невидим|маскир|прячет/i, 'невидимости нет: бой обязан читаться зрителем'],
-  [/призыв|клон|копи[юя]|помощник/i, 'на арене всегда ровно двое'],
-  [/лечит союз|союзник|команд/i, 'союзников нет — бой один на один'],
-  [/телепат|мысли противник/i, 'чтения чужих мыслей нет; портить чужую перцепцию умеет blind'],
-  [/броня растёт|эволюц|мутир/i, 'тело не меняется в бою'],
+  [/jump|leap|bounc|hop\b|прыг|скач|отталкива/i, null],
+  [/fly|flies|flight|wing|hover|glid|soar|лет|полёт|крыл|парит|планир/i, 'there is no sustained flight in the arena — there is a jump as an ability, everything else happens on the ground'],
+  [/poison|venom|toxi|яд|отрав|токсин/i, 'poison is nothing to a machine — the element vocabulary is checked for plausibility against a robot'],
+  [/invisib|cloak|stealth|camouflag|невидим|маскир|прячет/i, 'there is no invisibility: a fight has to be readable by a spectator'],
+  [/summon|clone|minion|spawn|helper|призыв|клон|копи[юя]|помощник/i, 'there are always exactly two on the arena'],
+  [/ally|allies|teammate|squad|лечит союз|союзник|команд/i, 'there are no allies — a fight is one against one'],
+  [/telepath|mind.?read|read.{0,12}mind|телепат|мысли противник/i, 'there is no reading of another mind; ruining the opponent’s perception is what blind does'],
+  [/evolv|mutat|adapts? its body|armou?r grows|броня растёт|эволюц|мутир/i, 'the body does not change during a fight'],
 ];
 
 export function whyUnfit(phrase) {
   for (const [re, why] of UNFIT_HINTS) {
     if (!re.test(phrase)) continue;
-    /* `null` означает «это в грамматике ЕСТЬ, модель зря положила в unfit».
-       Возвращаем текст, который не врёт: понятие есть, но модель его не
-       взяла — и игрок вправе собрать умение руками на экране набора. */
-    if (why === null) return 'это в грамматике есть — доставка «прыжок»; модель просто не взяла её в набор, её можно добавить руками';
+    /* `null` means "the grammar HAS this — the mind put it in `unfit` for
+       nothing". The answer has to say so without lying and without pointing
+       at a screen that no longer exists: the hand-assembly screen was deleted
+       in the redesign, and the old sentence ended by promising it. */
+    if (why === null) return 'this one is in the grammar — the “jump” delivery; the mind simply did not reach for it';
     return why;
   }
-  return 'такого понятия в грамматике умений пока нет';
+  return 'there is no such idea in the ability grammar yet';
 }
 
 /**
@@ -576,12 +784,12 @@ export function whyUnfit(phrase) {
  * доказательств, которыми F11 заменил закрытый исходник, и доказательство
  * на чужом языке доказывает вдвое меньше.
  */
-const SAY_RU = `Одно дополнение к промпту выше, и оно про язык, а не про тактику.
+const SAY_RU = `One addition to the prompt above, and it is about language, not tactics.
 
-Строки, которые ты передаёшь в api.say(), читает игрок — по-русски. Пиши их
-по-русски: коротко, в характере бойца, до 90 знаков. Это единственное место,
-где язык имеет значение; имена переменных, комментарии и всё остальное в коде
-оставляй как привык.`;
+The strings you pass to api.say() are read by the player, in English. Write them
+in English: short, in the fighter's character, at most 90 characters. This is the
+only place where language matters; variable names, comments and everything else
+in the code stay as you are used to writing them.`;
 
 /** Шаг 3 — мозг. Промпт описывает ЕГО кит, а не четыре умения из конфига. */
 export async function forgeBrain({
@@ -617,10 +825,10 @@ export async function forgeBrain({
   return { source: extractSource(r.text), costUsd: r.costUsd, tries: r.tries, usage: r.usage };
 }
 
-const CARD_SYSTEM = `Ты читаешь программу-мозг бойца и описываешь ЕЁ ТАКТИКУ игроку.
-Отвечай 2-3 предложениями по-русски, без кода, без названий переменных, без markdown.
-Говори о поведении: на какой дистанции держится, чего ждёт, чем отвечает, когда рискует.
-Если программа делает что-то странное или явно плохое — скажи это прямо, не выгораживай.`;
+const CARD_SYSTEM = `You read a fighter's mind program and describe ITS TACTICS to the player.
+Answer in 2-3 sentences in English, no code, no variable names, no markdown.
+Talk about behaviour: what distance it holds, what it waits for, what it answers with, when it takes a risk.
+If the program does something strange or plainly bad, say so outright; do not make excuses for it.`;
 
 /** Шаг 5 — карточка тактики. Один раз на мозг (D5), не на бой. */
 /** Обрезать текст по последней границе предложения в пределах лимита. */
@@ -695,36 +903,37 @@ export async function tacticsCard({ source, bundle, call = callWithRepair }) {
  * закрытых списков на каждое умение. Это не рассуждение, это вкус; думать
  * тут дорого и не над чем.
  */
-const VFX_SYSTEM = `Ты художник эффектов. На каждое умение существа сочини декорацию.
+const VFX_SYSTEM = `You are the effects artist. Invent a decoration for each of the creature's abilities.
 
-ЧТО УЖЕ НАРИСОВАНО БЕЗ ТЕБЯ и что ты изменить не можешь:
-силуэт задан доставкой, цвета заданы элементом, удар в точке попадания задан эффектом.
-Ты ДОБАВЛЯЕШЬ поверх. Заменить нельзя ничего.
+WHAT IS ALREADY DRAWN WITHOUT YOU and what you cannot change:
+the silhouette is set by the delivery, the colours are set by the element, the
+hit at the point of impact is set by the effect.
+You ADD on top. Nothing can be replaced.
 
-Ответ — ТОЛЬКО JSON, без пояснений, вида:
+The answer is JSON ONLY, no explanations, in the shape:
 {"k1":{"layers":[{...}],"screen":"none"},"k2":{...},"k3":{...}}
 
-Слой:
-  emitter  откуда летит: ring | burst | cone | trail | spiral | rain
-  motion   как летит: linear | ease_out | gravity | rise | swirl
-  sprite   чем нарисовано: dot | streak | shard | spark
-  decal    след на полу: none | ring | scorch | cross
-  from,to  ступени палитры элемента, целые 0..2 (сам цвет менять нельзя)
-  count    частиц, целое
-  life     секунд жизни
-  delay    секунд от начала каста
-  speed    метров в секунду
-  size     метров
+A layer:
+  emitter  where it comes from: ring | burst | cone | trail | spiral | rain
+  motion   how it travels: linear | ease_out | gravity | rise | swirl
+  sprite   what it is drawn with: dot | streak | shard | spark
+  decal    the mark left on the floor: none | ring | scorch | cross
+  from,to  steps of the element's palette, integers 0..2 (the colour itself cannot change)
+  count    particles, integer
+  life     seconds of life
+  delay    seconds from the start of the cast
+  speed    metres per second
+  size     metres
 
-screen: none | shake | flash, и при не-none добавь screenAmount.
+screen: none | shake | flash, and when it is not none add screenAmount.
 
-ПРЕДЕЛЫ — жёсткие, ответ вне них не принимается:
-  слоёв на умение не больше LAYERS
-  частиц на умение суммарно не больше PARTICLES
-  life не больше LIFE, delay не больше DELAY, screenAmount не больше SHAKE
+THE LIMITS ARE HARD, an answer outside them is not accepted:
+  no more than LAYERS layers per ability
+  no more than PARTICLES particles per ability in total
+  life no more than LIFE, delay no more than DELAY, screenAmount no more than SHAKE
 
-Делай РАЗНОЕ на разные умения: три одинаковые декорации — это отсутствие декорации.
-Пусть декорация говорит про то, что умение делает.`;
+Make the abilities DIFFERENT: three identical decorations are no decoration at all.
+Let the decoration say what the ability does.`;
 
 export async function forgeVfx({ prompt, kit, kitDefs, bundle, call = callWithRepair }) {
   if (!kitDefs) return { ir: null, costUsd: 0 };
@@ -752,7 +961,7 @@ export async function forgeVfx({ prompt, kit, kitDefs, bundle, call = callWithRe
       thinkBudget: 0,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: `Существо: ${prompt.slice(0, 400)}\n\nУмения:\n${listing}` },
+        { role: 'user', content: `Creature: ${prompt.slice(0, 400)}\n\nAbilities:\n${listing}` },
       ],
       /*
        * `accept` — НАСТОЯЩАЯ ПРОВЕРКА, а не «есть ли фигурная скобка».
@@ -911,15 +1120,23 @@ export async function forgeCreature({
        сделала Gemini» — обязательная строка, а не любезность. */
     const alt = fallbackBundle(catalog, use.bundle);
     spent.usd += e.costUsd || 0;
-    if (!alt) return { ok: false, code: ourFault(e), message: 'мозг не собрался', costUsd: spent.usd };
-    note.push({ kind: 'fallback', from: use.label, to: alt.label });
+    if (!alt) return { ok: false, code: ourFault(e), message: 'The mind did not come together.', costUsd: spent.usd };
+    note.push({
+      kind: 'fallback',
+      from: use.label,
+      to: alt.label,
+      /* The line the player actually reads (§5.1). Without it the note is a
+         record with nothing in it a screen can print, and the substitution
+         the rule above calls mandatory happens in silence. */
+      message: `${use.label} did not come together — ${alt.label} wrote this mind.`,
+    });
     use = alt;
     onStage('brain_retry', 0.45);
     try {
       brain = await forgeBrain({ bundle: use, kit: kitDefs, call, builds: { own: parsed.build, enemy: null } });
     } catch (e2) {
       spent.usd += e2.costUsd || 0;
-      return { ok: false, code: ourFault(e2), message: 'мозг не собрался даже на запасной модели', costUsd: spent.usd };
+      return { ok: false, code: ourFault(e2), message: 'The mind did not come together, and neither did the one we fell back to.', costUsd: spent.usd };
     }
   }
   spent.usd += brain.costUsd || 0;
@@ -978,7 +1195,12 @@ export async function forgeCreature({
         .catch((e) => ({ ok: false, code: 'body_failed', message: e.message, costUsd: e.costUsd || 0 }));
       spent.usd += second.costUsd || 0;
       if (second.ok) {
-        note.push({ kind: 'body_fallback', from: bodyBundle.label, to: altBody.label });
+        note.push({
+          kind: 'body_fallback',
+          from: bodyBundle.label,
+          to: altBody.label,
+          message: `${bodyBundle.label} did not come together — ${altBody.label} drew this body.`,
+        });
         bodyOut = second;
       } else {
         /* Обе модели отказали — значит, дело, скорее всего, в заказе, и игроку
@@ -989,7 +1211,17 @@ export async function forgeCreature({
   }
 
   if (!bodyOut.ok && !bodyOut.skipped) {
-    note.push({ kind: 'body_failed', message: bodyOut.message || 'тело не собралось' });
+    /*
+     * A BIRTH NOTE IS A LINE ON THE CREATURE SCREEN, not a log entry.
+     *
+     * `bodyOut.message` is whatever the body forge threw — `Unexpected token
+     * <`, a timeout string, a provider's error body — and this note is printed
+     * verbatim as a warning line beside the specimen. The player is owed the
+     * FACT (their creature is wearing a stock shape) in the product's voice;
+     * the exception is already carried to telemetry two lines below, with the
+     * code and whose fault it was, which is where it is actually readable.
+     */
+    note.push({ kind: 'body_failed', message: 'The body did not come together, so this creature wears a stock one.' });
     /*
      * И в телеметрию — с ПРИЧИНОЙ и с ответом на «чья вина».
      *
@@ -1026,7 +1258,11 @@ export async function forgeCreature({
        разных счётчика, см. limits.recordSpend. */
     return {
       ok: false, code: 'rejected', stage: v.stage,
-      message: v.problems?.[0]?.message || 'мозг не прошёл проверку',
+      /* The validator's own `problems[0].message` names a stage and a rule —
+         it is written for whoever reads the admission log, and the birth
+         screen prints this string as the reason. `problems` still travels
+         alongside for anyone who needs the detail. */
+      message: 'The mind did not pass its two trial fights.',
       problems: v.problems, costUsd: spent.usd, note,
     };
   }
@@ -1078,7 +1314,16 @@ export async function forgeCreature({
          этот путь был последним, где его не было. */
       const v = await viability(parsed.kit, { build: parsed.build ?? null });
       if (!v.ok) {
-        note.push({ kind: 'kit_unviable', message: v.why, hits: v.hits, rounds: v.rounds });
+        /* The note is printed as a warning line beside the specimen, not filed
+           in a log: the measure's own words are a lower-case fragment, and a
+           fragment set among full sentences on that page reads as a leak. */
+        const why = String(v.why || '').trim();
+        note.push({
+          kind: 'kit_unviable',
+          message: why ? `${why[0].toUpperCase()}${why.slice(1)}.` : '',
+          hits: v.hits,
+          rounds: v.rounds,
+        });
       }
     } catch { /* замер не удался — молчим: это наша проблема, не игрока */ }
   }

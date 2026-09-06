@@ -236,13 +236,13 @@ export async function posesRun(instrumented) {
    */
   const box = new THREE.Box3().setFromObject(root);
   const meshes = drawCost(root);
-  if (!meshes) return { ok: false, where: 'вид', message: 'в теле нет ни одного меша: на арене боец будет невидим' };
-  if (box.isEmpty()) return { ok: false, where: 'вид', message: 'тело не имеет размеров: на арене боец будет невидим' };
+  if (!meshes) return { ok: false, where: 'looks', message: 'the body holds no mesh at all: the fighter would be invisible in the arena' };
+  if (box.isEmpty()) return { ok: false, where: 'looks', message: 'the body has no size: the fighter would be invisible in the arena' };
   const ext = new THREE.Vector3();
   box.getSize(ext);
   const foot = Math.max(ext.x, ext.z);
   if (!(foot > 1e-4) || !(ext.y > 1e-4)) {
-    return { ok: false, where: 'вид', message: 'тело плоское до нуля по одной из осей: на арене его не будет видно' };
+    return { ok: false, where: 'looks', message: 'the body is flat to zero along one axis: it would not be seen in the arena' };
   }
   /* Цена показа: вызовы отрисовки и геометрия. */
   let tris = 0;
@@ -253,18 +253,18 @@ export async function posesRun(instrumented) {
     tris += Math.floor(n / 3) * (o.isInstancedMesh ? (o.count || 1) : 1);
   });
   if (meshes > DRAW_MAX) {
-    return { ok: false, where: 'цена', message: `${meshes} отдельных мешей — это ${meshes} вызовов отрисовки на кадр при потолке ${DRAW_MAX}; собери повторяющиеся части в один меш или в InstancedMesh` };
+    return { ok: false, where: 'cost', message: `${meshes} separate meshes means ${meshes} draw calls per frame against a ceiling of ${DRAW_MAX}; merge repeating parts into one mesh or an InstancedMesh` };
   }
   if (tris > TRIS_MAX) {
-    return { ok: false, where: 'цена', message: `${Math.round(tris / 1000)} тысяч треугольников при потолке ${Math.round(TRIS_MAX / 1000)}; уменьши сегментацию сфер и цилиндров` };
+    return { ok: false, where: 'cost', message: `${Math.round(tris / 1000)} thousand triangles against a ceiling of ${Math.round(TRIS_MAX / 1000)}; lower the segment counts of the spheres and cylinders` };
   }
 
   const aspect = ext.y / foot;
-  if (aspect < ASPECT_MIN) return { ok: false, where: 'вид', message: `тело в ${(1 / aspect).toFixed(0)} раз шире, чем выше — на арене это блин на полу, а не существо` };
-  if (aspect > ASPECT_MAX) return { ok: false, where: 'вид', message: `тело в ${aspect.toFixed(0)} раз выше, чем шире — на арене это игла, а не существо` };
+  if (aspect < ASPECT_MIN) return { ok: false, where: 'looks', message: `the body is ${(1 / aspect).toFixed(0)} times wider than it is tall — in the arena that is a pancake on the floor, not a creature` };
+  if (aspect > ASPECT_MAX) return { ok: false, where: 'looks', message: `the body is ${aspect.toFixed(0)} times taller than it is wide — in the arena that is a needle, not a creature` };
 
   const pose = root.userData && root.userData.pose;
-  if (typeof pose !== 'function') return { ok: false, where: 'pose', message: 'нет userData.pose' };
+  if (typeof pose !== 'function') return { ok: false, where: 'pose', message: 'there is no userData.pose' };
 
   /*
    * ПОЗА ОБЯЗАНА ЧТО-ТО МЕНЯТЬ.
@@ -305,11 +305,11 @@ export async function posesRun(instrumented) {
     try {
       pose({ t: 1, dt: 1 / 60, ...s });
     } catch (e) {
-      return { ok: false, where: `pose(${s.action || 'движение'})`, message: e.message };
+      return { ok: false, where: `pose(${s.action || 'movement'})`, message: e.message };
     }
     const failed = root.userData.poseFailed;
     if (failed) {
-      return { ok: false, where: `pose(${s.action || 'движение'})`, message: failed };
+      return { ok: false, where: `pose(${s.action || 'movement'})`, message: failed };
     }
   }
 
@@ -320,10 +320,10 @@ export async function posesRun(instrumented) {
     const moving = snapshot();
     const moved = still.some((v, i) => Math.abs(v - moving[i]) > 1e-4);
     if (!moved) {
-      return { ok: false, where: 'pose', message: 'поза ничего не меняет: тело стоит столбом на любой скорости' };
+      return { ok: false, where: 'pose', message: 'the pose changes nothing: the body stands like a post at any speed' };
     }
   } catch (e) {
-    return { ok: false, where: 'pose(сравнение)', message: e.message };
+    return { ok: false, where: 'pose(comparison)', message: e.message };
   }
 
   return { ok: true, draws: meshes };
@@ -373,8 +373,8 @@ export async function forgeBody({
   const accept = async (text, reject = () => false) => {
     const src = extractCode(text);
     if (!src || src.length < 200) {
-      admitted = { failed: [{ code: 'no_code', message: 'в ответе нет кода' }], src: null };
-      return reject({ code: 'no_code', message: 'в ответе нет блока кода с функцией build' });
+      admitted = { failed: [{ code: 'no_code', message: 'the answer holds no code' }], src: null };
+      return reject({ code: 'no_code', message: 'the answer holds no code block with a build function' });
     }
     const a = analyseBody(src);
     if (!a.ok) {
@@ -383,7 +383,7 @@ export async function forgeBody({
     }
     const moved = await posesRun(a.source);
     if (!moved.ok) {
-      const why = { code: 'pose', message: `тело не двигается: ${moved.where} — ${moved.message}` };
+      const why = { code: 'pose', message: `the body does not move: ${moved.where} — ${moved.message}` };
       admitted = { failed: [why], src };
       return reject(why);
     }
@@ -411,9 +411,9 @@ export async function forgeBody({
    */
   const repair = (why) => {
     if (!why) return null;
-    return `Твой прошлый ответ не приняли: ${why.message}\n\n`
-      + 'Исправь ровно это и пришли ПОЛНЫЙ файл заново, целиком, одним блоком кода. '
-      + 'Не объясняй словами, не присылай патч — только код.';
+    return `Your previous answer was not accepted: ${why.message}\n\n`
+      + 'Fix exactly this and send the WHOLE file again, complete, in a single code block. '
+      + 'Do not explain in words, do not send a patch — code only.';
   };
 
   /*
@@ -462,7 +462,7 @@ export async function forgeBody({
     return {
       ok: false,
       code: 'body_failed',
-      message: problems[0]?.message || e.message || 'тело не собралось',
+      message: problems[0]?.message || e.message || 'the body did not come together',
       problems,
       costUsd: e.costUsd || 0,
       tries: e.tries,
@@ -471,12 +471,12 @@ export async function forgeBody({
   }
 
   if (!admitted || !admitted.source) {
-    const problems = admitted?.failed || [{ code: 'no_code', message: 'модель не вернула код' }];
+    const problems = admitted?.failed || [{ code: 'no_code', message: 'the mind returned no code' }];
     return {
       ok: false,
       code: 'body_failed',
       /* Сообщение игроку — человеческое, разбор — рядом для журнала. */
-      message: problems[0]?.message || 'тело не собралось',
+      message: problems[0]?.message || 'the body did not come together',
       problems,
       costUsd: r.costUsd || 0,
       tries: r.tries,

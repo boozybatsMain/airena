@@ -21,7 +21,8 @@
 import { CURTAIN } from './arena-loop.js';
 import { runIsolated } from './sandbox/index.js';
 import { kitOf } from './arena-loop.js';
-import { DELIVERIES, EFFECTS } from '../skills/registry.js';
+import { abilitiesOf } from '../skills/describe.js';
+import { iconUrls } from './forge/icons.js';
 
 /**
  * ЗАПАСНОЕ ТЕЛО — ЭТО ФАЙЛ, А НЕ СТОРОНА.
@@ -39,10 +40,48 @@ const STOCK_BODY = { blue: 'octopus', orange: 'gorilla' };
 const stockBody = (side) => STOCK_BODY[side] ?? STOCK_BODY.blue;
 
 /**
- * Подписи умений для боевого HUD: короткое имя, которым мозг зовёт умение,
- * и русское название, которое читает игрок.
+ * The grammar entry behind a compiled ability definition.
+ *
+ * `compileSkill` keeps the raw entry under `grammar`, and the match snapshot is
+ * that definition serialised, so live fights and replays both carry it. Rows
+ * written before the field existed still hold every axis on the definition
+ * itself, so the entry is rebuilt from those rather than lost — an old replay
+ * has to name its abilities exactly as a new fight does.
  */
-function kitLabels(c, snapshot) {
+function grammarOf(d) {
+  if (d && typeof d.grammar === 'object' && d.grammar) return d.grammar;
+  return {
+    delivery: d?.kind ?? null,
+    element: d?.element ?? null,
+    channel: d?.channel ?? null,
+    effects: Array.isArray(d?.effects) ? d.effects.map((e) => e?.id).filter(Boolean) : [],
+  };
+}
+
+/**
+ * One fighter's abilities, in the two shapes the battle screen needs.
+ *
+ * `labels` is what the VIEWER reads (`kits[side][k1]`): the name plus the
+ * geometry and timing it needs to telegraph a cast. `abilities` is what the
+ * SHELL reads (`abilities[side][slot]`, §8.3): name, blurb and element for the
+ * icon tiles and their tooltips. Both are cut from the same `defs`, and that is
+ * the whole point of computing them together — see below.
+ *
+ * ONE ABILITY, ONE NAME (§8.3). The player-facing label used to be composed
+ * right here — the delivery's registry word glued to its effects, `Lunge·
+ * Damage` — while the HUD tile, the creature page and the fight beats all read
+ * `describeAbility()` and printed `KINETIC LUNGE · DAMAGE`. Both strings named
+ * the same ability and both were on screen at the same instant: the cast plate
+ * floating over the creature disagreed with the tile twenty pixels below it,
+ * and the feed line under them disagreed with the history of the same fight.
+ * §8.3 exists so that cannot happen, and it only holds if every surface quotes
+ * the one namer instead of re-deriving the name from the same registry.
+ *
+ * `null` for a creature that does not fight with its own abilities: those use
+ * the reference set, and naming abilities the player will never see fire is
+ * worse than naming none.
+ */
+function describeKit(c, snapshot, db = null) {
   /*
    * ПОДПИСИ — ИЗ СНИМКА БОЯ, А НЕ ИЗ СТРОКИ СУЩЕСТВА.
    *
@@ -58,7 +97,7 @@ function kitLabels(c, snapshot) {
    * матчей снимка нет — они честно читаются по текущей строке, как и кадры.
    */
   const defs = snapshot || kitOf(c);
-  if (!defs) return null;
+  if (!defs) return { labels: null, abilities: null };
   /*
    * VFX-IR едет ВМЕСТЕ С ПОДПИСЬЮ УМЕНИЯ, а не отдельным сообщением.
    *
@@ -78,9 +117,35 @@ function kitLabels(c, snapshot) {
      против невидимой лжи о геометрии умения. */
   let ir = null;
   try { ir = c.vfx_json ? JSON.parse(c.vfx_json) : null; } catch { ir = null; }
-  const out = {};
-  for (const [name, d] of Object.entries(defs)) {
-    const eff = d.effects.map((e) => EFFECTS[e.id]?.ru || e.id).join('+');
+  /*
+   * THE KIT IS NAMED AS A WHOLE, not ability by ability.
+   *
+   * Two abilities built on the same two axes carry the same name until
+   * `abilitiesOf()` breaks the tie, and the tie is only visible against the
+   * other slots (§8.3). Slot order is key order — `compileKit` writes `k1..k3`
+   * in it — so the described list lines up with these entries index by index,
+   * which is also how the client matches a tile to its ability.
+   */
+  const entries = Object.entries(defs);
+  const abilities = abilitiesOf(entries.map(([, d]) => grammarOf(d)));
+  /*
+   * THE GLYPH TRAVELS WITH THE ABILITY, and it carries its own version.
+   *
+   * The HUD used to build `/api/creature/<id>/icon/<slot>` out of two fields it
+   * already had, which works and costs two things. It cannot tell "no glyph
+   * yet" from "glyph failed to load", so every creature without pictures shows
+   * three broken images for one network round-trip before the procedural
+   * fallback takes over — on the screen the whole product is about. And the
+   * address it builds has no version on it, so a player who has just rewritten
+   * their abilities keeps seeing the old pictures until the cache lets go.
+   *
+   * `null` here is a real answer and the better one: draw the fallback, ask
+   * nothing.
+   */
+  const urls = db && c?.id ? iconUrls(db, c.id, abilities.length) : [];
+  abilities.forEach((a, i) => { a.icon = urls[i] || null; });
+  const labels = {};
+  entries.forEach(([name, d], i) => {
     /* `kind` едет вместе с подписью не для HUD, а для ТЕЛА: по доставке
        вьювер выбирает, какую анимацию играть на касте (см. poseAction).
        Без него существо с набором из грамматики стреляло молча и неподвижно —
@@ -95,8 +160,11 @@ function kitLabels(c, snapshot) {
      * заведёт игрок, замах был невидим — то есть «по замаху видно, что сейчас
      * будет» не работало ровно там, где это единственный способ читать бой.
      */
-    out[name] = {
-      ru: `${DELIVERIES[d.kind]?.ru || d.kind}·${eff}`,
+    labels[name] = {
+      /* The field keeps its name because the viewer reads `kit[name].ru`
+         (`src/viewer/main.js` is frozen except for strings, §1.2); what it
+         holds is the English name every other surface prints. */
+      ru: abilities[i]?.name || name,
       element: d.element,
       kind: d.kind,
       windup: d.windup,
@@ -115,8 +183,8 @@ function kitLabels(c, snapshot) {
       ...(d.airborne !== undefined ? { airborne: d.airborne } : {}),
       ...(ir && ir[name] ? { vfx: ir[name] } : {}),
     };
-  }
-  return out;
+  });
+  return { labels, abilities };
 }
 import { TICK_HZ } from '../core/config.js';
 
@@ -311,6 +379,21 @@ export class Live {
       return null;
     }
     this.opening.delete(matchRow.id);
+    /*
+     * NAMED FROM THE SNAPSHOT, ONCE, FOR BOTH READERS.
+     *
+     * The tooltips used to be read out of the creature's CURRENT row while the
+     * viewer's labels came from the fight's snapshot — the very drift the
+     * comment inside `describeKit` describes, one field lower. Change a kit and
+     * open a replay: the tile said what the creature can do today, the cast
+     * plate said what it did that day. Both now come off the same `defs`, so a
+     * replay is described by the fight it is a replay of.
+     *
+     * Once per broadcast, not once per viewer: a busy fight has many sockets
+     * and every one of them gets the same two answers.
+     */
+    const kitA = describeKit(a, matchRow.kits?.[matchRow.aSlot], this.db);
+    const kitB = describeKit(b, matchRow.kits?.[matchRow.bSlot], this.db);
     const bc = {
       id: matchRow.id,
       seed: matchRow.seed,
@@ -360,8 +443,13 @@ export class Live {
       ranked: matchRow.ranked !== undefined ? !!matchRow.ranked : matchRow.kind !== 'brain_fault',
       trainingRate: matchRow.trainingRate ?? null,
       kits: {
-        [matchRow.aSlot]: kitLabels(a, matchRow.kits?.[matchRow.aSlot]),
-        [matchRow.bSlot]: kitLabels(b, matchRow.kits?.[matchRow.bSlot]),
+        [matchRow.aSlot]: kitA.labels,
+        [matchRow.bSlot]: kitB.labels,
+      },
+      /* What each side's three tiles mean — name, blurb, element (§8.3). */
+      abilities: {
+        [matchRow.aSlot]: kitA.abilities,
+        [matchRow.bSlot]: kitB.abilities,
       },
       result: matchRow,
       watchers: new Set(),
@@ -582,6 +670,10 @@ export class Live {
       training: b.training,
       tags: { blue: b.meta.blue?.name ?? '—', orange: b.meta.orange?.name ?? '—' },
       kits: b.kits || null,
+      /* What each side's three tiles mean — name, blurb, element (§8.3).
+         Cut from the same snapshot as `kits`, so the tooltip describes the
+         ability the plate just named. */
+      abilities: b.abilities || null,
       bodies: b.bodies || null,
       names: { blue: b.meta.blue?.name ?? '—', orange: b.meta.orange?.name ?? '—' },
       ids: { blue: b.meta.blue?.id ?? null, orange: b.meta.orange?.id ?? null },

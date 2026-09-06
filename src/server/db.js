@@ -352,6 +352,39 @@ const MIGRATIONS = [
      )`,
     `CREATE INDEX worker_token_account ON worker_token(account_id)`,
   ],
+
+  /*
+   * ── ABILITY ICONS (docs/REDESIGN.md §8.4) ───────────────────────────────
+   *
+   * One generated glyph per ability slot, stored as bytes next to the creature
+   * it belongs to.
+   *
+   * IN THE DATABASE, NOT ON DISK, and that is the whole point of the row. An
+   * icon is derived data with a cost: it takes a paid image call to make and it
+   * is meaningless without the creature it describes. Files in a directory
+   * would outlive their creature, would not travel with `tools/backup.mjs`, and
+   * would need a second cleanup path that nobody would ever write. A row is
+   * deleted by the same cascade that deletes everything else.
+   *
+   * The primary key is `(creature_id, slot)` so regenerating a slot REPLACES
+   * it: the ability changed, the old glyph is a lie, and two rows for one slot
+   * would leave the reader guessing which is current.
+   *
+   * `prompt` is kept because it is the only record of what was asked for. When
+   * a batch comes back photographic instead of monoline, the fix starts by
+   * reading what we actually sent, not by guessing at the template.
+   */
+  [
+    `CREATE TABLE icon (
+       creature_id   TEXT NOT NULL REFERENCES creature(id) ON DELETE CASCADE,
+       slot          INTEGER NOT NULL,
+       mime          TEXT NOT NULL,
+       bytes         BLOB NOT NULL,
+       prompt        TEXT,
+       created_at    INTEGER NOT NULL,
+       PRIMARY KEY (creature_id, slot)
+     )`,
+  ],
 ];
 
 export function openDb(file = 'data/airena.db') {
@@ -430,11 +463,26 @@ export function openDb(file = 'data/airena.db') {
    * миграций исполняется один раз на новой базе, а это надо делать и на
    * старой, где колонка уже стоит.
    */
+  /**
+   * The same safety net, one level up: a whole TABLE that should exist.
+   *
+   * `ensure` covers a migration that added a column and was skipped. A
+   * migration that added a table can be skipped exactly the same way — the
+   * version is already past it — and then every read of that table throws "no
+   * such table" at the first request instead of at startup. Idempotent by
+   * construction: the statement carries its own IF NOT EXISTS.
+   */
+  const ensureTable = (table, ddl) => {
+    const has = db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name=?").get(table).n;
+    if (has) return null;
+    db.exec(ddl);
+    return `table ${table}`;
+  };
   const dropColumn = (table, column) => {
     const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
     if (!has) return null;
     db.exec(`ALTER TABLE ${table} DROP COLUMN ${column}`);
-    return `${table}.${column} снесена`;
+    return `${table}.${column} dropped`;
   };
   const repaired = [
     ensure('creature', 'size', 'REAL'),
@@ -459,6 +507,15 @@ export function openDb(file = 'data/airena.db') {
     dropColumn('creature', 'archetype'),
     ensure('match', 'kits_json', 'TEXT'),
     ensure('job', 'stage_code', 'TEXT'),
+    ensureTable('icon', `CREATE TABLE IF NOT EXISTS icon (
+       creature_id   TEXT NOT NULL REFERENCES creature(id) ON DELETE CASCADE,
+       slot          INTEGER NOT NULL,
+       mime          TEXT NOT NULL,
+       bytes         BLOB NOT NULL,
+       prompt        TEXT,
+       created_at    INTEGER NOT NULL,
+       PRIMARY KEY (creature_id, slot)
+     )`),
   ].filter(Boolean);
   /*
    * ТА ЖЕ СТРАХОВКА, НО ДЛЯ ДАННЫХ.
@@ -475,12 +532,12 @@ export function openDb(file = 'data/airena.db') {
   if (dirty) {
     db.exec(`UPDATE match SET kits_json = replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(kits_json, '"trigger":"active",', ''), ',"trigger":"active"', ''), '"trigger":"on_hit_taken",', ''), ',"trigger":"on_hit_taken"', ''), '"trigger":"on_hit_dealt",', ''), ',"trigger":"on_hit_dealt"', ''), '"trigger":"on_low_hp",', ''), ',"trigger":"on_low_hp"', ''), '"trigger":"on_enemy_cast",', ''), ',"trigger":"on_enemy_cast"', '')
              WHERE kits_json IS NOT NULL AND kits_json LIKE '%trigger%'`);
-    console.warn(`  вычищено мёртвое поле trigger из ${dirty} снимков матчей`);
+    console.warn(`  cleared the dead trigger field out of ${dirty} match snapshots`);
   }
 
   if (repaired.length) {
-    console.warn(`  схема была неполной, досоздано: ${repaired.join(', ')}`);
-    console.warn('  это значит, что миграции разошлись с кодом — проверь порядок в MIGRATIONS.');
+    console.warn(`  the schema was incomplete, created: ${repaired.join(', ')}`);
+    console.warn('  that means the migrations drifted from the code — check the order in MIGRATIONS.');
   }
   return db;
 }

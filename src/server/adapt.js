@@ -273,15 +273,15 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   const pct = Number.isFinite(was) && Number.isFinite(now2) && was !== 0
     ? Math.round(Math.abs(now2 - was) / Math.abs(was) * 100)
     : null;
-  const dir = now2 > was ? 'сдержаннее' : 'решительнее';
-  const счёт = `${best.s.wins} из ${best.s.rounds} против ${base.wins}`;
+  const dir = now2 > was ? 'more careful' : 'more decisive';
+  const score = `${best.s.wins} of ${best.s.rounds} against ${base.wins}`;
   const summary = accepted
     ? (pct === null
-      ? `Подправила порог: ${счёт} у прежнего. Принято.`
-      : `Сдвинула порог на ${pct}%, стала ${dir}: ${счёт} у прежнего. Принято.`)
+      ? `Nudged a threshold: ${score} for the old one. Kept.`
+      : `Moved a threshold by ${pct}% and became ${dir}: ${score} for the old one. Kept.`)
     : (pct === null
-      ? `Пробовала подправить порог: ${счёт}. Не лучше — оставила как было.`
-      : `Пробовала сдвинуть порог на ${pct}% и стать ${dir}: ${счёт}. Не лучше — оставила как было.`);
+      ? `Tried nudging a threshold: ${score}. No better — left as it was.`
+      : `Tried moving a threshold by ${pct}% to become ${dir}: ${score}. No better — left as it was.`);
 
   db.prepare(`INSERT INTO adaptation (id, creature_id, at, kind, summary, before_json, after_json,
               score_before, score_after, accepted) VALUES (?,?,?,?,?,?,?,?,?,?)`).run(

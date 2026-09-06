@@ -1,0 +1,1260 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   CREATE (docs/REDESIGN.md §6.3) — one card over the veiled arena, and the
+   mind picker modal that opens from it (ui/mindpicker.js lives here because
+   the picker only ever opens from this screen).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── the ground this card stands on ─────────────────────────────────────── */
+
+/*
+ * THE FIGHT UNDERNEATH HAS TO LOOK LIKE A FIGHT.
+ *
+ * Create stands over the live arena behind `.ground-wash` (ui/base.css): a
+ * 10 px blur under a warm sheet at 66–76 %. That is the right recipe for a
+ * ground that is only decoration, and the wrong one here — the card's own
+ * footer claims LIVE NOW · STONE GOLEM vs NEEDLE-79 over a field in which
+ * nothing whatever is discernible, so the screen's one piece of evidence is
+ * contradicted by the picture behind it. The veil is re-cut for this screen
+ * alone: full strength under the card, where the type is, released towards the
+ * edges, where two creatures are actually moving; and the left column keeps a
+ * scrim of its own so the wordmark and the rail lose nothing for it.
+ *
+ * A stranger never sees this. Their ground is the backdrop image
+ * (`screens/create.js`), because a visitor has no fight down there to show.
+ */
+body[data-screen="create"] .ground-wash {
+  background:
+    /* the chrome's own band: wordmark, season chip and my chip read on quiet
+       ground whatever the fight underneath is doing */
+    linear-gradient(180deg, rgba(235, 225, 217, .88) 0, rgba(235, 225, 217, .52) 110px,
+      rgba(235, 225, 217, 0) 210px),
+    linear-gradient(90deg, rgba(235, 225, 217, .95) 0%, rgba(235, 225, 217, .80) 24%,
+      rgba(235, 225, 217, 0) 52%),
+    radial-gradient(74% 60% at var(--axis-x) 50%, rgba(235, 225, 217, .70) 0%,
+      rgba(235, 225, 217, .62) 44%, rgba(235, 225, 217, .32) 100%);
+  -webkit-backdrop-filter: blur(8px) saturate(.95);
+  backdrop-filter: blur(8px) saturate(.95);
+}
+
+.create-wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 92px var(--chrome-pad) 48px calc(var(--chrome-pad) + 168px);
+  /* One measure for every explanatory line on the card. See `.create-head`. */
+  --measure: 460px;
+}
+
+/* `margin: auto` and not `place-items: center`: a card taller than the
+   viewport must scroll from its top, and centred grid items clip instead. */
+.create-card {
+  width: min(720px, 100%);
+  margin: auto;
+  padding: 26px 34px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.create-head { display: flex; flex-direction: column; gap: 7px; }
+/*
+ * 460 px, not 340.
+ *
+ * The two intro paragraphs were set to roughly 340 px inside a 650 px card, so
+ * both broke into orphans — "Body, name and / abilities follow from the
+ * sentence." and "you watch / it climb." — with three hundred pixels of empty
+ * glass to their right. A measure is chosen for the line, not for the box: at
+ * 460 px each of these sentences takes two full lines, the ragged right edge
+ * stops being the first thing the eye finds on the card, and the number is
+ * written once (`--measure`) so the four explanatory lines on this screen
+ * cannot drift apart from each other.
+ */
+.create-head .t-small { max-width: var(--measure); }
+/*
+ * AND NO ORPHAN AT THE END OF THEM.
+ *
+ * A measure fixes the line length; it does not decide where the last line
+ * falls, and at 460 px both of these sentences left one word alone on line two
+ * — the ragged edge the measure was chosen to quiet, reappearing at the
+ * bottom instead of the right. `balance` is the one-line answer for a block of
+ * two or three lines: the browser evens them out, and where it is not
+ * supported the paragraph simply wraps as it did.
+ */
+.create-head .t-small, .create-claim, .create-minds-note { text-wrap: balance; }
+
+/* The product's one surprise, said once and only to a stranger.
+ *
+ * Everything else on this screen — a text field, a row of choices, a CREATE
+ * button — reads like a character creator, and a character creator promises
+ * that the thing you make will do what you tell it. It will not. That line
+ * cannot be `--muted` next to a muted subtitle: of the two, this is the one
+ * a visitor must read, so it takes `--ink` and a coral marker, which is the
+ * same dot the season chip uses for "this is the live fact". */
+.create-claim {
+  position: relative;
+  margin-top: 2px;
+  padding-left: 16px;
+  max-width: var(--measure);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.create-claim::before {
+  content: "";
+  position: absolute; left: 0; top: .62em;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ── the sentence ───────────────────────────────────────────────────────── */
+
+/*
+ * FIELD, THEN ONE LINE THAT IS ABOUT THE FIELD.
+ *
+ * The example chips and the character count both describe what is in the box,
+ * so they share the line under it instead of taking a band each — which also
+ * buys the phone about forty pixels above the fold, where the CREATE button
+ * is trying to fit.
+ */
+.create-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 14px;
+}
+.create-field { grid-column: 1 / -1; }
+.create-starters { grid-column: 1; }
+.create-count { grid-column: 2; justify-self: end; }
+
+/*
+ * THE ONE FIELD ON THE SCREEN HAS TO LOOK LIKE A FIELD.
+ *
+ * On the card's own `--glass-strong` the shared fill (white at .62) measured
+ * two per cent away from the surface it sat on, and its white hairline was
+ * invisible against white glass — so the single most important input in the
+ * product read as a paragraph of grey text. It is recessed instead: a warmer,
+ * more opaque fill, an ink hairline that exists at any glass opacity, and the
+ * shadow a pressed-in surface casts on its own top edge.
+ */
+.create-field {
+  min-height: 96px;
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(46, 46, 51, .10);
+  box-shadow: inset 0 1px 2px rgba(46, 46, 51, .06);
+}
+/*
+ * THE EXAMPLE SENTENCE IS TEXT, AND IS SET AT TEXT CONTRAST.
+ *
+ * The shared placeholder colour (`ui/components.css`) is `--muted` at 70 %,
+ * which composites to about (149,140,133) on this field's warmer fill —
+ * measured 3.18:1, under the 4.5:1 WCAG 1.4.3 asks of any text, placeholder
+ * included. And this placeholder is not decoration: it is the only worked
+ * example of what to write that a first-time visitor sees before they type,
+ * on the highest-stakes input in the product. It takes the label colour
+ * outright (4.83:1); the distinction from typed text is carried by `--ink-2`
+ * above it, which is where a distinction between two texts belongs.
+ */
+.create-field::placeholder { color: var(--muted); opacity: 1; }
+.create-field:hover { border-color: rgba(46, 46, 51, .16); }
+.create-field:focus {
+  background: rgba(255, 255, 255, .92);
+  border-color: rgba(110, 168, 255, .6);
+  box-shadow: inset 0 1px 2px rgba(46, 46, 51, .05);
+}
+/*
+ * ONE RING, NOT THREE.
+ *
+ * Focus drew the field's own border, a 4 px light glow and a 2 px outline over
+ * the top of it — three concentric edges around one box, which reads as a
+ * rendering fault rather than as "you are here". The outline is the indicator
+ * (2.9:1 against the card, and it is what a high-contrast mode replaces); the
+ * glow was the decoration, so the glow goes.
+ */
+.create-field:focus-visible {
+  outline: 2px solid var(--info-ink); outline-offset: 2px;
+  box-shadow: inset 0 1px 2px rgba(46, 46, 51, .05);
+}
+
+.create-count { font-variant-numeric: tabular-nums; letter-spacing: .14em; white-space: nowrap; }
+.create-count.full { color: var(--warning-ink); }
+/* The spoken half of the counter: `148 of 280 characters`, because a live
+   region announces its text and a slash is announced as a slash. */
+.create-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* ── three ways in ──────────────────────────────────────────────────────── */
+
+/*
+ * A BLANK BOX IS A QUESTION NOBODY ANSWERS.
+ *
+ * The chip is a label and the sentence behind it goes into the field, so what
+ * the player reads and what they can edit are the same words in the same
+ * place. Pressed, the chip stays marked: a press that leaves no trace reads
+ * as a press that did nothing.
+ */
+.create-starters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; min-width: 0; }
+.create-starters:empty { display: none; }
+.create-try { color: var(--muted); white-space: nowrap; }
+.create-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.create-chip {
+  font-family: var(--font-body); font-size: 12px; font-weight: 400;
+  letter-spacing: 0; text-transform: none; color: var(--muted);
+  background: rgba(255, 255, 255, .5);
+  border-color: rgba(46, 46, 51, .10);
+  transition: background var(--d-ui) var(--ease), color var(--d-ui) var(--ease),
+              border-color var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+.create-chip:hover { color: var(--ink-2); background: rgba(255, 255, 255, .84); transform: translateY(-1px); }
+.create-chip:active { transform: translateY(0); }
+.create-chip.on {
+  color: var(--info-ink); background: rgba(110, 168, 255, .14);
+  border-color: rgba(110, 168, 255, .4);
+}
+
+/*
+ * WHERE THE SENTENCE IN THE BOX CAME FROM.
+ *
+ * A returning player is improving a description, not writing one — so the box
+ * opens on what they wrote last time and this chip says so, and undoes it. It
+ * takes the examples' line rather than a band of its own: while the previous
+ * generation's words are still in the field, TRY ONE is not the offer, and the
+ * examples come back the moment the box is cleared or edited.
+ *
+ * Ghost, not solid: it is a footnote about the field above it, and it must not
+ * compete with the one primary action on the screen.
+ */
+.create-from {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border-color: transparent;
+  padding-left: 8px; padding-right: 8px;
+  font-size: 9.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted);
+}
+.create-from i { font-style: normal; opacity: .5; }
+.create-from b { font-weight: 600; color: var(--ink-2); }
+.create-from:hover { background: rgba(255, 255, 255, .6); border-color: rgba(46, 46, 51, .10); }
+.create-from:hover b { color: var(--accent-ink); }
+
+/* ── the minds ──────────────────────────────────────────────────────────── */
+
+.create-minds { display: flex; flex-direction: column; gap: 14px; }
+.create-minds-head { display: flex; flex-direction: column; gap: 8px; }
+/* Wait time was the only visible difference between two minds, and a number
+   that only goes up reads as a cost. One sentence says what the choice is —
+   set to the card's full width on purpose, because it is a caption under a
+   rule and a caption that wraps twice reads as a paragraph. */
+.create-minds-note { color: var(--muted); }
+
+/*
+ * THE ROW IS ALWAYS FULL.
+ *
+ * `flex: 1 1 150px; max-width: 210px` sized the row for five cards and drew
+ * two, so forty per cent of the band under CHOOSE ITS MIND was empty and the
+ * card looked half-painted. `auto-fit` collapses the tracks nobody claimed and
+ * hands their width back to the cards that exist: two minds are two wide
+ * cards, four are four narrow ones, and neither leaves a hole. The 150 px
+ * minimum sets the ceiling at four tracks inside the 720 px card — see
+ * `featuredFamilies` for why four and not five.
+ */
+.mind-row-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+/* One mind is a card, not a banner. */
+.mind-row-cards[data-n="1"] { grid-template-columns: minmax(0, 240px); }
+.mind-row-cards[data-n="0"] { display: block; }
+
+/* The cards arrive; they do not re-arrive on every click (see paintMinds).
+   The delay is computed from `--i`, set per card in `paintMinds`: §8.5 allows
+   five featured minds and three hard-coded `nth-child` rules covered four, so
+   a fifth card landed on the same frame as the first and the left-to-right
+   read the stagger exists to create simply stopped. */
+.mind-row-cards.in > .mind-card {
+  animation: mind-in 380ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@keyframes mind-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.mind-skel { min-height: 186px; border-radius: var(--r-card); }
+
+/*
+ * Three bands, the same three on every card: mark · name + record, then footer.
+ *
+ * THE ROW IS READ ACROSS BEFORE IT IS READ DOWN. Two things used to stop it.
+ * The record shared a strip with the speed toggle, so choosing a mind deleted
+ * its `58% WINS` — the number a stranger was comparing on, gone from the only
+ * card they had decided anything about. And that strip hung under a head that
+ * was free to grow, which left a sixty-pixel hole between the name and the
+ * hairline on every card in the row.
+ *
+ * Now the record is a caption on the name, where it survives every state, and
+ * the footer under the hairline holds only what can still be changed: the two
+ * speeds, or the readout of the one speed this mind has. The head is a fixed
+ * stack and the footer is pinned with `margin-top: auto` at a fixed height, so
+ * four hairlines and four footers land on two lines across the row whatever
+ * the player has chosen — and nothing in the middle is empty.
+ */
+.mind-card {
+  /* The control row's height. One number, and every card's footer reads it, so
+     the row cannot go ragged whichever card is chosen: 34 px is the segmented
+     toggle's own height and 44 px is the touch target the same control takes
+     on a phone (see the narrow block). A card that is showing a word rather
+     than a toggle reserves exactly the same band. */
+  --ctl-h: 34px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 186px;
+  padding: 14px 12px 12px;
+  border-radius: var(--r-card);
+  background: rgba(255, 255, 255, .42);
+  border: 1px solid var(--glass-line);
+  transition: background var(--d-ui) var(--ease), border-color var(--d-ui) var(--ease),
+              box-shadow var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+.mind-card:hover { background: rgba(255, 255, 255, .62); transform: translateY(-1px); }
+.mind-card:has(.mind-card-hit:active) { transform: translateY(0); box-shadow: 0 2px 8px var(--shade); }
+.mind-card.on {
+  background: rgba(255, 255, 255, .82);
+  border-color: rgba(110, 168, 255, .7);
+  box-shadow: 0 0 0 3px rgba(110, 168, 255, .16), 0 10px 26px var(--shade);
+}
+/*
+ * UNAVAILABLE, AND STILL READABLE.
+ *
+ * At `opacity: .48` the reason a mind cannot be chosen was set in grey on
+ * grey at about 2:1 — legible to nobody, on the screen that decides which mind
+ * the creature gets. Grey OUT rather than fade out: the colour leaves, the
+ * contrast stays, and the card reads as switched off instead of half-drawn.
+ */
+.mind-card.off {
+  opacity: 1;
+  filter: grayscale(1);
+  background: rgba(255, 255, 255, .3);
+  border-color: rgba(46, 46, 51, .10);
+}
+.mind-card.off:hover { transform: none; background: rgba(255, 255, 255, .3); }
+.mind-card.off .mind-card-hit { cursor: default; }
+.mind-card.off .mind-card-name { color: var(--ink); }
+/* Focus lands on the hit button, which is invisible; the ring belongs to the
+   card the player can actually see. */
+.mind-card:has(.mind-card-hit:focus-visible) {
+  outline: 2px solid var(--info-ink); outline-offset: 2px;
+}
+
+/* The button is the mark, the name and the record; its overlay is the whole
+   card, so the dead space beside the footer selects the mind like the rest. */
+.mind-card-hit {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+}
+.mind-card-hit::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.mind-card-hit:focus-visible { outline: none; }
+.mind-card-mark { width: 32px; height: 32px; color: var(--ink-2); flex: 0 0 32px; }
+/*
+ * Two lines held open, and a one-line name sits on the LOWER of them.
+ *
+ * The reserve is what keeps four names starting on one line across the row;
+ * bottom-aligning what is inside it is what stops the reserve from reading as
+ * a hole. A short name and its record stay a pair fourteen pixels apart, and
+ * the air the reserve costs lands above the name, between it and the mark,
+ * where a wider gap is just spacing.
+ */
+.mind-card-name {
+  margin-top: 10px;
+  display: grid; align-content: end;
+  min-height: 2.6em;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-2); line-height: 1.3;
+}
+/* The one fact this mind has earned, captioned on the thing it describes. It
+   is on every card in every state — that is the whole point of moving it. */
+.mind-card-kind {
+  margin-top: 5px;
+  font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mind-card.on .mind-card-kind { color: var(--ink); }
+
+/*
+ * THE WIN RATE, AS A LENGTH.
+ *
+ * What stood here was the footer's own divider, and standing directly under
+ * `58% WINS` it read as a meter — one drawn at full width whatever the number
+ * above it said, tinted blue when the card was chosen and deleted altogether
+ * when the mind was resting. A bar whose length is decided by selection and
+ * whose absence is decided by availability is a chart of nothing.
+ *
+ * So it is the chart it already looked like: `--v` is the rate, set per card
+ * in `meterOf()`. Colour carries the one comparison a win rate supports on
+ * sight — above half (`--success-ink`) or below it (`--stone`) — and nothing
+ * else; selection is said by the card's rim and glow, which is the only thing
+ * on this card that should be saying it. A mind with no record keeps the band
+ * and draws nothing in it, so the four hairlines under it stay on one line.
+ */
+.mind-card-meter {
+  --v: 0%;
+  display: block; width: 100%; height: 3px; margin-top: 9px;
+  border-radius: var(--r-pill);
+  /* The empty half of a meter is half of what a meter says, so the track is
+     drawn at a strength that survives a warm off-white card. */
+  background: rgba(141, 127, 115, .32);
+  overflow: hidden;
+}
+.mind-card-meter > i {
+  display: block; height: 100%; width: var(--v);
+  border-radius: inherit;
+  background: var(--stone);
+}
+.mind-card-meter.good > i { background: var(--success-ink); }
+/* Nothing measured, nothing drawn — and the band still OCCUPIES its three
+   pixels, so the hairline under it stays level across the row. An empty track
+   is not drawn either: a visible meter at zero would read as a nought per cent
+   win rate, which is a fact the arena does not have. */
+.mind-card-meter.none { background: none; }
+/* The bar grows once, with the row that carries it, and never again: a chart
+   that re-fills on every click reads as a fault. Same gate as `mind-in`. */
+.mind-row-cards.in .mind-card-meter > i { animation: meter-in 520ms var(--ease) both; animation-delay: calc(var(--i, 0) * 50ms + 120ms); }
+@keyframes meter-in { from { width: 0; } to { width: var(--v); } }
+
+/* ── the footer band ────────────────────────────────────────────────────── */
+
+/*
+ * TWO ROWS, RESERVED ON EVERY CARD: THE CONTROL, THEN THE WAIT.
+ *
+ * The footer used to hold one line of text on three cards and a two-line
+ * toggle on the fourth, so choosing a mind moved that card's last line
+ * fourteen pixels and the row stopped reading across. Both rows are declared
+ * here and both hold their height whether or not this card fills them: the
+ * hairline, the control and the wait each land on one line across the row,
+ * whatever the player has chosen and whatever the catalogue happens to know.
+ *
+ * And the divider is gone with it. A card that carries a meter has one
+ * horizontal line in it already; a second one eighteen pixels below was the
+ * ambiguity that made the first read as a rule in the first place — two lines,
+ * one of them a value, neither labelled. The bands are separated by the space
+ * between them, which is what §1.7 asks for anyway.
+ */
+.mind-card-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.mind-card-ctl { display: flex; align-items: center; min-height: var(--ctl-h); }
+
+/* The wait, once, in the label's own size — not two 9 px numbers stacked
+   inside the toggle's cells, one of them set in `--info` on white. */
+.mind-card-wait {
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* The line holds its band when this mind has no measured wait, so the four
+     footers are the same height and the four hairlines stay level. */
+  min-height: 1.2em; line-height: 1.2;
+}
+
+/* What this mind is offering when it is not the chosen one: the one word. */
+.mind-card-read {
+  flex: 1 1 auto; min-width: 0;
+  font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mind-card.off .mind-card-read { color: var(--muted); }
+
+/*
+ * QUICK · DEEP — TWO EQUAL CELLS IN ONE TRACK.
+ *
+ * They were not parallel: QUICK sat in a white pill with a shadow while DEEP
+ * was bare text on the card's own ground with no hit area of its own, so a
+ * choice between two speeds read as one button and a caption. The track is the
+ * kit's `--sand`, both cells are the same 56×34, and the wait each of them
+ * buys has left the cells for the line underneath.
+ */
+.seg.mind-modes {
+  display: flex; width: 100%; gap: 2px; padding: 3px; position: relative; z-index: 1;
+  border-radius: var(--r-card);
+  background: rgba(201, 184, 167, .52);
+  border: 1px solid rgba(46, 46, 51, .08);
+}
+/* Both cells carry the same ink and the white pill is what says which one is
+   on — the segmented control in the reference kit is drawn exactly this way,
+   and it is also the only way the inactive label clears 4.5:1 on a `--sand`
+   track: `--muted` measured 4.24:1 there, `--ink` measures 9.5:1. */
+.seg.mind-modes > button {
+  flex: 1 1 0; min-width: 56px; height: var(--ctl-h); min-height: 0; padding: 0 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em;
+  color: var(--ink); border-radius: 8px;
+}
+.seg.mind-modes > button:hover { background: rgba(255, 255, 255, .58); color: var(--ink-2); }
+.seg.mind-modes > button.on {
+  background: #fff; color: var(--ink-2);
+  box-shadow: 0 1px 3px rgba(46, 46, 51, .14);
+}
+/* A speed that is out of reach says so where it stands, and stays focusable so
+   that saying so reaches a keyboard (`aria-disabled`, not `disabled`). */
+.seg.mind-modes > button.off { color: var(--muted); opacity: .55; cursor: default; }
+.seg.mind-modes > button.off:hover { background: none; }
+
+/* One line about the two speeds, so DEEP is not read as "wait longer for the
+   same thing". It appears only while a mind that has both is chosen. */
+.create-mode-note { color: var(--muted); }
+.create-mode-note:empty { display: none; }
+
+/* A ghost button is mostly air: 34 px of box around 14 px of word. Left as it
+   was, the gap under BROWSE ALL MINDS measured 24 px and read as 55. The
+   negative margins take the box's own padding back out of the rhythm, so what
+   the eye measures is the type, not the hit target. */
+.create-browse { display: flex; }
+.browse { align-self: flex-start; margin: -8px 0; padding-left: 0; }
+.browse:hover { background: none; text-decoration: underline; text-underline-offset: 4px; }
+
+/* ── refusal and the button ─────────────────────────────────────────────── */
+
+.create-deny:empty { display: none; }
+/* Two halves of the same moment: a fight already running on the left, the way
+   into it on the right. `space-between` with one child still puts the button
+   where §6.3 asks for it, so a screen with no live match loses nothing. */
+.create-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  flex-wrap: wrap;
+}
+
+/* The button and the price of pressing it are one block, so the caption stays
+   under the button rather than centring itself against the live line. */
+.create-go { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+/*
+ * WHAT A PRESS COSTS, BEFORE IT IS PRESSED.
+ *
+ * The daily allowance used to be disclosed by a refusal, so a stranger learned
+ * the rule at the moment it cost them one generation. It is the quietest type
+ * on the card and it sits where the eye already is on the way to the button.
+ */
+.create-allow { color: var(--muted); text-align: right; }
+.create-allow:empty { display: none; }
+
+/*
+ * WORKING, NOT REFUSED — AND THE ONE STILL FRAME IN THE JOURNEY IS GONE.
+ *
+ * `:disabled` fades to .45 because that is what "you cannot press this" looks
+ * like; the same fade under the word "Creating…" would say the request had
+ * already failed. So the busy button stays unpressable and stays readable.
+ *
+ * That left it STILL. `submit()` sets the label and then awaits
+ * `POST /api/creature`, and for the length of that request nothing on the
+ * screen moved — the only moment in create → birth → reveal → searching where
+ * the product waits and says so with a frozen frame, which is exactly when a
+ * player presses again or leaves.
+ *
+ * It breathes instead: the glow under the button rises and falls on the same
+ * 2.6 s beat the LIVE dot keeps. Not a progress bar and not a spinner (§1.5) —
+ * a pulse claims nothing about how far along the request is, only that it is
+ * still running. The label and the button's own face never move with it,
+ * because what is animated is the shadow.
+ */
+.create-foot .btn.busy:disabled {
+  opacity: .82;
+  box-shadow: 0 10px 28px rgba(88, 140, 208, .26), inset 0 1px 0 #fff;
+  animation: create-busy 2.6s var(--ease) infinite;
+}
+@keyframes create-busy {
+  0%, 100% { box-shadow: 0 8px 20px rgba(88, 140, 208, .18), inset 0 1px 0 #fff; }
+  50% { box-shadow: 0 14px 40px rgba(88, 140, 208, .5), inset 0 1px 0 #fff; }
+}
+
+/* ── the fight underneath ───────────────────────────────────────────────── */
+
+/*
+ * THE ARGUMENT FOR THE PRODUCT, IN ONE LINE.
+ *
+ * A fight is running behind this card and the veil turns it into texture,
+ * which is right for a form and wrong for the pitch. Two names and a way in
+ * carry what the blur cannot: nobody in this session made either of them, and
+ * they are fighting while the player writes. It stands in the footer's empty
+ * half, so it costs the card no height at all.
+ */
+.create-live {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 10px;
+  animation: live-rise var(--d-amb) var(--ease) both;
+}
+.create-live:empty { display: none; }
+@keyframes live-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.create-live .dot {
+  width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: live-beat 2.6s var(--ease) infinite;
+}
+@keyframes live-beat { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+/* The blanket reduced-motion rule shortens durations; an infinite loop at 1 ms
+   is a strobe, so both of these are stopped outright instead — the dot keeps
+   its colour and the busy button keeps the deeper half of its glow, so neither
+   loses what it was saying. */
+@media (prefers-reduced-motion: reduce) {
+  .create-live .dot, .create-foot .btn.busy:disabled { animation: none !important; }
+  .create-foot .btn.busy:disabled {
+    box-shadow: 0 12px 34px rgba(88, 140, 208, .4), inset 0 1px 0 #fff;
+  }
+}
+.create-live-what { color: var(--accent-ink); white-space: nowrap; }
+.create-live-who {
+  display: flex; align-items: baseline; gap: 7px; min-width: 0;
+  font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--ink-2);
+}
+.create-live-who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-live-who i {
+  font-style: normal; font-weight: 400; text-transform: lowercase;
+  letter-spacing: .04em; color: var(--muted);
+}
+.create-live-go {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  color: var(--muted); white-space: nowrap;
+  transition: color var(--d-ui) var(--ease);
+}
+.create-live-go::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: left;
+  transition: transform var(--d-ui) var(--ease);
+}
+.create-live-go { position: relative; }
+.create-live-go:hover { color: var(--ink-2); }
+.create-live-go:hover::after { transform: scaleX(1); }
+.create-live-go:hover svg { transform: translateX(2px); }
+.create-live-go svg { width: 13px; height: 13px; transition: transform var(--d-ui) var(--ease); }
+/*
+ * Narrow: the PAIR is the link, so it carries the names' weight and the link's
+ * underline.
+ *
+ * It used to drop to one name and the name it kept was the blue side —
+ * whichever creature the arena happened to seat there — so the line could
+ * print the opponent under LIVE NOW, and with one name it read as a state
+ * rather than as a fight in progress. `STONE GOLEM vs NEEDLE-79 →` fits at
+ * this size; past that each name gives up letters symmetrically and the verb
+ * between them, which is the half that makes it a fight, is never the thing
+ * that goes.
+ */
+.create-live-go.solo { gap: 6px; min-width: 0; }
+.create-live-go.solo b {
+  font-weight: 600; letter-spacing: .12em; color: var(--ink-2);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.create-live-go.solo i {
+  font-style: normal; font-weight: 400; text-transform: lowercase;
+  letter-spacing: .04em; color: var(--muted); flex: 0 0 auto;
+}
+.create-live-go.solo svg { flex: 0 0 13px; }
+.create-live-go.solo:hover b { color: var(--accent-ink); }
+.create-live-go:focus-visible { outline: 2px solid var(--info-ink); outline-offset: 3px; border-radius: 4px; }
+
+/* ── the picker modal ───────────────────────────────────────────────────── */
+
+/* Two layers of words, one eye.
+ *
+ * At `--glass-strong` (.74) the create card read straight through the panel:
+ * "CREATE A CREATURE", the five mind cards and the CREATE button were all
+ * legible under the GLM 5.3 rows, and on the narrow capture faint lines of the
+ * card ran between the list rows. Glass is a look, not a licence to show two
+ * screens at once — while the picker is open the card behind it is not
+ * information, it is texture. .92 with a real blur keeps the arena's light and
+ * colour and drops its text; the scrim under the panel does the same for
+ * everything outside it. */
+.picker-veil {
+  opacity: 0;
+  transition: opacity var(--d-ui) var(--ease);
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(46, 46, 51, .16), rgba(46, 46, 51, .38)),
+    rgba(46, 46, 51, .28);
+  -webkit-backdrop-filter: blur(8px) saturate(.9);
+  backdrop-filter: blur(8px) saturate(.9);
+}
+.picker-veil.on { opacity: 1; }
+/* A panel needs an edge, and white at .72 on a .92-white panel is not one.
+   The rim is drawn three times over: an ink hairline that says where the panel
+   stops, the kit's own light `--glass-line` inside it, and a lit top edge —
+   which together are the difference between frosted glass standing above the
+   scrim and a white rectangle lying on it. */
+.modal.picker {
+  position: relative;
+  width: min(660px, 100%);
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .12),
+    0 28px 70px rgba(46, 46, 51, .26),
+    inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+.picker-veil .modal { transform: translateY(8px); transition: transform var(--d-ui) var(--ease); }
+.picker-veil.on .modal { transform: none; }
+
+/* The chrome is not part of this decision.
+ *
+ * The overlay already lifts above `#chrome` (`components.css`), so the rail
+ * and the chips never cover the panel — but they kept glowing through the
+ * scrim beside it, and on a phone the bottom tab bar sat under the list like
+ * a second thing to press. A modal is modal: for as long as one is up the
+ * shell is neither visible nor clickable, and it comes back on close with the
+ * screen fade it already has. `:has()` and not a class on <body>, because the
+ * shell owns `body`'s attributes (§4.2) and this rule is the picker's. */
+/* `visibility` and not opacity alone: an opacity transition is run by the
+   compositor, and a compositor with nobody in front of it does not always
+   finish — measured on this stand, the rail and the wordmark sat at a few per
+   cent under the picker, invisible in the picture and still present to every
+   reader, probe and hit test. Visibility is not interpolated, so it lands.
+ *
+ * AND IT LANDS AT THE END OF THE FADE, NOT IN FRAME ONE.
+ *
+ * `visibility` was not in `#chrome`'s transition list (`ui/chrome.css`), so
+ * the property it is not interpolated on took effect immediately: the whole
+ * shell vanished on the frame of the click and the veil then faded up over
+ * 220 ms across an empty arena — a hard cut on a deliberate press, and the
+ * exact opposite of what the paragraph above claims. The delay is declared on
+ * the HIDDEN state, which is the same pattern `ui/base.css` uses for the
+ * ground layers and `ui/hud.css` for the VS card: `0s linear var(--d-ui)` on
+ * the way out, and nothing on the way back, so the shell returns on the first
+ * frame and fades in rather than appearing at the end of its own return. */
+body:has(#overlay .modal-veil) #chrome {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+/* And it comes back on the same clock it left on. `#chrome`'s own transition
+   is the screen's 600 ms (`ui/chrome.css`), which is the right length for the
+   fight dimming it was written for and twice too long here: the veil is gone
+   in 220 ms and the shell was still at half. Scoped to this screen, which is
+   the only one that opens a modal over the whole shell. */
+body[data-screen="create"] #chrome { transition: opacity var(--d-ui) var(--ease); }
+
+/*
+ * AND NEITHER IS THE CARD.
+ *
+ * The paragraph above stopped half way. Under `blur(8px)` and a dark radial
+ * scrim the create card was already unreadable — CREATE A CREATURE, the
+ * generation line and the chip under the field all reduced to smears — but
+ * unreadable is not the same as absent: they were still laid out, still
+ * measured, still in the accessibility tree and still counted by the capture
+ * probe as text a reader cannot get to. A modal is not a lens over the screen
+ * behind it; it is the screen. So the card leaves with the chrome and returns
+ * with it, over the same 220 ms the veil takes, and nothing is left underneath
+ * pretending to be information. Scoped to `.picker-veil`, because it is this
+ * modal's decision to make and not every modal's.
+ *
+ * The transition is declared on the screen itself and not inside the `:has()`,
+ * or the card would dissolve on the way out and snap back on the way in — a
+ * property that only exists while the rule matches cannot animate its own
+ * removal.
+ */
+body[data-screen="create"] #screen { transition: opacity var(--d-ui) var(--ease); }
+/* The same delay as the chrome above, for the same reason: `visibility` is a
+   step, so it is held back the length of the fade rather than taken in frame
+   one. Without it the create card was deleted on the click and the veil then
+   faded up over nothing. */
+body:has(#overlay .picker-veil) #screen {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+
+/* The title and the readout under it are one block, so the close button stays
+   on the title's own line rather than centring itself against two. */
+.modal.picker .modal-head { align-items: flex-start; }
+.picker-title { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.picker-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.picker-count:empty { display: none; }
+
+.picker-search { padding: 0 var(--s6) var(--s3); }
+.picker-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 var(--s6) var(--s4); }
+
+/* Everything inside the panel is tinted with ink, not with white.
+ *
+ * The shared components fill their rests with `rgba(255,255,255,.5–.66)` and
+ * hairline them with `--glass-line` (white at .72) — both of which read
+ * because the surface under them is the arena. On a .92 white panel white on
+ * white is nothing: the search field, the filter chips and the row hover all
+ * disappeared the moment the panel stopped being see-through. The same
+ * shapes, drawn subtractively. */
+.picker .search {
+  background: rgba(46, 46, 51, .045);
+  border-color: rgba(46, 46, 51, .10);
+}
+/*
+ * THE FIRST THING ON THE SCREEN IS A RING, SO IT HAS TO BE OUR RING.
+ *
+ * The search takes focus the moment the panel opens, and what it drew was a
+ * two-pixel dark-navy stroke standing two pixels off the field — a shape that
+ * belongs to no palette in this product and that every browser draws by
+ * default, so the modal opened looking unfinished. The indicator is redrawn in
+ * the kit's own selection blue instead: a one-pixel rim that reads as the
+ * field's own edge lighting up, and a four-pixel halo at 18 % for the "you are
+ * here" that carries across the panel. Forced-colours puts a system outline
+ * back, because a box-shadow is exactly what that mode discards.
+ */
+.picker .search:has(input:focus-visible) {
+  outline: none;
+  background: rgba(255, 255, 255, .9);
+  border-color: var(--info);
+  box-shadow: 0 0 0 1px var(--info), 0 0 0 4px rgba(110, 168, 255, .18);
+}
+/* The browser's own placeholder grey measures about 4:1 on this panel, and it
+   is the first word in the modal. Same call as the create field's. */
+.picker .search input::placeholder { color: var(--muted); opacity: 1; }
+.picker .search input:focus-visible { outline: none; box-shadow: none; }
+@media (forced-colors: active) {
+  .picker .search:has(input:focus-visible) { outline: 2px solid Highlight; outline-offset: 2px; }
+}
+.picker-filters .chip { background: rgba(46, 46, 51, .045); border-color: rgba(46, 46, 51, .10); }
+.picker-filters .chip.on { background: rgba(46, 46, 51, .10); border-color: rgba(46, 46, 51, .18); color: var(--ink-2); }
+
+.picker-group + .picker-group { margin-top: var(--s5); }
+.picker-rows { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.picker-empty:empty { display: none; }
+.picker .empty { margin-top: var(--s4); }
+
+/*
+ * ONE ROW PER MIND.
+ *
+ * The list used to carry a bundle per row, so GEMINI 3.7 FLASH stood twice,
+ * two rows apart, told apart by eight-pixel grey subtext. The row now carries
+ * the family and the speeds live in a segment on its right — the same control
+ * the card on Create wears, in the same words, so the two surfaces teach one
+ * model of the catalogue rather than two.
+ */
+.mind-row {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  padding: 9px 12px; border-radius: var(--r-card);
+  border: 1px solid transparent; background: transparent;
+  cursor: pointer; user-select: none;
+  transition: background var(--d-ui) var(--ease), border-color var(--d-ui) var(--ease);
+}
+.mind-row:hover { background: rgba(46, 46, 51, .055); }
+/* The keyboard's place in the list. Focus itself never leaves the search
+   field, so the row has to say "you are here" loudly enough to be found from
+   across the panel — a wash alone was not it. */
+.mind-row.active { background: rgba(46, 46, 51, .07); border-color: rgba(46, 46, 51, .16); }
+/*
+ * CHOSEN IS A MARK, NOT A HIGHLIGHTER.
+ *
+ * A flat `#C9D9F5` fill across the whole row put the heaviest colour on the
+ * panel behind the row the player has already decided, and left the tick
+ * floating at the far right of it with a hand's width of empty blue between
+ * the speed toggle and the confirmation. A wash light enough to read as
+ * "current" plus a two-pixel rule down the left edge says the same thing with
+ * a tenth of the ink — the rule is drawn as an inset shadow so it costs the
+ * row no layout and the radius still follows the corner.
+ */
+.mind-row.on {
+  background: rgba(110, 168, 255, .10);
+  border-color: transparent;
+  box-shadow: inset 2px 0 0 0 var(--info);
+}
+/* The keyboard cursor on the row that is already chosen says so with its edge,
+   not with more fill: two states expressed in one channel is a fill nobody can
+   read a value out of. */
+.mind-row.on.active { background: rgba(110, 168, 255, .13); border-color: rgba(110, 168, 255, .5); }
+/* Switched off, not half-drawn — same call as the card on Create: the reason
+   is the only thing on the row worth reading, so it keeps its contrast. */
+.mind-row.off { opacity: 1; filter: grayscale(1); cursor: default; }
+.mind-row.off .mind-row-name { color: var(--ink); }
+.mind-row.off:hover { background: transparent; }
+.mind-row-mark {
+  width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(46, 46, 51, .045); border: 1px solid rgba(46, 46, 51, .10); color: var(--ink-2);
+}
+.mind-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mind-row-name { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+/* The sub-line is the segment's readout, so it is a label — `QUICK · ~3 MIN`,
+   the same case the card and the creature page use for the same two words. */
+.mind-row-sub {
+  font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/*
+ * A refusal is a sentence and is set as one — WHOLE.
+ *
+ * The readout above is a label that must never wrap (`QUICK · ~3 MIN` on two
+ * lines is not a label), so it truncates; the reason inherited that and
+ * `Coming back soon — no colleague is lending this mind right now.` reached the
+ * picture as `Coming back soon — no colleague is lending this…`. The clause
+ * that was cut is the entire point of the sentence: the half that tells the
+ * player what to do about a mind they cannot have. A sentence wraps. Two lines
+ * is the ceiling, because the row is still a row.
+ */
+.mind-row-sub.reason {
+  font-family: var(--font-body); font-size: 12px; font-weight: 400;
+  letter-spacing: 0; text-transform: none; line-height: 1.35;
+  white-space: normal; text-overflow: clip;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.mind-row-tail { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; }
+.mind-row .chip.small {
+  height: 22px; padding: 0 8px; font-size: 9.5px; letter-spacing: .12em;
+  background: rgba(46, 46, 51, .045); border-color: rgba(46, 46, 51, .10);
+}
+/*
+ * THE TAIL IS THREE COLUMNS, NOT A QUEUE.
+ *
+ * Every column holds its width whether or not this row fills it, so the tag,
+ * the speed toggle and the tick each read straight down the list. Without the
+ * tag slot the right edge of the list was ragged by more than a hundred
+ * pixels — a FEATURED chip ended one place, a toggle another, a tick a third —
+ * and the panel looked like five unrelated rows rather than one table.
+ */
+.mind-row-tag { flex: 0 0 76px; width: 76px; display: flex; }
+.seg.mind-row-modes, .mind-row-slot { flex: 0 0 104px; width: 104px; }
+/* The same control the card on Create wears, so the two surfaces teach one
+   catalogue: the kit's `--sand` track, the white pill for the speed on offer,
+   both labels in the same ink. Only the type is smaller, because this cell is
+   104 px wide and the card's is sixty. */
+.seg.mind-row-modes {
+  padding: 2px;
+  background: rgba(201, 184, 167, .42); border-color: rgba(46, 46, 51, .10);
+}
+/* The segment's cells are spans (see `row()`), so they carry the button
+   styling the shared `.seg > button` rule would otherwise have given them. */
+.seg.mind-row-modes > span {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center;
+  height: 26px; min-width: 0; padding: 0 6px; border-radius: 8px;
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
+  color: var(--ink); cursor: pointer;
+  transition: background var(--d-ui) var(--ease), color var(--d-ui) var(--ease);
+}
+.seg.mind-row-modes > span:hover { background: rgba(255, 255, 255, .7); color: var(--ink-2); }
+.seg.mind-row-modes > span.on { background: #fff; color: var(--ink-2); box-shadow: 0 1px 3px rgba(46, 46, 51, .14); }
+.seg.mind-row-modes > span.off { opacity: .45; cursor: default; }
+.seg.mind-row-modes > span.off:hover { background: none; color: var(--muted); }
+.mind-row.on .seg.mind-row-modes { background: rgba(201, 184, 167, .5); border-color: rgba(110, 168, 255, .3); }
+/* The tick belongs to the toggle it confirms, twelve pixels after it — not
+   pinned to the panel's right margin with the row's whole width in between. */
+.mind-row-check { flex: 0 0 16px; width: 16px; display: flex; justify-content: flex-start; color: var(--info-ink); }
+
+/*
+ * THE LIST HAS TO SAY IT IS LONGER THAN THE PANEL.
+ *
+ * The last row was cut flat by the modal's bottom edge — a straight slice
+ * through a name, with nothing to suggest that scrolling would help. The mask
+ * is measured rather than constant (see `paintFade`): it opens only over the
+ * part of the list that is actually out of frame, so a list that ends inside
+ * the panel is drawn to its full strength and never pretends to continue.
+ */
+/* `min-height: 0` is the whole reason the list can scroll at all: a flex item
+   defaults to `min-height: auto`, so the body refused to shrink inside the
+   panel's `max-height` and the modal's `overflow: hidden` simply cut the last
+   row in half. */
+.picker .modal-body {
+  min-height: 0;
+  --fade-top: 0px;
+  --fade-bot: 0px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+}
+/*
+ * AND THE DIRECTION TO GO, ON SOMETHING TO STAND ON.
+ *
+ * A bare chevron laid across the bottom of the list landed on whatever row the
+ * panel happened to cut — on the phone, straight through the words `Coming back
+ * soon —` under CLAUDE OPUS — so the one hint that the list continues read as a
+ * glyph dropped on a sentence. It is an icon tile instead (§2.3: a circle in
+ * `--glass-strong` with a hairline), which is the shape this product uses
+ * everywhere a small mark has to sit on top of something else. It rides the
+ * fade, so it appears with the mask and leaves with it.
+ */
+.picker-more {
+  position: absolute; left: 50%; bottom: 8px;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; pointer-events: none;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-line);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .06), 0 4px 12px var(--shade);
+  color: var(--muted); opacity: 0;
+  transform: translate(-50%, -4px);
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+.picker.more .picker-more { opacity: 1; transform: translate(-50%, 0); }
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .create-wrap { padding-left: calc(var(--chrome-pad) + 120px); }
+}
+@media (max-width: 900px) {
+  /* No rail to lift and no outer thirds to release: the card is the width of
+     the phone, so the ground goes back to one even veil under it. */
+  body[data-screen="create"] .ground-wash {
+    background: linear-gradient(180deg, rgba(235, 225, 217, .62) 0%,
+      rgba(235, 225, 217, .68) 52%, rgba(235, 225, 217, .74) 100%);
+  }
+
+  /* The tab bar grows by the home indicator's inset, so the page's own bottom
+     grows with it — `ui/base.css` does the same for every `.doc` screen. Bare
+     96 px left twelve pixels between the bar and the screen's one action. */
+  .create-wrap { padding: 80px var(--chrome-pad) calc(96px + env(safe-area-inset-bottom)); }
+  /*
+   * EVERY BAND ON THE CARD GIVES A LITTLE SO THE CARD FITS ABOVE THE BAR.
+   *
+   * The mind card grew a row (the wait, moved out of the toggle's cells) and
+   * the footer grew a line (the allowance), and together they pushed the last
+   * band of the visitor's card under the sticky bar — the one thing §12
+   * measures. The height comes back out of the SPACES rather than out of the
+   * type or the touch targets: eight pixels between the card's bands instead
+   * of nine, and a slightly tighter internal rhythm inside each mind card.
+   */
+  .create-card { padding: 16px 16px 14px; gap: 8px; }
+  .create-head { gap: 6px; }
+  .create-field { min-height: 68px; }
+  .create-input { gap: 8px 12px; }
+
+  /*
+   * BROWSE MOVES UP BESIDE THE LABEL, AND THE CARD CLEARS THE BAR.
+   *
+   * A sticky bar cannot promise not to cover what is behind it: whatever the
+   * page's last band is, at scroll top the bar is pinned over it. On the
+   * visitor's phone that band was BROWSE ALL MINDS and the capture read
+   * `Browse all minds × Live now`, `× STONE GOLEM`, `× Create` — three
+   * collisions §12 counts, on the first screen of the product. The only real
+   * answer is that everything above the bar has to FIT above it, so the two
+   * bands under the mind strip become one: `CHOOSE ITS MIND ····· BROWSE ALL`
+   * on a single line, which is where a "there are more of these" affordance
+   * belongs anyway — attached to the heading of the thing it extends, not
+   * dangling under a strip that already scrolls.
+   *
+   * `display: contents` on the head is the same move the starter chips make
+   * above: two shapes on the card's own grid, one piece of markup.
+   */
+  .create-minds {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px 12px;
+  }
+  .create-minds-head { display: contents; }
+  /* The heading shares its line with the button now, so the hairline gives up
+     width rather than the words: `CHOOSE ITS / MIND` on two lines is a heading
+     that has been broken, not a heading that has been fitted. */
+  .create-minds .label-line { grid-column: 1; grid-row: 1; white-space: nowrap; }
+  .create-browse { grid-column: 2; grid-row: 1; justify-self: end; }
+  /* The browse button keeps its 44 px thumb target and wears it as negative
+     margin (`.browse`), so its BOX hangs ten pixels below the heading's row
+     even though its ink does not. The caption under it is moved clear of that
+     box rather than the target being shrunk: a 34 px control is the thing WCAG
+     2.2 asks this file not to ship. */
+  .create-minds-note { grid-column: 1 / -1; grid-row: 2; margin-top: 5px; }
+  .mind-row-cards { grid-column: 1 / -1; grid-row: 3; }
+  .create-mode-note { grid-column: 1 / -1; grid-row: 4; }
+  .browse { margin: -10px 0; padding-right: 0; }
+  /*
+   * ALL THREE EXAMPLES, AND STILL ONE ROW OF THEM.
+   *
+   * They were held to one unwrapped line and the third was hidden outright, so
+   * a phone offered two ways in where a desktop offered three — and the one
+   * that vanished, STONE TITAN, is the archetype furthest from the other two.
+   *
+   * Wrapping alone put the third chip on a second row, because the chips were
+   * sharing their line with the character count and had 260 px of the card's
+   * 326 to fit into. So the band is re-cut instead of re-flowed: `TRY ONE` and
+   * the count take one line together — they are both captions on the field
+   * above them — and the chips take the whole width under it, where all three
+   * fit side by side. Two short lines instead of a label plus two rows of
+   * chips: the third example arrives and the band gets SHORTER.
+   *
+   * `display: contents` is what lets the label and the chips be placed on the
+   * card's own grid without a second markup shape for the phone.
+   */
+  .create-starters { display: contents; }
+  .create-try, .create-from { grid-column: 1; grid-row: 2; justify-self: start; align-self: center; }
+  .create-count { grid-row: 2; }
+  .create-chips { grid-column: 1 / -1; grid-row: 3; flex-wrap: wrap; }
+  .create-chip { flex: 0 1 auto; }
+
+  /*
+   * THE MINDS BECOME A STRIP, SO THE BUTTON CAN BE SEEN.
+   *
+   * As a 2×2 grid the row is 320 px tall and it pushed CREATE — the screen's
+   * only action, on the first screen a stranger ever sees — past the fold,
+   * behind the tab bar. One snapping row of 168 px cards is half the height
+   * and says what a grid cannot: there is more of this, to the right. The
+   * full-bleed padding lets the fourth card peek past the card's edge, which
+   * is the affordance; the vertical padding is there so the chosen card's
+   * glow is not clipped by the scroll box.
+   */
+  .mind-row-cards {
+    display: flex;
+    grid-template-columns: none;
+    gap: 10px;
+    margin: -6px -16px -8px;
+    padding: 6px 16px 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+  }
+  .mind-row-cards::-webkit-scrollbar { display: none; }
+  /*
+   * THE STRIP HAS TO LOOK CUT, NOT BROKEN — AT WHICHEVER END IT CONTINUES.
+   *
+   * The second card met the viewport edge on a hard vertical, mid-body, with
+   * nothing anywhere to say that dragging would help. A constant mask on the
+   * two card counts that usually overflow was the first answer, and it lies in
+   * both directions: a row of three narrow cards that happens to fit was still
+   * drawn fading out, and a row scrolled to its end faded the last card away
+   * while the first one — the one actually out of frame — was cut flat.
+   *
+   * `edgeFade` (ui/mindpicker.js) measures both ends on every scroll, resize
+   * and repaint, so the fade is exactly the amount of row that is off-screen:
+   * thirty-two pixels of it at most, nothing when nothing is hidden. Same
+   * measurement the picker's list already makes vertically.
+   */
+  .mind-row-cards, .picker-filters {
+    --fade-l: 0px; --fade-r: 0px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l),
+      #000 calc(100% - var(--fade-r)), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l),
+      #000 calc(100% - var(--fade-r)), transparent 100%);
+  }
+  .mind-row-cards > * { flex: 0 0 168px; scroll-snap-align: start; }
+  .mind-row-cards[data-n="1"] { grid-template-columns: none; }
+  .mind-row-cards[data-n="1"] > * { flex: 1 1 auto; }
+
+  /* 44 px, said once: the shared `.seg > button` grows to the touch target a
+     phone owes it (`ui/components.css`), and every card's control row reserves
+     exactly that band whether it is holding a toggle or a word — which is what
+     keeps the four footers level while the strip scrolls past them. */
+  .mind-card { --ctl-h: 44px; min-height: 0; padding: 10px 10px 8px; }
+  .mind-card-mark { width: 28px; height: 28px; flex: 0 0 28px; }
+  .mind-card-name { margin-top: 6px; }
+  .mind-card-kind { margin-top: 4px; }
+  .mind-card-meter { margin-top: 7px; }
+  .mind-card-foot { padding-top: 9px; gap: 4px; }
+  .mind-skel { min-height: 188px; }
+  /* Under 16 px iOS Safari zooms the page the moment a field takes focus, and
+     this is the one screen where the player types. The picker's search sets
+     its own size because the modal is appended to `#overlay`, outside the
+     screen, and the shared rule has to reach it there too. */
+  .create-field, .picker .search input { font-size: 16px; }
+  /* Three columns of tail do not fit beside a mind's name at 390 px — the
+     FEATURED chip landed on top of the word it was meant to qualify. The row
+     becomes two lines: the mind, then what can be done with it, indented under
+     the name so the mark still reads as the row's left edge. */
+  .mind-row {
+    position: relative;
+    display: grid; grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px 14px; padding: 12px 12px 12px;
+  }
+  .mind-row-mark, .mind-row-main { grid-row: 1; }
+  .mind-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mind-row-tail { grid-column: 2; gap: 10px; }
+  .mind-row-slot { display: none; }
+  /* The tag column exists to hold a column open across a table; on two lines
+     there is no column to hold, and 76 px of nothing would push the toggle
+     off the row. */
+  .mind-row-tag { flex: 0 0 auto; width: auto; }
+  .mind-row-tag:empty { display: none; }
+  .seg.mind-row-modes { flex: 0 0 auto; width: auto; }
+  /* 44 px, like every other control this stylesheet ships at this width. The
+     cell was 34 — the one target on the screen under what WCAG 2.5.8 asks for,
+     and the same stylesheet enforces 44 on the chips beside it and on the
+     card's own toggle behind the modal. */
+  .seg.mind-row-modes > span { min-height: 44px; padding: 0 12px; }
+  /* The tick leaves the tail on a phone: the chip and the toggle already fill
+     that line, and a tick beside the name is where it belongs anyway. */
+  .mind-row-check { position: absolute; top: 14px; right: 12px; flex: none; }
+
+  /*
+   * THE SUBMIT IS ALWAYS REACHABLE.
+   *
+   * `create-m.png` used to end at BROWSE ALL MINDS with CREATE below the fold
+   * and behind the tab bar, so a visitor's first screen showed no way to
+   * finish it. Two things fixed that and they work in this order: the mind
+   * strip above halved the tallest band on the card, which brings the button
+   * inside the fold on its own; and the footer is sticky as the guarantee for
+   * everything the strip cannot shorten — a refusal under the button, a long
+   * name, a bigger text size. 50 px is the tab bar's own height, so the pinned
+   * footer stacks directly on top of it rather than under it.
+   *
+   * A BAR, AND A SCRIM ABOVE IT — NOT A GRADIENT THROUGH IT.
+   *
+   * The bar used to fade up from nothing across its own top forty per cent,
+   * which is where its own first line stands: `create-m.png` photographed
+   * `LIVE NOW · STONE GOLEM →` printed directly over `BROWSE ALL MINDS`, two
+   * lines of type in one band of pixels on the screen §12 measures for exactly
+   * that. The two jobs are separated. The bar is opaque, so nothing ever reads
+   * through the thing the thumb is aiming at; the fade is a band of its own
+   * ABOVE it, which is where content is supposed to dissolve as it scrolls
+   * under. Same soft edge, and no text over text.
+   */
+  .create-foot {
+    position: sticky;
+    bottom: calc(50px + env(safe-area-inset-bottom));
+    z-index: 2;
+    margin: 0 -16px -14px;
+    padding: 9px 16px 10px;
+    background: rgba(244, 238, 232, .985);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    backdrop-filter: blur(10px) saturate(1.1);
+    border-radius: 0 0 var(--r-panel) var(--r-panel);
+    row-gap: 6px;
+  }
+  .create-foot::before {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 100%; height: 18px;
+    background: linear-gradient(to bottom, rgba(244, 238, 232, 0), rgba(244, 238, 232, .985));
+    pointer-events: none;
+  }
+  /* The live line takes the row above the button, and the button takes the
+     phone's whole width — a thumb-sized primary action is the point of the
+     screen. The names give up tracking rather than letters: `STONE GOLEM vs
+     NEEDLE-79` fits 322 px at .05em, and only past that does either name take
+     an ellipsis. */
+  .create-live { flex: 1 1 100%; order: -1; gap: 7px; }
+  .create-live-who { font-size: 10px; letter-spacing: .07em; gap: 5px; }
+  .create-live-go.solo { font-size: 9.5px; letter-spacing: .14em; gap: 5px; }
+  .create-live-go.solo b { letter-spacing: .05em; }
+  .create-go { flex: 1 1 100%; align-items: stretch; gap: 5px; }
+  .create-allow { text-align: center; }
+  .create-foot .btn { flex: 1 1 100%; }
+
+  .picker-search, .picker-filters { padding-left: var(--s5); padding-right: var(--s5); }
+  .modal .modal-head, .modal .modal-body { padding-left: var(--s5); padding-right: var(--s5); }
+  .modal.picker { max-height: 88vh; }
+
+  /*
+   * THE FILTERS ARE A RAIL, NOT A PARAGRAPH.
+   *
+   * Six chips wrapped onto two rows at 390 px and took eighty pixels off the
+   * top of a panel that had room for three and a half minds — so the list, the
+   * only thing in the modal anybody opened it for, was the smallest band in it.
+   * One scrolling row is the same gesture the mind strip on Create already
+   * teaches, with the same 24 px fade saying there is more to the right of it.
+   */
+  .picker-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--s5);
+    scrollbar-width: none;
+  }
+  .picker-filters::-webkit-scrollbar { display: none; }
+  .picker-filters .chip { flex: 0 0 auto; }
+}
+
+/* Below the phone the two labels stop fitting side by side (measured: 129 px of
+   heading and 160 px of button want 301 of 288). Wrapping the heading is the
+   graceful failure — the alternative is a button drawn over a word. */
+@media (max-width: 360px) {
+  .create-minds .label-line { white-space: normal; }
+}

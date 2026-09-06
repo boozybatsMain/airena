@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Airena</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AIRENA — living machines, endless battles</title>
+<!-- The browser's own chrome joins the page's ground rather than sitting on a
+     white band above it: on a phone the address bar and the status bar take
+     this colour, and the warm off-white is the palette's `--sky` (§2.1). -->
+<meta name="theme-color" content="#EBE1D9">
 
 <!--
-  Карта импортов стоит ПЕРВОЙ и в <head>.
-
-  Браузер разрешает спецификаторы модулей в момент preload, а не в момент
-  исполнения: `modulepreload` на main.js, поставленный до карты, роняет
-  «Failed to resolve module specifier "three"» и грузит модуль второй раз.
-
-  Сборка минифицированная, а не читаемая: F6 меряет время до первого кадра,
-  а `three.webgpu.js` + `three.core.js` — это 3.2 МБ против 960 КБ.
+  The import map comes FIRST and lives in <head>: the browser resolves module
+  specifiers at preload time, and a `modulepreload` placed before the map fails
+  with "Failed to resolve module specifier 'three'" and loads the module twice.
+  Minified builds on purpose: first-frame budget (tools/checkboot.mjs).
 -->
 <script type="importmap">
 { "imports": {
@@ -26,25 +26,9 @@
 </script>
 
 <!--
-  ГДЕ ЖИВЁТ БЭКЕНД.
-
-  До этой строки адрес сервера был не записан нигде: клиент звал `/api/...`
-  относительным путём, то есть «тот же хост, что отдал страницу». На своём
-  домене это верно и не стоит ни байта. Но статику продукта раздаёт GENEX
-  (R2 + воркер, §12: платформа не даёт серверный compute), а бэкенд Airena
-  стоит отдельно — и тогда каждый относительный `/api/...` уходит на
-  `<slug>.genex.technology`, где ручек нет вовсе.
-
-  Значение подставляет сборка (`tools/build.mjs` → `--api=`), а `?api=` в
-  адресе перебивает его на лету: один залитый бандл можно проверить против
-  локального сервера, не пересобирая. Пустая строка = свой хост, то есть
-  ровно прежнее поведение.
-
-  Почему глобаль, а не модуль: адрес нужен и оболочке (`lib/api.js`), и
-  вьюверу (`/viewer/main.js`), а вьювер живёт под своим маунтом и на дев-
-  сервере `src/server/index.js` вообще не видит `src/client`. Общий модуль
-  пришлось бы дублировать или монтировать; глобаль такого выбора не требует
-  и уже есть в этом файле рядом (`window.__v` — штамп сборки).
+  Where the backend lives. Static files may be served by GENEX while the API
+  runs elsewhere; the build stamps this meta (`tools/build.mjs --api=`), and
+  `?api=` in the address overrides it for a one-off check. Empty = same host.
 -->
 <meta name="airena-backend" content="">
 <meta name="genex-slug" content="">
@@ -54,56 +38,55 @@ window.__api = (function () {
     var q = new URLSearchParams(location.search).get('api');
     var m = document.querySelector('meta[name="airena-backend"]');
     var v = String(q || (m && m.content) || '').trim().replace(/\/+$/, '');
-    /* Только абсолютный http(s). Мусор в адресной строке не имеет права
-       увести запросы на чужой хост — он их просто не меняет. */
     return /^https?:\/\/[^/]+$/.test(v) ? v : '';
   } catch (e) { return ''; }
 })();
 </script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%A6%91%3C/text%3E%3C/svg%3E">
-<link rel="preload" href="/fonts/tektur-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
-<!-- Сеть стартует во время разбора HTML, а не после первого кадра скрипта:
-     download и парсинг three.js — самая длинная неделимая часть пути к F6. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232E2E33' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23FF7A5C'/%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/spacegrotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="/vendor/three.webgpu.min.js">
 <link rel="modulepreload" href="/vendor/three.core.min.js">
 <link rel="modulepreload" href="/vendor/three.tsl.min.js">
-<link rel="stylesheet" href="/ui/kit.css">
-<link rel="stylesheet" href="/ui/app.css">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/ui/components.css">
+<link rel="stylesheet" href="/ui/chrome.css">
+<link rel="stylesheet" href="/ui/hud.css">
+<link rel="stylesheet" href="/ui/screens/live.css">
+<link rel="stylesheet" href="/ui/screens/create.css">
+<link rel="stylesheet" href="/ui/screens/birth.css">
+<link rel="stylesheet" href="/ui/screens/creature.css">
+<link rel="stylesheet" href="/ui/screens/history.css">
+<link rel="stylesheet" href="/ui/screens/ladder.css">
+<link rel="stylesheet" href="/ui/screens/worker.css">
 </head>
-<body>
+<body data-screen="" data-phase="connecting" data-ground="none">
+
+<!-- The navigation is the LAST layer in the document (§4.2), so on a ladder
+     showing a hundred rows a keyboard passes all of them before it reaches
+     LIVE / CREATURE / HISTORY / LADDER. This is the way past, and it is invisible
+     until it has focus (ui/base.css `.skip`). A button and not an anchor: every
+     address in this product is a hash, and `href="#chrome"` would be read by the
+     router as a route. `app.js` moves focus to the rail. -->
+<button class="skip" type="button">Skip to navigation</button>
 
 <!--
-  Один документ, три слоя, и порядок между ними важнее их содержимого.
+  Layers, bottom to top (docs/REDESIGN.md §4.2):
+    #arena   the persistent viewer. Never unmounted — a renderer torn down on
+             every navigation is the first-frame budget failed on every route.
+    #stage   backdrop image + veil for document screens.
+    #screen  the current screen (cross-fades).
+    #overlay transient cards: VS, result, away recap, fatal.
+    #chrome  wordmark, rail, chips.
+    #tip     the single tooltip.
 
-    #arena   — сцена и боевой HUD. Живёт ВСЕГДА и не размонтируется: рендерер,
-               который сносят на каждой навигации, — это F6, провалённый на
-               каждом переходе. Экраны создания и стены — слои ПОВЕРХ идущего
-               боя, а не вместо него (§10.3: ожидание занимает чужим боем).
-    #screen  — продуктовые экраны: существо, лестница, создание, итог.
-    #shell   — три вкладки. Меню как экрана нет (§10.3).
-
-  Разметка HUD — контракт src/viewer/main.js, перенесённый из утверждённого
-  вьювера (§10.6) с двумя правками: весь английский переведён, а дев-обвязка
-  (выбор мозгов, сид, панель кода) оставлена инертными сокетами, которых
-  игрок не видит и не может дофокусить. Панель кода никогда не открывается:
-  у имён бойцов нет data-fighter, и обработчик просто не находит, к чему
-  прицепиться — F11 закрывает исходник, и закрывает его отсутствием пути,
-  а не запретом на видном месте.
+  The markup inside #hud is the contract of src/viewer/main.js (§5.1). Ids and
+  structure are fixed; styling lives in ui/hud.css.
 -->
-
 <div id="arena">
-  <div id="vignette"></div>
+  <div id="vfxflash"></div>
   <div id="hud">
     <div class="bar-wrap" id="bar-oct">
-      <svg class="emblem" viewBox="0 0 130 130">
-        <defs><clipPath id="ep-o"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
-        <path d="M7 .8 H123 Q129.2 .8 129.2 7 V103 L103 129.2 H7 Q.8 129.2 .8 123 V7 Q.8 .8 7 .8 Z" fill="rgba(10,18,28,.18)"/>
-        <g class="glyph" data-side="oct" clip-path="url(#ep-o)"></g>
-        <g stroke="rgba(159,232,242,.22)" stroke-width="1.5" clip-path="url(#ep-o)">
-          <path d="M10 112 l7 -7 M15 117 l7 -7 M20 122 l7 -7"/>
-        </g>
-        <image class="wf-emblem" x="0" y="0" width="130" height="130"/>
-      </svg>
       <div class="col">
         <div class="namerow">
           <div class="name">—</div>
@@ -116,15 +99,6 @@ window.__api = (function () {
     </div>
 
     <div class="bar-wrap" id="bar-gor">
-      <svg class="emblem" viewBox="0 0 130 130">
-        <defs><clipPath id="ep-g"><path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z"/></clipPath></defs>
-        <path d="M7 .8 H123 Q129.2 .8 129.2 7 V123 Q129.2 129.2 123 129.2 H27 L.8 103 V7 Q.8 .8 7 .8 Z" fill="rgba(28,18,10,.18)"/>
-        <g class="glyph" data-side="gor" clip-path="url(#ep-g)"></g>
-        <g stroke="rgba(255,195,122,.2)" stroke-width="1.5" clip-path="url(#ep-g)">
-          <path d="M120 112 l-7 -7 M115 117 l-7 -7 M110 122 l-7 -7"/>
-        </g>
-        <image class="wf-emblem" x="0" y="0" width="130" height="130"/>
-      </svg>
       <div class="col">
         <div class="namerow">
           <div class="name">—</div>
@@ -139,74 +113,20 @@ window.__api = (function () {
     <div id="clock">
       <div class="t">0.0</div>
       <div class="s">—</div>
-      <!--
-        ЧЕЙ ЭТО БОЙ — ОДНОЙ СТРОКОЙ, ПОД ЧАСАМИ (D162).
-
-        До неё принадлежность боя сообщалась ровно один раз: в карточке ИТОГА,
-        после того как всё уже кончилось. Пока бой шёл, гость смотрел чужую
-        драку и не имел ни одного признака, что она чужая, — а витрина идёт
-        почти всегда, значит это и есть первое, что он видит от продукта.
-      -->
-      <div class="whose" id="whose"></div>
-      <div class="byline">Мозги здесь пишет нейросеть. Мы в них не вмешиваемся.</div>
-    </div>
-
-    <!--
-      КАК ЧИТАТЬ БОЙ.
-
-      Объяснение существовало только в дев-вьювере и по-английски. Игрок видел
-      красное пятно на полу, тонкую линию, белую оболочку — и не знал, что это.
-      Бой автобаттлера смотрят, а не играют; если смотреть не понимая, смотреть
-      незачем.
-
-      Показывается один раз и убирается навсегда (ключ в localStorage): это
-      подсказка, а не панель. §10 требует меньше плашек, и постоянная легенда
-      была бы ровно лишней плашкой.
-
-      КЛЮЧ ВЕРСИОНИРОВАН. Был булев `airena.howto`, и это означало, что любая
-      новая строка легенды не достанется никому, кто уже играл, — то есть ровно
-      тем, кто дольше всех смотрит бои. Версия поднимается вместе с содержимым
-      легенды и только вместе с ним.
-    -->
-    <!--
-      ВСПЫШКА КАДРА — ОСЬ IR, КОТОРАЯ ДО ЭТОЙ СТРОКИ НЕ РИСОВАЛА НИЧЕГО.
-
-      `screen: 'flash'` — одна из шести осей VFX-IR (§9.2): её валидируют,
-      канонизируют, хранят в базе, за неё платят токенами при генерации, и
-      `paintFlash()` во вьювере честно её исполняет. Но элемент, который он
-      ищет по id, существовал ТОЛЬКО в дев-странице вьювера. То есть у
-      каждого настоящего игрока эта ось была тихим no-op.
-
-      Слой стоит внутри #arena и под HUD: вспышка — часть боя, а не оверлей
-      над интерфейсом.
-    -->
-    <div id="vfxflash"></div>
-
-    <div id="howto" hidden>
-      <div class="row"><i style="background:linear-gradient(90deg,#39c6d8 50%,#e0762b 50%)"></i>фигура на полу — замах; она цвета того, кто бьёт, а «ТВОЁ» стоит на плите</div>
-      <div class="row"><i style="background:#fff;opacity:.85"></i>чем фигура плотнее, тем ближе удар — и чужая всегда плотнее твоей</div>
-      <div class="row"><i style="background:#4fc8dc"></i>тонкая линия — куда пойдёт луч</div>
-      <div class="row"><i style="background:#fff;opacity:.55"></i>белая оболочка — сейчас не попасть</div>
-      <div class="row"><i style="background:#ff4d3d"></i>полоса над головой — идёт каст</div>
-      <div class="row"><i style="background:#4fc8dc;opacity:.45"></i>плоское свечение — боец за укрытием</div>
-      <div class="row"><i style="background:#0b1016;border:1px solid rgba(255,255,255,.35)"></i>тень под телом — прыжок; конус, зона и рывок проходят под ним</div>
-      <button id="howto-close" class="btn ghost">ПОНЯТНО</button>
+      <div class="byline"></div>
     </div>
 
     <div id="feedwrap">
-      <div class="hcut">ЛЕНТА БОЯ
-        <svg viewBox="0 0 400 40" fill="none"><image class="wf-feedline" x="0" y="0" width="400" height="40"/></svg>
-      </div>
-      <div id="digest"></div>
+      <div class="feed-head"><span class="feed-title">Live feed</span><button class="feed-toggle" type="button" aria-label="Collapse feed"></button></div>
       <div id="feed"></div>
     </div>
 
     <div id="banner"><div class="box"><div class="who"></div><div class="why"></div></div></div>
     <div id="netstate"></div>
   </div>
-  <div id="boot">загрузка</div>
+  <div id="boot"><div class="boot-in"><canvas class="boot-orbit" width="160" height="160"></canvas><div class="boot-t">Connecting to the arena</div></div></div>
 
-  <!-- Сокеты, которых требует main.js. Игроку не показываются и не фокусируются. -->
+  <!-- Inert sockets main.js queries. Never shown, never focusable. -->
   <div id="devsockets" hidden aria-hidden="true">
     <div id="legend"><div class="lbg"></div><div class="lfr"></div><div class="lin"></div></div>
     <div id="code"><button id="code-close" tabindex="-1"></button><h2></h2><div class="meta"></div><pre></pre></div>
@@ -223,17 +143,34 @@ window.__api = (function () {
   </div>
 </div>
 
-<div id="screen"></div>
-
-<nav id="shell">
-  <div class="brand">Airena</div>
-  <div class="tabs">
-    <a class="tab" data-tab="arena" href="#/arena">Бой</a>
-    <a class="tab" data-tab="creature" href="#/creature/me">Существо<span class="pip"></span></a>
-    <a class="tab" data-tab="ladder" href="#/ladder">Лестница</a>
-  </div>
-  <div class="status"></div>
-</nav>
+<!-- TWO GROUNDS, STACKED, CROSS-FADED (ui/base.css).
+     The backdrop used to be one element whose background-image, veil gradient
+     and backdrop-filter were all rewritten by `body[data-ground]` — none of
+     which is a transitionable property, so navigating Create → Creature
+     replaced the whole world in one frame under a 600 ms screen cross-fade.
+     One layer carries the photograph and its veil, the other the flat blur
+     wash the veiled screens stand on, and the ground change fades between
+     them on the same clock as the screens above. -->
+<div id="stage" aria-hidden="true">
+  <div class="ground ground-photo"></div>
+  <div class="ground ground-wash"></div>
+</div>
+<!-- The page had a `nav` landmark and no `main`: a screen reader could jump to
+     the navigation and had nothing to jump to from it. `#screen` is the one
+     element that always holds the current screen, so it is the landmark. -->
+<div id="screen" role="main"></div>
+<div id="overlay"></div>
+<nav id="chrome" aria-label="Primary"></nav>
+<!-- A hash router replaces the whole of `#screen` without a document load, and
+     nothing said so: a screen reader was left on a page that had been gone for
+     a minute. `app.js` writes the screen's name here once per screen — the same
+     word the rail and the tab use — and says nothing on sub-navigation inside
+     one screen, where the panel takes focus and answers for itself. -->
+<div class="sr" id="say" role="status" aria-live="polite" aria-atomic="true"></div>
+<!-- `aria-hidden` from the start: `ui/tooltip.js` only sets it when a tooltip
+     CLOSES, so until the player hovered one, an empty `role="tooltip"` node sat
+     in the accessibility tree of every screen. -->
+<div id="tip" role="tooltip" aria-hidden="true"><div class="tip-title"></div><div class="tip-body"></div></div>
 
 <script type="module" src="/app.js"></script>
 </body>

@@ -25,50 +25,50 @@
  */
 export const EVENTS = {
   // воронка первой сессии
-  visit: { feeds: 'Посетитель → создал существо', props: ['ref', 'guest'] },
-  fight_watched: { feeds: 'Матчей на DAU', props: ['matchId', 'seconds', 'completed'] },
+  visit: { feeds: 'Visitor → created a creature', props: ['ref', 'guest'] },
+  fight_watched: { feeds: 'Fights per daily player', props: ['matchId', 'seconds', 'completed'] },
   /* Разбор боя ОТКРЫТ — не «показана панель итога». Событие кормит проверку
      F11 «доказательство авторства доходит до игрока», и на панели итога оно
      срабатывало всегда, то есть измеряло единицу. */
-  tactics_opened: { feeds: 'Посетитель → создал существо', props: ['matchId'] },
+  tactics_opened: { feeds: 'Visitor → created a creature', props: ['matchId'] },
   /* Панель итога показана. Отдельное событие, потому что это другой вопрос:
      сколько людей досмотрело бой до конца. */
-  result_shown: { feeds: 'Матчей на DAU', props: ['matchId'] },
-  create_opened: { feeds: 'Посетитель → создал существо', props: [] },
-  create_submitted: { feeds: 'Посетитель → создал существо', props: ['bundle', 'promptChars'] },
-  create_done: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'ms', 'attempts', 'fallback'], server: true },
-  create_failed: { feeds: 'Доля отклонённых генераций', props: ['jobId', 'code'], server: true },
+  result_shown: { feeds: 'Fights per daily player', props: ['matchId'] },
+  create_opened: { feeds: 'Visitor → created a creature', props: [] },
+  create_submitted: { feeds: 'Visitor → created a creature', props: ['bundle', 'promptChars'] },
+  create_done: { feeds: 'Share of refused generations', props: ['jobId', 'ms', 'attempts', 'fallback'], server: true },
+  create_failed: { feeds: 'Share of refused generations', props: ['jobId', 'code'], server: true },
   /* Отказ ТЕЛА, отдельно от отказа генерации: тело может не собраться, а
      существо всё равно родится (D117). `whose` отвечает на вопрос основателя
      «чья вина» — молчала модель или написала код мимо стен. */
-  body_rejected: { feeds: 'Доля отклонённых генераций', props: ['code', 'whose', 'tries', 'model'], server: true },
-  account_wall_shown: { feeds: 'Посетитель → создал существо', props: ['creatureId'] },
-  account_claimed: { feeds: 'Посетитель → создал существо', props: ['moved'] },
+  body_rejected: { feeds: 'Share of refused generations', props: ['code', 'whose', 'tries', 'model'], server: true },
+  account_wall_shown: { feeds: 'Visitor → created a creature', props: ['creatureId'] },
+  account_claimed: { feeds: 'Visitor → created a creature', props: ['moved'] },
 
   // цикл и удержание
   session_start: { feeds: 'D1 / D7 / D30', props: ['returning', 'awayMs'] },
-  tab_view: { feeds: 'Матчей на DAU', props: ['tab'] },
-  ladder_viewed: { feeds: 'Матчей на DAU', props: ['rank'] },
-  creature_viewed: { feeds: 'Матчей на DAU', props: ['creatureId', 'mine'] },
-  refactor_submitted: { feeds: 'Стоимость на MAU', props: ['creatureId', 'bundle'], server: true },
-  refactor_done: { feeds: 'Стоимость на MAU', props: ['creatureId', 'better'], server: true },
+  tab_view: { feeds: 'Fights per daily player', props: ['tab'] },
+  ladder_viewed: { feeds: 'Fights per daily player', props: ['rank'] },
+  creature_viewed: { feeds: 'Fights per daily player', props: ['creatureId', 'mine'] },
+  refactor_submitted: { feeds: 'Upkeep per monthly player', props: ['creatureId', 'bundle'], server: true },
+  refactor_done: { feeds: 'Upkeep per monthly player', props: ['creatureId', 'better'], server: true },
   adaptation_shown: { feeds: 'D7', props: ['creatureId', 'kind'] },
 
   // предохранители — не продуктовые, но без них не видно, почему упала воронка
-  limit_denied: { feeds: 'Стоимость на MAU', props: ['code'], server: true },
+  limit_denied: { feeds: 'Upkeep per monthly player', props: ['code'], server: true },
   error_shown: { feeds: '—', props: ['code', 'screen'] },
   /* Тело сломалось В БРАУЗЕРЕ, уже после того как приёмка его пропустила.
      Единственный честный замер «существо видно»: всё остальное меряется на
      сервере, где нет ни настоящего рендерера, ни настоящего железа. Каждое
      такое событие — дыра в приёмке, а не невезение игрока. */
-  body_broken: { feeds: 'Доля отклонённых генераций', props: ['ref', 'side', 'message'] },
+  body_broken: { feeds: 'Share of refused generations', props: ['ref', 'side', 'message'] },
 };
 
 const MAX_PROP_BYTES = 512;
 
 export function record(db, { name, accountId = null, props = {}, now = Date.now() }) {
   const def = EVENTS[name];
-  if (!def) return { ok: false, why: `событие "${name}" не в словаре` };
+  if (!def) return { ok: false, why: `the event "${name}" is not in the dictionary` };
   const clean = {};
   for (const k of def.props) if (props[k] !== undefined) clean[k] = props[k];
   let json = JSON.stringify(clean);

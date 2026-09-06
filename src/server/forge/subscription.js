@@ -79,13 +79,13 @@ export const isSubscription = (modelId) => typeof modelId === 'string' && modelI
  * программа на three.js в десятки тысяч токенов, и на любой модели это минуты.
  */
 export const SUB_FAMILIES = {
-  opus: { label: 'Claude Opus (подписка)', model: 'opus', secs: 420, listed: true },
-  fable: { label: 'Claude Fable (подписка)', model: 'fable', secs: 300, listed: true },
+  opus: { label: 'Claude Opus', model: 'opus', secs: 420, listed: true },
+  fable: { label: 'Claude Fable', model: 'fable', secs: 300, listed: true },
   /* Sonnet работает, но в каталоге не показывается: основатель назвал две
      семьи, а экран выбора — это место, где каждая лишняя кнопка стоит
      внимания. Связка остаётся вызываемой по имени (`sub:sonnet:plain`) для
      инструментов и замеров. */
-  sonnet: { label: 'Claude Sonnet (подписка)', model: 'sonnet', secs: 240, listed: false },
+  sonnet: { label: 'Claude Sonnet', model: 'sonnet', secs: 240, listed: false },
 };
 
 /**
@@ -128,7 +128,7 @@ export function subscriptionBundles() {
         modelId: `${SUB_PREFIX}${key}`,
         mode,
         label: f.label,
-        thinkLabel: { plain: 'без размышления', think: 'с размышлением', high: 'глубокое размышление' }[mode],
+        thinkLabel: { plain: 'quick', think: 'deep', high: 'deep' }[mode],
         thinkBudget: 0,
         /* Потолок ответа у CLI не задаётся. Число здесь — не настройка, а
            обязательное поле каталога; `callSubscription` его игнорирует. */
@@ -164,12 +164,12 @@ export async function callSubscription({
 }) {
   const key = String(modelId).slice(SUB_PREFIX.length);
   const family = SUB_FAMILIES[key];
-  if (!family) throw new LlmError('bad_call', `неизвестная семья подписки: ${key}`);
-  if (!SUB_ENABLED) throw new LlmError('no_key', 'канал подписки выключен (AIRENA_SUB_MODELS)');
+  if (!family) throw new LlmError('bad_call', `unknown subscription family: ${key}`);
+  if (!SUB_ENABLED) throw new LlmError('no_key', 'the subscription channel is off (AIRENA_SUB_MODELS)');
 
   const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
   const user = messages.filter((m) => m.role !== 'system').map((m) => m.content).join('\n\n');
-  if (!user.trim()) throw new LlmError('bad_call', 'пустой пользовательский ход');
+  if (!user.trim()) throw new LlmError('bad_call', 'the user turn is empty');
 
   const started = Date.now();
   let r;
@@ -191,9 +191,9 @@ export async function callSubscription({
     const msg = String(e.message || e);
     const code = /exceeded \d+ ms/.test(msg) ? 'wall'
       : (/ENOENT|no output/i.test(msg) ? 'no_key' : 'http');
-    throw new LlmError(code, `подписка: ${msg.slice(0, 300)}`, { elapsedMs: Date.now() - started });
+    throw new LlmError(code, `subscription: ${msg.slice(0, 300)}`, { elapsedMs: Date.now() - started });
   }
-  if (signal?.aborted) throw new LlmError('wall', 'отменено');
+  if (signal?.aborted) throw new LlmError('wall', 'cancelled');
 
   const inTok = Number(r.usage?.input_tokens ?? 0);
   const outTok = Number(r.usage?.output_tokens ?? 0);
@@ -254,12 +254,12 @@ export async function callRemoteSubscription({
 }) {
   const key = String(modelId).slice(SUB_PREFIX.length);
   const family = SUB_FAMILIES[key];
-  if (!family) throw new LlmError('bad_call', `неизвестная семья подписки: ${key}`);
-  if (!hub || !accountId) throw new LlmError('bad_call', 'воркер вызван без адресата');
+  if (!family) throw new LlmError('bad_call', `unknown subscription family: ${key}`);
+  if (!hub || !accountId) throw new LlmError('bad_call', 'the worker was called with no addressee');
 
   const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
   const user = messages.filter((m) => m.role !== 'system').map((m) => m.content).join('\n\n');
-  if (!user.trim()) throw new LlmError('bad_call', 'пустой пользовательский ход');
+  if (!user.trim()) throw new LlmError('bad_call', 'the user turn is empty');
 
   const started = Date.now();
   let r;
@@ -274,7 +274,7 @@ export async function callRemoteSubscription({
        код есть. `offline` — наш случай, не игрока: коллега закрыл ноутбук. */
     const code = ['wall', 'no_key', 'http', 'offline'].includes(e.code) ? e.code : 'http';
     throw new LlmError(code === 'offline' ? 'no_key' : code,
-      `воркер: ${String(e.message || e).slice(0, 300)}`, { elapsedMs: Date.now() - started });
+      `worker: ${String(e.message || e).slice(0, 300)}`, { elapsedMs: Date.now() - started });
   }
 
   const inTok = Number(r.usage?.input_tokens ?? 0);

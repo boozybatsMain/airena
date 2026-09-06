@@ -218,7 +218,7 @@ export class WorkerHub {
    */
   ask({ accountId, system, prompt, model, effort, timeoutMs }) {
     if (!this.isOnline(accountId)) {
-      return Promise.reject(new WorkerError('offline', 'воркер этого аккаунта не на связи'));
+      return Promise.reject(new WorkerError('offline', 'the worker of this account is not connected'));
     }
     const requestId = randomBytes(12).toString('base64url');
     return new Promise((resolve, reject) => {
@@ -228,7 +228,7 @@ export class WorkerHub {
       };
       req.timer = setTimeout(() => {
         this.#drop(req);
-        reject(new WorkerError('wall', `воркер не ответил за ${Math.round(timeoutMs / 1000)} с`));
+        reject(new WorkerError('wall', `the worker did not answer within ${Math.round(timeoutMs / 1000)} s`));
       }, timeoutMs);
       /* `unref` — чтобы висящая стена не держала процесс при выключении. */
       req.timer.unref?.();
@@ -303,7 +303,7 @@ export class WorkerHub {
       });
     } else {
       const code = ['wall', 'no_key', 'http'].includes(body?.code) ? body.code : 'http';
-      req.reject(new WorkerError(code, String(body?.message || 'воркер вернул отказ').slice(0, 300)));
+      req.reject(new WorkerError(code, String(body?.message || 'the worker refused').slice(0, 300)));
     }
     return true;
   }
@@ -320,7 +320,7 @@ export class WorkerHub {
     for (const req of [...this.inflight.values(), ...(this.pending.get(accountId) || [])]) {
       if (req.accountId !== accountId) continue;
       this.#drop(req);
-      req.reject(new WorkerError('offline', 'воркер отключился, не закончив'));
+      req.reject(new WorkerError('offline', 'the worker disconnected before finishing'));
     }
     this.pending.delete(accountId);
   }

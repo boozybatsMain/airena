@@ -1,0 +1,742 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   CREATURE — the specimen (docs/REDESIGN.md §6.5).
+
+   Two columns: the body on the left at 56 %, its caption on the right. The
+   portrait is not a card — it stands in the page's own light, with a glow
+   behind it and a soft ellipse where it meets the floor, because a frame
+   around a creature turns it into a product photo and a body with no ground
+   under it turns into a cut-out pasted onto a photograph.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.creature-grid {
+  display: grid;
+  grid-template-columns: 56% 1fr;
+  column-gap: var(--s7);
+  row-gap: var(--s5);
+  align-items: start;
+}
+
+/* ── the portrait ───────────────────────────────────────────────────────── */
+
+/*
+ * THE FIGURE IS EXACTLY THE STAGE.
+ *
+ * The glow and the contact shadow are positioned against this box, and the
+ * body is drawn inside the stage — so the two must be the same rectangle or
+ * the shadow lands somewhere the feet are not. The figure therefore carries no
+ * min-height of its own: the stage sets the height, the figure inherits it.
+ */
+.creature-figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  /* The caption is usually the taller of the two columns — a veteran's tactics
+     card runs to two paragraphs — and a portrait pinned to the top of the row
+     left a hundred and fifty pixels of empty photograph under it while the
+     screen's one dominant thing sat in a box smaller than the words beside it.
+     Stretched, the stage takes whatever height the row has and the body is
+     framed into all of it. */
+  align-self: stretch;
+}
+
+/*
+ * LIGHT BEHIND THE CREATURE, NOT A PANEL AROUND IT.
+ *
+ * Two lobes, not one: a wide warm haze that lifts the body off the arena
+ * photograph, and a tighter white core behind the chest that gives the
+ * silhouette an edge. One flat radial did neither — over the backdrop's own
+ * bright floor it was invisible, which is what the review saw.
+ */
+.portrait-glow {
+  position: absolute;
+  inset: -4% -10% 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 50% 42%, rgba(255, 255, 255, .92), rgba(255, 255, 255, .34) 46%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(closest-side at 50% 54%, rgba(255, 246, 236, .60), rgba(244, 238, 232, .18) 62%, rgba(244, 238, 232, 0) 100%);
+  animation: portrait-breathe 11s var(--ease) infinite alternate;
+}
+
+/* The one thing that puts the body ON the floor instead of above it. Wide,
+   shallow and very soft: contact shadow, not a drop shadow. */
+/*
+ * THE ONE THING THAT PUTS THE BODY ON THE FLOOR INSTEAD OF ABOVE IT.
+ *
+ * Two ellipses, not one. A single wide soft blot spread the ink so thin over
+ * the backdrop's own bright floor that the creature still read as a cut-out:
+ * measured, it moved the ground by a dozen levels of grey where a shadow needs
+ * to move it by fifty. So there is a tight dark core roughly the width of the
+ * feet, and a wide faint penumbra around it — contact shadow plus ambient
+ * occlusion, which is what the eye is actually looking for.
+ *
+ * It sits at 5 % of the stage because the renderer frames every body the same
+ * way (`ui/portrait.js` `reach()`), which puts the feet at about 90 % of the
+ * stage's height whatever the creature is.
+ */
+.portrait-shadow {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 5%;
+  width: 56%;
+  height: 56px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(46, 46, 51, .52), rgba(46, 46, 51, .17) 48%, rgba(46, 46, 51, 0) 100%)
+      50% 50% / 48% 100% no-repeat,
+    radial-gradient(closest-side, rgba(46, 46, 51, .20), rgba(46, 46, 51, 0) 100%)
+      50% 50% / 100% 84% no-repeat;
+  filter: blur(8px);
+}
+
+@keyframes portrait-breathe {
+  from { opacity: .88; transform: scale(1); }
+  to   { opacity: 1;   transform: scale(1.035); }
+}
+
+/*
+ * 64 VH, AND THE BODY FILLS IT.
+ *
+ * The stage used to be 60 vh with the renderer framing the body at a 1.34
+ * padding factor, so the creature covered about a seventh of its own column
+ * and the whole lower third of the page was empty. The stage is taller, the
+ * framing (ui/portrait.js `reach()`) is tighter, and the two together roughly
+ * double the animal on screen — which is the point of a screen whose one
+ * dominant thing is the specimen (§1.6).
+ */
+.portrait-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: clamp(380px, 62vh, 640px);
+  display: grid;
+  place-items: center;
+  color: var(--stone);
+  overflow: hidden;
+}
+
+/* The stand-in body: present from the first frame, gone when the real one
+   arrives — and left in place for good when it cannot be built. It breathes
+   while it waits, so a portrait that is still loading is legibly different
+   from one that has finished as a silhouette. */
+.portrait-stage .silhouette {
+  width: 74%;
+  height: 74%;
+  opacity: .3;
+  filter: blur(.3px);
+  animation: silhouette-wait 2.6s var(--ease) infinite alternate;
+}
+@keyframes silhouette-wait { from { opacity: .22; } to { opacity: .34; } }
+
+.portrait-stage canvas {
+  display: block;
+  opacity: 0;
+  animation: portrait-in 900ms var(--ease) forwards;
+}
+
+@keyframes portrait-in { to { opacity: 1; } }
+
+/*
+ * ONE SWEEP DOWN THE STAGE the moment the real body lands — the same beat the
+ * birth reveal uses (§6.4.3), reduced to a single pass so the page says "this
+ * is the creature itself" once and then stays still.
+ *
+ * A NARROW BAND, NOT A WASH. The gradient used to be lit from 0 % to 100 % of
+ * its own box with the peak in the middle, so for the length of the sweep the
+ * WHOLE stage was screened white — and a capture that happened to land inside
+ * those nine hundred milliseconds photographed a bleached column with a ghost
+ * in it. The light is now a sixth of the stage tall, which is what a scan line
+ * looks like anyway, and the worst frame it can produce is a bright stripe
+ * across a creature that is still perfectly legible.
+ */
+.portrait-stage.live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(255, 255, 255, .30) 47%,
+    rgba(255, 255, 255, .62) 50%,
+    rgba(255, 255, 255, .30) 53%,
+    rgba(255, 255, 255, 0) 58%,
+    rgba(255, 255, 255, 0) 100%);
+  mix-blend-mode: screen;
+  animation: portrait-scan 900ms var(--ease) 1 both;
+}
+@keyframes portrait-scan {
+  from { transform: translateY(-100%); opacity: .9; }
+  to   { transform: translateY(100%); opacity: 0; }
+}
+
+/* ── the caption column ─────────────────────────────────────────────────── */
+
+/*
+ * ONE LEFT EDGE, ONE RHYTHM.
+ *
+ * Every block of the caption — the name, the tiles, the abilities, the two
+ * sections — is a child of this one column, so they cannot drift apart
+ * horizontally the way four separately positioned blocks did. Vertically they
+ * are on a two-step rhythm: 24 px between blocks, 12 px inside one (the label
+ * to the thing it labels). Nothing on this column is spaced by eye.
+ */
+.creature-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  padding-top: 0;
+  min-width: 0;
+}
+
+/* The words arrive after the shape does (`screens/creature.js` paints a
+   waiting column first), so they arrive the way anything else on this product
+   arrives: from just below, over 420 ms. The foot follows a beat later,
+   because it is the last thing to read. */
+.creature-side:not(.is-waiting) { animation: caption-in 420ms var(--ease) both; }
+.creature-next:not(.is-waiting) { animation: caption-in 420ms var(--ease) 80ms both; }
+@keyframes caption-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.creature-name { margin: 0; overflow-wrap: anywhere; }
+
+.creature-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+}
+.creature-line .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--sand); }
+/* The label and its badge are one word: `MIND` alone at the end of a line,
+   with the separator dot that pointed at it stranded on the line above, is a
+   heading for nothing. Nowrap keeps them together wherever the line breaks. */
+.creature-line .mind-unit { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+
+.gens { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: var(--s4); }
+.gens > .t-label { margin-right: 2px; }
+.chip.gen { font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+.chip.gen.dim { opacity: .5; }
+.chip.gen.dim:hover { opacity: .8; }
+
+/* ── stat tiles ─────────────────────────────────────────────────────────── */
+
+/*
+ * THREE EQUAL COLUMNS — AND THE ABILITIES SHARE THEM.
+ *
+ * The tracks used to be weighted by what each value tends to contain (.84 /
+ * 1.3 / .86), which is a sensible-sounding rule that produced 123 / 194 / 125
+ * px — three boxes of three different widths where the kit's STAT BLOCK
+ * (uikit.png) is a grid, and the eye reads a ragged row before it reads a
+ * single number in it. A grid is the point: equal tracks, one gutter, and the
+ * three ability circles under them on exactly the same pitch.
+ *
+ * The record — the one value that can outgrow a third of the column — steps
+ * its type down instead of pushing its neighbours around (`fitValue()` in
+ * `screens/creature.js`, sizes below), and below 1280 px it takes a line of
+ * its own.
+ *
+ * The track list is declared once on the column and read by both grids, so the
+ * three ability circles land exactly on the left edges of the three tiles above
+ * them and cannot drift apart the next time the widths are tuned.
+ */
+.creature-side { --stat-cols: repeat(3, minmax(0, 1fr)); }
+.creature-stats {
+  display: grid;
+  grid-template-columns: var(--stat-cols);
+  align-items: stretch;
+  gap: var(--s3);
+}
+/*
+ * STRONG GLASS, NOT THE TABLE'S.
+ *
+ * `--glass` is 52 % white: enough over a printed page, not enough over this
+ * one. The backdrop behind the caption column is a photograph of an arena in
+ * daylight, and a bright band of its far wall ran straight through the middle
+ * tile — the number sat on a stripe, and the row read as three pieces of
+ * different material. `.glass.strong` (§2.1) is what the kit puts under a
+ * number that has to hold its own over a picture, and the same eighteen-pixel
+ * blur the panels use is what makes the band behind it a wash rather than an
+ * edge. The top light stays: three per cent of white across the upper half is
+ * the whole difference between a card with thickness and a painted rectangle.
+ */
+.creature-stats .tile {
+  min-width: 0;
+  padding: 18px 16px 16px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .84) 0%, rgba(255, 255, 255, .72) 46%, rgba(255, 255, 255, .76) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .05),
+    0 8px 24px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .62);
+  transition: background var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+/* Only the tiles that have something more to say answer the pointer. A lift on
+   a tile with no tooltip promises a card that never comes; `data-tip` is what
+   `ui/tooltip.js` stamps on an anchor it has taken over, so the affordance and
+   the behaviour cannot drift apart. */
+.creature-stats .tile[data-tip="on"] { cursor: help; }
+.creature-stats .tile[data-tip="on"]:hover,
+.creature-stats .tile[data-tip="on"]:focus-visible {
+  background: rgba(255, 255, 255, .92);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .06),
+    0 14px 32px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+/* The tile takes a tab stop so the card behind it can be opened without a
+   pointer (`screens/creature.js`); a tab stop with no visible focus is a trap,
+   so it gets the same mark every other control on the page has — the shared
+   rule's ink-blue and its white halo, which is what carries a ring over the
+   arena photograph. The radius is restated because that rule squares a card
+   down to 4 px, and a tile that changes shape when it is reached is a tile
+   that looks broken rather than focused. */
+.creature-stats .tile[data-tip="on"]:focus-visible {
+  outline: 2px solid var(--info-ink);
+  outline-offset: 3px;
+  border-radius: var(--r-card);
+}
+
+/*
+ * A third of the caption column is about a hundred and fifteen pixels of type,
+ * and a record on a creature with seven thousand fights ("5,268 – 1,971") is a
+ * hundred and forty at the number size. The screen counts the digits
+ * (`fitValue()` in screens/creature.js) and asks for the step down; the sizes
+ * themselves stay here, where the type scale lives. Two steps, both still
+ * tabular, both still the display face — the number never becomes body copy.
+ *
+ * THREE VALUES ON ONE LINE, AND THREE LABELS ON ANOTHER. `.tile .v` is
+ * `line-height: 1`, so a value that has stepped down builds a shorter line box
+ * than its neighbours: the record's was nine pixels shallower than the
+ * rating's, which pulled RECORD nine pixels up its own tile and left the row
+ * reading as three cards with three different amounts of air in them — a
+ * reviewer measured it as eight pixels of padding against eighteen. So the row
+ * reserves the full-size line whatever type is in it, and a shrunken value
+ * stands on the floor of that line instead of hanging from its ceiling: the
+ * digits share a baseline within a pixel, the three labels share a line
+ * exactly. `--stat-v` is the one number both facts come from, so the phone
+ * cannot restate one without the other.
+ */
+.creature-side { --stat-v: clamp(17px, 1.42vw, 22px); }
+.creature-stats .tile .v { font-size: var(--stat-v); min-height: var(--stat-v); }
+.creature-stats .tile .v[data-fit="sm"] { font-size: clamp(15px, 1.15vw, 17px); }
+.creature-stats .tile .v[data-fit="xs"] { font-size: clamp(12.5px, .92vw, 15px); }
+.creature-stats .tile .v[data-fit="xs"] .dash { margin: 0 5px; }
+
+/* The rating's drift since the player's last visit, coloured like the chip in
+   the chrome so one number does not mean two things in two places. */
+.creature-stats .tile .v .d { color: var(--success-ink); }
+.creature-stats .tile .v .d.down { color: var(--accent-ink); }
+
+/* `.tile .v` is a flex row with an 8 px gap meant for a value and its delta;
+   the record is three spans that make one number, so it sets its own spacing,
+   lets the dash carry the whole of it, and sits on the line's floor. */
+.creature-stats .v-record { gap: 0; align-items: flex-end; }
+.creature-stats .v-record .dash { margin: 0 7px; color: var(--stone); }
+
+/* One line of room reserved, and no more. "Stronger than 91%" runs to two
+   lines in a column this narrow — the three tiles stay level anyway, because
+   the grid stretches them, so reserving a second line everywhere only bought
+   an empty one under every tile that does not need it. */
+.creature-stats .tile .sub {
+  margin-top: 5px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  min-height: 1.35em;
+}
+
+/* ── sections ───────────────────────────────────────────────────────────── */
+
+.creature-side .sect { display: flex; flex-direction: column; gap: var(--s3); }
+
+/*
+ * THE ABILITIES STAND ON THE COLUMN'S OWN EDGE.
+ *
+ * Three grid cells of equal width put the circles on a regular pitch — but on
+ * the MIDDLE of each cell, so the row's first mark sat some forty pixels right
+ * of the name, the tiles and the sections above it, and the caption ended up
+ * with four different left edges instead of one. A caption column that does
+ * not share an edge is not a column, it is three blocks that happen to be near
+ * each other.
+ *
+ * So each ability is a box that starts where the column starts: the circle at
+ * the box's left edge, the name left-aligned under it, and the boxes on one
+ * flexible pitch wide enough for the longest name the grammar can build
+ * ("GRAVITY MORTAR", 108 px at the label size) on a single line, with the
+ * tie-breaker under it when a kit holds two moves of the same shape.
+ */
+.ability-row {
+  display: grid;
+  grid-template-columns: var(--stat-cols);
+  align-items: start;
+  gap: var(--s4) var(--s3);
+}
+.ability-row .ability {
+  width: 100%;
+  max-width: 152px;
+  align-items: flex-start;
+}
+/* The caption is `ui/ability.js`'s: one unbreakable line, its type set inline
+   there because the size and the no-wrap are two halves of one promise. All
+   this column asks of it is the column's own left edge. */
+.ability-row .ability-name { width: 100%; max-width: none; }
+/* The tie-breaker line `ui/ability.js` nests inside the name takes its
+   alignment from it (`text-align: inherit`), so this one rule stands the whole
+   caption — both lines of it — on the column's edge. */
+.ability-row .ability-name-main { text-align: left; }
+
+/*
+ * ONE RING, AND IT IS ROUND.
+ *
+ * Circles for icon tiles (§2.3) — so the focus ring is drawn on the circle.
+ * Clearing the outline was half the job: the shared rule in `ui/components.css`
+ * also hangs a four-pixel white halo off the control, and a halo traces the
+ * BUTTON, which here is the circle plus its caption. The tile therefore showed
+ * two indicators at once — a blue ring on the picture and a soft rounded
+ * rectangle whose lower edge ran through the words under it. The halo moves
+ * onto the ring with the outline, where the two are one mark, and it is what
+ * keeps the blue legible over the arena photograph.
+ */
+.ability-row .ability:focus-visible { outline: none; box-shadow: none; }
+.ability-row .ability:focus-visible .ability-ring {
+  outline: 2px solid var(--info-ink);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, .85), 0 10px 24px var(--shade);
+}
+
+/* ── the waiting column ─────────────────────────────────────────────────── */
+
+/*
+ * THE SHAPE THAT IS COMING, NOT A GREY PAGE.
+ *
+ * Every measurement here is the finished element's: the name bar is the hero
+ * line's height, a waiting tile is a real tile with real padding in it, and a
+ * waiting ability is a 64 px circle on the row's own pitch. That is the whole
+ * point of a skeleton — when the creature lands, the words appear and nothing
+ * moves.
+ */
+/* Scoped to the two waiting blocks, not left loose: `.sk-name` is also a
+   history row's name bar, and a screen sheet that names a class globally
+   reaches into every other screen that had the same idea. */
+.creature-side.is-waiting { gap: var(--s5); }
+.creature-side .sk-name { width: min(420px, 82%); height: clamp(30px, 3.4vw, 46px); }
+.creature-side .sk-line { width: 250px; max-width: 70%; height: 14px; min-height: 0; margin-top: var(--s3); border-radius: var(--r-chip); }
+.creature-side .sk-label { width: 108px; height: 11px; min-height: 0; border-radius: var(--r-chip); }
+/* A waiting tile is the finished tile's height to the pixel — 18 + 22 + 7 + 11
+   + 5 + 15 + 16 — because the whole point of a skeleton is that nothing moves
+   when the words land. It was eighteen pixels too tall, and eighteen pixels is
+   a visible jump on the block directly under the name. */
+.creature-side .sk-tile { min-height: 94px; }
+.creature-side .sk-para { height: 62px; }
+.creature-side .sk-para.tall { height: 96px; }
+.creature-side .sk-ability { width: 100%; max-width: 152px; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+.creature-side .sk-ring { width: 64px; height: 64px; min-height: 0; border-radius: 50%; }
+.creature-side .sk-abname { width: 86px; height: 10px; min-height: 0; border-radius: var(--r-chip); }
+.creature-next .sk-why { width: min(360px, 60%); height: 15px; min-height: 0; border-radius: var(--r-chip); }
+/* A waiting button is the height a `.btn` is, not two pixels under it: the
+   skeleton's whole job is that nothing moves when the words land. */
+.creature-next .sk-btn { width: 104px; height: 44px; min-height: 0; }
+.creature-next .sk-btn.wide { width: 156px; }
+
+/*
+ * THE PLAYER'S OWN SENTENCE.
+ *
+ * The one line of the creature they actually wrote, so it is set as a
+ * quotation and given the largest body size on the page — a rule that fades
+ * downward rather than a hard bar, because the words end and the rule should
+ * end with them.
+ *
+ * The measure is the column's, not a 52ch channel inside it: the quotation and
+ * the tactics card are two blocks of prose one under the other, and two
+ * different right edges on the same column read as a mistake. At 15 px the
+ * column is about 55 characters wide, which is inside the 45–75 a paragraph is
+ * comfortably read at anyway.
+ */
+.quote {
+  margin: 0;
+  padding-left: 18px;
+  border-left: 2px solid transparent;
+  border-image: linear-gradient(180deg, var(--stone), rgba(201, 184, 167, 0)) 1;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--ink);
+  max-width: none;
+}
+
+/* The same block, when there is nothing to quote. Dotted, so the section still
+   reads as a block with an answer in it rather than as a hole in the page. */
+.said-nothing {
+  margin: 0;
+  padding-left: 18px;
+  border-left: 2px dotted var(--sand);
+  max-width: none;
+}
+
+/*
+ * THE TACTICS CARD TAKES THE COLUMN.
+ *
+ * It is the longest prose on the screen — two paragraphs of it on a veteran —
+ * and a 52ch measure inside a 471 px column set it in a channel two thirds as
+ * wide as the space it had, which cost three lines and pushed the action row
+ * off the bottom of a 900 px window. The column is 67ch: long for a caption,
+ * squarely inside the 45–75 a paragraph is read at.
+ */
+.tactics { max-width: none; }
+.tactics p { margin: 0 0 10px; }
+.tactics p:last-child { margin-bottom: 0; }
+
+.unfit { color: var(--muted); }
+
+/* Body copy on this screen stands on the arena photograph, not on glass, and
+   `--ink` over the backdrop's brightest floor needs the same halo the shared
+   labels get (`ui/components.css`, `.on-photo`). */
+body[data-ground="stage"] .creature-side .quote,
+body[data-ground="stage"] .creature-side .tactics p,
+body[data-ground="stage"] .creature-side .said-nothing,
+body[data-ground="stage"] .creature-side .unfit,
+body[data-ground="stage"] .creature-next .next-why {
+  text-shadow: var(--photo-halo);
+}
+
+/* ── actions ────────────────────────────────────────────────────────────── */
+
+/*
+ * THE IMPROVE STEP, MADE VISIBLE.
+ *
+ * One hairline across the whole grid, the reason on the left, the moves on the
+ * right — the reference's own bottom bar (screen.png), and the only shape that
+ * keeps the primary above the fold on a 900 px window whatever length of
+ * tactics card the column above it happens to carry.
+ */
+.creature-next {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+  padding-top: var(--s5);
+  border-top: 1px solid var(--hairline);
+}
+.creature-next .next-why { margin: 0; max-width: 62ch; color: var(--muted); }
+
+.creature-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.creature-actions .btn.ghost { padding: 0 12px; }
+.creature-actions .btn.primary.next-gen { margin-left: var(--s2); }
+
+.livedot {
+  /* `flex: 1 1 0` on the buttons of the phone's action bar squeezed every
+     child, and a 7 px circle squeezed to 2 px is a red smear, not a dot. */
+  flex: 0 0 auto;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 122, 92, .2);
+  animation: livedot 1.8s var(--ease) infinite;
+}
+@keyframes livedot {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 122, 92, .2); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 122, 92, 0); }
+}
+
+/* ── the visitor with nothing yet ───────────────────────────────────────── */
+
+.creature-doc .empty { max-width: 520px; margin: 6vh auto 0; }
+
+/* ── responsive ─────────────────────────────────────────────────────────── */
+
+/*
+ * THE RECORD TAKES ITS OWN LINE BEFORE IT HAS TO.
+ *
+ * Three tiles across a caption column is a 1440 px arrangement. At 1280 the
+ * column loses eighty pixels and the record — the longest value the product
+ * prints anywhere, thirteen characters on a veteran — is the one that runs out
+ * of room first, on the screen whose entire job is to present that record. So
+ * the reflow the phone layout already performed happens two breakpoints
+ * earlier: rating and rank keep the top line, the record gets the whole width
+ * under them, and its number goes back up to full size because it now has the
+ * room for it.
+ */
+@media (max-width: 1280px) {
+  .creature-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .creature-stats .tile:nth-child(1) { order: 1; }
+  .creature-stats .tile:nth-child(3) { order: 2; }
+  .creature-stats .tile:nth-child(2) { order: 3; grid-column: 1 / -1; }
+  .creature-stats .tile:nth-child(2) .v[data-fit] { font-size: clamp(18px, 1.7vw, 22px); }
+  .creature-side .sk-tile:nth-child(3) { grid-column: 1 / -1; }
+  /* The tiles have gone to two columns; the abilities have not, and three
+     circles on two tracks would be a row with a hole in it. */
+  .ability-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1180px) {
+  .creature-grid { grid-template-columns: 52% 1fr; gap: var(--s6); }
+  .quote { font-size: 14.5px; }
+}
+
+/*
+ * ─── THE PHONE ────────────────────────────────────────────────────────────
+ *
+ * Two things were wrong with the stacked layout, and they are the same thing
+ * twice: everything the player came here to DO was below the fold with no sign
+ * that it existed. The portrait, the name, the mind and the three tiles filled
+ * a 390 × 844 screen exactly, so the abilities — the specimen's kit, the part
+ * of it the player did not write and cannot predict — began one pixel past the
+ * bottom, and the three actions (`WATCH LIVE`, `HISTORY`, `NEW GENERATION`)
+ * were a full screen further down again. On the desktop those actions are
+ * pinned to the bottom edge; on the phone, the one device where the Improve
+ * step of the loop is hardest to find, they were not.
+ *
+ * So: the stage gives back a hundred and sixty pixels, the tiles tighten, and
+ * the caption's rhythm steps from 24 to 16 — which puts the ability row, the
+ * player's own sentence and the first line of the arena's answer above the
+ * fold — and the action row is the last block of the page, on its own
+ * hairline, with the primary on a full-width line of its own.
+ *
+ * IT DOES NOT FLOAT. For one round it did: a glass bar pinned above the tab
+ * bar for the whole length of the page. What a bar pinned to the bottom of a
+ * viewport does on a document taller than the viewport is lie across whatever
+ * happens to be behind it, and on first paint that was the CREATED FROM
+ * quotation — the sentence the player typed, the only part of the creature
+ * they wrote — with the HOW IT FIGHTS heading sliced in half under its lower
+ * edge. Four capture states recorded it as covered text, which §12 does not
+ * allow at 390 × 844, and no amount of bottom padding fixes it: padding moves
+ * the END of the document, and the bar covers the MIDDLE.
+ *
+ * Nothing is lost by putting it back in the flow. Two of its three doors —
+ * WATCH LIVE and HISTORY — are two of the four items in the tab bar that was
+ * two millimetres below it, and the third, NEW GENERATION, now gets a
+ * full-width line at the foot of the page instead of a third of a squeezed
+ * strip: bigger, at 44 px, and reading its own words at full size.
+ */
+@media (max-width: 900px) {
+  /* One column. A grid of one column and a flex column lay out identically
+     here; the flex column is kept because the caption's blocks are a sequence
+     and not a matrix. */
+  .creature-grid { display: flex; flex-direction: column; gap: var(--s4); }
+  /*
+   * The page's own top and bottom. 92 px of head clearance is the shared
+   * document rule; it is generous for a screen whose first element is a
+   * picture with nothing but air at the top of it, and 68 puts the body a
+   * clear step below the my-chip while giving the ability row the difference.
+   * The foot clears the 50 px tab bar by a full step of the rhythm, so the
+   * last button ends on air rather than against the navigation.
+   */
+  .doc.creature-doc { padding: 68px var(--chrome-pad) calc(50px + var(--s5) + env(safe-area-inset-bottom)); }
+  /* One column: there is no second column to be shorter than, so the stage
+     goes back to a height of its own. */
+  .creature-figure { align-self: auto; }
+  /*
+   * Every pixel this gives back buys a line of the specimen a place above the
+   * fold, and the lines under the picture are the half of the creature the
+   * player did not write. At 42 vh the body was the largest thing on the
+   * screen with nothing readable under it; at 27 the ability row cleared the
+   * fold and the tactics card's HEADING was cut in half by the tab bar, which
+   * is a section announcing itself and then vanishing. At 22 the whole of
+   * CREATED FROM, the HOW IT FIGHTS heading and the first line of the answer
+   * are all above the navigation, so the page reads as a page that continues
+   * rather than as one that stops — and the body is still four times the area
+   * of anything else on the screen.
+   */
+  .portrait-stage { height: clamp(168px, 22vh, 240px); min-height: 0; }
+  .portrait-shadow { width: 52%; height: 22px; bottom: 4%; }
+  .creature-side { padding-top: 0; gap: var(--s4); }
+
+  /* `MIND` is a label for a badge that already says what it is: the mark, the
+     model and the mode are the whole sentence. Dropping it is what fits
+     `GENERATION 01 · ◇ GLM 5.3 FLASH · QUICK` onto one line at 390 px. */
+  .creature-line { margin-top: var(--s2); gap: 8px; }
+  .creature-line .mind-word { display: none; }
+
+  /* The tiles keep their grid and lose their air: the numbers are the same
+     size class, the padding is a third smaller, and the row that used to cost
+     190 px costs 155. */
+  .creature-stats { gap: var(--s2); }
+  .creature-stats .tile { padding: 12px 14px 11px; }
+  .creature-side .sk-tile { min-height: 82px; }
+  /* The value's own size and the line the row reserves for it are one number,
+     so the three labels stay level on a phone for the same reason they do on a
+     desktop. */
+  .creature-side { --stat-v: clamp(16px, 4.6vw, 19px); }
+  .creature-stats .tile .k { margin-top: 5px; }
+  .creature-stats .tile .sub { margin-top: 4px; font-size: 11px; }
+  .ability-row { gap: var(--s2) var(--s2); }
+
+  /*
+   * THE FOOT STACKS: the reason, then the moves.
+   *
+   * On the desktop the sentence and the buttons share one line at opposite
+   * ends of the grid; a phone has no such line, so the block becomes what it
+   * is — a hairline, a sentence, and the three ways on.
+   */
+  .creature-next {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s4);
+    margin-top: var(--s2);
+    padding-top: var(--s4);
+  }
+  .creature-next .next-why { max-width: none; }
+  .creature-next .sk-why { width: min(360px, 76%); }
+
+  /*
+   * TWO GHOSTS ON A LINE, THE PRIMARY ON ITS OWN.
+   *
+   * Three buttons across 358 px is 100 px each, and the labels only fit that
+   * by dropping to 9.5 px, losing their arrows and standing 42 px tall — three
+   * compromises to keep a shape a phone never asked for. Two halves and a
+   * full-width line cost one extra row of 44 px, which the foot of a document
+   * has to spare, and every one of the three then reads at the size the rest
+   * of the product's buttons read at, keeps its arrow, and is a legal target.
+   *
+   * A grid rather than a wrapping flex row, so the primary lands on the second
+   * line because it was told to and not because the two above it happened to
+   * fill the first — and a stranger's page, which offers one door, gets a
+   * ghost across the whole line rather than a half-width button with a hole
+   * beside it.
+   */
+  .creature-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+    margin-left: 0;
+  }
+  .creature-actions .btn,
+  .creature-actions .skel {
+    width: auto;
+    min-width: 0;
+    /* WCAG 2.2 Target Size (Minimum): the shared `.btn` is already 44 px and
+       these are the three exits from the page — they grow with their content
+       rather than being pinned under it. */
+    min-height: 44px;
+    height: auto;
+    padding: 0 12px;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: .08em;
+  }
+  .creature-actions .btn.primary.next-gen,
+  .creature-actions .skel.wide { grid-column: 1 / -1; margin-left: 0; }
+  /* A stranger's creature offers one way on. It takes the line. */
+  .creature-actions > .btn:only-child { grid-column: 1 / -1; }
+  .creature-actions .btn .ic { width: 13px; height: 13px; }
+
+  .quote, .tactics, .said-nothing { max-width: none; }
+}

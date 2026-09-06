@@ -82,8 +82,8 @@
 export const GAUNTLET = [
   {
     id: 'striker',
-    ru: 'штурмовик',
-    why: 'луч гасит и чистит, мигание под щит, навес добивает; давит на средней',
+    ru: 'striker',
+    why: 'the beam silences and cleanses, the blink carries a shield, the mortar finishes; presses at mid range',
     kit: [
       { delivery: 'beam', effects: ['cleanse', 'silence'], element: 'ember' },
       { delivery: 'blink', effects: ['shield'], element: 'ember' },
@@ -92,8 +92,8 @@ export const GAUNTLET = [
   },
   {
     id: 'warden',
-    ru: 'страж',
-    why: 'лечится лучом и ставит стены, снаряд стягивает и бьёт; тянет бой',
+    ru: 'warden',
+    why: 'heals through the beam and raises walls, the bolt pulls and hits; drags the fight out',
     kit: [
       { delivery: 'beam', effects: ['heal', 'wall'], element: 'frost' },
       { delivery: 'blink', effects: ['wall'], element: 'ember' },
@@ -102,8 +102,8 @@ export const GAUNTLET = [
   },
   {
     id: 'conjurer',
-    ru: 'ворожей',
-    why: 'зоны усиливают и лечат, мигание расширяет обзор; играет от площади',
+    ru: 'conjurer',
+    why: 'fields boost and heal, the blink widens vision; plays off area',
     kit: [
       { delivery: 'zone', effects: ['boost'], channel: 'range', element: 'kinetic' },
       { delivery: 'blink', effects: ['boost'], channel: 'vision', element: 'void' },
@@ -112,8 +112,8 @@ export const GAUNTLET = [
   },
   {
     id: 'runner',
-    ru: 'бегун',
-    why: 'рывки жгут, слабят и разгоняют самого себя; живёт на дистанции рывка',
+    ru: 'runner',
+    why: 'lunges burn, weaken and speed itself up; lives at lunge range',
     kit: [
       { delivery: 'dash', effects: ['burn', 'weaken'], channel: 'range', element: 'arc' },
       { delivery: 'zone', effects: ['boost'], channel: 'cooldown', element: 'arc' },
@@ -122,8 +122,8 @@ export const GAUNTLET = [
   },
   {
     id: 'lobber',
-    ru: 'навесной',
-    why: 'три навеса: ослепление, стена, урон; бьёт из-за укрытия и не подходит',
+    ru: 'lobber',
+    why: 'three mortars: blind, wall, damage; hits from behind cover and never closes',
     kit: [
       { delivery: 'lob', effects: ['blind', 'wall'], element: 'arc' },
       { delivery: 'lob', effects: ['wall'], element: 'ember' },
@@ -227,7 +227,7 @@ export const BASELINE = {
   bestMin: 0.85,
   /* Медианный худший результат по пятерым: ниже этого набор слабее поля. */
   medianMin: 0.13,
-  measuredAt: '30.08, продуктовое поле, 20 сидов на соперника и сторону',
+  measuredAt: '30.08, product field, 20 seeds per opponent and side',
 };
 
 /**
@@ -238,7 +238,7 @@ export const BASELINE = {
  */
 export function readShape(rates) {
   const clean = rates.filter((r) => Number.isFinite(r));
-  if (!clean.length) return { verdict: 'unknown', ru: 'замер не удался', max: null, min: null, spread: null };
+  if (!clean.length) return { verdict: 'unknown', ru: 'the measurement did not run', max: null, min: null, spread: null };
   const max = Math.max(...clean);
   const min = Math.min(...clean);
   const spread = max - min;
@@ -253,22 +253,22 @@ export function readShape(rates) {
   if (min > BASELINE.bestMin) {
     return {
       verdict: 'dominant', max, min, spread,
-      ru: 'держится против всех пятерых лучше, чем лучший из них самих — это дыра, её и надо резать',
+      ru: 'beats all five better than the best of them does — that is a hole, and it is the hole that has to be cut',
     };
   }
   if (max <= 0.25) {
     return {
       verdict: 'weak', max, min, spread,
-      ru: 'проигрывает всем пятерым — набором трудно выиграть у кого угодно',
+      ru: 'loses to all five — this set has a hard time beating anyone',
     };
   }
   if (spread >= 0.3) {
     return {
       verdict: 'situational', max, min, spread,
-      ru: 'сильный против одних и слабый против других — это стратегия с контрой, так и должно быть',
+      ru: 'strong against some and weak against others — a strategy with a counter, which is how it should be',
     };
   }
-  return { verdict: 'even', max, min, spread, ru: 'держится ровно против всех — крепкий универсальный набор' };
+  return { verdict: 'even', max, min, spread, ru: 'holds evenly against everyone — a solid all-round set' };
 }
 
 /**

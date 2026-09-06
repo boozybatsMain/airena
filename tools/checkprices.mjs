@@ -43,7 +43,7 @@ console.log('\n  ЦЕНЫ АТОМОВ\n');
 /* Строки вида ` *     урон              100%      97      100` из комментария. */
 const src = readFileSync(join(ROOT, 'src/skills/registry.js'), 'utf8');
 const table = new Map();
-for (const m of src.matchAll(/^\s*\*\s{4,}([а-яё]+)\s+(\d+)%/gim)) table.set(m[1], Number(m[2]));
+for (const m of src.matchAll(/^\s*\*\s{4,}([a-zа-яё]+)\s+(\d+)%/gim)) table.set(m[1], Number(m[2]));
 
 ok('таблица «лучшего случая» находится в комментарии', table.size > 0, `${table.size} строк`);
 

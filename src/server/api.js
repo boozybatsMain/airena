@@ -24,13 +24,15 @@ import {
   skillsOf, statsOf,
 } from '../core/config.js';
 import { constantsVersion } from '../core/version.js';
+import { abilitiesOf } from '../skills/describe.js';
 import { grammar, validateKit, costOf } from '../skills/registry.js';
 import { EVENTS, record as trackEvent, metrics } from './analytics.js';
 import { REST_MS, buildOf } from './arena-loop.js';
-import { card, history, refactor as applyRefactor, sideKey, sideResult, sinceSummary } from './creatures.js';
+import { card, cards, generationOf, generationsOf, history, refactor as applyRefactor, sideKey, sideResult, sinceSummary } from './creatures.js';
+import { ensureIcons, ensureIconsSoon, readIcon } from './forge/icons.js';
 import { viability } from './forge/viability.js';
 import { Router, cookies, fail, json, readJson, setCookie } from './http.js';
-import { ladderView, modelTable } from './ladder.js';
+import { ladderView, modelTable, rankOf } from './ladder.js';
 import * as limits from './limits.js';
 
 /*
@@ -119,6 +121,53 @@ export const SIM_CONFIG = {
 /** Идёт ли бой этого существа прямо сейчас (D161). Одна дверь на два ответа. */
 const fightingNow = (loop, id) => (loop.busyAt?.(id) ?? 0) > Date.now();
 
+/*
+ * THE AWAY RECAP HAS TO SURVIVE THE SECOND FETCH.
+ *
+ * `since` is computed from `account.last_seen_at`, and reading the session is
+ * what MOVES `last_seen_at`. So the recap of §6.1 existed in exactly one
+ * response and vanished from every one after it — while the client fetches the
+ * session at boot, again the moment the account is linked, and every twenty
+ * seconds after that. A player back from three days away could lose the whole
+ * "WHILE YOU WERE AWAY" card to a race they cannot see and we cannot reproduce.
+ *
+ * A short memory fixes it without a migration and without lying: the summary is
+ * of a real absence, and for a minute and a half every request about that
+ * absence gets the same answer. The client decides whether to show it (once per
+ * session, `sessionStorage`); the server's job is only to stop the fact from
+ * evaporating between two fetches a hundred milliseconds apart.
+ *
+ * Per process and bounded: entries expire, and the map is swept whenever it
+ * grows past a size no real stand reaches.
+ */
+const AWAY_HOLD_MS = 90e3;
+const AWAY_MAX = 500;
+const awayHeld = new Map();
+
+/**
+ * The recap for this account, or `null`.
+ *
+ * `wasAway` is true only on the request that first notices the gap, because
+ * that same request has already moved `last_seen_at`. Held answers expire on
+ * their own — a stale entry that outlived its window is deleted rather than
+ * returned, so the card cannot reappear an hour later over a running fight.
+ */
+function heldSince(accountId, wasAway, compute) {
+  const now = Date.now();
+  const hit = awayHeld.get(accountId);
+  if (hit) {
+    if (now - hit.at < AWAY_HOLD_MS) return hit.value;
+    awayHeld.delete(accountId);
+  }
+  if (!wasAway) return null;
+  if (awayHeld.size >= AWAY_MAX) {
+    for (const [k, v] of awayHeld) if (now - v.at >= AWAY_HOLD_MS) awayHeld.delete(k);
+  }
+  const value = compute();
+  awayHeld.set(accountId, { at: now, value });
+  return value;
+}
+
 export function buildRouter(ctx) {
   const { db, loop, jobs, catalog, root } = ctx;
   const r = new Router();
@@ -177,7 +226,7 @@ export function buildRouter(ctx) {
   const accountName = (a) => {
     const mail = String(a?.email_norm || '');
     if (mail.includes('@')) return mail.slice(0, mail.indexOf('@'));
-    return String(a?.id || 'аккаунт').slice(0, 12);
+    return String(a?.id || 'account').slice(0, 12);
   };
   ctx.who = who;
 
@@ -204,14 +253,28 @@ export function buildRouter(ctx) {
     const season = ctx.kv.get('season', { n: 1, endsAt: null, prizeCoins: 4500 });
     const away = acct.last_seen_at ? Date.now() - acct.last_seen_at : 0;
     /*
-     * Состояние лимитов спрашивается ТЕМ ЖЕ вопросом, что и при создании, —
-     * иначе кнопка на экране и решение сервера расходятся. Связка берётся
-     * самая дешёвая бесплатная: именно ей игрок и создаёт, если ничего не
-     * выбрал, и по ней же считается дневной бюджет.
+     * Draw the missing ability glyphs, later, without holding this up.
+     *
+     * The session is the first thing every client asks for and the thing it
+     * re-asks every twenty seconds, which makes it both the earliest moment we
+     * know a creature exists and the worst possible place to wait on an image
+     * service. `ensureIconsSoon` returns nothing on purpose: there is no handle
+     * here to await, and the debounce inside it (one attempt in flight, none
+     * for ten minutes after a failure) is what keeps a polled route from
+     * turning into a generation loop.
+     */
+    if (mine) ensureIconsSoon(db, mine.id, safe(mine.kit_json));
+    /*
+     * The limit state is asked with THE SAME question `POST /api/creature`
+     * asks, or the button on screen and the server's answer part ways. The
+     * bundle is the cheapest free one: that is what a player creates with when
+     * they have chosen nothing, and it is what the daily allowance is counted
+     * against.
      */
     const cheap = catalog.cheapestFree?.() ?? null;
-    /* Считается ВСЕМ, включая гостя: с 05.09 он создаёт наравне, значит и
-       денежные отказы обязан видеть заранее, а не узнавать их нажатием. */
+    /* Computed for EVERYONE, guests included: since 05.09 a guest creates on
+       equal terms, so a guest is owed the same refusal before the press rather
+       than after it. */
     const limitState = cheap
       ? limits.check(db, { account: acct, bundle: cheap, kind: 'create' })
       : null;
@@ -219,65 +282,158 @@ export function buildRouter(ctx) {
     json(res, {
       guest: !!acct.is_guest,
       accountId: acct.id,
-      /* Стенд без платформы: клиент вправе предложить дев-вход. См. шапку. */
+      /* A stand with no platform behind it: the client may offer the dev
+         sign-in. See the file header. */
       dev: DEV,
-      /* Гость создаёт наравне с аккаунтом (05.09) — см. `limits.check`. */
+      /* A guest creates on the same terms as an account (05.09) — see
+         `limits.check`. */
       canCreate: (!limitState || limitState.ok),
-      /* D1: гость не запускает генерацию. Причина отдаётся кодом, чтобы экран
-         показал стену аккаунта, а не общую ошибку. */
       /*
-       * `canCreate` ОТВЕЧАЕТ НА ВОПРОС КНОПКИ, а не на половину вопроса.
+       * `canCreate` ANSWERS THE BUTTON'S QUESTION, not half of it.
        *
-       * Он смотрел только на гостя и на израсходованное бесплатное существо —
-       * и оставался `true`, когда дневной бюджет игры исчерпан или суточный
-       * лимит аккаунта выбран. Кнопка горела, сервер её глушил: игрок писал
-       * строку, жал «создать» и получал отказ, который можно было показать
-       * заранее.
+       * It used to look only at "is this a guest" and "is the free creature
+       * spent", and stayed `true` while the arena's daily allowance was gone or
+       * the account's own count for the day was used up. The button lit, the
+       * server refused: a stranger wrote their first sentence, pressed CREATE
+       * and was told something we already knew before they started typing.
        */
-      /* Гость и «бесплатное уже создано» больше не блокируют (05.09): остаются
-         только денежные отказы, и их по-прежнему видно ДО нажатия. */
+      /* Neither "guest" nor "the free creature is used" blocks any more
+         (05.09): what is left are the money refusals, and those are still
+         visible BEFORE the press. The screen turns the code into a sentence;
+         the sentences themselves live in `limits.js` `DENY`. */
       createBlocked: (limitState && !limitState.ok ? limitState.code : null),
-      creature: mine ? card(mine, { viewerId: acct.id }) : null,
+      /*
+       * `rank` RIDES ALONG WITH THE CREATURE, and it is one query.
+       *
+       * The chip in the top-right corner reads `#782 · 1,214 RATING`, and the
+       * session is the only thing it reads. Without this field the shell would
+       * have to fetch the whole ladder — top ten, prize board, the window
+       * around you — to print one number, on every screen, every twenty
+       * seconds. `rankOf` is that number and nothing else, ordered exactly the
+       * way the ladder orders it (see `ladder.js`).
+       */
+      creature: mine
+        ? { ...card(mine, { viewerId: acct.id, db }), rank: rankOf(db, mine.id) }
+        : null,
+      /*
+       * EVERY CREATURE THIS ACCOUNT EVER MADE, newest first.
+       *
+       * `creature` above is the current one — the newest active — and for a
+       * long time that was all the product admitted to. But creating again no
+       * longer replaces anything: the older creature keeps its record and keeps
+       * fighting on the ladder. A player with three generations who is shown
+       * one of them is being told the other two are gone.
+       *
+       * Deliberately thin: the generations strip needs a name, a number and a
+       * rating, and full cards for a lineage of six would be six kits, six
+       * prompts and six tactics cards on a route that is polled every twenty
+       * seconds.
+       */
+      creatures: (() => {
+        const line = db.prepare(`SELECT id, name, state, rating, created_at, is_library, owner_id
+                                 FROM creature WHERE owner_id = ? ORDER BY created_at DESC`)
+          .all(acct.id);
+        /* One grouped walk of the lineage instead of a `COUNT(*)` per row, on
+           a route that is polled every twenty seconds by every open tab. */
+        const gens = generationsOf(db, line);
+        return line.map((c) => ({
+          id: c.id,
+          name: c.name,
+          generation: gens.get(c.id) ?? generationOf(db, c),
+          state: c.state,
+          rating: Math.round(c.rating),
+          createdAt: c.created_at,
+        }));
+      })(),
+      /*
+       * THE WORLD, in the two numbers the season chip prints.
+       *
+       * `creatures` counts creatures with an owner: our own calibration
+       * library is furniture, and counting it would tell the player the arena
+       * is twice as populated as it is. `matchesToday` is the pulse — proof
+       * that the arena runs whether or not anyone is watching.
+       */
+      world: {
+        creatures: db.prepare(`SELECT count(*) AS n FROM creature
+                               WHERE state = 'active' AND is_library = 0`).get().n,
+        matchesToday: db.prepare('SELECT count(*) AS n FROM match WHERE ended_at >= ?')
+          .get(Date.now() - (Date.now() % 86400e3)).n,
+      },
       job: activeJob ? jobView(activeJob) : null,
       nextFightAt: mine ? loop.nextFightAt(mine.id) : null,
       /*
-       * ОТСЧЁТ ОТДАЁТСЯ И ОТНОСИТЕЛЬНЫМ ЧИСЛОМ (D161).
+       * THE COUNTDOWN ALSO GOES OUT AS A DURATION (D161).
        *
-       * `nextFightAt` — это часы СЕРВЕРА. Клиент вычитал из него свой
-       * `Date.now()`, то есть показывал разницу двух разных часов: телефон,
-       * убежавший на минуту, печатал «следующий бой через 01:03» там, где
-       * до боя пять секунд. Пока таймер висел на экране ожидания, это было
-       * незаметно; на экране итога он стал главной строкой, и врать ему нельзя.
+       * `nextFightAt` is the SERVER's clock. The client used to subtract its
+       * own `Date.now()` from it, which is the difference between two clocks
+       * that were never the same one: a phone a minute fast printed `NEXT
+       * FIGHT IN 01:03` where the fight was five seconds away. That was a
+       * detail while the timer sat on a waiting screen; on the result card it
+       * is the closing line, and the closing line cannot be wrong.
        *
-       * `nextFightIn` — миллисекунды ОТ ЭТОГО ОТВЕТА. Клиент превращает их в
-       * свою локальную отметку в момент получения, и дальше считает по
-       * собственным часам, которые сами с собой согласованы всегда.
+       * `nextFightIn` is milliseconds FROM THIS RESPONSE. The client turns it
+       * into a local deadline the moment it arrives and counts down on its own
+       * clock, which is always in agreement with itself.
        */
       /*
-       * ПОКА БОЙ ИДЁТ, ОТСЧЁТА НЕТ — есть `fightingNow`.
+       * WHILE THE FIGHT RUNS THERE IS NO COUNTDOWN — there is `fightingNow`.
        *
-       * Резерв ставится по ВЕРХНЕЙ оценке длительности и уточняется настоящей
-       * только после прогона. В это окно `nextFightAt` равен «сейчас плюс
-       * пятьдесят с лишним секунд», и сессия, попавшая в него, печатала
-       * «следующий бой через 58 секунд» — а арена перечитывает сессию раз в
-       * двадцать секунд, так что число висело на экране до двадцати секунд.
+       * The slot is reserved against the UPPER estimate of a fight's length
+       * and corrected to the real one only once the fight has been simulated.
+       * Inside that window `nextFightAt` reads "now plus fifty-odd seconds",
+       * and a session caught in it printed `NEXT FIGHT IN 58` — over a battle
+       * already on screen, for up to the twenty seconds until the client asks
+       * again.
        *
-       * Пока существо на арене, правильный ответ не число, а «оно дерётся».
+       * While the creature is in the arena the honest answer is not a number:
+       * it is that the creature is fighting.
        */
       nextFightIn: mine && !fightingNow(loop, mine.id) && loop.nextFightAt(mine.id)
         ? Math.max(0, loop.nextFightAt(mine.id) - Date.now()) : null,
-      /* Идёт ли бой этого существа прямо сейчас — отличает «дерётся» от «отдыхает». */
+      /* Is this creature in a fight right now — what separates "fighting" from
+         "resting", and therefore which words the live screen is allowed to use. */
       fightingNow: mine ? fightingNow(loop, mine.id) : false,
-      /* Свободного соперника не нашлось: экран обязан сказать это словами. */
+      /*
+       * NO FREE OPPONENT — and the screen has to say so in words.
+       *
+       * Matchmaking can come back empty: every creature near this rating is
+       * already in a fight. Without this flag the countdown simply restarted,
+       * over and over, and a player watching an empty arena was told a fight
+       * was eight seconds away for as long as they kept watching. `SEARCHING`
+       * that never resolves is indistinguishable from a broken page.
+       */
       noOpponent: mine ? (loop.starvedAt?.(mine.id) ?? false) : false,
-      /* Длина отдыха — знаменатель шкалы на клиенте. Число живёт на сервере
-         (REST_MS), и клиент, который держал бы собственную копию, разошёлся
-         бы с ним при первой же правке темпа. */
+      /* How long a rest lasts — the denominator of the client's countdown ring.
+         The number lives on the server (`REST_MS`), and a client holding its own
+         copy would disagree with it the first time the pace is tuned. */
       restMs: REST_MS,
       liveMatch: ctx.live.describe(),
+      /* §8.1: `{ n, endsAt, prizeCoins }` — the season chip in the chrome and
+         the SEASON tab of the ladder both read this one row, so the countdown
+         at the top of the page and the one inside the ladder cannot drift. */
       season,
       constantsVersion: constantsVersion(),
-      since: mine && away > 30 * 60e3 ? sinceSummary(db, mine.id, acct.last_seen_at) : null,
+      /*
+       * WHAT HAPPENED WHILE YOU WERE AWAY (§6.1), or `null` for a player who
+       * never left.
+       *
+       * Half an hour is the threshold because the arena fights on its own: come
+       * back after three days and the creature has had thousands of fights, and
+       * a career that moved that far without you is the story of the session.
+       * Come back after five minutes and there is nothing to recap.
+       *
+       * `null` also when the gap was long but empty — an overlay card
+       * announcing "0 FIGHTS" is worse than no card at all, and a summary
+       * object holding a zero is a promise the screen then has to check twice.
+       * `heldSince` keeps whichever answer this is for ninety seconds (see it
+       * above) so a second fetch cannot take the card away.
+       */
+      since: mine
+        ? heldSince(acct.id, away > 30 * 60e3, () => {
+          const sum = sinceSummary(db, mine.id, acct.last_seen_at);
+          return sum && sum.fights > 0 ? sum : null;
+        })
+        : null,
       limits: limits.publicStatus(db),
     });
   });
@@ -286,7 +442,7 @@ export function buildRouter(ctx) {
   r.post('/api/session/claim', async (req, res) => {
     const acct = who(req, res);
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The request could not be read.'); }
     /* `await` обязателен: проверка подписи ходит за ключами платформы
        (`identity.js`), то есть асинхронна. Без него сюда приезжает Promise —
        объект, и `if (!claim)` его пропускает; дальше `claimAccount`
@@ -294,9 +450,9 @@ export function buildRouter(ctx) {
        `no_sub`. Замерено гейтом: стена перестаёт пускать ВООБЩЕ никого —
        400 и на подделку, и на настоящий токен. `tools/checkidentity.mjs`. */
     const claim = await ctx.verifyEmbedToken(body.embedToken);
-    if (!claim) return fail(res, 401, 'bad_token', 'платформа не подтвердила личность');
+    if (!claim) return fail(res, 401, 'bad_token', 'The platform did not confirm who you are.');
     const out = claimAccount(db, acct.is_guest ? acct.id : null, claim);
-    if (out.error) return fail(res, 400, out.error, 'не удалось привязать аккаунт');
+    if (out.error) return fail(res, 400, out.error, 'The account could not be linked.');
     setCookie(res, 'a', out.token, { days: 180 });
     res.setHeader('x-airena-session', out.token);
     trackEvent(db, { name: 'account_claimed', accountId: out.account.id, props: { moved: out.moved } });
@@ -379,7 +535,10 @@ export function buildRouter(ctx) {
       });
       out.push(rest[0]);
     }
-    json(res, out.map((x) => card(x)));
+    /* Three cards, and `cards()` resolves the two query-bearing fields —
+       glyph URLs and generation numbers — once for the list rather than once
+       per creature. Same payload, two statements instead of six. */
+    json(res, cards(out, { db }));
   });
 
   // ── каталог моделей: тир, но НИКОГДА не сумма (D11) ────────────────────
@@ -392,42 +551,153 @@ export function buildRouter(ctx) {
    */
   const subReady = (acct) => Boolean(ctx.hub?.allows(acct) && ctx.hub.isOnline(acct.id));
 
+  /**
+   * A mind's name and the mark next to it, from the catalogue label.
+   *
+   * The label arrives as the model directory writes it — "Google: Gemini 3.7
+   * Flash" — and the screen needs the two halves apart: the provider becomes a
+   * small geometric mark, the name becomes the card's title. Splitting on the
+   * client would put a parser for someone else's format in the browser; when
+   * the format changes it changes here, once.
+   *
+   * A label without a colon still has to work, so the provider falls back to
+   * the family prefix of the model id (`z-ai/glm-5.3-flash` → Z.ai).
+   */
+  const PROVIDER_NAMES = {
+    'z-ai': 'Z.ai', google: 'Google', anthropic: 'Anthropic',
+    openai: 'OpenAI', meta: 'Meta', mistralai: 'Mistral', qwen: 'Qwen',
+    deepseek: 'DeepSeek', airena: 'Airena',
+  };
+  function mindName(b) {
+    const label = String(b.label || b.modelId || '').trim();
+    const at = label.indexOf(':');
+    if (at > 0) {
+      return { provider: label.slice(0, at).trim(), name: label.slice(at + 1).trim() };
+    }
+    const family = String(b.modelId || '').split('/')[0].toLowerCase();
+    const provider = PROVIDER_NAMES[family]
+      || (family ? family[0].toUpperCase() + family.slice(1) : 'Airena');
+    return { provider, name: label || provider };
+  }
+
+  /**
+   * Two modes, and the words for them are the player's, not the industry's.
+   *
+   * A bundle's suffix says how much the mind is allowed to deliberate before it
+   * writes. §1.4 forbids the vocabulary that usually names this — thinking
+   * budgets, reasoning effort — so the axis is stated as what the player
+   * actually trades: a QUICK mind answers sooner, a DEEP one takes longer.
+   */
+  const modeOf = (b) => (b.mode === 'plain' ? 'quick' : 'deep');
+
+  /**
+   * Why a dimmed mind cannot be chosen — and, first, WHO is being told.
+   *
+   * `Worker offline — open /worker` used to stand here. It is an operator's
+   * sentence: an internal noun and a raw route, and it was reasoned about as if
+   * only operators would read it. They are not the readers. The accounts on the
+   * hub list are ordinary players who happen to be able to lend the game a
+   * mind, and this string is what the create card's tooltip and the picker row
+   * printed for them — `reasonOf()` in `ui/mindpicker.js` prefers the server's
+   * `unavailableReason` over the screen's own wording whenever there is one, so
+   * the last developer speech in the main flow won every time it appeared.
+   *
+   * The condition it describes is real and worth saying; the vocabulary is not.
+   * A mind nobody is sharing is RESTING, and the whole product says so with one
+   * sentence — `NO_REASON` in `ui/mindpicker.js`, character for character the
+   * string below. If one moves, both move.
+   *
+   * The instruction survives where it can be carried out: the worker page,
+   * which is the only screen whose reader is standing next to the machine.
+   *
+   * `null` is not a gap in the payload — §8.5 types this field `string|null` —
+   * but it is now only reachable off the catalog route: a sub bundle is not
+   * shown at all to an account off the list (D175, the filter below).
+   *
+   * The paid tier keeps its sentence for everyone, because there it IS the
+   * player's: payments opening is a thing that happens to them.
+   */
+  const NO_MIND_REASON = 'Coming back soon — nobody is sharing this mind right now.';
+  const dimReason = (b, acct) => {
+    if (b.tier !== 'sub') return 'Coming when payments open';
+    return ctx.hub?.allows(acct) ? NO_MIND_REASON : null;
+  };
+
   r.get('/api/catalog', (req, res) => {
     const acct = seen(req, res);
     const cat = catalog.current();
-    json(res, {
-      /* Здесь нет ни одного числа в долларах. Тир, ярлык и причина блокировки —
-         всё, что нужно экрану, и всё, что ему разрешено знать. */
-      /*
-       * ── СВЯЗКИ ПОДПИСКИ ВИДЯТ НЕ ВСЕ (D175) ────────────────────────────
-       *
-       * Аккаунт вне списка допущенных не видит их ВОВСЕ — не серыми, а никак.
-       * Серая строка — это обещание «когда-нибудь откроется», и для канала,
-       * который открывается решением основателя поимённо, это обещание ложное.
-       * Для допущенного, но с выключенным воркером, строка остаётся: там
-       * обещание правдивое, и делать нужно ровно одно — запустить программу.
-       */
-      bundles: cat.bundles.filter((b) => b.tier !== 'sub' || ctx.hub?.allows(acct)).map((b) => ({
+    /*
+     * ── SUBSCRIPTION BUNDLES ARE NOT SHOWN TO EVERYONE (D175) ─────────────
+     *
+     * An account off the list does not see them AT ALL — not greyed out, not
+     * at all. A greyed row is a promise that it will open one day, and for a
+     * channel opened by the founder name by name that promise is false. For an
+     * allowed account with its worker switched off the row stays: there the
+     * promise is true, and there is exactly one thing to do about it.
+     */
+    const visible = cat.bundles.filter((b) => b.tier !== 'sub' || ctx.hub?.allows(acct));
+    const bundles = visible.map((b) => {
+      const { provider, name } = mindName(b);
+      const available = b.tier === 'sub' ? subReady(acct) : OPEN_TIERS.has(b.tier);
+      return {
         id: b.bundle,
-        label: b.label,
-        think: b.thinkLabel,
+        /* The family, so the screen can group two modes of one mind together. */
+        model: b.modelId,
+        name,
+        provider,
+        mode: modeOf(b),
         tier: b.tier,
-        measured: b.measured,
-        /* Сколько ждать. Секунды — не деньги, их игроку знать и нужно, и
-           полезно: именно ожидание он принимает за поломку. `null` — связка
-           не замерена, и экран честно молчит вместо выдумки. */
-        secs: b.secs ?? null,
-        available: b.tier === 'sub' ? subReady(acct) : OPEN_TIERS.has(b.tier),
-        /* §2.2: реальные деньги в платформу пока не заходят вообще. Подписка
-           денег игрока не трогает и потому доступна (D164) — но только когда
-           есть кому её выполнить (D175). */
-        unavailableReason: b.tier === 'sub'
-          ? (subReady(acct) ? null : 'воркер не запущен — открой /worker')
-          : (OPEN_TIERS.has(b.tier) ? null : 'платежи платформы ещё не включены'),
-      })),
+        featured: false,
+        /*
+         * How long the wait is. Seconds are not money and the player both needs
+         * and benefits from knowing them: waiting is what they mistake for a
+         * broken page. `null` means this mind has never been measured, and the
+         * screen says nothing rather than inventing a number.
+         */
+        waitSecs: b.secs ?? null,
+        available,
+        /* §2.2: real money does not enter the platform yet. A subscription
+           costs the player nothing and is therefore open (D164) — but only
+           while there is someone to carry it out (D175). */
+        unavailableReason: available ? null : dimReason(b, acct),
+      };
+    });
+
+    /*
+     * FEATURED = THE FASTEST AVAILABLE BUNDLE OF EACH MIND, AT MOST FIVE.
+     *
+     * One card per mind, not one per mode: showing Gemini twice, once quick and
+     * once deep, turns a choice between minds into a choice between settings.
+     * The chosen card carries the mode toggle itself (§6.3).
+     *
+     * Fastest, not cheapest. The catalogue is sorted by price, and the create
+     * screen used to take the first available row — so the default was the
+     * cheapest bundle, which is also the slowest. The player pressed CREATE and
+     * went away for ten minutes without ever having chosen that.
+     *
+     * An unmeasured wait sorts last: a mind we have never timed is not a
+     * defensible recommendation for someone's first creature.
+     */
+    const wait = (b) => (b.waitSecs == null ? Infinity : b.waitSecs);
+    const best = new Map();
+    for (const b of bundles) {
+      if (!b.available) continue;
+      const cur = best.get(b.model);
+      if (!cur || wait(b) < wait(cur)) best.set(b.model, b);
+    }
+    [...best.values()].sort((x, y) => wait(x) - wait(y)).slice(0, 5)
+      .forEach((b) => { b.featured = true; });
+
+    json(res, {
+      /* Not one number in dollars anywhere below. What the screen gets is the
+         name, the wait and the reason it cannot be chosen — everything it
+         needs, and everything it is allowed to know (E6, N1). */
+      bundles,
       canCreate: true,
-      note: cat.bundles.some((b) => b.tier === 'paid')
-        ? 'Платные авторы появятся, когда платформа включит платежи.' : null,
+      /* The same fact the dimmed cards carry (`Coming when payments open`) and
+         the same noun the refusals use, said once for the row as a whole. */
+      note: bundles.some((b) => !b.available && b.tier !== 'sub')
+        ? 'More minds open when payments do.' : null,
     });
   });
 
@@ -450,11 +720,11 @@ export function buildRouter(ctx) {
     const account = token ? ctx.hub?.accountByToken(token) : null;
     /* Токен есть, аккаунта нет — токен отозван или аккаунт удалён. 401, чтобы
        воркер сказал коллеге «привяжись заново», а не молчал в бэкоффе. */
-    if (!account) { fail(res, 401, 'bad_token', 'токен воркера недействителен'); return null; }
+    if (!account) { fail(res, 401, 'bad_token', 'This worker is no longer linked — pair it again.'); return null; }
     /* Допуск перепроверяется НА КАЖДОМ запросе, а не только при привязке:
        основатель убирает аккаунт из списка правкой переменной, и токен,
        выданный вчера, обязан перестать работать сегодня. */
-    if (!ctx.hub.allows(account)) { fail(res, 403, 'not_allowed', 'аккаунт больше не в списке'); return null; }
+    if (!ctx.hub.allows(account)) { fail(res, 403, 'not_allowed', 'This account is no longer on the list.'); return null; }
     return { token, account };
   }
 
@@ -462,7 +732,7 @@ export function buildRouter(ctx) {
   r.post('/api/worker/pair/start', (req, res) => {
     const acct = who(req, res);
     if (!ctx.hub?.allows(acct)) {
-      return fail(res, 403, 'not_allowed', 'этот аккаунт не в списке тех, кто может запускать воркер');
+      return fail(res, 403, 'not_allowed', 'This account is not on the list of those who can run a worker.');
     }
     json(res, ctx.hub.startPairing(acct.id));
   });
@@ -472,7 +742,7 @@ export function buildRouter(ctx) {
     let body;
     try { body = await readJson(req); } catch { body = {}; }
     const got = ctx.hub?.claimPairing(body.code, body.hostname);
-    if (!got) return fail(res, 404, 'bad_code', 'код не подошёл или истёк');
+    if (!got) return fail(res, 404, 'bad_code', 'The code did not match or has expired.');
     const a = db.prepare('SELECT * FROM account WHERE id = ?').get(got.accountId);
     json(res, { token: got.token, account: { name: accountName(a) } });
   });
@@ -494,7 +764,7 @@ export function buildRouter(ctx) {
     const w = workerAuth(req, res);
     if (!w) return;
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать ответ'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The answer could not be read.'); }
     const ok = ctx.hub.deliver({ accountId: w.account.id, requestId: body.requestId, body });
     /* Неизвестный `requestId` — не ошибка воркера: задание могло умереть по
        стене, пока он считал. Отвечаем 204 и здесь: пусть идёт за следующим. */
@@ -519,7 +789,7 @@ export function buildRouter(ctx) {
    */
   r.get('/worker.mjs', (req, res) => {
     const p = join(root, 'src/worker/worker.mjs');
-    if (!existsSync(p)) return fail(res, 404, 'no_worker', 'воркер не собран');
+    if (!existsSync(p)) return fail(res, 404, 'no_worker', 'The worker program has not been built.');
     const src = readFileSync(p);
     res.writeHead(200, {
       'content-type': 'text/javascript; charset=utf-8',
@@ -549,7 +819,7 @@ export function buildRouter(ctx) {
    */
   r.get('/api/body/:id', (req, res) => {
     const row = db.prepare('SELECT body_safe, body_draws FROM creature WHERE id = ?').get(req.params.id);
-    if (!row || !row.body_safe) return fail(res, 404, 'no_body', 'у этого существа нет своего тела');
+    if (!row || !row.body_safe) return fail(res, 404, 'no_body', 'This creature has no body of its own.');
 
     /*
      * ── ПОТОЛОК ЦЕНЫ ПОКАЗА — ПРАВИЛО ПРИЁМКИ, А НЕ ВЫДАЧИ ────────────────
@@ -585,12 +855,75 @@ export function buildRouter(ctx) {
     res.end(row.body_safe);
   });
 
+  /**
+   * One ability glyph.
+   *
+   * Public, like the body and for the same reason: the icon is drawn in the
+   * battle HUD of a fight that anyone can watch, so hiding it would only break
+   * the viewer. There is nothing of the mind in a picture of a cone.
+   *
+   * CACHING, AND WHY THE ADDRESS CARRIES A VERSION.
+   *
+   * Abilities change — free and instantly (F10) — and `POST /api/creature/:id/kit`
+   * redraws all three glyphs at the same three addresses. The old header said
+   * `max-age=86400, immutable`, and `immutable` is a promise that the bytes at
+   * this URL will never change: the owner who had just rewritten their
+   * abilities kept looking at pictures of the old ones for a day, with no
+   * reload that could reach them. This comment argued exactly that against a
+   * year, and then made the same promise with a smaller number on it.
+   *
+   * So the promise is made true instead of being withdrawn. `iconUrls()` now
+   * stamps `?v=<created_at>` on every address it hands out — `card().icons`,
+   * `card().abilities[].icon` and the live message's `abilities[side][].icon`
+   * all carry it — so a redrawn glyph IS a new address, and a request that
+   * quotes the current version gets the year and the word, because for that
+   * address both are finally honest.
+   *
+   * An address WITHOUT a version is one somebody spelled out of an id and a
+   * slot, and nothing about it can say when the picture behind it changed. It
+   * gets a minute of freshness and a day of `stale-while-revalidate`: the tile
+   * still paints instantly from cache, the browser checks behind it, and the
+   * `ETag` makes that check a 304 rather than a second download of a jpeg that
+   * has not moved. A day of silence on that lane was the bug; a minute is not.
+   */
+  r.get('/api/creature/:id/icon/:slot', (req, res) => {
+    const slotIndex = Number(req.params.slot);
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 15) {
+      return fail(res, 404, 'no_icon', 'There is no such ability.');
+    }
+    const row = readIcon(db, req.params.id, slotIndex);
+    if (!row) return fail(res, 404, 'no_icon', 'This ability has no picture yet.');
+
+    const version = String(row.created_at || 0);
+    const etag = `"${slotIndex}-${version}"`;
+    let asked = null;
+    try { asked = new URL(req.url, 'http://x').searchParams.get('v'); } catch { asked = null; }
+    const cache = asked === version
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=60, stale-while-revalidate=86400';
+
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { etag, 'cache-control': cache });
+      return res.end();
+    }
+    res.writeHead(200, {
+      'content-type': row.mime || 'image/jpeg',
+      'content-length': row.bytes.length,
+      etag,
+      'cache-control': cache,
+    });
+    res.end(Buffer.isBuffer(row.bytes) ? row.bytes : Buffer.from(row.bytes));
+  });
+
   // ── существо ───────────────────────────────────────────────────────────
   r.get('/api/creature/:id', (req, res) => {
     const acct = seen(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
-    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
-    const c = card(row, { viewerId: acct.id });
+    if (!row) return fail(res, 404, 'no_creature', 'There is no such creature.');
+    const c = card(row, { viewerId: acct.id, db });
+    /* Same lazy hook as the session, for the creature page of somebody who
+       arrived by a direct link and has no session of their own here. */
+    ensureIconsSoon(db, row.id, c.kit);
     const view = ladderView(db, { creatureId: row.id, season: row.season });
     /* Сколько раз существо пробовало себя переписать. Нужно и шкале
        наблюдений, и журналу — считается один раз. */
@@ -660,7 +993,7 @@ export function buildRouter(ctx) {
 
   r.get('/api/creature/:id/history', (req, res) => {
     const row = db.prepare('SELECT id FROM creature WHERE id = ?').get(req.params.id);
-    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
+    if (!row) return fail(res, 404, 'no_creature', 'There is no such creature.');
     json(res, history(db, row.id, /* Потолок обязателен: отрицательное значение SQLite читает как «без лимита»,
        и один анонимный запрос отдавал 436 КБ с базы в 12 тысяч матчей. */
       Math.max(1, Math.min(100, Number(req.query?.limit) || 40))));
@@ -688,18 +1021,18 @@ export function buildRouter(ctx) {
   r.post('/api/creature/:id/kit/check', async (req, res) => {
     const acct = who(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
-    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
-    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоё существо');
+    if (!row) return fail(res, 404, 'no_creature', 'There is no such creature.');
+    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'This creature is not yours.');
 
     const last = kitChecks.get(acct.id) || 0;
-    if (Date.now() - last < 3000) return fail(res, 429, 'too_often', 'проверка идёт, подожди секунду');
+    if (Date.now() - last < 3000) return fail(res, 429, 'too_often', 'A check is already running — wait a second.');
     kitChecks.set(acct.id, Date.now());
     if (kitChecks.size > 512) kitChecks.clear();
 
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The request could not be read.'); }
     const bad = validateKit(body.kit);
-    if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
+    if (bad.length) return fail(res, 422, 'bad_kit', 'These abilities do not pass the rules.', { violations: bad });
 
     try {
       const v = await viability(body.kit, { build: buildOf(row) });
@@ -713,7 +1046,7 @@ export function buildRouter(ctx) {
       });
     } catch (e) {
       /* Проверка — удобство, а не право: её отказ ничего не ломает. */
-      fail(res, 503, 'check_failed', 'проверка не запустилась — можно применить и так');
+      fail(res, 503, 'check_failed', 'The check did not start — you can apply them anyway.');
     }
   });
 
@@ -721,15 +1054,15 @@ export function buildRouter(ctx) {
   r.post('/api/creature/:id/kit', async (req, res) => {
     const acct = who(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
-    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
-    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоё существо');
+    if (!row) return fail(res, 404, 'no_creature', 'There is no such creature.');
+    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'This creature is not yours.');
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The request could not be read.'); }
 
     /* Бюджет пересчитывается ЗАНОВО на сервере: цифры, присланные клиентом
        или моделью, не авторитетны (§8). */
     const bad = validateKit(body.kit);
-    if (bad.length) return fail(res, 422, 'bad_kit', 'набор не проходит правила', { violations: bad });
+    if (bad.length) return fail(res, 422, 'bad_kit', 'These abilities do not pass the rules.', { violations: bad });
 
     /*
      * СМЕНА НАБОРА СНИМАЕТ ДЕКОРАЦИЮ.
@@ -748,6 +1081,21 @@ export function buildRouter(ctx) {
      */
     db.prepare('UPDATE creature SET kit_json = ?, vfx_json = NULL, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(body.kit), Date.now(), row.id);
+    /*
+     * THE GLYPHS ARE REDRAWN, ALL THREE, FOR THE SAME REASON THE DECORATION IS
+     * DROPPED ABOVE.
+     *
+     * An icon is a picture of one specific ability. After a change the old
+     * picture is not merely stale, it is wrong — a flame where the creature now
+     * carries frost — and a wrong picture in the battle HUD is worse than the
+     * plain procedural shape the client falls back to. `force` regenerates
+     * every slot rather than the changed ones because the slots are addressed
+     * by index and the whole set moves when one ability is inserted.
+     *
+     * Fire-and-forget: the answer to "change my abilities" is instant and free
+     * (F10, D3), and it does not wait on an image service.
+     */
+    ensureIcons(db, row.id, { force: true }).catch(() => {});
     json(res, { ok: true, kit: body.kit, cost: body.kit.map(costOf) });
   });
 
@@ -755,10 +1103,10 @@ export function buildRouter(ctx) {
   r.post('/api/creature', async (req, res) => {
     const acct = who(req, res);
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The request could not be read.'); }
 
     const bundle = catalog.find(body.bundle);
-    if (!bundle) return fail(res, 400, 'no_bundle', 'такой модели нет в каталоге');
+    if (!bundle) return fail(res, 400, 'no_bundle', 'There is no such mind to choose from.');
     /* E6: покупок в v1 нет ни в каком виде, включая заглушку. Отказ честный
        и объясняет причину, а не предлагает несуществующую кнопку. Правило —
        общее, см. `paidRefused` ниже. */
@@ -770,7 +1118,11 @@ export function buildRouter(ctx) {
     }
 
     const prompt = String(body.prompt || '').slice(0, 400).trim();
-    if (prompt.length < 3) return fail(res, 422, 'short_prompt', 'опиши существо хотя бы несколькими словами');
+    /* The screen's own sentence for `short_prompt`, character for character
+       (`DENY_TEXT` in `screens/create.js`). It answers the same press, and a
+       refusal that changes its wording depending on whether the client or the
+       server said it is two products talking over each other. */
+    if (prompt.length < 3) return fail(res, 422, 'short_prompt', 'Write one sentence — that is enough.');
 
     /*
      * F7 СНЯТО (05.09, решение основателя).
@@ -855,17 +1207,30 @@ export function buildRouter(ctx) {
      */
     if (bundle.tier === 'sub') {
       if (!ctx.hub?.allows(acct)) {
-        fail(res, 403, 'not_allowed', 'этот автор мозга доступен не на этом аккаунте', { bundle: bundle.bundle });
+        fail(res, 403, 'not_allowed', 'This mind is not available on this account.', { bundle: bundle.bundle });
         return true;
       }
       if (!ctx.hub.isOnline(acct.id)) {
-        fail(res, 409, 'worker_offline', 'воркер не запущен — запусти его и повтори', { bundle: bundle.bundle });
+        /*
+         * The player's sentence, not the operator's — and the SAME sentence the
+         * dimmed card and the picker row already carried, because this is the
+         * same condition read a second later. It answers a press of CREATE and
+         * renders inline under the button (§6.3); "start it and try again" is
+         * an instruction to go and run a process, which nobody reading that
+         * line is in a position to do. The machine-readable half is unchanged:
+         * `worker_offline` still tells the operator's own screen which door is
+         * shut.
+         */
+        fail(res, 409, 'worker_offline', NO_MIND_REASON, { bundle: bundle.bundle });
         return true;
       }
       return false;
     }
     if (OPEN_TIERS.has(bundle.tier)) return false;
-    fail(res, 402, 'not_free', 'платежи платформы ещё не включены', { bundle: bundle.bundle });
+    /* Again the screen's own sentence (`not_free` in `DENY_TEXT`): the dimmed
+       card already said `Coming when payments open`, and the line under the
+       button has to be the same fact stated the same way. */
+    fail(res, 402, 'not_free', 'Payments are not open yet, so this mind cannot be used.', { bundle: bundle.bundle });
     return true;
   }
 
@@ -883,16 +1248,16 @@ export function buildRouter(ctx) {
 
   r.post('/api/creature/:id/refactor', async (req, res) => {
     if (!REFACTOR_ON) {
-      return fail(res, 404, 'no_refactor', 'улучшение существа моделью в этой версии не включено');
+      return fail(res, 404, 'no_refactor', 'Rewriting a creature’s mind is not open in this version.');
     }
     const acct = who(req, res);
     const row = db.prepare('SELECT * FROM creature WHERE id = ?').get(req.params.id);
-    if (!row) return fail(res, 404, 'no_creature', 'такого существа нет');
-    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоё существо');
+    if (!row) return fail(res, 404, 'no_creature', 'There is no such creature.');
+    if (row.owner_id !== acct.id) return fail(res, 403, 'not_yours', 'This creature is not yours.');
     let body;
     try { body = await readJson(req); } catch { body = {}; }
     const bundle = catalog.find(body.bundle) || catalog.cheapestFree();
-    if (!bundle) return fail(res, 503, 'no_catalog', 'каталог моделей недоступен');
+    if (!bundle) return fail(res, 503, 'no_catalog', 'No minds are available right now.');
     if (paidRefused(res, bundle, acct)) return;
     const gate = limits.check(db, { account: acct, bundle, kind: 'refactor' });
     if (!gate.ok) {
@@ -907,8 +1272,8 @@ export function buildRouter(ctx) {
   r.get('/api/job/:id', (req, res) => {
     const acct = seen(req, res);
     const j = db.prepare('SELECT * FROM job WHERE id = ?').get(req.params.id);
-    if (!j) return fail(res, 404, 'no_job', 'такой генерации нет');
-    if (j.account_id && j.account_id !== acct.id) return fail(res, 403, 'not_yours', 'это не твоя генерация');
+    if (!j) return fail(res, 404, 'no_job', 'There is no such generation.');
+    if (j.account_id && j.account_id !== acct.id) return fail(res, 403, 'not_yours', 'This generation is not yours.');
     json(res, jobView(j));
   });
 
@@ -945,7 +1310,7 @@ export function buildRouter(ctx) {
                           JOIN creature ca ON ca.id = m.a_id
                           JOIN creature cb ON cb.id = m.b_id
                           WHERE m.id = ?`).get(req.params.id);
-    if (!m) return fail(res, 404, 'no_match', 'такого боя нет');
+    if (!m) return fail(res, 404, 'no_match', 'There is no such fight.');
     /* Строка матча может быть любой давности: слоты и ключи `result_json` в
        старых записаны прежними именами сторон. Мост — в `creatures.js`. */
     const result = m.result_json ? sideResult(JSON.parse(m.result_json)) : null;
@@ -1000,7 +1365,7 @@ export function buildRouter(ctx) {
   r.post('/api/events', async (req, res) => {
     const acct = seen(req, res);
     let body;
-    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'не удалось прочитать запрос'); }
+    try { body = await readJson(req); } catch { return fail(res, 400, 'bad_body', 'The request could not be read.'); }
     const list = Array.isArray(body.events) ? body.events.slice(0, 32) : [];
     let ok = 0;
     let refused = 0;
@@ -1077,10 +1442,10 @@ export function buildRouter(ctx) {
       /* Не 404, а 403 с причиной: молчаливый 404 читается как «сломалось»,
          а здесь работает правило, и правило стоит назвать. */
       return fail(res, 403, 'brain_closed',
-        'исходник мозга закрыт: открыты только шесть эталонных мозгов репозитория');
+        'The mind of a creature is closed: only the six reference minds of the repository are open.');
     }
     const p = join(root, 'brains', tag, `${file}.js`);
-    if (!existsSync(p)) return fail(res, 404, 'no_brain', 'такого мозга нет');
+    if (!existsSync(p)) return fail(res, 404, 'no_brain', 'There is no such reference mind.');
     res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
     res.end(readFileSync(p, 'utf8'));
   });
@@ -1088,14 +1453,29 @@ export function buildRouter(ctx) {
   return r;
 }
 
-const side = (m, k) => ({
-  /* `slot` приводится к нынешнему имени: в старых строках он записан прежним,
-     и клиент, сравнивающий его с ключами кадра, промахнулся бы мимо обоих. */
-  id: m[`${k}_id`], name: m[`${k}_name`], slot: sideKey(m[`${k}_slot`]),
-  model: m[`${k}_model`], kit: safe(m[`${k}_kit`]), tacticsCard: m[`${k}_card`],
-  delta: Math.round(m[`${k}_delta`] * 10) / 10,
-  ratingAfter: Math.round(m[`${k}_rating_after`] ?? 0),
-});
+const side = (m, k) => {
+  const raw = safe(m[`${k}_kit`]);
+  return {
+    /* `slot` приводится к нынешнему имени: в старых строках он записан прежним,
+       и клиент, сравнивающий его с ключами кадра, промахнулся бы мимо обоих. */
+    id: m[`${k}_id`], name: m[`${k}_name`], slot: sideKey(m[`${k}_slot`]),
+    model: m[`${k}_model`], kit: raw, tacticsCard: m[`${k}_card`],
+    /*
+     * THE NAMED ABILITIES TRAVEL WITH THE FIGHTER (§8.2).
+     *
+     * The raw grammar alone was enough for a name — element word plus shape
+     * word — and the fight detail built one itself. It could not build a
+     * unique one: two abilities of a kit may share both axes, and the beats
+     * then read "lands KINETIC LUNGE for 20" and "lands KINETIC LUNGE for 26"
+     * for two different slots. Uniqueness is a property of the kit as a whole,
+     * so it can only be decided where the whole kit is — here, once, the same
+     * way the creature page and the battle HUD decide it.
+     */
+    abilities: abilitiesOf(raw),
+    delta: Math.round(m[`${k}_delta`] * 10) / 10,
+    ratingAfter: Math.round(m[`${k}_rating_after`] ?? 0),
+  };
+};
 
 const safe = (s) => { try { return JSON.parse(s); } catch { return []; } };
 
@@ -1128,7 +1508,7 @@ export function skillNames(db, m) {
    * Общий словарь остаётся под ключом `all` для старых читателей и для
    * четырёх захардкоженных имён, которые у обеих сторон значат одно и то же.
    */
-  const base = { laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок' };
+  const base = { laser: 'beam', blink: 'blink', smash: 'smash', charge: 'charge', jump: 'leap' };
   const out = { ...base, bySide: {} };
   for (const slot of ['a', 'b']) {
     const id = m[`${slot}_id`] ?? m[`${slot}Id`];
@@ -1226,16 +1606,37 @@ export function beatsFrom(log, m) {
    * массив это законный ответ.
    */
   const out = [];
-  /* ОБЕ стороны сравнения — через мост, и это не перестраховка: слот строки и
-     `who` строки лога могут прийти из разных эпох (строка старая, лог уже
-     переведён `sideResult`). Перевести одну сторону сравнения значило бы
-     сверять нынешнее имя со старым — совпадений ноль, и весь разбор боя молча
-     уехал бы на второго бойца. */
-  const name = (slot) => (sideKey(slot) === sideKey(m.a_slot) ? m.a_name : m.b_name);
+  /*
+   * WHO ACTED IS AN IDENTITY, AND ONLY THIS FUNCTION STILL KNOWS IT.
+   *
+   * The log speaks sides — `who: 'blue'` — and this loop used to replace that
+   * with a NAME, throwing the identity away on the way out. Names are not
+   * unique: two creatures may carry the same generated one (the dev ladder
+   * holds two STONE GOLEMs), and the retelling downstream then cannot say
+   * which of them lunged. It loses both things at once — the ability set to
+   * read `k1` against, and the side to colour the line with — so six beats
+   * come out as "STONE GOLEM lands a hit" in one ink.
+   *
+   * The side is already here and costs nothing to carry, so the beat carries
+   * the fighter's id and its side beside the name. Both are unambiguous by
+   * construction; the name stays because it is what the sentence prints.
+   *
+   * BOTH sides of the comparison go through the bridge, and that is not
+   * belt-and-braces: a row's slot and a log line's `who` can come from
+   * different eras (an old row whose log `sideResult` has already translated).
+   * Normalising one side only would compare today's name with yesterday's —
+   * zero matches, and the whole retelling would silently move to the other
+   * fighter.
+   */
+  const actor = (slot) => {
+    const key = sideKey(slot);
+    const first = key === sideKey(m.a_slot);
+    return { who: first ? m.a_name : m.b_name, whoId: first ? m.a_id : m.b_id, whoSide: key };
+  };
   const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned', 'landed']);
   for (const e of log) {
     if (!e || typeof e !== 'object' || !KEEP.has(e.type)) continue;
-    const base = { t: e.t, who: name(e.who), type: e.type };
+    const base = { t: e.t, ...actor(e.who), type: e.type };
     if (e.type === 'say') out.push({ ...base, text: e.text });
     else if (e.type === 'damage') out.push({ ...base, type: 'hit', skill: e.skill, amount: e.amount });
     /*
@@ -1260,7 +1661,7 @@ export function beatsFrom(log, m) {
      соседних мыслях, сказал её один раз — а две одинаковые строки в разборе
      читаются как сбой показа. */
   const says = out.filter((b) => b.type === 'say')
-    .filter((b, i, all) => !(i && all[i - 1].who === b.who && all[i - 1].text === b.text && b.t - all[i - 1].t < 3.2));
+    .filter((b, i, all) => !(i && all[i - 1].whoSide === b.whoSide && all[i - 1].text === b.text && b.t - all[i - 1].t < 3.2));
   const others = out.filter((b) => b.type !== 'say');
   return [...says, ...others.slice(0, 40)].sort((a, b) => a.t - b.t);
 }

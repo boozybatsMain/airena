@@ -40,11 +40,40 @@ import { buildBody } from './loadbody.js';
 import { bakeStatic } from './bake.js';
 import { Vfx, markGlow, setGlowEnabled, telegraphMat, setFade } from './vfx.js';
 import { playIr } from './vfxir.js';
+/* The place: everything that is not a fighter, a telegraph or an effect. */
+import { buildEnvironment, preTone, srgbToLin, REFLECT_LAYER, initialQuality, qualityGovernor, RIG } from './environment.js';
 
 const $ = (s) => document.querySelector(s);
 const boot = $('#boot');
 const errBox = $('#err');
 const fail = (m) => { errBox.style.display = 'block'; errBox.textContent += `${m}\n`; console.error(m); };
+
+/**
+ * A THROW REPORTED ON ONE LINE, WITH THE FRAMES THAT NAME IT.
+ *
+ * Four review rounds logged the identical, unactionable string
+ * `render: TypeError: Cannot read properties of undefined (reading 'abs')`
+ * and not one of them could say which material threw it. The reason is
+ * mechanical, not mysterious: these sites reported `e.stack`, whose FIRST
+ * line is the message and whose frames follow on later lines — and the
+ * capture harness keeps `String(e).split('\n')[0]`, i.e. exactly the line
+ * that carries no location. Every frame of every trace was thrown away by
+ * construction, in the one place a capture is the only witness.
+ *
+ * So the top frames are folded onto the first line, shortest part first: the
+ * message, then three frames joined by ` <- `, each trimmed of the `at ` and
+ * of the origin so a 400-character line still holds three locations. Nothing
+ * else about the reporting changes — `fail` still prints the whole thing to
+ * the console, where the full stack is one expand away.
+ */
+function where(e) {
+  const msg = (e && e.message) || String(e);
+  const frames = String((e && e.stack) || '')
+    .split('\n').slice(1, 4)
+    .map((s) => s.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+/g, ''))
+    .filter(Boolean);
+  return frames.length ? `${msg} @ ${frames.join(' <- ')}` : msg;
+}
 
 /**
  * АДРЕС БЭКЕНДА. Пусто — свой хост, то есть прежнее поведение целиком.
@@ -57,6 +86,23 @@ const fail = (m) => { errBox.style.display = 'block'; errBox.textContent += `${m
  * лежит рядом со страницей, и увести её на бэкенд значило бы просить у него
  * файл, которого он в бандле не раздаёт.
  */
+/**
+ * A stamp on the shell's own clock (`app.js`'s `__airenaMarks`).
+ *
+ * `rendererReady` — the moment this module finishes evaluating — lands 4.5–6 s
+ * after `screenReady` in every live capture, and it is 60 % of F6's ten-second
+ * budget with NOTHING inside it measured: module fetch and parse, the WebGPU
+ * device, the environment's build (its PMREM among it), the post graph and two
+ * compiles are all one number. These split it, so the next person optimising
+ * the first frame is aiming at a measurement instead of at a guess.
+ * `tools/checkboot.mjs` prints the split beside the weight.
+ */
+const mark = (name) => {
+  if (typeof window === 'undefined' || !window.__airenaMarks) return;
+  if (!window.__airenaMarks[name]) window.__airenaMarks[name] = Math.round(performance.now());
+};
+mark('viewerStart');
+
 const API = () => (typeof window !== 'undefined' && window.__api) || '';
 
 // ---------------------------------------------------------------------------
@@ -68,24 +114,78 @@ const HALF = cfg.arena.half;
 
 const scene = new THREE.Scene();
 /*
- * Тёмный фон сцены ВОЗВРАЩЁН решением основателя (30.08).
- *
- * Светлую сцену завели по его же просьбе «бэкграунд пусть будет белым, как
- * арена» (D125), и на живом бою он сказал: стало хуже. Это его игра и его
- * глаз; спорить не с чем, и §10.1 в этой части снова читается буквально —
- * белая платформа, тёмный градиент фона.
- *
- * Что из светлой темы уцелело и почему: цвета сторон снова светящиеся
- * (`--oct`/`--gor` в `kit.css`), потому что на тёмном они и задуманы такими,
- * а разделение на «интерфейсный» и «сценический» набор было нужно только
- * белому фону.
+ * The grade of the world — the sky, the fog, the ground and the whole rig —
+ * lives in `./environment.js` now (`buildEnvironment`, called once the
+ * renderer is up): one warm hazy plaza under a single low sun, built against
+ * `reports/arena/ARENA-BRIEF.md` and photographed on `arena.html`. Nothing
+ * about the PLACE is decided in this file any more; what stays here is the
+ * fight — the bodies, the camera, the telegraphs, the effects, the HUD.
  */
-scene.background = new THREE.Color(0x0d0f14);
-scene.fog = new THREE.Fog(0x0d0f14, 55, 110);
 
 const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.3, 400);
-camera.position.set(0, 26, 34);
-camera.lookAt(0, 1, 0);
+/*
+ * ── THE BOOT POSE: THE ARENA'S OWN PORTRAIT, NOT A MAP OF IT ──────────────
+ *
+ * This is the eye until the first snapshot arrives, which makes it the
+ * `searching` beat's camera and the first picture the product ever draws — and
+ * `arena.html`'s `default` preset MIRRORS IT, so it is also the frame the
+ * stand is judged in (`reports/arena/stand-default.png`). It was (0, 26, 34)
+ * looking at (0, 1, 0), and that pose failed the same two ways in both places.
+ *
+ * IT LOOKED DOWN. 26 m up over a 34 m shot is 37° of pitch against a 23°
+ * half-frame, so the top of the picture pointed 14° BELOW the horizon: the
+ * whole bank, deck and banner layer was compressed into the top 48 px of 900
+ * (5.3 % of the frame) with both banners cut by the edge, and there was no
+ * sky, no roofline and no planet in it at all. Dropping the eye to 16 m and
+ * raising the aim to 3.6 puts the top of frame 4° ABOVE the horizon, which is
+ * where the world the second directive asks for actually stands.
+ *
+ * IT LOOKED STRAIGHT DOWN THE SUN'S OWN AXIS. The key flanks from (−x, +z);
+ * from an eye on +z every block's shadow lay directly behind its caster, and
+ * `live-searching.png` measured the whole pit interior at a flat 88.5 L to
+ * ±0.1 — the arena's one detail, gone. At 30° of azimuth the shadow direction
+ * projects 0.97 across the frame and 0.26 into it: the shadows lie ACROSS the
+ * floor, which is what makes a floor read as a floor. It is also the direction
+ * the fight camera settles on (`CAM_ANCHOR`, 45°), so the hand-over from
+ * searching to the first fighting frame is a small move rather than a swing.
+ *
+ * Ground radius 38 keeps the eye 14 m outside the wall at this azimuth, so the
+ * plaza still reads under it and the near wall hides ~3 m of the field — which
+ * `wallHidesField` fades, as it was written to.
+ */
+camera.position.set(19, 16, 32.9);
+camera.lookAt(0, 3.6, 0);
+
+/**
+ * THE HUD'S FREE BAND — where a fighter may stand on the screen.
+ *
+ * The frame is not the picture. The shell owns the top of it (the phase word
+ * and its subline end ~190 px down at 1440×900) and the bottom (the name
+ * plates begin ~285 px up; ~260 under 800 px), and a body framed to the
+ * symmetric |ndc| ≤ 0.88 box stood with its feet through the name row and its
+ * head off the top edge while the assertion said HOLDS: the aim point sat at
+ * the frame's centre, which is inside the bottom band at every width. So the
+ * camera solves against THIS band — `yTop` / `yBot` are its edges in ndc —
+ * and the two tests (`bodyInBand`) project feet and head, not the centre.
+ *
+ * The numbers here are the DATA-ONLY default: `tools/checkframing.mjs`
+ * evaluates this slice in Node with no DOM, and 0.58 / −0.37 is the 1440×900
+ * layout (190 → 618 px). The browser measures the real elements in
+ * `measureHud()` on every resize and phase change. `card` says a card (VS,
+ * the result) is up — the establishing camera's cue; `feed` is the live-feed
+ * panel's box in ndc, for the occlusion pass, which ghosts the glass when a
+ * fighter stands under it as it ghosts a block.
+ *
+ * `cardRect` is the CARD ITSELF, in ndc — a third band, not an edge. The two
+ * cards own the MIDDLE of the screen (1440×900: the VS card x 283–1160 /
+ * y 333–568, the result card x 510–930 / y 208–692) and the solver was blind
+ * to them, so it happily "framed" a pair the card covered whole: the result
+ * beat aimed at the pair's midpoint, which is the frame's centre, which is
+ * under the card, and the capture came back an empty plaza with a VICTORY
+ * card on it. Only the ESTABLISHING path reads this (`clearAim` below); the
+ * fight camera does not, so `tools/checkframing.mjs` grades what it graded.
+ */
+const hudBand = { yTop: 0.58, yBot: -0.37, card: false, vs: false, feed: null, cardRect: null };
 
 /*
  * WebGPU when the browser has it, WebGL2 when it does not, and `?webgl=1` to
@@ -109,8 +209,112 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+/**
+ * THE EXPOSURE CONTRACT — 1.0, in both places.
+ *
+ * The environment inverts every unlit colour (the sky, the fog, the banner,
+ * the planet, and this file's telegraph tokens) through the ACES curve AT
+ * THIS EXPOSURE, so they land on their hex after the grade; the post graph
+ * tone-maps at `postU.exposure` and the raster path, when the graph is not
+ * built, at `renderer.toneMappingExposure`. All three read one constant and
+ * the graph asserts it once at build. At 0.94 every pre-toned colour landed
+ * 6 % under its hex and the horizon left the fogged plaza.
+ */
+const ENV_EXPOSURE = 1.0;
+renderer.toneMappingExposure = ENV_EXPOSURE;
 document.body.appendChild(renderer.domElement);
+
+/*
+ * NO DOM VIGNETTE. There was a radial-gradient element over the canvas here
+ * (`#arena-vignette`, `--ink` and then `--muted` at .14–.20 in the corners),
+ * stacked on a darkening vignette in the post graph. The built HUD already
+ * dims the top and the bottom of the frame by WASHING toward `--sky-2`
+ * (`hud.css` `#hud::before/::after`), and c1's edges go lighter into haze,
+ * not darker: a darkening under that wash cancelled at the top and bottom and
+ * survived at the flanks — a soft bow-tie of darker edges nothing else on the
+ * site has, with the darkest non-fighter ink of the frame along the nav
+ * rail's column. The post graph's vignette is a wash now (`buildPost`), and
+ * it is the only one.
+ */
+/**
+ * Measure the HUD's band and the feed's box from the DOM (see `hudBand`).
+ *
+ * Top: the lowest bottom edge of what the shell docks at the top — the phase
+ * block, and the feed when it is folded into a strip across the top (the
+ * phone). Bottom: the highest top edge of what it docks at the bottom — the
+ * two fighter panels (real or simulated) and the clock. Elements that are
+ * not laid out are skipped; opacity is NOT a criterion, because the panels
+ * fade in over 320 ms at the start of a fight and a band measured through
+ * that fade would aim the first second of every fight at the name row. A
+ * measurement that leaves no band (a window collapsed mid-resize) keeps the
+ * previous one. The feed at the side is a box for the occlusion pass; the
+ * feed across the top is part of the band.
+ */
+function measureHud() {
+  const W = Math.max(1, innerWidth), H = Math.max(1, innerHeight);
+  const box = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 ? r : null;
+  };
+  let top = 0, bottom = H, topSeen = false, bottomSeen = false;
+  for (const el of document.querySelectorAll('.live-top')) {
+    const r = box(el);
+    if (r && r.bottom < H * 0.5) { top = Math.max(top, r.bottom); topSeen = true; }
+  }
+  /* the visitor's invitation (`.live-cta`) is docked in the bottom column
+     above the clock: it is part of the bottom band wherever it stands, so
+     the pair is framed above it and never under its glass */
+  for (const el of document.querySelectorAll('.bar-wrap, #clock, .clock-sim, .live-cta')) {
+    const r = box(el);
+    if (r && r.top > H * 0.45) { bottom = Math.min(bottom, r.top); bottomSeen = true; }
+  }
+  /* The card's own rectangle, for the establishing shot (`hudBand.cardRect`).
+     Measured whether or not it is inside the band: it is an exclusion, not an
+     edge, and a result card taller than the band is exactly the case that
+     broke. A card mid-transition (scale/opacity) still reports its laid-out
+     box, which is the box it is about to occupy. */
+  const cr = box(document.querySelector('.ov-card'));
+  hudBand.cardRect = cr
+    ? { x0: (cr.left / W) * 2 - 1, x1: (cr.right / W) * 2 - 1, y0: 1 - (cr.top / H) * 2, y1: 1 - (cr.bottom / H) * 2 }
+    : null;
+  const fr = box(document.getElementById('feedwrap'));
+  const strip = !!fr && fr.width >= W * 0.6;
+  if (fr && strip && fr.bottom < H * 0.5) { top = Math.max(top, fr.bottom); topSeen = true; }
+  hudBand.feed = fr && !strip
+    ? { x0: (fr.left / W) * 2 - 1, x1: (fr.right / W) * 2 - 1, y0: 1 - (fr.top / H) * 2, y1: 1 - (fr.bottom / H) * 2 }
+    : null;
+  /* 12 %: on a phone the visitor's card and the folded feed leave the fight
+     ~130 px of 844, and the pair, 30 px tall at the 34–44 m the narrow frame
+     needs anyway, is framed in it without loss */
+  /* Each edge is replaced only when an element was found for it: a frame in
+     which the phase block or the panels are between two states (a card
+     rising, a transition's `visibility` delay) must not open the band to the
+     frame's edge, where the next measurement is a second away. */
+  if (bottom - top > H * 0.12) {
+    if (topSeen) hudBand.yTop = 1 - (2 * top) / H;
+    if (bottomSeen) hudBand.yBot = 1 - (2 * bottom) / H;
+  }
+  hudBand.top = top; hudBand.bottom = bottom;
+}
+
+/*
+ * AND ONCE MORE WHEN THE TOP BLOCK HAS FINISHED GROWING.
+ *
+ * `.live-word` transitions its own `font-size` over `--d-screen`, so for most
+ * of a second after a phase change the band is measured against a block that
+ * is still growing — and the loop's own beat is 30 frames (~0.77 s at 39 fps),
+ * i.e. exactly one measurement, taken mid-transition. That is how a mech's
+ * head came to stand inside `ARENA · FIGHT #…`: the body was 32 px above a
+ * `yTop` that was measured too high. Listening on the transition costs
+ * nothing and lands the measurement on the settled layout.
+ */
+addEventListener('transitionend', (e) => {
+  if (e.target instanceof Element && e.target.closest('.live-top, .ov-card, .bar-wrap, #clock, .live-cta')) measureHud();
+}, true);
+
 addEventListener('resize', () => {
   /*
    * ВЫРОЖДЕННЫЙ РАЗМЕР ОКНА НЕ ИМЕЕТ ПРАВА УБИТЬ КАМЕРУ.
@@ -130,6 +334,7 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
   hitRT.setSize(Math.round(w * renderer.getPixelRatio()), Math.round(h * renderer.getPixelRatio()));
+  measureHud();
 });
 
 /*
@@ -140,14 +345,16 @@ addEventListener('resize', () => {
  * белом полу выбеливался, и половину эффекта приходилось рисовать обычным
  * блендингом. Свет, который не растекается, читается как наклейка.
  *
- * ПОЧЕМУ ИЗБИРАТЕЛЬНЫЙ, А НЕ ПО ПОРОГУ ЯРКОСТИ. Арена белая (§10.1) —
- * `0xe9e6de` под ключевым светом 2.6. Пороговый bloom засветил бы ПОЛ,
- * то есть самую большую и самую неподвижную поверхность кадра, и картинка
- * поплыла бы вся сразу. Здесь порог не по яркости, а по ПРИНАДЛЕЖНОСТИ:
- * второй выход растрового прохода (`bloomIntensity`) пишут только материалы,
- * которым §10.1 разрешает светиться, — скиллы, телеграфы и импакты. Тело не
- * светится никогда, и теперь это не соглашение в комментарии, а свойство
- * конвейера: материал без метки физически не может попасть в bloom.
+ * WHY IT SELECTS RATHER THAN THRESHOLDS. The floor is the biggest and stillest
+ * surface in the frame, and under a 3.0 key it is bright even now that the
+ * grade has taken its albedo down to `GROUND` (it used to be 0xe9e6de, a
+ * near-white). A brightness threshold would bloom THAT, and the whole picture
+ * would swim at once. So the threshold is not brightness but MEMBERSHIP: the
+ * raster pass's second output (`bloomIntensity`) is written only by the
+ * materials §10.1 allows to glow — abilities, telegraphs, impacts. A body
+ * never glows, and that is no longer a convention written in a comment but a
+ * property of the pipeline: an unmarked material physically cannot reach the
+ * bloom.
  *
  * ЗАПАСНОЙ ПУТЬ ОБЯЗАТЕЛЕН. MRT и постобработка — это две вещи, которые
  * могут не собраться на чужом железе, а бой обязан идти. Если конвейер не
@@ -171,7 +378,7 @@ let post = null;
  *       элемента) → выход в sRGB.
  *
  * Свечение по-прежнему ИЗБИРАТЕЛЬНОЕ, по метке `markGlow`: пороговое
- * засветило бы белый пол §10.1. Искажение пишут только материалы-прокси
+ * засветило бы пол — самую большую поверхность кадра. Искажение пишут прокси
  * (`markDistort`), остальные пишут ноль.
  *
  * ЗАПАСНОЙ ПУТЬ ОБЯЗАТЕЛЕН. Если граф не собрался (`?post=0`, бэкенд без MRT),
@@ -179,62 +386,294 @@ let post = null;
  * напрямую. Вспышка тогда идёт через DOM `#vfxflash`.
  */
 /*
- * Красный силуэт удара живёт в СВОЕЙ текстуре: жертва рисуется в неё одним
- * красным материалом-оверрайдом (см. `drawHitFlash`), а пост-граф кладёт эту
+ * Силуэт удара живёт в СВОЕЙ текстуре: жертва рисуется в неё одним
+ * материалом-оверрайдом (см. `drawHitFlash`), а пост-граф кладёт эту
  * текстуру ПОСЛЕДНИМ слоем поверх готового кадра. Второй проход в канвас
  * (первая попытка) стирал кадр в чёрное: WebGPU не держит `autoClear = false`
  * между двумя `render` в одном кадре.
+ */
+/*
+ * ── И ВСПЫШКА НЕ НАЗЫВАЕТ СТОРОНУ ─────────────────────────────────────────
+ *
+ * Она была прибитой константой rgb(1, 0.14, 0.09) — красной, всегда, кем бы
+ * ни была жертва, и `applySides` её не трогал. Замер на `live-vs.png`:
+ * существо ИГРОКА (синее кольцо у его ног) горело 7 994 пикселями при
+ * hue 8°, S 0.67 — самый насыщенный объект кадра, в трёх градусах от
+ * `--accent`, то есть в цвете противника, ровно в тот момент, когда читатель
+ * ищет глазами, кому попало.
+ *
+ * Так что вспышка несёт ТОЛЬКО ЗНАЧЕНИЕ: нейтральная светлая заливка в
+ * `--sky-2` (#F4EEE8) — самый светлый цвет мира, — а «чей» продолжают
+ * говорить кольцо, плита и полоса здоровья. Двух таблиц по сторонам здесь
+ * больше нет, и противоречить владению нечему.
+ *
+ * НЕ `preTone`, а `srgbToLin`: подмешивание идёт ПОСЛЕ тонмапа (строка с
+ * `struck` ниже стоит за `mapped`), в тех же display-linear единицах, что и
+ * `washTo` виньетки. Пре-тонированное значение здесь ушло бы в белый.
  */
 const hitRT = new THREE.RenderTarget(
   Math.max(1, Math.round(innerWidth * renderer.getPixelRatio())),
   Math.max(1, Math.round(innerHeight * renderer.getPixelRatio())),
   { depthBuffer: true },
 );
-const hitU = { alpha: TSL.uniform(0), colour: TSL.uniform(new THREE.Color(1, 0.14, 0.09)) };
+const HIT_WASH = new THREE.Color(srgbToLin(0xF4 / 255), srgbToLin(0xEE / 255), srgbToLin(0xE8 / 255));
+const hitU = { alpha: TSL.uniform(0), colour: TSL.uniform(HIT_WASH) };
+/*
+ * ── THE PLACE ─────────────────────────────────────────────────────────────
+ *
+ * `buildEnvironment` builds everything that is not a fighter, a telegraph or
+ * an effect: the sunken field, the six cover blocks, the plaza, the two tier
+ * wings, the banner, the planet, the sky dome, the fog and the whole lighting
+ * rig — VSM shadows, the hemisphere fill, a PMREM of its own sky, and on
+ * `high` a bodies-only planar reflection in the floor. It runs after
+ * `renderer.init()` (the PMREM needs a live renderer) and before the post
+ * graph, and it SETS the shadow filter, the background and the fog itself;
+ * the `PCFSoftShadowMap` line above is overwritten here on purpose.
+ *
+ * The tier: 'high' on WebGPU unless `?quality=` pins another, 'low' on the
+ * WebGL2 backend always (no AO, no reflection, FXAA, a 1024 shadow map). The
+ * meter in the loop can only take it DOWN from there (`autoQuality`).
+ */
+const isWebGL = !!renderer.backend?.isWebGLBackend;
+const QUALITIES = ['high', 'medium', 'low'];
+/*
+ * `?quality=` — THE ONE LEVER THAT NAMES A TIER, AND IT HAS TO SURVIVE A HARNESS.
+ *
+ * The tier's post half is decided once, at boot (see `applyPost` and
+ * `setTier`), so the only way to PHOTOGRAPH a medium or a low graph is to ask
+ * for one in the URL. `tools/shots.mjs` builds its address as
+ * `${BASE}/#${route}`, so a base carrying the parameter arrives here as
+ * `?quality=medium/` — the slash the template adds before the hash. A value
+ * that differs from a tier's name by punctuation is that tier, so the letters
+ * are taken and the rest dropped; a genuinely wrong word still falls through
+ * `QUALITIES.includes` to the measured guess.
+ */
+const qualityParam = (new URLSearchParams(location.search).get('quality') || '')
+  .toLowerCase().replace(/[^a-z]/g, '');
+/*
+ * WHO STARTS WHERE. `initialQuality`: 'low' on WebGL2; over ~2.6 MP of DRAWING
+ * BUFFER 'medium'; 'high' otherwise. A coarse pointer (a phone) starts one
+ * tier down whatever its size — GTAO, SMAA, a 2048 map and the reflector on a
+ * mobile GPU, with the governor held for the whole first fight, is not a
+ * guess worth making. `?quality=` pins; the pin is ignored on WebGL2, whose
+ * graph has no AO, no reflector and no SMAA whatever the tier is called.
+ *
+ * THE BUFFER, NOT THE CSS PIXELS, AND ONE FUNCTION OWNS THE BOUNDARY.
+ *
+ * This file used to pass CSS pixels — 1440×900 is 1.30 MP at any DPR, so the
+ * module's 2.6 MP branch could never fire from here and the only DPR guard
+ * left was a second, separate `bufferMP > 8.3` test written beside it. The
+ * measurement that settled it is `reports/screens/dpr2/live-fighting.json`:
+ * at DPR 2 the same 1440×900 window ran 'high' at 24.49 ms a frame (41 fps)
+ * against 9.73 ms at DPR 1 — the four-attachment MSAA-4× RGBA16F pass costs
+ * 2.5× on the buffer it is really drawing, and the page took it anyway. So
+ * the DPR goes to `initialQuality` (its own comment asks for it) and the
+ * duplicate threshold here is gone: two copies of one boundary is how the
+ * boundary came to be in neither.
+ *
+ * A Retina laptop therefore starts at 'medium' and CLIMBS when the frame is
+ * measured cheap at a boundary (`tryPromote`); the governor drops it when it
+ * is measured dear. Start conservative, measure, then decide, in both
+ * directions — which is what the meter is for.
+ */
+/*
+ * AND WHAT THIS MACHINE MEASURED LAST TIME, WHICH BEATS ANY GUESS.
+ *
+ * The graph's tier is decided here and nowhere else — `setTier` no longer
+ * rebuilds it mid-session, because that rebuild has never drawn a frame (see
+ * there). So a session's demotion has to reach the NEXT session or it reaches
+ * nothing: `setTier` writes the tier it settled on, and the boot takes the
+ * LOWER of that and the static guess. Lower, not the remembered one: the
+ * guess knows this load's viewport and DPR, and a machine that ran 'high' on
+ * a laptop panel must not open at 'high' because it once did — while a
+ * machine that MEASURED itself too slow never has to measure it twice. The
+ * climb (`tryPromote`) is what lifts it back, and it persists too.
+ */
+const TIER_KEY = 'airena.quality';
+const savedTier = (() => {
+  try { const v = localStorage.getItem(TIER_KEY); return QUALITIES.includes(v) ? v : null; } catch { return null; }
+})();
+const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const dprNow = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);
+const guessTier = coarse ? 'medium'
+  : initialQuality({ isWebGL, width: innerWidth, height: innerHeight, dpr: dprNow });
+let quality = isWebGL ? 'low'
+  : QUALITIES.includes(qualityParam) ? qualityParam
+    : QUALITIES[Math.max(QUALITIES.indexOf(guessTier), savedTier ? QUALITIES.indexOf(savedTier) : 0)];
+mark('rendererUp');
+const env = buildEnvironment(THREE, TSL, {
+  scene, renderer, camera, cfg,
+  half: HALF, wallHeight: cfg.arena.wallHeight, obstacles: cfg.arena.obstacles,
+  quality, exposure: ENV_EXPOSURE,
+});
+mark('envBuilt');
+window.__airenaQuality = quality;
+/* Every unlit colour this file puts into the scene goes through the same
+   inverse the environment uses, so it lands on its hex after the grade. */
+const toned = (hex) => { const c = preTone(hex, ENV_EXPOSURE); return new THREE.Color(c.r, c.g, c.b); };
+
 const postU = {
-  exposure: TSL.uniform(1.05),
+  /* The exposure the frame is graded at — see `ENV_EXPOSURE`. With the graph
+     built the raster hands over linear HDR and `renderer.toneMappingExposure`
+     is dead; this is the one that counts, and it is the same number. */
+  exposure: TSL.uniform(ENV_EXPOSURE),
   aberration: TSL.uniform(0),
-  vignette: TSL.uniform(0.38),
+  /* The vignette is a WASH toward `--sky-2` (#F4EEE8), not a darkening, and
+     this is its strength at the far corner (the ramp starts a third of the
+     way out from (0.5, 0.46), so the centre is untouched).
+
+     0.15, NOT 0.4. At 0.4 the corners measured L 91.5–92.1 against a centre
+     floor of L 85.6: the BRIGHTEST region of the picture was its edge and
+     nothing framed the fight — the opposite of the reference, whose corners
+     go dark and defocused. The documented reason for the wash (a darkening
+     vignette fought the HUD's own) was real, but the HUD's wash is the thing
+     that moved; what is left here is a light touch of haze at the very edge
+     plus a separate DARKENING term below, so the frame closes instead of
+     opening. */
+  vignette: TSL.uniform(0.15),
+  /* The other half: a darkening outside r² = 0.55, which is what puts the
+     corners 3–6 L UNDER the centre floor and gives the frame an edge. A
+     multiply, not a mix toward a colour, so a corner keeps its hue and a
+     fighter that strays there darkens with the ground instead of being greyed
+     into it. */
+  edge: TSL.uniform(0.12),
   distort: TSL.uniform(0.07),
   flashAmount: TSL.uniform(0),
   flashColour: TSL.uniform(new THREE.Color(1, 1, 1)),
   bloom: TSL.uniform(0.9),
 };
-/* `?post=0` (и прежний `?bloom=0`) — выключить постобработку намеренно.
-   Путь, который нельзя пройти по своей воле, — это путь, который никто не
-   проверял. Заодно это единственный способ сравнить «с графом» и «без». */
+/*
+ * The contract, asserted once: the environment inverted its colours through
+ * `ENV_EXPOSURE`, so the graph must tone-map at exactly that.
+ *
+ * The old assertion read `postU.exposure.value`, which is created FROM
+ * `ENV_EXPOSURE` sixteen lines above and written by nothing in between — a
+ * tautology guarding nothing. The readers that CAN drift are the raster's own
+ * exposure (live until the graph sets `NoToneMapping`, and the one the frame
+ * is graded at when the graph fails to build) and the number handed to
+ * `buildEnvironment`, which is what every pre-toned colour was inverted
+ * through. The second is asserted only when the module reports it.
+ */
+if (renderer.toneMappingExposure !== ENV_EXPOSURE) throw new Error('raster exposure and environment exposure disagree');
+if (env.exposure !== undefined && env.exposure !== ENV_EXPOSURE) throw new Error('post exposure and environment exposure disagree');
+/* `?post=0` (and the older `?bloom=0`) — switch the post-processing off on
+   purpose. A path nobody can take deliberately is a path nobody has tested,
+   and it is the only way to compare "with the graph" and "without". */
 const wantBloom = new URLSearchParams(location.search).get('bloom') !== '0'
   && new URLSearchParams(location.search).get('post') !== '0';
-try {
-  if (!wantBloom) throw new Error('выключено параметром ?post=0');
-  const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
-  const scenePass = TSL.pass(scene, camera);
-  scenePass.setMRT(TSL.mrt({ output: TSL.output, bloomIntensity: TSL.float(0), distort: TSL.vec3(0) }));
+/*
+ * The post nodes, fetched in ONE `Promise.all` so the five requests overlap:
+ * they stand on the first frame's critical path and `tools/checkboot.mjs`
+ * weighs them (GTAO 15 KB, denoise 10 KB, SMAA 68 KB, FXAA 10 KB, bloom
+ * 15 KB). All five are fetched whatever the tier, because the tier can drop
+ * at run time and a module fetch mid-fight is a stall.
+ */
+let postMods = null;
+if (wantBloom) {
+  try {
+    const [b, g, d, s, f] = await Promise.all([
+      import('three/addons/tsl/display/BloomNode.js'),
+      import('three/addons/tsl/display/GTAONode.js'),
+      import('three/addons/tsl/display/DenoiseNode.js'),
+      import('three/addons/tsl/display/SMAANode.js'),
+      import('three/addons/tsl/display/FXAANode.js'),
+    ]);
+    postMods = { bloom: b.bloom, ao: g.ao, denoise: d.denoise, smaa: s.smaa, fxaa: f.fxaa };
+  } catch (e) {
+    fail(`post nodes unavailable (${e.message}) — drawing without post-processing`);
+  }
+}
+
+/**
+ * THE POST GRAPH, as the stand runs it (`arena.html`), with the fight's own
+ * passes kept in their places:
+ *
+ *   pass(scene, camera, { samples: 4 })   MSAA 4× MRT: output, bloomIntensity,
+ *                                          distort (+ normalView on 'high', for AO)
+ *     → heat distortion: the colour is read with the `distort` offset
+ *     → chromatic aberration: R and B shifted radially, rest 0, a spike on a hit
+ *     → GTAO (radius 0.7, scale 0.7, 16 samples at half resolution) → denoise
+ *       (radius 4) — 'high' only; the glow mask EXEMPTS the telegraphs, so a
+ *       ring under a body never takes the floor's contact AO
+ *     → selective bloom on the `bloomIntensity` mask, in HDR, before ACES
+ *     → ACES at `postU.exposure` → the wash vignette (toward --sky-2, 0.4 at
+ *       the far corner, centred at 46 %)
+ *     → the hit flash (a mix toward the element's colour)
+ *     → the victim's red silhouette, on top
+ *     → sRGB → ±0.5/255 hash dither (the sky banded without it; it stays
+ *       under the AA's edge threshold) → SMAA ('high', 'medium') or FXAA ('low').
+ *
+ * `samples: 4` is a no-op on WebGPU (`antialias: true` already set the
+ * renderer's samples) and 0 on WebGL2, where the MSAA MRT does not resolve.
+ * The 4th RGBA16F attachment (`normal`) is 32 B/sample, exactly WebGPU's
+ * default `maxColorAttachmentBytesPerSample`: a 5th output would fail
+ * validation. If one is ever needed, pack it into the distortion target.
+ *
+ * Bloom is SELECTIVE, by the `markGlow` mark: a brightness threshold would
+ * bloom the floor, the largest and stillest surface in the frame. It is added
+ * in HDR, before the tone map, so the palette survives (D163 at 1.15 gave
+ * three identical white beams because it summed with an LDR colour).
+ *
+ * Built per tier and REBUILT when the tier drops (`applyPost`): a new scene
+ * pass is a new render target, so every material recompiles against the new
+ * MRT layout by itself.
+ */
+function buildPost(q) {
+  const { bloom, ao, denoise, smaa, fxaa } = postMods;
+  const parts = [];
+  const wantAO = q === 'high' && !isWebGL;
+  const scenePass = TSL.pass(scene, camera, { samples: isWebGL ? 0 : 4 });
+  parts.push(scenePass);
+  const mrtSpec = { output: TSL.output, bloomIntensity: TSL.float(0), distort: TSL.vec3(0) };
+  if (wantAO) mrtSpec.normal = TSL.normalView;
+  scenePass.setMRT(TSL.mrt(mrtSpec));
+  /*
+   * THE TIER WINGS WRITE NO DEPTH, so the AO reads the plaza or the sky
+   * BEHIND a wing while the wing pixel writes its own vertical riser normal
+   * through the pass MRT — a mismatch that printed 3–4 px columns of full
+   * occlusion every ~25 px along the whole wing (2–4 L vertical bands;
+   * neither a wider denoise nor 32 spp touched them). `arena.html` hands the
+   * wing material an MRT normal of "up" so it agrees with that plaza depth and
+   * the AO on a wing pixel is exactly 1. Latent at r 0.7; it lands the moment
+   * the radius is the stand's.
+   *
+   * Cleared on the way DOWN as well as set on the way up: unlike the stand,
+   * this graph is REBUILT per tier, and a merged output with no `normal`
+   * attachment is a pipeline error — which is what a high→medium demotion
+   * would otherwise leave behind.
+   *
+   * The lookup is guarded because it is a CONTRACT WITH ANOTHER FILE: the
+   * environment's stands were rebuilt as banks and decks and no longer carry
+   * a mesh called `wing+x`, so this is currently a no-op and the 62→80 m AO
+   * fade above is what keeps the far architecture out of the pass. Left in
+   * place, not deleted: the override is the correct answer the moment a
+   * depth-less riser stands inside the fade again, and the stand still runs
+   * it.
+   */
+  const wingMat = env.group.getObjectByName('wing+x')?.material;
+  if (wingMat) {
+    wingMat.mrtNode = wantAO ? TSL.mrt({ normal: TSL.transformNormalToView(TSL.vec3(0, 1, 0)) }) : null;
+    wingMat.needsUpdate = true;
+  }
   const colourTex = scenePass.getTextureNode('output');
   const glowTex = scenePass.getTextureNode('bloomIntensity');
   const distTex = scenePass.getTextureNode('distort');
 
   const uvN = TSL.uv();
+  /* Aberration and distortion stay centred on the frame; only the vignette
+     is centred on the fight (below). */
   const centred = uvN.sub(TSL.vec2(0.5, 0.5));
   const r2 = centred.dot(centred);
-  /* тепловое искажение: смещение xy · сила z · коэффициент */
+  /* heat distortion: offset xy · strength z · gain */
   const dst = distTex.sample(uvN);
   const uvW = uvN.add(dst.xy.mul(dst.z).mul(postU.distort));
   /*
-   * АБЕРРАЦИЯ: радиальная, сильнее к краю кадра.
-   *
-   * КОЭФФИЦИЕНТ ОПУЩЕН С 0.022 ДО 0.011 (заказ 04.09 «никакого визуального
-   * шума»). Судья первого круга поймал это на пустоте: снаряд размером в
-   * десять пикселей давал жёлто-красную кайму У КАЖДОГО ящика, у стены арены и
-   * у обоих бойцов — то есть эффект величиной в мизинец перекрашивал весь
-   * кадр. Арифметика подтверждает: у края `centred` ≈ 0.7 и `r²` ≈ 0.5, то
-   * есть при силе 0.5 смещение выходило 0.0077 UV — пятнадцать пикселей на
-   * ширине 1600. Пятнадцать пикселей цветной каймы на каждом ребре сцены — это
-   * не «удар почувствовался», это сломанный кадр.
-   *
-   * Ополовинено, а не снято: на добивании и на взрыве зоны сила доходит до
-   * потолка 1.4, и там семь пикселей у самого края — ровно тот всплеск, ради
-   * которого аберрация и заведена. Спад (`exp(-dt·7)`) не трогался.
+   * ABERRATION: radial, stronger toward the edge. The gain is 0.011, halved
+   * from 0.022 ("no visual noise", 04.09): at the edge `centred` ≈ 0.7 and
+   * r² ≈ 0.5, so at strength 0.5 the shift was 0.0077 UV — fifteen pixels of
+   * coloured fringe on every edge of the scene from a ten-pixel projectile.
+   * Halved, not removed: a kill and a zone burst reach the 1.4 ceiling, and
+   * seven pixels at the very edge is exactly the spike it exists for.
    */
   const shift = centred.mul(r2.mul(2.0).add(0.2)).mul(postU.aberration).mul(0.011);
   const cr = colourTex.sample(uvW.add(shift)).r;
@@ -242,89 +681,259 @@ try {
   const cb = colourTex.sample(uvW.sub(shift)).b;
   const colour = TSL.vec3(cr, cg, cb);
   const glow = glowTex.sample(uvW).r;
-  /*
-   * ЧИСЛА. Сила свечения выше прежних 0.38, потому что теперь оно
-   * складывается с HDR-цветом ДО тонмаппинга и палитра не стирается;
-   * радиус 0.85 — растекание шире силуэта, иначе это не свет.
-   */
+  let lit = colour;
+  if (wantAO) {
+    const depth = scenePass.getTextureNode('depth');
+    const normal = scenePass.getTextureNode('normal');
+    const aoPass = ao(depth, normal, camera);
+    /*
+     * THE TUNING IS `RIG.ao`, NOT A COPY OF IT.
+     *
+     * The comment that stood here said "the stand's numbers, verbatim" and was
+     * not true: the stand had moved to radius 1.5 / distanceExponent 1.0 /
+     * fade 52–68 m while this file still ran 1.2 / 1.5 / 62–80, and nothing
+     * detected the drift — so the game ran a narrower, steeper-falloff,
+     * further-out AO than the frame it was being graded against. Copying the
+     * new numbers over would only reset the clock on the same failure. Both
+     * this graph and `arena.html` now read the one exported block, and the
+     * next stand change lands in the game by construction.
+     */
+    aoPass.radius.value = RIG.ao.radius;
+    aoPass.scale.value = RIG.ao.scale;
+    aoPass.thickness.value = RIG.ao.thickness;
+    aoPass.distanceExponent.value = RIG.ao.distanceExponent;
+    aoPass.distanceFallOff.value = 1;
+    aoPass.samples.value = RIG.ao.samples;
+    aoPass.resolutionScale = RIG.ao.resolutionScale;
+    parts.push(aoPass);
+    const aoTex = denoise(aoPass.getTextureNode(), depth, normal, camera);
+    /* The denoise footprint has to cover the half-resolution noise tile, or it
+       prints a ~7 px tick pattern along a block-foot crease at the melee
+       cameras. `RIG.ao.denoiseRadius`, the stand's. */
+    aoTex.radius.value = RIG.ao.denoiseRadius;
+    parts.push(aoTex);
+    /*
+     * THE TWO GUARDS, both from `RIG.ao`. The floor clamps the term at the
+     * brief's umbra floor (−20 % linear ≈ −6.5 L at L 88), so a crease can
+     * never fall through it; the distance fade takes the AO off the bank,
+     * where the GTAO's noise tile over a sawtooth of ~1 m steps prints
+     * vertical bands. Then the glow mask: the telegraphs are the only thing
+     * that writes it, and the floor's AO under a body must not muddy them.
+     */
+    const viewDist = TSL.perspectiveDepthToViewZ(depth.sample(uvN).r, TSL.cameraNear, TSL.cameraFar).negate();
+    const aoFade = TSL.smoothstep(TSL.float(RIG.ao.fadeFrom), TSL.float(RIG.ao.fadeTo), viewDist);
+    let aoF = TSL.mix(aoTex.r.max(TSL.float(RIG.ao.floor)), TSL.float(1.0), aoFade);
+    aoF = TSL.mix(aoF, TSL.float(1.0), glow.clamp(0, 1));
+    lit = colour.mul(aoF);
+  }
+  /* Strength 0.9 and radius 0.85: the glow spreads wider than the silhouette
+     or it is not light. Bloom takes the un-occluded colour — a glow-marked
+     pixel is exempt from AO anyway. */
   const bloomPass = bloom(colour.mul(glow), 0.9, 0.85, 0);
-  /* Свечение возвращает vec4; в HDR складывается только цвет. */
-  const hdr = colour.add(bloomPass.rgb.mul(postU.bloom));
+  parts.push(bloomPass);
+  /* Bloom returns a vec4; only colour is added in HDR. */
+  const hdr = lit.add(bloomPass.rgb.mul(postU.bloom));
   const mapped = TSL.toneMapping(THREE.ACESFilmicToneMapping, postU.exposure, hdr);
-  const vig = TSL.oneMinus(TSL.smoothstep(TSL.float(0.25), TSL.float(1.35), r2.mul(2.4)).mul(postU.vignette));
-  const flashed = TSL.mix(mapped.mul(vig), postU.flashColour, postU.flashAmount);
-  /* Силуэт жертвы — поверх всего, как спрайт в старой игре. */
+  /* The wash vignette: after the tone map, mix toward --sky-2 (as a display-
+     linear value, since `mapped` is already tone-mapped) by a ramp centred at
+     46 % of the height — the fight sits above the middle because the HUD
+     owns the bottom third — reaching `postU.vignette` at the far corner. */
+  const vigC = uvN.sub(TSL.vec2(0.5, 0.46));
+  const vr2 = vigC.dot(vigC);
+  const wash = TSL.smoothstep(TSL.float(0.25), TSL.float(1.35), vr2.mul(2.4)).mul(postU.vignette);
+  const washTo = TSL.vec3(srgbToLin(0xF4 / 255), srgbToLin(0xEE / 255), srgbToLin(0xE8 / 255));
+  const hazed = TSL.mix(mapped.rgb, washTo, wash);
+  /* and the darkening (see `postU.edge`) */
+  const dark = TSL.smoothstep(TSL.float(0.55), TSL.float(1.6), vr2.mul(2.4)).mul(postU.edge);
+  const washed = hazed.mul(TSL.float(1.0).sub(dark));
+  const flashed = TSL.mix(washed, postU.flashColour, postU.flashAmount);
+  /* The victim's silhouette — over everything, like a sprite in an old game. */
   const hitTex = TSL.texture(hitRT.texture).sample(uvN);
   const struck = TSL.mix(flashed.rgb, hitU.colour, hitTex.a.mul(hitU.alpha).clamp(0, 1));
-  post = new THREE.PostProcessing(renderer);
-  post.outputColorTransform = false;
-  /* `.rgb` явно: узел смешивания наследует тип, и vec4 с пятью компонентами
-     роняет сборку графа тихой ошибкой в консоли. */
-  post.outputNode = TSL.renderOutput(TSL.vec4(struck, 1));
-  /* Тонмаппинг переехал в граф: растр отдаёт линейный HDR. */
+  /* `.rgb` explicitly: a mix node inherits its type, and a five-component
+     vec4 drops the graph with a quiet console error. */
+  let srgb = TSL.renderOutput(TSL.vec4(struck, 1));
+  /* ±0.5 of a code of hash noise on the 8-bit output: the sky's 7 L over 60
+     steps banded visibly without it. Static per pixel. */
+  const px = uvN.mul(TSL.screenSize).floor();
+  const n = TSL.hash(px.x.add(px.y.mul(4096.0))).sub(0.5).div(255.0);
+  srgb = srgb.add(TSL.vec4(n, n, n, 0));
+  /* `|| isWebGL`, not the tier alone: `?webgl=1&quality=high` pins a tier the
+     WebGL2 graph does not have — AO and the reflector drop out by their own
+     guards, and SMAA over a pass with `samples: 0` was the one part of the
+     documented "no AO, no reflection, FXAA" degrade the pin could still
+     bypass. The fallback's AA is FXAA whatever the tier is called. */
+  const out = q === 'low' || isWebGL ? fxaa(srgb) : smaa(srgb);
+  parts.push(out);
+  const p = new THREE.PostProcessing(renderer);
+  p.outputColorTransform = false;
+  p.outputNode = out;
+  parts.push(p);
+  return { post: p, parts, scenePass };
+}
+
+/** The graph's disposable parts, so a tier change can throw the old one away. */
+let postParts = [];
+/** The graph's scene pass — what the precompile below warms. */
+let scenePassNow = null;
+/**
+ * Build (or rebuild) the graph for a tier. On failure the previous graph is
+ * kept if there is one; on the first build there is none, `post` stays null
+ * and the frame is drawn directly, tone-mapped by the raster — the fight
+ * matters more than the light. The flash then goes through the DOM
+ * `#vfxflash`. Reported once per attempt.
+ */
+/** Compile a scene pass's pipelines off the main thread. The pass restores
+    the render target and the MRT only on the way out of a compile that
+    finished; after one that threw they are put back by hand, or the next
+    frame would draw into the pass's own target. */
+async function precompilePass(pass) {
+  try {
+    await pass.compileAsync(renderer);
+  } catch (e) {
+    renderer.setRenderTarget(null);
+    renderer.setMRT(null);
+    throw e;
+  }
+}
+/** A rebuild in flight: `drawFrame` skips the draw until the swap. */
+let rebuilding = false;
+async function applyPost(q) {
+  if (!postMods || rebuilding) return;
+  rebuilding = true;
+  let built;
+  try {
+    built = buildPost(q);
+    /*
+     * ── THERE IS NO MID-SESSION REBUILD ANY MORE, AND THAT IS THE FIX ─────
+     *
+     * This function used to be reachable twice: once at boot with `post`
+     * null, and again from `setTier` with a graph already up. The second path
+     * never worked. `high` writes four MRT attachments and `medium` three, a
+     * material variant compiled against the old layout assembles an output
+     * struct WGSL will not take, and the whole frame is dropped: measured on
+     * five states at three sizes, every sidecar reading `quality: "medium"`
+     * or `"low"` came back a BLACK canvas (dark 51–70 %) and every one
+     * reading `"high"` came back a picture. Two rounds of repair were tried
+     * against it — warming the new graph's own passes with `renderAsync`, and
+     * invalidating every material's variant before `compileAsync` — and the
+     * split survived both.
+     *
+     * So the tier's post half is decided ONCE, at boot, and `setTier` no
+     * longer calls this: a demotion takes the environment's half now (which
+     * is the larger part of the cost and is safe) and the graph's half at the
+     * next page load, out of `localStorage`. Nothing here is left to go wrong
+     * mid-fight, and there is no longer a code path in this file that has
+     * never drawn a good frame.
+     */
+  } catch (e) {
+    if (!post) { window.__airenaBloom = false; renderer.toneMapping = THREE.ACESFilmicToneMapping; }
+    fail(`post unavailable (${where(e)}) — ${post ? 'keeping the previous graph' : 'drawing without post-processing'}`);
+    for (const part of built?.parts || []) { try { part.dispose?.(); } catch { /* never built */ } }
+    rebuilding = false;
+    return;
+  }
+  const old = postParts;
+  post = built.post;
+  postParts = built.parts;
+  scenePassNow = built.scenePass;
+  /* Tone mapping lives in the graph: the raster hands over linear HDR. */
   renderer.toneMapping = THREE.NoToneMapping;
-  /* Метку разрешаем ТОЛЬКО теперь: материал с `mrtNode` при проходе без MRT
-     компилируется в пустую структуру выхода и не рисуется вовсе. */
+  /* The glow mark is allowed ONLY now: a material with an `mrtNode` under a
+     pass without MRT compiles to an empty output struct and draws nothing. */
   setGlowEnabled(true);
   window.__airenaBloom = true;
   window.__airenaPost = postU;
-} catch (e) {
-  window.__airenaBloom = false;
-  if (wantBloom) fail(`post unavailable (${e.message}) — рисуем без постобработки`);
+  /*
+   * THE GRAPH'S OWN TIER, beside the variable's.
+   *
+   * `window.__airenaQuality` says what the PAGE has decided; this says what
+   * the PICTURE was built at, and they are allowed to differ for the rest of
+   * a session in which the governor demoted (the environment takes the drop
+   * now, the graph at the next load). Every sidecar in this repo has read the
+   * first and called it the tier, which is how four captures came to be
+   * labelled `"medium"` over a high graph and "fps >= 30 at medium" came to be
+   * unverifiable from any evidence here. Both handles now, and the second one
+   * rides in `__airenaDrawn` — which `tools/shots.mjs` already spreads into
+   * every sidecar — so the picture is named without a capture-side change.
+   */
+  window.__airenaPostTier = q;
+  if (typeof window !== 'undefined' && window.__airenaDrawn) window.__airenaDrawn.postTier = q;
+  for (const part of old) { try { part.dispose?.(); } catch { /* already gone */ } }
+  rebuilding = false;
+}
+if (postMods) await applyPost(quality);
+else window.__airenaBloom = false;
+mark('postBuilt');
+
+/**
+ * PUT THE RASTER PATH BACK, so a direct render draws a GRADED frame.
+ *
+ * With the graph up, `applyPost` hands three things to it and takes them off
+ * the raster: the tone map (the graph's ACES step owns it), the render target
+ * (a pass's own colour attachment) and the MRT layout (four attachments). A
+ * fallback `renderer.render(scene, camera)` that runs without putting them
+ * back draws into whatever target the failed pass left bound, with no tone
+ * map and no output transform — which is a canvas that is never written, and
+ * it is exactly the black rectangle `live-visitor.png` photographed: the HUD
+ * over pure #000000 for a whole 14 s capture.
+ *
+ * Called before every fallback render and once when the graph is dropped.
+ */
+/** What a fallback frame clears to when the scene has no colour background. */
+const DIRECT_CLEAR = new THREE.Color(0xE4D9CE);
+function directGrade() {
+  try {
+    renderer.setRenderTarget(null);
+    renderer.setMRT(null);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = ENV_EXPOSURE;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    /* A clear colour ALWAYS, not only when the background happens to be one:
+       the renderer's default is black, and a fallback frame that clears to
+       black and then draws nothing is the blank page this whole path exists
+       to prevent. The sky's own value is the honest ground. */
+    if (scene.background && scene.background.isColor) renderer.setClearColor(scene.background, 1);
+    else renderer.setClearColor(DIRECT_CLEAR, 1);
+  } catch (e) { console.warn('direct grade', e); }
 }
 
-scene.add(new THREE.HemisphereLight(0xdfe6f2, 0x2a2f38, 1.5));
-const key = new THREE.DirectionalLight(0xfff4e0, 2.6);
-key.position.set(16, 30, 12);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -30; key.shadow.camera.right = 30;
-key.shadow.camera.top = 30; key.shadow.camera.bottom = -30;
-key.shadow.camera.near = 1; key.shadow.camera.far = 90;
-key.shadow.bias = -0.0012;
-scene.add(key);
-const rim = new THREE.DirectionalLight(0x7fa8ff, 0.9);
-rim.position.set(-18, 12, -16);
-scene.add(rim);
-
-// the floor: a white square, because the whole point is to see the two of them
-const floorMat = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 0.92, metalness: 0.02 });
-const floor = new THREE.Mesh(new THREE.BoxGeometry(HALF * 2, 0.4, HALF * 2), floorMat);
-floor.position.y = -0.2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-// A dark apron beyond the walls. The framing is sized to the pair, so at close
-// quarters near a corner the camera looks over the wall — and a void there
-// reads as a hole in the world rather than as the outside of a building.
-const apron = new THREE.Mesh(
-  new THREE.PlaneGeometry(HALF * 8, HALF * 8),
-  new THREE.MeshStandardMaterial({ color: 0x151922, roughness: 1, metalness: 0 }),
-);
-apron.rotation.x = -Math.PI / 2;
-apron.position.y = -0.45;
-apron.receiveShadow = true;
-scene.add(apron);
-
-const grid = new THREE.GridHelper(HALF * 2, HALF * 2, 0x9aa0aa, 0xc9c6be);
-grid.position.y = 0.012;
-grid.material.transparent = true;
-grid.material.opacity = 0.5;
-/*
- * СЕТКА НЕ ПИШЕТ ГЛУБИНУ, И ЭТО НЕ КОСМЕТИКА.
+/**
+ * AND AFTER THE SECOND THROW THE GRAPH IS GONE, not retried thirty times a
+ * second.
  *
- * Она прозрачна, но `depthWrite` у неё стоял: линии клали свою глубину на
- * высоте 0.012 м, и всё, что лежит на полу НИЖЕ этой высоты, теряло по её
- * линиям пиксели. А ниже неё лежат сажа (0.018 у поля декалей — выше, повезло)
- * и всё, что модули кладут собственными плитами у самого пола: шрам пустоты
- * протекал полом ровно по клеткам, и это нашёл агент пустоты, разглядывая
- * кроп 125×55.
+ * The catch in `drawFrame` used to quarantine the body and try again with the
+ * same graph on the next frame, for ever: `live-visitor.json` recorded 30
+ * draws over 14 s (2 fps) with the same `TypeError` behind every one of them.
+ * A graph that has thrown twice in a row is not going to build; what a viewer
+ * needs from that page is the fight, at full rate, in whatever light the
+ * raster can give it.
  *
- * Порядок сортировки прозрачных объектов при этом не страдает: сетка лежит
- * плашмя, ниже неё — только пол, который непрозрачен и пишет глубину сам.
+ * The glow mark goes with it, and the marks already on materials are stripped:
+ * a material carrying an `mrtNode` under a pass WITHOUT MRT compiles to an
+ * empty output struct and draws nothing (see `vfx/core.js`), so leaving them
+ * on would trade a black canvas for an empty one. This path is taken once in
+ * a session, at the cost of a shader rebuild that was going to happen anyway.
  */
-grid.material.depthWrite = false;
-scene.add(grid);
+function dropPost(why) {
+  if (!post) return;
+  const parts = postParts;
+  post = null; postParts = []; scenePassNow = null;
+  setGlowEnabled(false);
+  window.__airenaBloom = false;
+  window.__airenaPost = null;
+  scene.traverse((o) => {
+    const m = o.material;
+    if (!m) return;
+    for (const one of Array.isArray(m) ? m : [m]) {
+      if (one && one.mrtNode) { one.mrtNode = null; one.needsUpdate = true; }
+    }
+  });
+  directGrade();
+  for (const part of parts) { try { part.dispose?.(); } catch { /* already gone */ } }
+  console.warn(`post graph dropped: ${why}`);
+}
+
 
 /**
  * Everything opaque that can stand between the eye and a fighter.
@@ -346,58 +955,25 @@ scene.add(grid);
  * is no azimuth that clears it — which is exactly why the fade and the
  * silhouette below are the load-bearing half of this fix and the camera is not.
  *
- * `transparent` is set at construction even though everything starts fully
- * opaque: flipping the flag later would rebuild the pipeline in the middle of a
- * fight, and the fade below has to be free to start on any frame.
+ * `transparent` is set at construction (in `environment.js`) even though
+ * everything starts fully opaque: flipping the flag later would rebuild the
+ * pipeline in the middle of a fight, and the fade below has to be free to
+ * start on any frame.
+ *
+ * DATA ONLY between here and `segSolid`: `tools/checkframing.mjs` cuts this
+ * stretch out of the file and evaluates it in Node, where there is no `env`.
+ * The walls (+z, −z, +x, −x) and then the config blocks, in the order
+ * `buildEnvironment` builds them; its materials are bound onto these entries
+ * outside every slice (before `GHOST_BODY`, below).
  */
 const SOLIDS = [];
-
 for (const [x, z, sx, sz] of [
   [0, HALF + 0.4, HALF * 2 + 1.6, 0.8], [0, -HALF - 0.4, HALF * 2 + 1.6, 0.8],
   [HALF + 0.4, 0, 0.8, HALF * 2 + 1.6], [-HALF - 0.4, 0, 0.8, HALF * 2 + 1.6],
 ]) {
-    const mat = new THREE.MeshStandardMaterial({ color: 0x3a4150, roughness: 0.8, metalness: 0.05, transparent: true });
-  const m = new THREE.Mesh(new THREE.BoxGeometry(sx, cfg.arena.wallHeight, sz), mat);
-  m.position.set(x, cfg.arena.wallHeight / 2, z);
-  m.castShadow = true; m.receiveShadow = true;
-  scene.add(m);
-  /*
-   * The walls get the same wireframe the blocks get, for the same reason.
-   *
-   * They were not in the fade set at all until the occlusion fix put them
-   * there, so nothing had ever needed to survive a wall fading -- and the fix
-   * shipped without this, which left a wall that dissolved to 0.24 with nothing
-   * behind it: 31 frames of one match had the near wall glassed over and no
-   * edge to say where the arena stopped. Measured by the verifier, not guessed.
-   */
-  const wallEdge = new THREE.LineSegments(
-    new THREE.EdgesGeometry(m.geometry),
-    new THREE.LineBasicMaterial({ color: 0x59606f }),
-  );
-  wallEdge.position.copy(m.position);
-  scene.add(wallEdge);
-  SOLIDS.push({ x, z, hx: sx / 2, hz: sz / 2, h: cfg.arena.wallHeight, mats: [mat], fade: 1, want: 1 });
+  SOLIDS.push({ x, z, hx: sx / 2, hz: sz / 2, h: cfg.arena.wallHeight, mats: [], fade: 1, want: 1 });
 }
-
-for (const o of cfg.arena.obstacles) {
-  const side = new THREE.MeshStandardMaterial({ color: 0xb9b4a8, roughness: 0.85, metalness: 0.04, transparent: true });
-  const top = new THREE.MeshStandardMaterial({ color: 0x8d8879, roughness: 0.8, metalness: 0.06, transparent: true });
-  const m = new THREE.Mesh(new THREE.BoxGeometry(o.hx * 2, o.h, o.hz * 2), [side, side, top, side, side, side]);
-  m.position.set(o.x, o.h / 2, o.z);
-  m.castShadow = true; m.receiveShadow = true;
-  scene.add(m);
-  // The edges are NOT in the fade. A block that dissolves entirely takes the
-  // arena's geometry with it — the cover a viewer is reading the fight against
-  // — so what fades is the fill, and the wireframe stays to say the block is
-  // still there and still stops a charge.
-  const edge = new THREE.LineSegments(
-    new THREE.EdgesGeometry(m.geometry),
-    new THREE.LineBasicMaterial({ color: 0x6a6559 }),
-  );
-  edge.position.copy(m.position);
-  scene.add(edge);
-  SOLIDS.push({ x: o.x, z: o.z, hx: o.hx, hz: o.hz, h: o.h, mats: [side, top], fade: 1, want: 1 });
-}
+for (const o of cfg.arena.obstacles) SOLIDS.push({ x: o.x, z: o.z, hx: o.hx, hz: o.hz, h: o.h, mats: [], fade: 1, want: 1 });
 
 /**
  * Is the segment eye -> point inside this box?
@@ -516,7 +1092,7 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
   const generated = ref.startsWith('gen:');
   const url = generated ? `${API()}/api/body/${encodeURIComponent(ref.slice(4))}` : `/bodies/${ref}.js`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`тело ${ref}: ${res.status}`);
+  if (!res.ok) throw new Error(`body ${ref}: ${res.status}`);
   const src = await res.text();
   const root = buildBody(THREE, TSL, src, { trusted: !generated });
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -565,11 +1141,11 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
   if (bakeStatic && (typeof location === 'undefined' || new URLSearchParams(location.search).get('bake') !== '0')) {
     try {
       const r = bakeStatic(THREE, root);
-      if (r.reverted) console.warn(`склейка тела ${ref} отменена: ${r.why}`);
-      else if (r.groups) console.info(`тело ${ref}: ${r.before} → ${r.after} мешей (${r.groups} склеек)`);
+      if (r.reverted) console.warn(`body ${ref}: merge reverted: ${r.why}`);
+      else if (r.groups) console.info(`body ${ref}: ${r.before} → ${r.after} meshes (${r.groups} merges)`);
       root.updateMatrixWorld(true);
     } catch (e) {
-      console.warn(`склейка тела ${ref} не удалась: ${e.message}`);
+      console.warn(`body ${ref}: merge failed: ${e.message}`);
     }
   }
 
@@ -579,6 +1155,7 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     meshes.push(o);
   });
+  bandBody(meshes);
 
   /*
    * ── ГДЕ СТОИТ СУЩЕСТВО, РЕШАЕТ АРЕНА, А НЕ ТЕЛО ──────────────────────────
@@ -613,6 +1190,132 @@ async function loadBody(ref, kind = ref, bodySize = 1) {
      трогает: он тождественный, пока арена не поставит бойца. */
   holder.updateMatrixWorld(true);
   return { root: holder, inner: root, length, height: size.y, scale, footprint, meshes };
+}
+
+/**
+ * THE FIGHTER BAND — the animal is the darkest thing in the picture.
+ *
+ * ARENA-BRIEF §5 is explicit: "fighters the darkest objects (≤ #8D7F73)", and
+ * measured on the shipped capture they were the floor's own value — STONE
+ * GOLEM's box medians L 87.3 against a lit floor of L 88.6, with a quarter of
+ * its footprint under the brief's ceiling, and its torso panels at L 69.5
+ * beside block sun-sides at L 79.3 and block tops at L 90.0. The architecture
+ * and the animal were in the same value band, which is why the frame read as
+ * an elevation drawing. In the other direction the same bodies reached L 3.4
+ * in places — 50 L past the brief the other way, a scribble of near-black.
+ *
+ * So this is a RANGE COMPRESSION, not a darkening: the body's albedo
+ * luminance is mapped affinely and then capped, which pulls a pale plaster
+ * shell down under the ceiling and lifts a near-black hollow up off zero. In
+ * linear albedo luminance the map is `y · 0.31 + 0.020`, capped at 0.222 —
+ * #D8D2C6's 0.65 lands at L 54 (the ceiling), a mid #8D7F73 at L 35 and
+ * #1E1D1B's 0.012 at L 17. Specular is tempered with it: an 0.12-rough metal
+ * panel under this key put the light straight back at L 88 whatever its
+ * albedo, so roughness takes a floor and metalness a ceiling.
+ *
+ * It is applied to the NODE where a body writes one (every generated body and
+ * both stock ones do: the colour is a graph of noise, wear and rust, not a
+ * constant) and to `.color` where it does not. Once per material — a cached
+ * body handed back for the second side must not be compressed twice.
+ * `?bodyband=0` switches it off for a diff.
+ */
+/**
+ * …AND THE TWO SIDE HUES BELONG TO THE MARKS, NOT TO THE MEAT.
+ *
+ * Measured in `live-fighting.png` inside the foe's own footprint: ring pixels
+ * median L 43.5 / S 0.46, body pixels median L 42.4 / S 0.36 at hue 17° — one
+ * hue family, 1.1 L apart, and a 6× crop shows the mark and the creature as a
+ * single coral blob with the stroke running through the legs. The mark now
+ * carries a value sandwich a body cannot imitate (`makeTelegraph`); this is
+ * the other half of the same answer. Inside the foe's band (0–25° and 335–360°)
+ * and the player's (200–250°) a body's saturation is capped, hue and lightness
+ * untouched: a creature may be reddish or bluish, it may not be as saturated
+ * as the mark that names its side.
+ *
+ * RASTER MATERIALS ONLY, deliberately. A body whose colour is a graph
+ * (`colorNode` — every generated body and both stock ones) would need a hue
+ * test written in TSL, and a hand-written node graph inserted into a
+ * model-written one is exactly the class of edit that produced the
+ * `reading 'abs'` blocker four review rounds have been chasing. The range
+ * compression above is safe there because it is one multiply on a luminance
+ * ratio; a branchy hue clamp is not. Recorded as not done rather than done
+ * badly.
+ */
+const ACCENT_S = 0.25;
+const _bandHsl = { h: 0, s: 0, l: 0 };
+function capAccent(col) {
+  col.getHSL(_bandHsl);
+  const deg = _bandHsl.h * 360;
+  if (!(deg < 25 || deg > 335 || (deg > 200 && deg < 250))) return;
+  if (_bandHsl.s <= ACCENT_S) return;
+  col.setHSL(_bandHsl.h, ACCENT_S, _bandHsl.l);
+}
+const BAND_GAIN = 0.31, BAND_LIFT = 0.020, BAND_CEIL = 0.222;
+const BAND_ROUGH = 0.75, BAND_METAL = 0.5;
+const bandOff = typeof location !== 'undefined' && new URLSearchParams(location.search).get('bodyband') === '0';
+function bandBody(meshes) {
+  if (bandOff) return;
+  const seen = new Set();
+  for (const o of meshes) {
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m || seen.has(m) || m.userData.__banded) continue;
+      seen.add(m); m.userData.__banded = true;
+      /*
+       * ── AND THE HUE COMES INTO THE WORLD'S BAND FIRST ────────────────────
+       *
+       * The arena's whole palette is warm — `environment.js` states its own
+       * discipline as "a ≤ 3, b 7–11: warm, never pink, never blue" — and
+       * ARENA-BRIEF §5 bans blue-grey stone by name. A forge-written body owes
+       * that discipline nothing: measured in `live-result-win.png`, the
+       * loser's wreckage read #545E69 / #606D79 / #55626F, Lab b* −7.6 to
+       * −9.0, beside a floor at b* +6.6 and the winner's own body at +9.4 — a
+       * 16-point swing away from the world, lying directly beside the VICTORY
+       * card on the beat the player looks at longest.
+       *
+       * The clamp is one channel and it is the cheapest honest one: blue may
+       * not stand above the mean of red and green, which is the linear-space
+       * statement of "b* ≥ 0". A cold grey lands on a neutral grey and a warm
+       * body is untouched; hue and saturation elsewhere are the model's to
+       * choose. Luminance moves by under 1 L (blue carries 0.0722 of it), and
+       * the range compression below then runs on the corrected colour. It
+       * belongs here rather than upstream because the forge will keep
+       * producing cold albedos and the arena is where the world's rule lives.
+       */
+      try {
+        if (m.colorNode) {
+          const c0 = m.colorNode;
+          const over = c0.b.sub(c0.r.add(c0.g).mul(TSL.float(0.5))).max(TSL.float(0));
+          m.colorNode = TSL.vec3(c0.r, c0.g, c0.b.sub(over));
+        } else if (m.color) {
+          m.color.b = Math.min(m.color.b, (m.color.r + m.color.g) * 0.5);
+          capAccent(m.color);
+        }
+      } catch (e) {
+        console.warn(`body warm: ${e.message}`);
+      }
+      /* a light that is meant to be a light stays one: the glow parts carry
+         their brightness on `emissiveNode`/`emissive`, which is untouched */
+      try {
+        if (m.colorNode) {
+          const c = m.colorNode;
+          const y = c.r.mul(0.2126).add(c.g.mul(0.7152)).add(c.b.mul(0.0722)).max(TSL.float(1e-4));
+          const yo = y.mul(TSL.float(BAND_GAIN)).add(TSL.float(BAND_LIFT)).min(TSL.float(BAND_CEIL));
+          m.colorNode = c.mul(yo.div(y));
+        } else if (m.color) {
+          const y = Math.max(1e-4, 0.2126 * m.color.r + 0.7152 * m.color.g + 0.0722 * m.color.b);
+          const yo = Math.min(BAND_CEIL, y * BAND_GAIN + BAND_LIFT);
+          m.color.multiplyScalar(yo / y);
+        }
+        if (m.roughnessNode) m.roughnessNode = m.roughnessNode.max(TSL.float(BAND_ROUGH));
+        else if (typeof m.roughness === 'number') m.roughness = Math.max(BAND_ROUGH, m.roughness);
+        if (m.metalnessNode) m.metalnessNode = m.metalnessNode.min(TSL.float(BAND_METAL));
+        else if (typeof m.metalness === 'number') m.metalness = Math.min(BAND_METAL, m.metalness);
+        m.needsUpdate = true;
+      } catch (e) {
+        console.warn(`body band: ${e.message}`);
+      }
+    }
+  }
 }
 
 /**
@@ -830,6 +1533,13 @@ const FX_CTX = {
  * строке, и второго шанса у стороны не было до конца боя.
  */
 const bodyEpoch = { blue: 0, orange: 0 };
+/** Whether the render catch has already detached both bodies (see `evictBodies`). */
+let evicted = false;
+/** How many times it has done so this session, and what it took out. */
+let evictions = 0;
+const evictedRoots = new Map();
+/** How many rounds of evict-and-restore before the fighters stay out. */
+const EVICT_MAX = 3;
 const bodyRefOf = {};
 
 /**
@@ -887,6 +1597,11 @@ async function bodyFor(ref, kind, size = 1) {
   const hit = bodyCache.get(key);
   if (hit) { bodyCache.delete(key); bodyCache.set(key, hit); return hit; }
   const made = await loadBody(ref, kind, size);
+  /* The floor mirrors what stands on REFLECT_LAYER and nothing else: the
+     bodies go on it, the arena never does (`environment.js`). Without this
+     the reflector's pass draws the background alone and the floor mirrors
+     nothing. */
+  made.root.traverse((o) => o.layers.enable(REFLECT_LAYER));
   made.fall = fallOrientation(made);
   made.root.visible = false;
   /*
@@ -943,14 +1658,43 @@ async function swapBody(id, ref, size = 1) {
        этого нельзя (материалы и шейдеры общие), поэтому вторая сторона
        честно строит свой экземпляр под своим ключом. */
     const prev = bodies[id];
+    /*
+     * A PER-BODY PRECOMPILE WAS TRIED HERE AND TAKEN OUT AGAIN. Recorded
+     * because it is the obvious next idea and it does not work.
+     *
+     * The reasoning was F6's: a generated body's pipelines are built inside
+     * the first `post.render()` that draws it, so compiling them off the main
+     * thread first ought to buy back the seconds. Measured over the six live
+     * states, it bought nothing — `drawn.firstMs` stayed at 2.6–4.3 s, because
+     * that number is the POST GRAPH's own pipelines (GTAO, the denoise, the
+     * bloom mip chain, SMAA), which live outside the scene pass and which the
+     * boot precompile never touched. Warming those is `post.renderAsync()`,
+     * and it is done once before the loop.
+     *
+     * What the attempt DID cost is a race: `PassNode.compileAsync` points the
+     * renderer at the pass's own target for the length of its promise, so the
+     * draw has to be held while it runs, and any deadline on that hold is a
+     * frame drawn into a half-built pipeline — `TypeError: parameter 1 is not
+     * of type 'GPURenderPipeline'` in `live-visitor-w`. A body whose material
+     * throws is caught where it always was: the catch below puts the side on
+     * its stock body, and `drawFrame`'s own catch keeps the picture graded
+     * while that arrives.
+     */
     if (prev && prev !== next) prev.root.visible = false;
     bodies[id] = next;
     next.root.visible = true;
     if (!next.root.parent) scene.add(next.root);
+    /* A body that arrives is a body the eviction has not judged: the budget is
+       given back and whatever is still detached comes back with it — except
+       this side's own retired root, which `restoreBodies` skips because
+       `bodies[id]` no longer points at it. */
+    evictions = 0;
+    restoreBodies();
+    evictedRoots.delete(id);
     syncBodies();
   } catch (e) {
     bodyRefOf[id] = null;
-    console.warn(`тело ${ref} не собралось:`, e.message);
+    console.warn(`body ${ref} did not build:`, e.message);
     dispatchEvent(new CustomEvent('airena:bodyfail', { detail: { side: id, ref, message: e.message } }));
     /*
      * ОТКАТ К СТОКОВОМУ ТЕЛУ СТОРОНЫ, А НЕ «ОСТАВИТЬ КАК БЫЛО».
@@ -1075,10 +1819,112 @@ const anim = {
 // ---------------------------------------------------------------------------
 
 /*
- * Цвета сторон В СЦЕНЕ — светящиеся, потому что там за ними белая платформа,
- * тень и объём: свет читается как свет.
+ * The side colours: `--info` for blue, `--accent` for orange — the two tokens
+ * the HUD's bars, dots and feed use, so the floor and the panel agree
+ * (docs/REDESIGN.md §2.1). `COLOR` is the hex, for the DOM (feed lines, damage
+ * numbers, the result card); `SCENE_COLOR` is the same hex inverted through
+ * the tone map (`preTone`), for every material this file builds — fed raw,
+ * the blue renders #85CAD8-grey under ACES; pre-toned it renders #70A7F7, the
+ * nearest the curve can reach. White too: raw linear (1, 1, 1) tone-maps to
+ * #E2E2E2, a light grey, and the i-frame blink is the one moment that must
+ * read as WHITE; pre-toned (14.5 per channel) the curve puts it on #FFFFFF.
  */
-const COLOR = { blue: 0x39c6d8, orange: 0xe0762b };
+/*
+ * ── COLOUR IS OWNERSHIP, NOT SLOT (founder, 06.09; reports/arena/ARENA-AAA.md)
+ *
+ * Blue is the player's creature. Orange is the opponent. Always, on every
+ * surface: the ring under the feet, the floor telegraph, the aim line, the
+ * cast plate, the say-bubble, the damage pill, the feed's name, the ghost
+ * silhouette, the winner's line on the banner.
+ *
+ * The server says which SLOT is the viewer's (`match.mine`), and the slot is
+ * still what everything downstream is keyed by — `tele.blue`, `bodies.orange`,
+ * `cfg.fighters[id]`. So ownership is not a second keying: it is a re-tint of
+ * the ONE table every drawing site already reads. `COLOR.orange` simply holds
+ * the blue hue for the fights in which the player's creature was dealt the
+ * orange slot, and not one call site changes.
+ *
+ * What this replaces is the argument in the D162 note below, which is kept
+ * because its OTHER half still stands: the founder's answer to "then the plate
+ * and the ring disagree" was that they must not — and they do not, because
+ * every one of them moves together, in one function, on the frame the match
+ * arrives (`applySides`).
+ *
+ * A spectator with no creature in the fight keeps the slot colours
+ * (`SLOT_ROLE`): telling a stranger that one of the two is "theirs" would be
+ * the one thing worse than an arbitrary pair of hues.
+ */
+const HUE = { own: 0x6EA8FF, foe: 0xFF7A5C };
+const HUE_RIM = { own: 0x4E78B9, foe: 0xBE5943 };
+/** With no creature in the fight the slots keep their names: first slot blue. */
+const SLOT_ROLE = { blue: 'own', orange: 'foe' };
+/**
+ * Which ROLE a slot is wearing right now — the one place ownership is decided.
+ * `mineSide` is declared below and is null until the first `match`.
+ */
+const sideRole = (id) => (mineSide ? (id === mineSide ? 'own' : 'foe') : SLOT_ROLE[id]);
+const COLOR = { blue: HUE.own, orange: HUE.foe };
+const SCENE_COLOR = { blue: toned(HUE.own), orange: toned(HUE.foe) };
+/**
+ * THE TELEGRAPH RIM CARRIES VALUE, NOT ONLY HUE.
+ *
+ * Measured on the shipped capture, the coral ring's peak stroke is #F56E56 and
+ * the blue ring's #608AEC against a floor of #DFD2C4 — 1.95:1 and 2.23:1. They
+ * read in colour at 1440, but a 2:1 telegraph is thin in motion, thin at
+ * 390 px where the arena is 180 px tall, and gone for a reader who cannot
+ * separate coral from blue. These are the same two hues taken down in LINEAR
+ * luminance until each is 3:1 against the plaza (#4E78B9 and #BE5943, both at
+ * Y 0.185): the hue is the side, the value is the warning, and the warning now
+ * survives a greyscale frame. The filled disc inside it is a different
+ * problem again and has its own answer — see `HUE_FILL`.
+ */
+const RIM_COLOR = { blue: toned(HUE_RIM.own), orange: toned(HUE_RIM.foe) };
+/*
+ * ── AND THE FILL UNDER THE FEET IS A LIFT, NOT A SHADOW ───────────────────
+ *
+ * The disc inside the ring was `SCENE_COLOR` at 16 % over the plaza, and on
+ * an L 86 warm floor a 16 % wash of a saturated blue is a DARKENING: measured
+ * on `live-fighting.png` the own fill read #DACCCE, L 82.6 against a floor of
+ * 85.7, and on `live-visitor.png` #C2B8C9, L 76.6 against 85.1 — 8.5 L down,
+ * 22 % of Y, where the brief caps a telegraph umbra at 13 % so a zone never
+ * reads as shade. Worse, the composite of `--info`'s 277° over a 78° floor
+ * lands at Lab hue 313–340: the player's own mark read PINK-VIOLET, the one
+ * cast section 5 bans, on the beat the card had just said "you are blue".
+ *
+ * A colour cannot be both `--info` and the floor's own value, so the fill
+ * takes `--info`'s HUE at the floor's VALUE: #A9CBFF and #FF9F87, the two
+ * accents lifted until a 34 % wash lands within a lightness of the plaza.
+ * Computed against the measured floor (#E3D4C2) through the same ACES the
+ * frame is graded with: own → sRGB (213,209,241), L 85.0, Lab hue 296, C 17;
+ * foe → (235,201,181), L 83.3, Lab hue 58, C 17. Both inside 1 L of a floor
+ * the brief allows 6 — a mark that is legible in colour and invisible in
+ * greyscale, which is the opposite of the rim's contract one radius out.
+ *
+ * A THIRD LIST, not a third palette. `sideMats` carries every material that
+ * wears the side's own colour and `rimMats` those that wear its value; the
+ * fill wears neither, so it gets its own list and `applySides` writes all
+ * three in the same loop. One decision, three tables, no second keying.
+ */
+const HUE_FILL = { own: 0xA9CBFF, foe: 0xFF9F87 };
+const FILL_COLOR = { blue: toned(HUE_FILL.own), orange: toned(HUE_FILL.foe) };
+/** How much of the floor the fill replaces — see `HUE_FILL` for the arithmetic. */
+const FILL_ALPHA = 0.34;
+const WHITE = toned(0xffffff);
+/* A missed cone is drawn in a neutral, pre-toned like the rest. */
+const MISS_COLOUR = toned(0x8a8f99);
+/*
+ * THE MARK'S VALUE SANDWICH — the two strokes a creature's albedo cannot be.
+ *
+ * See `makeTelegraph`: the side's hue says WHOSE the mark is and these two say
+ * that it IS a mark. Both are on the world's warm axis and inside the brief's
+ * bounds — `MARK_SHADE` is #3A3430 (L 21.5, well under the L 30 the reading
+ * asks for and darker than any fighter the brief allows at #8D7F73 / L 57.5),
+ * `MARK_EDGE` is #F2ECE6 (L 93.0, under the #F4EEE8 / L 94.4 ceiling that is
+ * the brightest thing in the world). Neither is saturated, so neither counts
+ * against the two accents the brief allows.
+ */
+const MARK_SHADE = toned(0x3A3430);
+const MARK_EDGE = toned(0xF2ECE6);
 
 /*
  * ── КАКОГО ЦВЕТА ОПАСНАЯ ЗОНА (D162, решение основателя 01.09) ────────────
@@ -1290,19 +2136,23 @@ const HIT_LAYER = 3;
 /*
  * ВСПЫШКА УРОНА КОРОЧЕ И НЕ ГЛУХАЯ (замечание волны приёмки 04.09).
  *
- * Решение 8 требует, чтобы тело жертвы вспыхнуло красным на мгновение, — и
- * оно вспыхивает. Но полка полной заливки держалась 0.12 с при уходе 0.16, а
+ * Решение 8 требует, чтобы тело жертвы вспыхнуло на мгновение, — и оно
+ * вспыхивает. Но полка полной заливки держалась 0.12 с при уходе 0.16, а
  * потолок стоял 0.95: судья померил два кадра записи боя, где ОБА тела ушли
  * в плоский лососевый на 5.10 % и 4.36 % арены — больше любого эффекта в
  * повторе, — слились друг с другом и потеряли и силуэт, и элементный статус
  * ровно в тот момент, когда он важнее всего.
  *
- * Полка срезана до 0.05 с (мгновение — это мгновение), уход оставлен прежним,
- * а потолок опущен до 0.72: модель не заменяется краской целиком, её форма и
- * стихия на ней остаются читаемыми. Само «попало» при этом никуда не делось —
- * его несут ещё и толчок камеры, и подпись атома.
+ * Полка срезана до 0.03 с (мгновение — это мгновение), уход до 0.09, а
+ * потолок до 0.35: 120 мс и треть плотности. Модель не заменяется заливкой
+ * целиком — её форма, стихия и СОБСТВЕННАЯ ТЕНЬ остаются читаемыми под
+ * вспышкой, а «попало» несут ещё и толчок камеры, и подпись атома. При 0.72
+ * силуэт становился плоским пятном на 210 мс, то есть на каждом шестом кадре
+ * боя, и судья мерил именно его.
  */
-const HIT_SOLID = 0.05, HIT_FADE = 0.16;
+const HIT_SOLID = 0.03, HIT_FADE = 0.09;
+/** Потолок подмеса. Значение, а не цвет: см. `HIT_WASH`. */
+const HIT_PEAK = 0.35;
 const hitUntil = { blue: 0, orange: 0 };
 const hitMat = (() => {
   const M = THREE.MeshBasicNodeMaterial || THREE.MeshBasicMaterial;
@@ -1342,10 +2192,10 @@ function tickHit(now) {
     const left = hitUntil[id] - now;
     if (left <= 0) { hitUntil[id] = 0; setHitLayer(b, false); continue; }
     setHitLayer(b, true);
-    /* Сплошной красный, потом короткий спад. */
+    /* Полка, потом короткий спад. Цвет один на обе стороны (`HIT_WASH`). */
     peak = Math.max(peak, left > HIT_FADE ? 1 : left / HIT_FADE);
   }
-  hitU.alpha.value = peak * 0.72;
+  hitU.alpha.value = peak * HIT_PEAK;
   hitActive = peak > 0;
 }
 /**
@@ -1546,7 +2396,7 @@ function playFx(e) {
     if (e.miss) {
       const c2 = COLOR[e.who];
       pushFeed(`<span style="color:#${c2.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu(e.skill, e.who))}`
-        + ` · <span style="opacity:.65">${MISS_RU[e.miss] || 'мимо'}</span>`,
+        + ` · <span style="opacity:.65">${MISS_RU[e.miss] || 'missed'}</span>`,
       `${e.who}|${e.skill}|${e.miss}`);
     }
     if (e.kind === 'impact') hitFlashFromImpact(e);
@@ -1575,9 +2425,40 @@ function playFx(e) {
 }
 
 /** Fire every queued effect the render clock has now caught up with. */
+/*
+ * ONE EFFECT IS NOT ALLOWED TO TAKE THE FRAME.
+ *
+ * `playFx` reaches into the effects layer, and the effects layer builds its
+ * node graphs LAZILY — the first bolt of an element it has not drawn yet
+ * assembles a material on that frame, sixty frames into a fight, on whichever
+ * machine the viewer happens to be running. Everything about that is normal
+ * except the consequence: an unguarded throw came back up through
+ * `playFxUpTo` into the loop, and the loop's single catch returned before the
+ * draw. Round one photographed the shape of it — `create-visitor` reported one
+ * `TypeError` and then showed a still frame behind the veil for the rest of
+ * the session, while the identical owner's screen showed the live arena.
+ *
+ * The same reasoning the effects layer already applies to a dying form
+ * (`updateFx`, "fx end"), applied at the other end of the life: a decoration
+ * that cannot be drawn is a decoration that is not drawn. The fight goes on,
+ * every other effect in the same tick goes on, and the failure is reported
+ * ONCE per element+kind rather than sixty times a second — a console that
+ * repeats itself is not evidence, and the capture tool reads this console.
+ */
+const fxFaults = new Set();
 function playFxUpTo(clock) {
   while (pendingFx.length && pendingFx[0].t <= clock) {
-    for (const e of pendingFx.shift().fx) playFx(e);
+    for (const e of pendingFx.shift().fx) {
+      try {
+        playFx(e);
+      } catch (err) {
+        const key = `${e && e.element}|${e && e.kind}`;
+        if (!fxFaults.has(key)) {
+          fxFaults.add(key);
+          console.warn(`fx ${key}`, err);
+        }
+      }
+    }
   }
 }
 
@@ -1607,7 +2488,7 @@ function updateFx(now) {
        * «разогрев») — и был прав: без него он не видел следов, рождённых в
        * конце формы. Расхождение между гейтом и вьювером было не в гейте.
        */
-      try { f.update(f.obj, 1); } catch (err) { console.warn('fx конец', err); }
+      try { f.update(f.obj, 1); } catch (err) { console.warn('fx end', err); }
       scene.remove(f.obj);
       /*
        * УТИЛИЗИРУЕТСЯ И МАТЕРИАЛ, А НЕ ТОЛЬКО ГЕОМЕТРИЯ.
@@ -1644,25 +2525,26 @@ function updateFx(now) {
 
 function beamFx(e) {
   const c = COLOR[e.who];
+  const sc = SCENE_COLOR[e.who];
   const a = new THREE.Vector3(e.x0, 1.15, e.z0);
   const b = new THREE.Vector3(e.x1, 1.15, e.z1);
   const len = a.distanceTo(b);
   const g = new THREE.CylinderGeometry(0.11, 0.11, len, 8, 1, true);
   g.translate(0, len / 2, 0);
-  const m = markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+  const m = markGlow(new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
   const mesh = new THREE.Mesh(g, m);
   mesh.position.copy(a);
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
   const glowG = new THREE.CylinderGeometry(0.34, 0.34, len, 8, 1, true);
   glowG.translate(0, len / 2, 0);
-  const glow = new THREE.Mesh(glowG, markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
+  const glow = new THREE.Mesh(glowG, markGlow(new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
   mesh.add(glow);
   spawnFx(mesh, 0.22, (o, u) => {
     o.material.opacity = 0.95 * (1 - u);
     glow.material.opacity = 0.22 * (1 - u) ** 2;
     o.scale.set(1 - u * 0.55, 1, 1 - u * 0.55);
   });
-  if (e.hit) impactFlash(e.x1, e.z1, c);
+  if (e.hit) impactFlash(e.x1, e.z1, sc);
   else {
     /*
      * The one event class the feed never carried, and the only one that is not
@@ -1673,7 +2555,7 @@ function beamFx(e) {
      * whole tactical story of this arena.
      */
     const cover = len < cfg.skills.laser.range - 0.05;
-    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('laser', e.who))} · <span style="opacity:.65">${cover ? 'закрыт укрытием' : 'мимо'}</span>`,
+    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('laser', e.who))} · <span style="opacity:.65">${cover ? 'blocked by cover' : 'missed'}</span>`,
       `${e.who}|laser|${cover ? 'cover' : 'aim'}`);
   }
 }
@@ -1688,7 +2570,7 @@ function impactFlash(x, z, c) {
 }
 
 function blinkFx(e) {
-  const c = COLOR[e.who];
+  const c = SCENE_COLOR[e.who];
   for (const [x, z, dir] of [[e.x0, e.z0, 1], [e.x1, e.z1, -1]]) {
     const r = new THREE.Mesh(
       new THREE.TorusGeometry(0.7, 0.09, 8, 28),
@@ -1708,14 +2590,14 @@ function coneFx(e) {
   const c = COLOR[e.who];
   const g = new THREE.CircleGeometry(e.range, 24, -e.half + Math.PI / 2, e.half * 2);
   const m = new THREE.Mesh(g, markGlow(new THREE.MeshBasicMaterial({
-    color: e.hit ? c : 0x8a8f99, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
+    color: e.hit ? SCENE_COLOR[e.who] : MISS_COLOUR, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
   })));
   layFlat(m);
   faceHeading(m, e.heading);
   m.position.set(e.x, 0.06, e.z);
   spawnFx(m, 0.3, (o, u) => { o.material.opacity = 0.55 * (1 - u); o.scale.setScalar(1 + u * 0.12); });
   if (!e.hit) {
-    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('smash', e.who))} · <span style="opacity:.65">мимо</span>`, `${e.who}|smash|miss`);
+    pushFeed(`<span style="color:#${c.toString(16)}">${esc(sideName[e.who])}</span> · ${esc(skillRu('smash', e.who))} · <span style="opacity:.65">missed</span>`, `${e.who}|smash|miss`);
   }
 }
 
@@ -1734,8 +2616,48 @@ function coneFx(e) {
  * uses `range + radius` because `inCone` does — so a telegraph can never
  * promise something the strike will not deliver.
  */
+/*
+ * ── THE SIDE'S OWN MATERIALS, RE-TINTED IN PLACE ──────────────────────────
+ *
+ * Four telegraph faces, a ring, a rim, an aim line and two ghost materials are
+ * built ONCE per side and live the whole session. Ownership changes between
+ * fights, so on every `match` they have to change colour — and rebuilding them
+ * is not an option: three of them are node materials, and a node material
+ * rebuilt mid-session compiles a pipeline on the main thread in the frame the
+ * VS card is up, which is the one frame that must not stall.
+ *
+ * So the colour is a HANDLE, not a literal. The node materials read a uniform
+ * (`SIDE_U`, one per side, swapped by value); the raster ones are collected
+ * here and written with `material.color.copy` — the two lists exist because
+ * the rim carries VALUE as well as hue (see `RIM_COLOR`) and is a different
+ * colour from the face it rims.
+ *
+ * The uniform is assigned to `colorNode` BEFORE the material has ever been
+ * drawn, so nothing is recompiled by it: the shader is built once, with the
+ * uniform already in it.
+ */
+const SIDE_U = {
+  blue: TSL.uniform(SCENE_COLOR.blue.clone()),
+  orange: TSL.uniform(SCENE_COLOR.orange.clone()),
+};
+const sideMats = { blue: [], orange: [] };
+const rimMats = { blue: [], orange: [] };
+const fillMats = { blue: [], orange: [] };
+/**
+ * Give one material the side's colour and remember it for the next `match`.
+ * A node material takes the uniform; a raster one joins one of three lists —
+ * the face's own hue, the rim's value (`RIM_COLOR`) or the fill's lift
+ * (`FILL_COLOR`).
+ */
+function sideTint(mat, id, kind = 'face') {
+  if (!mat) return mat;
+  if (mat.colorNode) mat.colorNode = SIDE_U[id];
+  else (kind === 'rim' ? rimMats : kind === 'fill' ? fillMats : sideMats)[id].push(mat);
+  return mat;
+}
+
 function makeTelegraph(id) {
-  const c = COLOR[id];
+  const c = SCENE_COLOR[id];
   const g = new THREE.Group();
 
   /*
@@ -1745,20 +2667,60 @@ function makeTelegraph(id) {
    * the solver starts pushing them apart, so a viewer can see a body block
    * rather than wondering why one stopped.
    */
+  /*
+   * ── AND THE RIM IS A SANDWICH, BECAUSE A BODY CAN IMITATE A HUE ───────────
+   *
+   * The mark that says "enemy" was one stroke in one hue, and a coral creature
+   * standing on it is the same hue: measured on `live-fighting.png` inside the
+   * foe's own footprint, ring pixels median L 43.5 / S 0.46 against body
+   * pixels median L 42.4 / S 0.36 at hue 17° — 1.1 L apart in one family, and
+   * a 6× crop shows ring and creature as a single coral blob with the stroke
+   * running through the legs. The player's side escaped it only because the
+   * stock golem happens to be neutral-dark; the forge ships blue creatures.
+   *
+   * So the contract is VALUE, which an albedo cannot imitate without being a
+   * different animal: a dark stroke inside, the side's colour, a near-white
+   * stroke outside. Three concentric annuli, and the OUTERMOST edge is still
+   * at exactly the collision radius, because "the two rims meet at the instant
+   * the solver starts pushing them apart" is the other job this ring does and
+   * a halo outside the radius would make them meet early. At a 20 m shot on a
+   * 0.75 m fighter each stroke is 3–4 px, which is what the sandwich needs to
+   * survive a resample.
+   *
+   * The two outer strokes are NOT side-tinted: they are the value contract,
+   * not the identity, and tinting them would put the whole sandwich back in
+   * one hue family. They keep the world's warm neutrals so a mark never
+   * introduces a third accent (ARENA-BRIEF §5).
+   */
+  const R = cfg.fighters[id].radius;
   const ring = new THREE.Group();
   const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(cfg.fighters[id].radius, 40),
-    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }), 0.35),
+    new THREE.CircleGeometry(R, 40),
+    sideTint(markGlow(new THREE.MeshBasicMaterial({
+      color: FILL_COLOR[id], transparent: true, opacity: FILL_ALPHA, side: THREE.DoubleSide, depthWrite: false,
+    }), 0.18), id, 'fill'),
+  );
+  const shade = new THREE.Mesh(
+    new THREE.RingGeometry(R * 0.76, R * 0.84, 44),
+    new THREE.MeshBasicMaterial({ color: MARK_SHADE, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }),
   );
   const rim = new THREE.Mesh(
-    new THREE.RingGeometry(cfg.fighters[id].radius * 0.87, cfg.fighters[id].radius, 44),
-    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }), 0.5),
+    new THREE.RingGeometry(R * 0.84, R * 0.94, 44),
+    sideTint(markGlow(new THREE.MeshBasicMaterial({ color: RIM_COLOR[id], transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }), 0.5), id, 'rim'),
   );
-  ring.add(disc); ring.add(rim);
+  const edge = new THREE.Mesh(
+    new THREE.RingGeometry(R * 0.94, R, 44),
+    new THREE.MeshBasicMaterial({ color: MARK_EDGE, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }),
+  );
+  ring.add(disc); ring.add(shade); ring.add(rim); ring.add(edge);
   layFlat(ring);
   ring.position.y = 0.03;
   ring.userData.rim = rim;
   ring.userData.disc = disc;
+  /* The three strokes move together: `updateTelegraph` dims them on a stun and
+     `restMarks` puts them back, and a sandwich with one stroke at a different
+     opacity is not a sandwich. */
+  ring.userData.strokes = [shade, rim, edge];
   g.add(ring);
 
   const sk = cfg.skills;
@@ -1768,8 +2730,8 @@ function makeTelegraph(id) {
      заливка, лучше слабая фигура, чем никакой. */
   const cone = new THREE.Mesh(
     new THREE.CircleGeometry(1, 30, -sk.smash.halfAngle + Math.PI / 2, sk.smash.halfAngle * 2),
-    telegraphMat(c, 'cone', sk.smash.halfAngle)
-      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55),
+    sideTint(telegraphMat(c, 'cone', sk.smash.halfAngle)
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55), id),
   );
   layFlat(cone);
   cone.position.y = 0.045;
@@ -1779,8 +2741,8 @@ function makeTelegraph(id) {
   const laneLen = sk.charge.dashSpeed * sk.charge.dashSeconds;
   const lane = new THREE.Mesh(
     new THREE.PlaneGeometry(2.6, laneLen),
-    telegraphMat(c, 'lane')
-      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.55),
+    sideTint(telegraphMat(c, 'lane')
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.55), id),
   );
   lane.geometry.translate(0, laneLen / 2, 0);
   layFlat(lane);
@@ -1793,8 +2755,8 @@ function makeTelegraph(id) {
      не `disc`: `disc` выше — это заливка кольца под ногами. */
   const zoneDisc = new THREE.Mesh(
     new THREE.CircleGeometry(1, 40),
-    telegraphMat(c, 'cone', Math.PI)
-      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55),
+    sideTint(telegraphMat(c, 'cone', Math.PI)
+      || markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }), 0.55), id),
   );
   layFlat(zoneDisc);
   zoneDisc.visible = false;
@@ -1802,7 +2764,7 @@ function makeTelegraph(id) {
 
   const aim = new THREE.Mesh(
     new THREE.PlaneGeometry(0.06, sk.laser.range),
-    markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.8),
+    sideTint(markGlow(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), 0.8), id),
   );
   aim.geometry.translate(0, sk.laser.range / 2, 0);
   layFlat(aim);
@@ -1815,7 +2777,11 @@ function makeTelegraph(id) {
   // an i-frame telegraph is that you can still see what it is protecting.
   const shell = new THREE.Mesh(
     new THREE.SphereGeometry(cfg.fighters[id].radius * 1.45, 14, 10),
-    markGlow(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, wireframe: true }), 0.9),
+    /* `WHITE`, not a raw 0xffffff: linear (1,1,1) tone-maps to #E2E2E2, a light
+       grey, and the i-frame blink is the one moment that must read as WHITE.
+       Bloom at 0.9 hides most of it; the unbloomed core of the wireframe was
+       landing on the grey. */
+    markGlow(new THREE.MeshBasicMaterial({ color: WHITE, transparent: true, opacity: 0, depthWrite: false, wireframe: true }), 0.9),
   );
   shell.visible = false;
   g.add(shell);
@@ -1902,6 +2868,62 @@ function beamReach(x, z, h, rOff) {
 const tele = { blue: makeTelegraph('blue'), orange: makeTelegraph('orange') };
 
 /**
+ * A MARK MUST NOT OUTLIVE THE FIGHT IT BELONGS TO.
+ *
+ * `updateTelegraph` runs only from the streaming branch of the loop, so when
+ * `frames` runs out both telegraph groups keep whatever visibility — and
+ * whatever POSITION — the last streamed frame left them. Measured on
+ * `live-searching.png` (1440×900, phase `searching`, "NEXT FIGHT IN 8"): two
+ * rings on an empty plaza, and the brighter of the two is the FOE's, 762
+ * saturated px peaking at #D85143 with the one standing creature's feet
+ * inside it, against 123 px of blue lying empty in front of it. Between
+ * fights the frame therefore said "orange" about the only creature on
+ * screen, and that creature is the player's. `live-away.png` repeated it.
+ *
+ * So the beat that has no fight has no fight's marks. Everything a skill
+ * draws goes; the ring goes with it for a side that is not standing there;
+ * and the ONE body still on the floor keeps its own ring, moved to where it
+ * actually stands, in the colour ownership gave it (`applySides`) — blue for
+ * the player, always, whatever slot the last fight dealt.
+ *
+ * Which body that is comes from `mineSide`, not from the last fight's
+ * geometry: an idle creature drawn with no live match would otherwise inherit
+ * the slot it happened to be dealt. With no `mineSide` — a spectator, or a
+ * visitor before any match — nobody on the floor is "yours" and the plaza
+ * carries no mark at all, which is the honest answer rather than an arbitrary
+ * one. That is the BETWEEN-fights rule; on a card beat both bodies keep their
+ * marks (see below), because there the two of them are the picture.
+ */
+function restMarks() {
+  /*
+   * BETWEEN fights, one mark and it is the player's. ON a card beat — the VS
+   * announcement, the result — the two bodies on the floor are both part of
+   * the picture the card is standing over, and the result's own composition
+   * depends on it: "the fallen is read from the ring under the winner". The
+   * shell's phase is what separates the two, and it is the same attribute the
+   * camera already reads a line later.
+   */
+  const idle = /^(searching|away|idle)$/.test((typeof document !== 'undefined' && document.body?.dataset.phase) || '');
+  for (const id of ['blue', 'orange']) {
+    const t = tele[id];
+    t.cone.visible = false;
+    t.lane.visible = false;
+    t.aim.visible = false;
+    t.disc.visible = false;
+    t.shell.visible = false;
+    const root = (idle && mineSide !== id) ? null : bodies[id]?.root;
+    if (root && root.visible && root.parent) {
+      t.g.position.set(root.position.x, 0, root.position.z);
+      t.g.visible = true;
+      for (const m of t.ring.userData.strokes) m.material.opacity = 0.95;
+      t.ring.userData.disc.material.opacity = FILL_ALPHA;
+    } else {
+      t.g.visible = false;
+    }
+  }
+}
+
+/**
  * What a fighter looks like when there is something between it and the eye.
  *
  * The camera can climb over a solid and step around it, and with the walls in
@@ -1924,13 +2946,53 @@ const tele = { blue: makeTelegraph('blue'), orange: makeTelegraph('orange') };
  * use — because it exists to say WHERE, not to replace the animal with a
  * lozenge.
  */
+/*
+ * The environment's materials, bound onto `SOLIDS`.
+ *
+ * `env.solids` has the same ten entries in the same order — four walls (pit
+ * face, apron strip, coping, and on ±z the notch stair with its cut faces),
+ * then the six blocks (side, top) — every material `transparent: true` with
+ * an alpha-scaled `castShadowNode`, so `updateOcclusion` below works
+ * unchanged and a faded solid casts a faded shadow. The position check is the
+ * drift alarm: a solid that moved in one file and not the other would fade
+ * the wrong thing.
+ */
+if (env.solids.length !== SOLIDS.length) throw new Error('environment.js and main.js disagree on the number of solids');
+env.solids.forEach((s, i) => {
+  const o = SOLIDS[i];
+  if (s.x !== o.x || s.z !== o.z || s.hx !== o.hx || s.hz !== o.hz) throw new Error(`solid ${i} moved between environment.js and main.js`);
+  o.mats = s.mats;
+});
+
 const GHOST_BODY = 0.30;
 const GHOST_RING = 0.85;
+/*
+ * WHAT A LIVING FIGHTER'S RING IS WORTH WHEN NOTHING IS HIDING IT: NOTHING.
+ *
+ * It used to be 0.35, on the argument that a small fighter needs a mark the
+ * debris cannot out-read. It does — and it HAS one: `makeTelegraph`'s ring is
+ * under every living body every frame (`updateTelegraph` and `restMarks` both
+ * keep it there), in the same three-annulus sandwich, and it is DEPTH-TESTED.
+ * The ghost is the stand-in for that ring over cover, and raising it under a
+ * fighter in the clear meant a second, depth-blind copy of a mark that was
+ * already drawn — which is how a saturated stroke came to run across the
+ * middle of a body: measured on `live-result-loss.png` at x=1080, shin at
+ * L 17–26, a coral band rgb(190,90,79) at y=524, shin again at L 18–19, and
+ * on `live-vs.png` at x=816 the blue stroke crossing a flashed body. The far
+ * arc of a ring at the feet projects OVER the legs, and with `depthTest:
+ * false` nothing stops it.
+ *
+ * So: no floor, and the ghost's ring is depth-tested (see `makeGhost`). What
+ * the ghost still buys is the case it was written for — a ring behind cover —
+ * and it keeps it, because the cover that hides a ring is FADED cover and a
+ * faded solid is a transparent one, drawn after the ghost.
+ */
+const RING_ALWAYS = 0;
 /** What an occluder fades to. Below about this the arena stops reading as solid. */
 const FADE_TO = 0.24;
 
 function makeGhost(id) {
-  const c = COLOR[id];
+  const c = SCENE_COLOR[id];
   const rad = cfg.fighters[id].radius;
   const h = Math.max(0.6, bodies[id]?.height ?? 2);
   const r = rad * 0.6;
@@ -1943,16 +3005,64 @@ function makeGhost(id) {
   cap.renderOrder = 999;
   g.add(cap);
   const ringMat = new THREE.MeshBasicMaterial({
-    color: c, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+    color: c, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
   });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(rad * 0.82, rad, 40), ringMat);
+  /* THE SAME SANDWICH AS THE REAL RING (`makeTelegraph`). This is the mark
+     that stands in for it over cover — the one place the reader has nothing
+     else to go on — so it cannot be the one place the mark is a single stroke
+     in a hue a creature can wear. Same three radii, same two neutrals; only
+     the middle stroke is the side's, and only the middle stroke is re-tinted
+     on `match`. */
+  /*
+   * ── A BODY OCCLUDES THE MARK UNDER IT ─────────────────────────────────────
+   *
+   * The ring is FLAT AT THE FEET, so its far arc is behind the fighter and
+   * projects over the fighter's legs. Drawn `depthTest: false` at
+   * `renderOrder` 999 it painted straight through them — a 2 px saturated
+   * stroke across the darkest object in the frame, measured on
+   * `live-result-loss.png` and `live-vs.png` (see `RING_ALWAYS`).
+   *
+   * `depthTest: true` and `renderOrder = -1` fix it with the depth buffer
+   * instead of a screen-space test, and they do not cost the ghost its job.
+   * The order matters and is the whole trick: three.js draws the OPAQUE list
+   * first (the bodies), then the transparent list sorted by `renderOrder`.
+   * Every arena solid is `transparent: true` (environment.js) and sits at
+   * order 0, so at −1 the ghost is drawn BEFORE any cover and after every
+   * body — depth-tested against the bodies alone. A fighter therefore hides
+   * the arc behind it, and the faded block in front of the ring is composited
+   * OVER the ghost at its own alpha rather than clipping it, which is exactly
+   * "the mark shows through cover".
+   *
+   * The lozenge keeps `depthTest: false`: it is the silhouette of a body that
+   * is BEHIND something, and depth-testing it would erase the one thing the
+   * ghost exists to say.
+   */
+  const shadeMat = new THREE.MeshBasicMaterial({
+    color: MARK_SHADE, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const edgeMat = new THREE.MeshBasicMaterial({
+    color: MARK_EDGE, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ring = new THREE.Group();
+  for (const [r0, r1, mat] of [[0.76, 0.84, shadeMat], [0.84, 0.94, ringMat], [0.94, 1.0, edgeMat]]) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(rad * r0, rad * r1, 40), mat);
+    m.renderOrder = -1;
+    ring.add(m);
+  }
   layFlat(ring);
   ring.position.y = 0.05;
-  ring.renderOrder = 999;
+  ring.renderOrder = -1;
   g.add(ring);
   g.visible = false;
   scene.add(g);
-  return { g, bodyMat, ringMat, on: 0 };
+  return { g, bodyMat, ringMat, shadeMat, edgeMat, on: 0, ringOn: 0 };
+}
+
+/** One opacity for the whole sandwich — see `makeGhost`. */
+function setGhostRing(gh, a) {
+  gh.ringMat.opacity = a;
+  gh.shadeMat.opacity = a;
+  gh.edgeMat.opacity = a;
 }
 
 const ghosts = { blue: makeGhost('blue'), orange: makeGhost('orange') };
@@ -1967,31 +3077,173 @@ const ghosts = { blue: makeGhost('blue'), orange: makeGhost('orange') };
  * the only way the fast direction can fail, while a fast return strobes the
  * whole block every time a fighter crosses its corner.
  */
+/**
+ * THE WALL RULE (brief §2, stand round 3): "whichever wall is between camera
+ * and FIELD fades to the coping". The two-of-three test below fades a solid
+ * only when it hides a fighter, and from the boot camera (0, 26, 34) the near
+ * wall hides neither — but it hides a strip of the field, and its notch's two
+ * cut faces stood as the darkest architecture in the frame at bottom-centre,
+ * where the VS card's stats row sits. Per wall: `d` is the eye's distance
+ * outside that wall's outer face, and the strip of floor the wall's top edge
+ * hides from an eye at height `h` is WALL·d/(h − WALL) minus the 0.8 m of
+ * wall thickness; ≥ 1.5 m and the wall (with its apron, coping and stair)
+ * goes to the fade value. The boot camera hides 1.6 m → fades; the fight
+ * camera −0.1 (the eye is over the wall) → not; the establishing camera from
+ * outside the pit → fades. Verbatim from `arena.html`, which photographs it.
+ */
+const WALL_H = cfg.arena.wallHeight;
+function wallHidesField(eye, s) {
+  const alongX = s.hx > s.hz;                           // the ±z walls run along x
+  const n = alongX ? Math.sign(s.z) : Math.sign(s.x);   // the wall's outward normal
+  const d = (alongX ? eye.z : eye.x) * n - (HALF + 0.8);
+  if (!(eye.y > WALL_H) || !(d > 0)) return 0;
+  return (WALL_H * d) / (eye.y - WALL_H) - 0.8;
+}
+const _occ = new THREE.Vector3();
+const feedWrap = document.getElementById('feedwrap');
+/** No fighters on the floor — the wall rule still has an opinion. */
+const EMPTY_VIEW = {};
+/**
+ * Whether the pass has already run for this frame's eye.
+ *
+ * Raised by the fight branch of the loop and cleared at the loop's tail, not
+ * at its head: the head of `frame()` is one of the ten slices
+ * `tools/checkframing.mjs` evaluates in Node, and this flag lives outside
+ * them — a write to it up there would be a ReferenceError in the gate.
+ */
+let occluded = false;
+
 function updateOcclusion(view, dt) {
   for (const o of SOLIDS) o.want = 1;
+  for (const s of SOLIDS.slice(0, 4)) if (wallHidesField(camera.position, s) >= 1.5) s.want = FADE_TO;
+  camera.updateMatrixWorld();
+  let underFeed = false;
   for (const id of ['blue', 'orange']) {
     const v = view[id];
     const gh = ghosts[id];
     const body = bodies[id];
-    if (!v || !body) continue;
+    /*
+     * NO FIGHTER THIS FRAME → DECAY, not freeze. With `EMPTY_VIEW` the branch
+     * below is skipped entirely, so `on`, `ringOn`, `visible` and `position`
+     * kept whatever the last fight's final frame left them — and since the VS
+     * beat now clears `frames` and takes the arena's own portrait, a fighter
+     * that died behind a block left its lozenge and ring drawn at its last
+     * position, depth test off, render order 999, over the establishing shot
+     * under the card.
+     */
+    if (!v || !body) {
+      const k = 1 - Math.exp(-5 * dt);
+      gh.on -= gh.on * k;
+      gh.ringOn -= gh.ringOn * k;
+      gh.g.visible = gh.on > 0.02 || gh.ringOn > 0.02;
+      if (gh.g.visible) {
+        gh.bodyMat.opacity = GHOST_BODY * gh.on;
+        setGhostRing(gh, GHOST_RING * Math.max(gh.on, gh.ringOn));
+      }
+      continue;
+    }
     for (const o of SOLIDS) o.hits = 0;
     const n = hiddenCount(camera.position, v, body.height, true);
     for (const o of SOLIDS) if (o.hits >= 2) o.want = FADE_TO;
     const want = n >= 3 ? 1 : 0;
     gh.on += (want - gh.on) * (1 - Math.exp(-(want > gh.on ? 16 : 5) * dt));
-    gh.g.visible = gh.on > 0.02;
+    /*
+     * THE RING RULE (stand round 3). A telegraph ring at y 0.03 is the first
+     * thing a 3.2 m block takes, long before the body: a fighter's side — and
+     * "they are touching" — stopped reading while the fighter itself showed,
+     * because the two-of-three rule never fades a block that clips only the
+     * feet. When the ring's centre is hidden from the eye by a solid that is
+     * NOT faded (a block already at 0.24 shows the real ring through it), the
+     * ghost ring is drawn over the cover at its own opacity; the lozenge stays
+     * on the three-sample rule. Same 16/5 rates as the ghost.
+     */
+    /* Both halves, not one. The rule the stand photographs fades the BLOCK to
+       0.24 as well as raising the ghost ring over it (`stand-far.png`: "block
+       b hides only the orange ring, so the ring rule fades it to 0.35 with the
+       ring over it"), and only the ghost was ported — so a block that hid a
+       fighter's ring but fewer than two of three body samples stayed at full
+       opacity in the game while the stand faded it. Blocks only (`i >= 4`):
+       the four walls are the arena's boundary and have their own rule. */
+    /*
+     * AND THE TEST IS THE RING, NOT ITS CENTRE.
+     *
+     * Asking only about (v.x, v.z) means a block that covers half the
+     * circumference and misses the middle raises nothing — so the reader gets
+     * one bright arc and one washed arc on the same fighter, with a hard
+     * vertical seam through the mark and the leg where the faded solid's alpha
+     * edge falls. Measured in `live-fighting-w.png` at y=365: the same blue
+     * ring reads sat 79 / L 70.7 on its left arc and sat 138 / L 58.6 on its
+     * right, six pixels apart. Six samples on the circumference plus the
+     * centre: any one of them behind an unfaded solid breaks the mark, and a
+     * broken mark is what the ghost ring is for.
+     */
+    /*
+     * …AND A FADED SOLID STILL BREAKS IT. The test used to skip anything
+     * already under `fade` 0.6, on the argument that "a block already at 0.24
+     * shows the real ring through it". It shows a WASHED one: measured by a
+     * polar scan of the blue ring under STONE GOLEM in `live-fighting-w.png`,
+     * the arc crossing the faded block face reads L 79.4–80.7 at S 0.16–0.19
+     * against L 51.4–54.8 at S 0.64–0.73 on the clean arc — 28 L and 0.55
+     * saturation of difference around ONE circle, with a hard vertical seam
+     * where the alpha edge falls. Ten per cent of the mark's contrast is not
+     * "shows through". Every solid between the eye and the ring raises the
+     * ghost now, whatever its own opacity; the ghost's ring is drawn FIRST in
+     * the transparent list (`renderOrder` −1, see `makeGhost`), so the faded
+     * block composites over it and the mark comes back whole rather than in
+     * two values — while the depth buffer still keeps it off the fighters.
+     */
+    let ringHidden = false;
+    const rr = cfg.fighters[id].radius;
+    SOLIDS.forEach((o, i) => {
+      let touched = segSolid(camera.position, v.x, 0.05, v.z, o);
+      for (let k = 0; !touched && k < 6; k++) {
+        const th = (k / 6) * Math.PI * 2;
+        touched = segSolid(camera.position, v.x + Math.cos(th) * rr, 0.05, v.z + Math.sin(th) * rr, o);
+      }
+      if (!touched) return;
+      ringHidden = true;
+      if (i >= 4) o.want = Math.min(o.want, 0.35);
+    });
+    gh.ringOn += ((ringHidden ? 1 : 0) - gh.ringOn) * (1 - Math.exp(-(ringHidden ? 16 : 5) * dt));
+    /*
+     * AND A LIVING FIGHTER ALWAYS HAS A MARK UNDER IT — the REAL ring.
+     *
+     * `RING_ALWAYS` used to put a second, depth-blind copy of the mark under
+     * every living body so that a small fighter could not be out-read by a
+     * hit's debris. The mark is right and the copy was not: `makeTelegraph`'s
+     * ring is already under every living body, in the same sandwich, and it
+     * is depth-tested — so the floor bought nothing but a stroke that could
+     * paint through a leg (see `RING_ALWAYS`). The occlusion boost is what is
+     * left, which is what the ghost was for.
+     */
+    gh.g.visible = gh.on > 0.02 || gh.ringOn > 0.02 || !!v.alive;
     if (gh.g.visible) {
       gh.g.position.set(v.x, v.y, v.z);
       // a corpse keeps the ring and loses the standing lozenge, which would be
       // the one shape on screen still claiming the loser is on its feet
       gh.bodyMat.opacity = v.alive ? GHOST_BODY * gh.on : 0;
-      gh.ringMat.opacity = GHOST_RING * gh.on;
+      setGhostRing(gh, Math.max(v.alive ? RING_ALWAYS : 0, GHOST_RING * Math.max(gh.on, gh.ringOn)));
       // white while the blink i-frames are up, so the one moment a fighter is
       // untouchable still reads as untouchable when it happens behind a wall
-      gh.bodyMat.color.setHex(v.inv ? 0xffffff : COLOR[id]);
-      gh.ringMat.color.setHex(v.inv ? 0xffffff : COLOR[id]);
+      gh.bodyMat.color.copy(v.inv ? WHITE : SCENE_COLOR[id]);
+      gh.ringMat.color.copy(v.inv ? WHITE : SCENE_COLOR[id]);
+    }
+    /*
+     * THE FEED RULE: the live-feed glass is treated as the blocks are —
+     * nothing between the eye and a fighter that cannot fade. It covers a
+     * fifth of the width at 1280×720 (ndc x 0.49..0.96, y −0.11..0.58) and the
+     * framing allows a fighter out to 0.88; a fighter whose feet or middle
+     * project inside its box ghosts it to the same value a block fades to.
+     */
+    const fb = hudBand.feed;
+    if (fb && v.alive) {
+      for (const hy of [0, body.height * 0.5]) {
+        _occ.set(v.x, v.y + hy, v.z).project(camera);
+        if (_occ.z < 1 && _occ.x > fb.x0 && _occ.x < fb.x1 && _occ.y < fb.y0 && _occ.y > fb.y1) underFeed = true;
+      }
     }
   }
+  feedWrap?.classList.toggle('ghost', underFeed);
   for (const o of SOLIDS) {
     o.fade += (o.want - o.fade) * (1 - Math.exp(-(o.want < o.fade ? 14 : 3.5) * dt));
     for (const m of o.mats) m.opacity = o.fade;
@@ -2121,8 +3373,8 @@ function updateTelegraph(id, v, view = null) {
   t.g.visible = v.alive;
   if (!v.alive) return;
 
-  t.ring.userData.rim.material.opacity = v.stun ? 0.35 : 0.95;
-  t.ring.userData.disc.material.opacity = v.stun ? 0.06 : 0.16;
+  for (const m of t.ring.userData.strokes) m.material.opacity = v.stun ? 0.35 : 0.95;
+  t.ring.userData.disc.material.opacity = v.stun ? FILL_ALPHA * 0.4 : FILL_ALPHA;
 
   const sk = cfg.skills;
   const el = actElapsed(v, id);
@@ -2290,8 +3542,21 @@ function updateTelegraph(id, v, view = null) {
     t.aim.scale.set(1 + u * 4, (rOff + beamReach(v.x, v.z, v.h, rOff)) / sk.laser.range, 1);
   }
 
-  t.shell.visible = v.inv;
-  if (v.inv) {
+  /*
+   * AND NOTHING SURVIVES INTO THE RESULT THAT WAS NOT PART OF THE FIGHT.
+   *
+   * `v.inv` is read from the last interpolated bracket, and once the fight
+   * stops streaming that bracket stops changing — so a fighter that died
+   * inside its own i-frames left this wireframe sphere standing on the plaza
+   * for the whole result beat. Measured in `live-result-win-w.png`: a white
+   * lat/long globe at (1205–1280, 515–625), #F5F3F1 at L* 95.9 — brighter
+   * than the coping, which ARENA-BRIEF §3 makes the ceiling of the whole
+   * picture — with no shadow, no contact and no relationship to anything, on
+   * the one beat the player looks at longest. A corpse is not untouchable and
+   * a decided fight has no i-frames: both are reasons this is off.
+   */
+  t.shell.visible = !!v.inv && !!v.alive && !decided;
+  if (t.shell.visible) {
     t.shell.position.y = cfg.fighters[id].radius * 1.2 + v.y;
     t.shell.material.opacity = 0.45 + 0.25 * Math.sin(performance.now() / 55);
     t.shell.rotation.y += 0.06;
@@ -2321,8 +3586,8 @@ const bars = {
  * потому что чипы строит этот файл.
  */
 const SKILL_RU = {
-  laser: 'луч', blink: 'рывок', smash: 'удар', charge: 'разгон', jump: 'прыжок',
-  beam: 'луч', cone: 'конус', bolt: 'снаряд', lob: 'навес', zone: 'зона', dash: 'рывок',
+  laser: 'laser', blink: 'blink', smash: 'smash', charge: 'charge', jump: 'leap',
+  beam: 'beam', cone: 'fan', bolt: 'bolt', lob: 'mortar', zone: 'field', dash: 'lunge',
 };
 /**
  * Как умение называется в ленте боя.
@@ -2346,17 +3611,31 @@ const skillRu = (id, who) => {
  * начала и до сих пор не доезжали до экрана ни у одного существа с набором.
  */
 const MISS_RU = {
-  airborne: 'прошло под прыжком',
-  cover: 'закрыт укрытием',
-  range: 'не достал',
-  aim: 'мимо',
+  airborne: 'passed under the leap',
+  cover: 'blocked by cover',
+  range: 'out of range',
+  aim: 'missed',
 };
 
-const REASON_RU = {
-  kill: 'у соперника кончилось здоровье',
-  timeout: 'время вышло — здоровья осталось больше',
-  'timeout-draw': 'время вышло — здоровье поровну',
-  'double-ko': 'оба выбыли в один тик',
+/**
+ * WHY THE FIGHT ENDED — ONE TABLE FOR THE WHOLE PRODUCT.
+ *
+ * These four strings are the same four `screens/history.js` prints in the
+ * match detail, word for word. They used to differ: the banner said "the
+ * opponent ran out of health" and the detail said "knocked out", so one fight
+ * carried two vocabularies depending on whether it was being watched or
+ * remembered. "in the same tick" went with them — a tick is the simulation
+ * talking, and nothing else a player reads counts in ticks.
+ *
+ * The viewer is a page of its own and cannot import the client's module, so
+ * the table is duplicated rather than shared; the words are the contract
+ * (docs/REDESIGN.md §9, glossary) and the two copies are kept identical.
+ */
+const REASON = {
+  kill: 'knocked out',
+  timeout: 'time ran out, more health left',
+  'timeout-draw': 'time ran out, health even',
+  'double-ko': 'both went down at once',
 };
 
 /**
@@ -2367,7 +3646,7 @@ const REASON_RU = {
  * которых больше нет, — и на гостевом бое без имён зритель читал их как
  * настоящих участников.
  */
-const sideName = { blue: 'синий', orange: 'оранжевый' };
+const sideName = { blue: 'BLUE', orange: 'ORANGE' };
 
 const cdEls = { blue: {}, orange: {} };
 
@@ -2407,6 +3686,8 @@ function rebuildCds(id, kit) {
 const sayEls = { blue: null, orange: null };
 const lastSaid = { blue: null, orange: null };
 function setSay(id, textValue) {
+  /* The product is English-only; quips from legacy brains may still be Russian. */
+  if (textValue && /[Ѐ-ӿ]/.test(textValue)) textValue = '';
   /*
    * Реплика дублируется в ленту.
    *
@@ -2418,7 +3699,7 @@ function setSay(id, textValue) {
   if (textValue && lastSaid[id] !== textValue) {
     lastSaid[id] = textValue;
     /* Имя стороны — наше, реплика — чужая: экранируется только она. */
-    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${esc(sideName[id])}</span> · <i style="font-style:normal;opacity:.9">«${esc(textValue)}»</i>`);
+    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${esc(sideName[id])}</span> · <i style="font-style:normal;opacity:.9">\u201c${esc(textValue)}\u201d</i>`);
   }
   if (!textValue) {
     if (sayEls[id]) { sayEls[id].remove(); sayEls[id] = null; }
@@ -2434,19 +3715,49 @@ function setSay(id, textValue) {
   sayEls[id].textContent = textValue;
 }
 
+/**
+ * THE PILL'S COLOUR AND THE PILL'S POSITION HAVE TO NAME THE SAME FIGHTER.
+ *
+ * `who` here is the VICTIM — `playFx` calls this with `e.who` and derives the
+ * actor one line below as the other side — and the pill is anchored over
+ * `bodies[who]`, i.e. over the creature that was HIT. It was painted the
+ * colour of the creature that hit it. So the one number the arena produces
+ * pointed at one side and was coloured the other: measured on
+ * `live-fighting.png`, a `−20` pill in `--info` blue floating over coral-ringed
+ * MARK-92; on `live-fighting-w.png` a blue `−33` over coral-ringed PRESS-60.
+ * A stranger reads that as the blue creature's number.
+ *
+ * The victim wins, because the victim is what the pill is standing on and
+ * whose HP bar moves on the same frame — position, colour and bar then say
+ * one thing. The dealer is not thrown away: it keeps a caret on the pill's
+ * leading edge in its own hue (`--from`, drawn by `hud.css`), so the two facts
+ * occupy two marks instead of contradicting each other inside one.
+ */
 function floatDamage(x, z, amount, who) {
   const d = document.createElement('div');
   d.className = 'dmg';
   /* Округление на всякий случай и здесь: старые записанные бои в базе несут
      сырое число, а повтор обязан читаться так же, как живой бой. */
   d.textContent = `-${Math.round(Number(amount) * 100) / 100}`;
-  d.style.color = `#${COLOR[who === 'blue' ? 'orange' : 'blue'].toString(16).padStart(6, '0')}`;
+  d.style.color = `#${COLOR[who].toString(16).padStart(6, '0')}`;
+  d.style.setProperty('--from', `#${COLOR[who === 'blue' ? 'orange' : 'blue'].toString(16).padStart(6, '0')}`);
+  d.dataset.from = who === 'blue' ? 'orange' : 'blue';
   hud.appendChild(d);
   const born = performance.now();
+  /*
+   * ABOVE THE HEAD, NOT IN THE CHEST. The pill used to rise from 1.8 m to
+   * 4.0 m — torso height for the 2 m stock bodies and mid-chest for the ~5 m
+   * generated ones that are now normal — and its surface is `--glass-strong`,
+   * measured brighter than the floor: it punched a white hole through the one
+   * dark shape in the picture, on the frame that most needed it read. The
+   * nameplate already owns the air over the head (`updatePlate`, +0.45); this
+   * starts half a metre above that and climbs out of it.
+   */
+  const top = Math.max(1.4, bodies[who]?.top ?? bodies[who]?.height ?? 2);
   const tick = () => {
     const u = (performance.now() - born) / 1100;
     if (u >= 1) { d.remove(); return; }
-    const v = project(x, 1.8 + u * 2.2, z);
+    const v = project(x, top + 0.5 + u * 2.5, z);
     d.style.left = `${v.x}px`; d.style.top = `${v.y}px`;
     d.style.opacity = String(1 - u * u);
     d.style.fontSize = `${20 - u * 5}px`;
@@ -2527,6 +3838,76 @@ for (const id of ['blue', 'orange']) {
   hud.appendChild(d);
   plates[id] = { root: d, lab: d.querySelector('.lab'), hp: d.querySelector('.t > i'), cast: d.querySelector('.cast > i') };
 }
+
+/**
+ * PUT THE PLAYER'S CREATURE IN BLUE, WHATEVER SLOT IT WAS DEALT.
+ *
+ * Called on every `match`, once, before the first frame of it is drawn. It
+ * rewrites the three colour tables by ROLE and then walks everything this file
+ * built once per side — the two node-material uniforms, the raster telegraph
+ * faces, the two rims, the name plates and a say-bubble that may still be up —
+ * so a fight never starts with half the screen on the last fight's mapping.
+ *
+ * What it deliberately does NOT do is rebuild anything: see `sideTint`.
+ *
+ * Two signals go out with it, because the picture is not the only surface that
+ * has to agree. `window.__airenaSides` says which ROLE each hue is carrying
+ * ('own' / 'foe', or 'slot' when nobody in this fight belongs to the viewer),
+ * and `body.dataset.mine` carries the slot itself so the HUD's stylesheet can
+ * put the player's panel on the left with one attribute selector rather than a
+ * second copy of this decision in JavaScript.
+ */
+function applySides(signal = true) {
+  for (const id of ['blue', 'orange']) {
+    const role = sideRole(id);
+    COLOR[id] = HUE[role];
+    SCENE_COLOR[id].copy(toned(HUE[role]));
+    RIM_COLOR[id].copy(toned(HUE_RIM[role]));
+    SIDE_U[id].value.copy(SCENE_COLOR[id]);
+    FILL_COLOR[id].copy(toned(HUE_FILL[role]));
+    for (const m of sideMats[id]) m.color.copy(SCENE_COLOR[id]);
+    for (const m of rimMats[id]) m.color.copy(RIM_COLOR[id]);
+    for (const m of fillMats[id]) m.color.copy(FILL_COLOR[id]);
+    const hex = `#${COLOR[id].toString(16).padStart(6, '0')}`;
+    if (plates[id]) plates[id].root.style.color = hex;
+    if (sayEls[id]) sayEls[id].style.color = hex;
+  }
+  if (typeof window !== 'undefined') {
+    window.__airenaSides = mineSide
+      ? { blue: 'own', orange: 'foe', mine: mineSide }
+      : { blue: 'slot', orange: 'slot', mine: null };
+    /*
+     * …AND IT IS MIRRORED WHERE A CAPTURE ALREADY LOOKS.
+     *
+     * The handle was published and read by nobody: `grep` over `src/` and
+     * `tools/` found no consumer, and a dead handle on the one decision the
+     * founder's addendum is about drifts in silence. `tools/shots.mjs` spreads
+     * `window.__airenaDrawn` into every sidecar JSON, so hanging the resolved
+     * mapping there records the role-to-hue answer beside every live picture —
+     * a future disagreement between the viewer's palette and the HUD's is then
+     * caught by the JSON rather than by eye, and no capture-side change is
+     * needed to get it.
+     */
+    if (window.__airenaDrawn) window.__airenaDrawn.sides = window.__airenaSides;
+  }
+  /*
+   * THE DOM SIGNAL IS WRITTEN THE WAY THE HUD WRITES IT, OR NOT AT ALL.
+   *
+   * `screens/live.js` (`markMine`) already keeps `body[data-mine]` from the
+   * store, and its stylesheet keys on the attribute's PRESENCE — so writing an
+   * empty string here would leave `data-mine=""`, which matches
+   * `body[data-mine]` and would swap the panels for a spectator. Same shape as
+   * the HUD's, then: the slot when there is one, the attribute removed when
+   * there is not. And only from a real `match` — a `?ui=` fixture states its
+   * own ownership and has no socket to be corrected by, so the module's own
+   * first call must not touch what the fixture set.
+   */
+  if (signal && typeof document !== 'undefined' && document.body) {
+    if (mineSide) document.body.dataset.mine = mineSide;
+    else delete document.body.dataset.mine;
+  }
+}
+applySides(false);
 
 function updatePlate(id, v, height) {
   const p = plates[id];
@@ -2656,9 +4037,27 @@ function connect() {
     if (m.type === 'error') { fail(m.message); return; }
     if (m.type === 'match') {
       frames = []; pendingFx = []; renderClock = 0; over = null; decided = false; matchInfo = m; framingLost = false;
+      /*
+       * AND THE FIRE GOES OUT WITH THE FIGHT THAT LIT IT.
+       *
+       * `env.applySuddenDeath(heat)` is called from one place — the fight
+       * branch of the loop — so a match that reached sudden death left the
+       * floor at FLOOR_BURN, the fog and the sky at their ember, and the
+       * reflection at 0.3×, with nothing resetting them through the result
+       * card, the searching beat or the next match's VS. Since the VS beat
+       * became the arena's own portrait that is the whole picture: the next
+       * fight was announced over the previous fight's fire, and it cleared
+       * only on the new fight's first frame.
+       */
+      env.applySuddenDeath(0);
+      quarantined = false; postFailed = false;
       /* Чья сторона (D162). Сервер считает это персонально для сокета; здесь
          только запоминаем, чтобы телеграфы и плиты читали одно и то же. */
       mineSide = m.mine || null;
+      /* …and the whole palette follows it, in one place, before this match's
+         first frame: the player's creature is the blue one whatever slot the
+         server dealt it (ARENA-AAA §1). */
+      applySides();
       /*
        * Эффекты прошлого боя снимаются вместе с ним.
        *
@@ -2737,14 +4136,24 @@ function connect() {
       const byline = $('#clock .byline');
       if (byline) {
         const models = ['blue', 'orange'].map((id) => m.meta?.[id]?.model || '');
-        const handmade = models.filter((x) => /рукописн/i.test(x)).length;
+        const handmade = models.filter((x) => /рукописн|reference|stub/i.test(x)).length;
         byline.textContent = handmade === 2
-          ? 'Оба мозга здесь наши: это эталонные спарринг-партнёры.'
+          ? 'Both minds here are ours: reference sparring partners.'
           : (handmade === 1
-            ? 'Один мозг написан нейросетью, второй наш — эталонный спарринг-партнёр.'
-            : 'Оба мозга написаны нейросетью. Мы в них не вмешивались.');
+            ? 'One mind here was written by an AI; the other is our reference sparring partner.'
+            : 'Both minds here were written by an AI. We did not touch them.');
       }
-      $('#clock .s').textContent = `бой №${m.seed}`;
+      /*
+       * THE FIGHT'S NUMBER IS PRINTED ONCE.
+       *
+       * It used to be written here as well as into the phase subline the shell
+       * draws above the arena, so one frame carried `ARENA · FIGHT #232998750`
+       * at the top and `FIGHT #232998750` at the bottom — one object, named
+       * twice, in two places a player reads at the same time (§9.1). The
+       * subline keeps it; this line is the arena's status line, and its job is
+       * to say what the arena is doing.
+       */
+      $('#clock .s').textContent = '';
       const box = $('#seed');
       if (box && box.value.trim() === '') box.placeholder = String(m.seed);
       return;
@@ -2772,9 +4181,9 @@ function connect() {
       playFxUpTo(Infinity);
       over = m;
       const b = $('#banner');
-      b.querySelector('.who').textContent = m.winner ? `${sideName[m.winner]} · ПОБЕДА` : 'НИЧЬЯ';
+      b.querySelector('.who').textContent = m.winner ? `${sideName[m.winner]} · VICTORY` : 'DRAW';
       b.querySelector('.who').style.color = m.winner ? `#${COLOR[m.winner].toString(16)}` : '#fff';
-      b.querySelector('.why').textContent = REASON_RU[m.reason] || m.reason;
+      b.querySelector('.why').textContent = REASON[m.reason] || m.reason;
       b.classList.add('on');
       if ($('#chk-loop').checked) setTimeout(startMatch, 2600);
       /*
@@ -2811,7 +4220,7 @@ function connect() {
     downSince = downSince || Date.now();
     const el = $('#clock .byline');
     const late = Date.now() - downSince > 1500;
-    if (el && late) el.textContent = 'связь потерялась — бой идёт на сервере, догоним его сами';
+    if (el && late) el.textContent = 'connection lost — the fight goes on at the server, catching up';
     dispatchEvent(new CustomEvent('airena:offline', { detail: { since: downSince } }));
     setTimeout(connect, 900);
   };
@@ -2924,7 +4333,7 @@ const tagList = await fetch(`${API()}/api/brains`)
   .then((v) => (Array.isArray(v) ? v : []))
   .catch(() => []);
 const BRAIN_GROUPS = [
-  ['written by a model', (t, id) => !!t[id]],
+  ['written by an AI', (t, id) => !!t[id]],
   ['hand-written probes', (t, id) => !t[id] && t.tag !== 'stub'],
   ['reference stub', (t) => t.tag === 'stub'],
 ];
@@ -3041,12 +4450,727 @@ $('#btn-cam').onclick = () => {
   $('#btn-cam').textContent = camModes[camMode];
 };
 
-const camState = { az: Math.PI * 0.25, look: new THREE.Vector3(), dist: 30, height: 16, shake: 0, cover: 0, orbit: 0 };
+const camState = { az: Math.PI * 0.25, look: new THREE.Vector3(), dist: 30, height: 16, shake: 0, cover: 0, orbit: 0, establishing: 0, blend: 0, aimY: 1.6, bandNeed: 0 };
 /** The side melee is shot from once the pair is close enough to anchor to. */
 const CAM_ANCHOR = Math.PI * 0.25;
 const ARENA_CENTRE = new THREE.Vector3(0, 1.2, 0);
 /** A stand-in for `camera`, so a framing can be tried before it is committed. */
 const trialCam = new THREE.PerspectiveCamera(46, 1, 0.3, 400);
+/** The orbit's field of view; the establishing shot narrows it and the return widens it back. */
+const ORBIT_FOV = 46;
+
+/**
+ * Is this fighter inside the HUD's band from this eye? FEET AND HEAD, not the
+ * centre: `holds` used to project the body's half-height point against a
+ * symmetric box, so a 5 m generated body "held" with its head off the top
+ * edge and its feet through the name row (the golem in every fighting
+ * capture). Both ends must sit inside `hudBand` with a margin, and the x test
+ * keeps the old edge. The margin is 0.04 ndc at FRAME_TARGET (what the solve
+ * asks for) and 0 at FRAME_EDGE (what the assertion grades) — the same slack
+ * the two constants always kept between the servo and the alarm, for the
+ * eases and the hit shake. A corpse counts half its standing height: it lies
+ * down, and demanding room for a head that is not there would push the
+ * result's push-in out again.
+ */
+function bodyInBand(cam, id, f, edge) {
+  const m = 0.04 - (edge - FRAME_TARGET);
+  /*
+   * `top` is the vertical extent of the pose that was actually struck this
+   * frame (`spanY`, written by the body loop), and `height` is the rest
+   * measurement. A mech in mid-air with its arms up overshoots the cached cap
+   * by a metre and more — which is how `ARENA · FIGHT #915843606` came to be
+   * drawn straight through a head this test had just called framed. Node has
+   * no pose, so the gate keeps grading the cached height.
+   */
+  const h = bodies[id]?.top ?? bodies[id]?.height ?? 2;
+  for (const hy of [0, f.alive ? h : h * 0.5]) {
+    _p.set(f.x, f.y + hy, f.z).project(cam);
+    if (Math.abs(_p.x) > edge) return false;
+    if (_p.y > hudBand.yTop - m || _p.y < hudBand.yBot + m) return false;
+  }
+  return true;
+}
+
+/**
+ * WHERE A SUBJECT MAY BE PUT WHEN A CARD IS UP.
+ *
+ * The band (`hudBand.yTop/yBot`) is what the shell docks at the TOP and the
+ * BOTTOM; a card is neither — it is a hole in the middle of the frame. The VS
+ * card is 877 × 235 px at 1440×900 and the result card 420 × 484, and the
+ * establishing shot aimed at the pair's midpoint, i.e. the frame's centre,
+ * i.e. under the card: the result capture came back an empty plaza with a
+ * VICTORY card on it, and the VS capture put both fighters in the left bezel.
+ *
+ * So the card's rectangle cuts the band into four candidate regions — left of
+ * it, right of it, above it, below it — and the widest-by-area wins, with a
+ * nudge to the right on a tie because the shell's nav rail owns the left
+ * gutter. The answer is an ndc point to aim the subject at; `aimAt` below is
+ * what actually points the eye there. With no card up the answer is the band's
+ * own centre, which is what the shot did before.
+ */
+const _clear = { x: 0, y: 0, w: 1.76, h: 0.95 };
+function clearAim() {
+  const yT = hudBand.yTop, yB = hudBand.yBot;
+  const c = hudBand.cardRect;
+  _clear.x = 0; _clear.y = (yT + yB) / 2; _clear.w = 1.76; _clear.h = Math.max(0.05, yT - yB);
+  if (!c) return _clear;
+  const cand = [
+    [-0.88, Math.min(0.88, c.x0), yB, yT, -0.02],           // left of the card
+    [Math.max(-0.88, c.x1), 0.88, yB, yT, 0.02],            // right of it
+    [-0.88, 0.88, Math.max(yB, c.y0), yT, 0],               // above it
+    [-0.88, 0.88, yB, Math.min(yT, c.y1), 0],               // below it
+  ];
+  let best = -1;
+  for (const [x0, x1, y0, y1, bias] of cand) {
+    const w = x1 - x0, h = y1 - y0;
+    if (w <= 0.24 || h <= 0.16) continue;
+    const score = w * h + bias;
+    if (score <= best) continue;
+    best = score;
+    _clear.x = (x0 + x1) / 2; _clear.y = (y0 + y1) / 2; _clear.w = w; _clear.h = h;
+  }
+  /* Nothing clear enough to stand a body in: the caller falls through to the
+     stand shot, which makes the ARENA the subject instead of the pair. */
+  if (best < 0) { _clear.w = 0; _clear.h = 0; }
+  return _clear;
+}
+
+/**
+ * Point an eye at (lx, ly, lz) so that the point lands at ndc (tx, ty).
+ *
+ * Looking AT a point puts it at the centre of the frame. To put it somewhere
+ * else the eye is aimed past it, by the offset that centre-to-target is worth
+ * at this distance and field of view: `slant · tan(halfFov)` per unit of ndc,
+ * along the eye's own right and up axes. Rotating the eye rather than moving
+ * it keeps the composition — the arena stays where it is behind the subject.
+ */
+const _rightAx = new THREE.Vector3();
+const _upAx = new THREE.Vector3();
+const _aimAt = new THREE.Vector3();
+function aimAt(cam, lx, ly, lz, tx, ty) {
+  cam.lookAt(lx, ly, lz);
+  if (!tx && !ty) return;
+  cam.updateMatrixWorld();
+  _rightAx.setFromMatrixColumn(cam.matrixWorld, 0);
+  _upAx.setFromMatrixColumn(cam.matrixWorld, 1);
+  const slant = Math.hypot(cam.position.x - lx, cam.position.y - ly, cam.position.z - lz);
+  const tanV = Math.tan((cam.fov * Math.PI) / 360);
+  _aimAt.set(lx, ly, lz)
+    .addScaledVector(_rightAx, -tx * slant * tanV * cam.aspect)
+    .addScaledVector(_upAx, -ty * slant * tanV);
+  cam.lookAt(_aimAt);
+}
+
+/**
+ * Are both bodies clear of the card, and big enough to be worth looking at?
+ *
+ * The band test says "inside the picture"; this says "inside the part of the
+ * picture the reader can see". A body whose screen box touches the card rect
+ * is behind it, and a winner 120 px tall at the bottom of a 900 px frame is
+ * not a winner anybody can see — the result beat's whole job. `TALL_WANT` is
+ * 0.34 ndc, ~150 px at 900 and ~285 px on a phone.
+ */
+const TALL_WANT = 0.34;
+/**
+ * HOW BIG THE SUBJECT OF A CARD BEAT HAS TO BE, AND THE UNIT IS PIXELS.
+ *
+ * `TALL_WANT` is 0.34 ndc, which is 153 px at 900 and 143 px on the phone's
+ * 844 — and the bar for the one frame the whole loop pays off in is 200 px.
+ * ndc is the wrong unit for that question: a reader's eye counts pixels, not
+ * fractions of a viewport, and the shorter the window the smaller a fixed ndc
+ * makes the winner. So the card beat asks for `HERO_PX` of whatever the frame
+ * is, with `TALL_WANT` as its floor and 0.62 as its ceiling (past that the
+ * arena the winner is standing in stops being in the picture at all).
+ */
+const HERO_PX = 210;
+const heroTall = () => THREE.MathUtils.clamp((2 * HERO_PX) / Math.max(1, innerHeight), TALL_WANT, 0.62);
+/** How close a card beat may come. The pair beat's floor is 13; a winner
+    over a corpse is a portrait and is allowed the extra three metres. */
+const HERO_NEAR = 10;
+const _pA = new THREE.Vector3();
+const _pB = new THREE.Vector3();
+/**
+ * The same two questions asked of ONE body: clear of the card, big enough.
+ *
+ * `pairReadable` demands them of BOTH, and when it refuses the beat is handed
+ * to the arena portrait — which is the right answer for a VS card announcing a
+ * fight that has not started, and the wrong one for a result. Measured: at
+ * 1440×900 `live-result-loss.png` and `live-fighting.png` (both in phase
+ * `result`) carried ZERO pixels under L 58 anywhere outside the chrome and the
+ * card — the beat the whole loop pays off in arrived as an empty plaza with a
+ * DEFEAT card on it — while `clearAim` had a perfectly good half-frame beside
+ * the card the whole time (0.588 × 0.95 ndc). The fallen is read from the ring
+ * under the winner, which is what the 3846-3852 comment already argues for.
+ */
+/*
+ * WHY THE BEAT TOOK THE SHOT IT DID — recorded, not guessed.
+ *
+ * The result beat has been wrong for four review rounds and every round's
+ * evidence was one number off a picture: "39 px of the winner survive", "no
+ * pixel under L 70 beside the card". Which of the two tests refused — the
+ * SIZE or the CARD — is the whole question, and neither a capture nor a
+ * console could answer it: the verdict lived and died inside one frame. So
+ * `soloReadable` writes what it measured onto `standShot.beat`, `drawFrame`
+ * hangs it on `window.__airenaDrawn`, and every sidecar from here on carries
+ * the reason beside the picture.
+ */
+function soloReadable(cam, id, f) {
+  if (!f) return false;
+  const c = hudBand.cardRect;
+  const h = (bodies[id]?.top ?? bodies[id]?.height ?? 2) * (f.alive ? 1 : 0.5);
+  const r = cfg.fighters[id].radius;
+  _pA.set(f.x, f.y, f.z).project(cam);
+  _pB.set(f.x, f.y + h, f.z).project(cam);
+  /* The card beat's own bar (`heroTall`), not the general one: this test is
+     the verdict that decides whether the beat KEEPS its subject or hands the
+     frame to the arena portrait, and it was accepting a 150 px winner. */
+  const want = c ? heroTall() : TALL_WANT;
+  const tall = Math.abs(_pB.y - _pA.y);
+  standShot.beat = { sid: id, tall: +tall.toFixed(3), want: +want.toFixed(3), lapped: false, dist: Math.round(camState.dist) };
+  if (tall < want) return false;
+  if (!c) return true;
+  const wide = (r / Math.max(1, Math.hypot(cam.position.x - f.x, cam.position.y - f.y, cam.position.z - f.z)))
+    / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.2, cam.aspect);
+  const x0 = Math.min(_pA.x, _pB.x) - wide, x1 = Math.max(_pA.x, _pB.x) + wide;
+  const y0 = Math.min(_pA.y, _pB.y), y1 = Math.max(_pA.y, _pB.y);
+  standShot.beat.lapped = x1 > c.x0 && x0 < c.x1 && y1 > c.y1 && y0 < c.y0;
+  standShot.beat.box = [+x0.toFixed(2), +x1.toFixed(2), +y0.toFixed(2), +y1.toFixed(2)];
+  standShot.beat.card = [+c.x0.toFixed(2), +c.x1.toFixed(2), +c.y0.toFixed(2), +c.y1.toFixed(2)];
+  return !standShot.beat.lapped;
+}
+/**
+ * WHOSE BEAT IS THIS — IN ORDER, because the first answer can be unusable.
+ *
+ * The winner when there is one, then whoever is still standing, then the
+ * taller of the two; never nobody, because a result card over an empty arena
+ * is the failure this answers. It used to return ONE subject and the caller
+ * took it or fell through to the arena portrait. On a LOSS the winner is the
+ * opponent, and the opponent is wherever the kill happened — which on
+ * `live-result-loss.png` was outside the strip the card leaves clear: masking
+ * the card and the chrome, that capture carried NO pixel under L 70 anywhere
+ * beside the card, while `live-result-win.png` carried its winner. The solver
+ * kept the subject on a win and lost it on a loss, and the screen a player
+ * reads after a defeat was a card on empty plaster.
+ *
+ * So the beat has an order and the caller tries them in turn, keeping the
+ * first that lands inside the clear region: a fallen creature the reader can
+ * see is a better result screen than an empty plaza.
+ */
+function beatOrder(a, b) {
+  const cand = [['blue', a], ['orange', b]].filter(([, f]) => !!f);
+  if (cand.length < 2) return cand;
+  const win = over && over.winner;
+  const rank = ([id, f]) => (id === win ? 0 : (f.alive ? 1 : 2));
+  return cand.slice().sort((x, y) => {
+    const d = rank(x) - rank(y);
+    if (d) return d;
+    return (bodies[y[0]]?.height ?? 2) - (bodies[x[0]]?.height ?? 2);
+  });
+}
+function pairReadable(cam, a, b) {
+  const c = hudBand.cardRect;
+  /* BOTH clear of the card, and at least ONE big enough. Demanding the size
+     of both was demanding it of a CORPSE — a body lying on its side is a
+     third of its standing height, so the result beat could never satisfy it
+     and always fell through to the arena, leaving the winner behind the card
+     with only its ring showing. What the beat has to deliver is a winner the
+     reader can see; the fallen is read from the winner standing over it. */
+  let tall = false;
+  for (const [id, f] of [['blue', a], ['orange', b]]) {
+    if (!f) return false;
+    const h = (bodies[id]?.top ?? bodies[id]?.height ?? 2) * (f.alive ? 1 : 0.5);
+    const r = cfg.fighters[id].radius;
+    _pA.set(f.x, f.y, f.z).project(cam);
+    _pB.set(f.x, f.y + h, f.z).project(cam);
+    if (Math.abs(_pB.y - _pA.y) >= TALL_WANT) tall = true;
+    if (!c) continue;
+    /* the body's screen box, widened by its own collision radius at the
+       feet's depth — a shoulder that clips the card's rail still reads as
+       behind it */
+    const wide = (r / Math.max(1, Math.hypot(cam.position.x - f.x, cam.position.y - f.y, cam.position.z - f.z)))
+      / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.2, cam.aspect);
+    const x0 = Math.min(_pA.x, _pB.x) - wide, x1 = Math.max(_pA.x, _pB.x) + wide;
+    const y0 = Math.min(_pA.y, _pB.y), y1 = Math.max(_pA.y, _pB.y);
+    if (x1 > c.x0 && x0 < c.x1 && y1 > c.y1 && y0 < c.y0) return false;
+  }
+  return tall;
+}
+
+/**
+ * THE ESTABLISHING CAMERA — the VS beat and the result.
+ *
+ * The brief (§2) asks for "a low establishing framing for VS/intro/result";
+ * the stand's `vs` preset is the eye at (−12, 5, 16) from the pair's
+ * midpoint, aimed 2 m up, fov 42 — the planet whole upper-left, both bodies
+ * whole in the lower two thirds, the tiers pale in the fog. The orbit is the
+ * wrong picture under a card: the VS card lay over the previous fight's
+ * wreck at melee range and the result card over the fallen body's cabin.
+ *
+ * This eases `camState` — never `camera` directly, so the trail
+ * `tools/checkcamera.mjs` grades stays continuous and the orbit resumes from
+ * wherever this left it — toward the stand's azimuth, 22 m and 5 m, or
+ * further out and a little higher when the pair is wide (up to 44 m, with the
+ * same back-off the orbit uses so both bodies are whole), and the fov toward
+ * 42. Before the first frame of a match the aim is the previous fight's pair,
+ * or the field's centre. The wall rule in `updateOcclusion` fades whichever
+ * wall the eye looks over. On the first fighting frame the orbit takes over
+ * with `blend` up: its eases and rate caps run ×5 for 0.6 s, so the swing
+ * back to the anchor is a move — not a cut, not a crawl — and the framing
+ * assertion stands down for that 0.6 s as it does for a cut.
+ */
+const EST = { az: Math.atan2(-12, 16), fov: 42, dist: 22, height: 5, aimY: 2.0 };
+function establishingCamera(a, b, dt) {
+  const snap = camState.snap;
+  camState.snap = false;
+  const ease = (rate) => (snap ? 1 : 1 - Math.exp(-rate * dt));
+  const both = !!(a && b);
+  const mid = both ? new THREE.Vector3((a.x + b.x) / 2, 0, (a.z + b.z) / 2) : new THREE.Vector3(0, 0, 0);
+  const sep = both ? Math.hypot(b.x - a.x, b.z - a.z) : 0;
+  camera.fov += (EST.fov - camera.fov) * ease(3);
+  camera.updateProjectionMatrix();
+  const hFov = 2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
+  let want = THREE.MathUtils.clamp((sep / 2 + 5.5) / Math.tan(hFov / 2), EST.dist, 44);
+  /*
+   * AND UNDER A CARD, CLOSE IN. The 22 m preset frames the pair whole, which
+   * on the result beat left the winner ~120 px tall at the bottom of a 900 px
+   * picture — the shot this branch was written for ("close in on the kill")
+   * never reached the frame. So when a card is up the distance is also solved
+   * for SIZE: the eye comes in until the taller body is `TALL_WANT` of the
+   * frame, floored at 13 m so the arena does not vanish behind the pair. The
+   * fit loop below still backs off if that costs the band or the card.
+   */
+  if (hudBand.cardRect) {
+    /* solved for the TALLER of the two — the winner, at the result — because
+       that is the body the beat has to make legible */
+    const hMax = Math.max(
+      (bodies.blue?.top ?? bodies.blue?.height ?? 2) * (a?.alive ? 1 : 0.5),
+      (bodies.orange?.top ?? bodies.orange?.height ?? 2) * (b?.alive ? 1 : 0.5),
+    );
+    const eye = hMax / Math.max(0.05, heroTall() * Math.tan((camera.fov * Math.PI) / 360));
+    const rise = camState.height - EST.aimY;
+    const near = Math.sqrt(Math.max(1, eye * eye - rise * rise));
+    want = THREE.MathUtils.clamp(Math.min(want, near), HERO_NEAR, 44);
+  }
+  const heightAt = (d) => EST.height + (d - EST.dist) / 12;
+  camState.look.lerp(mid, ease(4));
+  const d = ((EST.az - camState.az + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  const azStep = d * ease(2.5);
+  camState.az += snap ? azStep : THREE.MathUtils.clamp(azStep, -AZ_RATE * dt, AZ_RATE * dt);
+  const stepDist = (want - camState.dist) * ease(want > camState.dist ? 9 : 2.6);
+  const capDist = snap ? Infinity : 26 * dt;
+  camState.dist += THREE.MathUtils.clamp(stepDist, -capDist, capDist);
+  camState.height += (heightAt(camState.dist) - camState.height) * ease(2.5);
+  camState.aimY += (EST.aimY - camState.aimY) * ease(3);
+  camState.cover = 0; camState.orbit = 0; camState.rescueTo = 0;
+  /* The entry is a move, as the return is: the eye leaves the kill push-in
+     (9.5 m, 7 m up) for 22 m and 5 m over about half a second, and the
+     framing assertion stands down for the first 0.6 s of it as it does for
+     a cut. The back-off below still keeps both bodies inside the band
+     through the move, at the orbit's rescue rate. */
+  if (!camState.establishing) camCutAt = performance.now() / 1000;
+  camState.establishing = 1;
+  /* Where the pair goes on the screen: the band's centre with no card up, the
+     widest clear region beside or below one when there is (`clearAim`). */
+  const aim = clearAim();
+  /*
+   * WHAT THE EYE POINTS AT, WHICH ON A SOLO BEAT IS NOT WHAT IT ORBITS.
+   *
+   * `place` aimed the pair's MIDPOINT into the clear region, and the solo
+   * branch below inherited that: the winner was solved for, tested for, and
+   * then framed by the midpoint of a pair one of whose members is a corpse
+   * three metres away. On `live-result-win.png` it put the winner ASTRIDE the
+   * card's edge — the card's body ran to x=927 and the winner's mass to
+   * x=930–968, so 41 px of a body survived beside a 420 px card and the rest
+   * was behind it. The eye still stands where the pair solve put it (the
+   * composition, the arena behind the subject, the azimuth are all that
+   * orbit's); only what it looks AT moves.
+   */
+  const focus = { x: camState.look.x, z: camState.look.z, tx: aim.x, ty: aim.y };
+  const place = (cam) => {
+    cam.position.set(
+      camState.look.x + Math.sin(camState.az) * camState.dist,
+      camState.height,
+      camState.look.z + Math.cos(camState.az) * camState.dist,
+    );
+    aimAt(cam, focus.x, camState.aimY, focus.z, focus.tx, focus.ty);
+  };
+  /*
+   * …AND THE SILHOUETTE CLEARS THE CARD, NOT THE POINT AT THE MIDDLE OF IT.
+   *
+   * Aiming a body's centre into the clear region says nothing about its
+   * WIDTH, and a card edge cuts silhouettes, not centres. So after the
+   * distance is solved the subject's projected box is measured against
+   * `hudBand.cardRect` and, if it laps it, the aim is pushed the shortfall
+   * plus a pad further out along whichever axis the clear region actually
+   * lies on — right of the card, left of it, above it (which is the phone's
+   * answer: the card stacks over the fighters) or below. Two passes: the push
+   * changes the projection, and the second reading is against the frame the
+   * first one made. Bounded by the frame's own edge, so the cure can never be
+   * a body half outside the picture.
+   */
+  const CLEAR_PAD = 0.05;
+  const clearOfCard = (cam, id, f) => {
+    const c = hudBand.cardRect;
+    if (!c || !f) return false;
+    const h = (bodies[id]?.top ?? bodies[id]?.height ?? 2) * (f.alive ? 1 : 0.5);
+    const r = cfg.fighters[id].radius;
+    _pA.set(f.x, f.y, f.z).project(cam);
+    _pB.set(f.x, f.y + h, f.z).project(cam);
+    const wide = (r / Math.max(1, Math.hypot(cam.position.x - f.x, cam.position.y - f.y, cam.position.z - f.z)))
+      / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.2, cam.aspect);
+    const x0 = Math.min(_pA.x, _pB.x) - wide, x1 = Math.max(_pA.x, _pB.x) + wide;
+    const y0 = Math.min(_pA.y, _pB.y), y1 = Math.max(_pA.y, _pB.y);
+    if (!(x1 > c.x0 && x0 < c.x1 && y1 > c.y1 && y0 < c.y0)) return false;
+    const rx0 = aim.x - aim.w / 2, rx1 = aim.x + aim.w / 2, ry0 = aim.y - aim.h / 2;
+    let dx = 0, dy = 0;
+    if (rx0 >= c.x1 - 1e-3) dx = c.x1 + CLEAR_PAD - x0;
+    else if (rx1 <= c.x0 + 1e-3) dx = c.x0 - CLEAR_PAD - x1;
+    else if (ry0 >= c.y0 - 1e-3) dy = c.y0 + CLEAR_PAD - y0;
+    else dy = c.y1 - CLEAR_PAD - y1;
+    if (!dx && !dy) return false;
+    focus.tx = THREE.MathUtils.clamp(focus.tx + dx, -FRAME_TARGET, FRAME_TARGET);
+    focus.ty = THREE.MathUtils.clamp(focus.ty + dy, hudBand.yBot, hudBand.yTop);
+    return true;
+  };
+  if (both) {
+    const fits = (edge) => {
+      trialCam.fov = camera.fov; trialCam.aspect = camera.aspect; trialCam.updateProjectionMatrix();
+      place(trialCam);
+      trialCam.updateMatrixWorld();
+      return bodyInBand(trialCam, 'blue', a, edge) && bodyInBand(trialCam, 'orange', b, edge);
+    };
+    /* the orbit's rescue, verbatim in spirit: steps of 8 % until the band
+       holds, rate-limited unless the frame is already lost; the height is
+       left to its own ease — writing it onto the curve here was a 2.6 m
+       step in one frame */
+    const before = camState.dist;
+    const lost = snap || !fits(FRAME_EDGE);
+    for (let i = 0; i < 16 && camState.dist < 44 && !fits(FRAME_TARGET); i++) camState.dist = Math.min(44, camState.dist * 1.08);
+    if (camState.dist > before && !lost) camState.dist = Math.min(camState.dist, before + RESCUE_RATE * dt);
+  }
+  place(camera);
+  /*
+   * AND THE VERDICT ON THIS SHOT, for the loop's own choice next frame
+   * (`standShot.auto`). A pair shot only earns the beat when both bodies are
+   * actually visible: inside the band, clear of the card, and big enough to
+   * be looked at. The VS card is 877 px wide and leaves 0.32 ndc of clear
+   * frame above it — no pair fits there, so the VS beat falls through to the
+   * ARENA (the stand shot, with the banner in it), which is what that beat is
+   * for. The result card is narrow and leaves a clear half beside it, so the
+   * winner-over-the-fallen framing survives where it is worth having.
+   */
+  camera.updateMatrixWorld();
+  standShot.pair = both && aim.w > 0 && pairReadable(camera, a, b);
+  /*
+   * AND WHEN THE PAIR WILL NOT FIT, THE BEAT KEEPS ITS SUBJECT.
+   *
+   * The stand-shot fallback is for "there is nothing to frame" — a VS card
+   * that rises before the first snapshot — not for "the two of them do not
+   * both fit beside the card". Handing the result to the arena portrait cost
+   * the beat its winner: no fighter at all in the 1440×900 result captures.
+   * So the pair test failing is not the end of the question. One body is
+   * re-solved for on its own with the SAME back-off loop, and only if that
+   * fails too does the arena take the beat.
+   */
+  /*
+   * …AND RETREATING PAST THE POINT WHERE THE SUBJECT IS VISIBLE BUYS NOTHING.
+   *
+   * The loop below grows the distance by 8 % up to sixteen times — ×3.4 — to
+   * satisfy `bodyInBand`, and at 1440×900 the centred 430×484 result card
+   * leaves side strips only 0.58 ndc wide, so it ran to the cap almost every
+   * time. At that distance the subject is far under `TALL_WANT`, `soloReadable`
+   * refuses, and the beat falls through to the arena portrait — which is
+   * exactly what the desktop result captures are: `live-result-loss.png` with
+   * ZERO connected regions under L 62 outside the card, `live-result-win.png`
+   * with one 58 × 23 px blob that is the LOSER's corpse.
+   *
+   * The two tests were pulling against each other, then: the band asks the eye
+   * to retreat and the size test refuses the answer. So the retreat is capped
+   * at the distance where the body still subtends `TALL_WANT` — past it there
+   * is no answer to find, only a smaller body — and the loop stops there and
+   * hands the beat on. Same arithmetic as the push-in above: the eye's SLANT
+   * range is what a projected height is worth, so the ground distance is
+   * `sqrt(slant² − rise²)`.
+   */
+  const sizeCap = (id, f) => {
+    const h = (bodies[id]?.top ?? bodies[id]?.height ?? 2) * (f && f.alive ? 1 : 0.5);
+    /* THE SAME BAR THE VERDICT WILL APPLY. `soloReadable` asks for `heroTall`
+       only when there IS a card to stand beside and for `TALL_WANT` otherwise,
+       and this cap was asking for the hero bar either way — so with no card
+       (the after-over window `checkframing` flies, and any beat before the
+       shell has measured one) the cap named a distance a third nearer than
+       the verdict needs, and every metre of that is a metre the OTHER fighter
+       spends closer to the edge. */
+    const want = hudBand.cardRect ? heroTall() : TALL_WANT;
+    const slant = h / Math.max(0.05, want * Math.tan((camera.fov * Math.PI) / 360));
+    const rise = camState.height - EST.aimY;
+    return THREE.MathUtils.clamp(Math.sqrt(Math.max(1, slant * slant - rise * rise)), HERO_NEAR, 44);
+  };
+  if (!standShot.pair && aim.w > 0) {
+    /*
+     * AND IT IS TRIED ON BOTH BODIES, WINNER FIRST (see `beatOrder`). On a
+     * loss the winner is the opponent and it may be nowhere near the clear
+     * half; a fallen creature the reader can see beats an empty plaza, so the
+     * second candidate gets the same solve from the same starting eye.
+     */
+    const before = camState.dist;
+    for (const [sid, sf] of beatOrder(a, b)) {
+      camState.dist = before;
+      /* THE SUBJECT IS WHAT THE EYE POINTS AT (see `focus`). Solving for one
+         body and then aiming the pair's midpoint is how the winner came to
+         straddle the card's edge. */
+      focus.x = sf.x; focus.z = sf.z; focus.tx = aim.x; focus.ty = aim.y;
+      const cap = sizeCap(sid, sf);
+      /*
+       * ── AND THE EYE COMES IN AS WELL AS OUT ───────────────────────────────
+       *
+       * `sizeCap` is the FARTHEST distance at which the subject still reaches
+       * `heroTall`, and the loop under it only ever GROWS the distance. So the
+       * beat inherited whatever the fight camera left behind and had no way to
+       * shorten it: the card beat opens at the fighting eye's 17–26 m, the cap
+       * is nearer than that, `camState.dist < cap` is false on the first test,
+       * the loop does not run, and the winner is photographed at the distance
+       * a dash left the camera at. Measured on the three card captures of this
+       * round, straight off `__airenaDrawn.beat` — the record this file added
+       * for exactly this question: `live-result-win` tall **0.069** at dist
+       * 26, `live-result-loss` **0.26** at 17, `live-vs` **0.248** at 20,
+       * against a `want` of 0.467 in all three. Every one of them refused on
+       * SIZE, with the eye standing further out than the size test can accept,
+       * and every one fell through to the arena portrait — the empty-plaza
+       * result frame this whole block exists to prevent.
+       *
+       * So the same cap is a FLOOR as well as a ceiling: past it there is no
+       * answer to find, short of it there is one and it is the beat's.
+       *
+       * AND IT IS TAKEN IN ONE STEP, NOT WALKED. Every other move in this
+       * function is rate-limited, and a rate-limited approach here buys
+       * nothing: the solve restarts from `camState.dist` every frame and the
+       * restore at the end of this block hands the whole approach back the
+       * moment the beat fails, so a metre a frame is a metre a frame given
+       * away. Rate-limiting it and flooring the restore instead was tried and
+       * is worse — see the restore's own note; it cost `checkframing` a
+       * fighter at |ndc| 1.103. So the eye arrives at the distance the beat
+       * needs and the distance is COMMITTED ONLY IF THE BEAT KEEPS IT: on the
+       * frame `soloReadable` passes, the shot the reader sees is the shot that
+       * was graded, and on every frame it refuses, `camState.dist` goes back
+       * untouched. A card beat is a cut in the edit anyway (`camCut`), which is
+       * what `checkcamera` excludes and why it stays green across this.
+       *
+       * AND ONLY WHERE THERE IS A CARD TO STAND BESIDE. A hero shot of ONE
+       * fighter is bought with the other one's place in the frame, and that is
+       * the right trade exactly once: when a card has taken the middle of the
+       * screen and the beat is about the creature beside it. With no card the
+       * subject is the pair, and pushing in on one of them is how
+       * `checkframing` came to lose the other at |ndc| 0.955 and 1.273 in six
+       * replays of the after-over window. So the approach is conditional on
+       * `hudBand.cardRect`, which is the same thing `soloReadable` keys its
+       * own bar on — one question, asked once, answered the same way twice.
+       */
+      if (hudBand.cardRect && camState.dist > cap) camState.dist = cap;
+      const fitsOne = (edge) => {
+        trialCam.fov = camera.fov; trialCam.aspect = camera.aspect;
+        trialCam.updateProjectionMatrix();
+        place(trialCam);
+        trialCam.updateMatrixWorld();
+        return bodyInBand(trialCam, sid, sf, edge);
+      };
+      for (let i = 0; i < 16 && camState.dist < cap && !fitsOne(FRAME_TARGET); i++) {
+        camState.dist = Math.min(cap, camState.dist * 1.08);
+      }
+      if (camState.dist > before && !snap) camState.dist = Math.min(camState.dist, before + RESCUE_RATE * dt);
+      place(camera);
+      camera.updateMatrixWorld();
+      for (let i = 0; i < 2 && clearOfCard(camera, sid, sf); i++) {
+        place(camera);
+        camera.updateMatrixWorld();
+      }
+      if (soloReadable(camera, sid, sf)) { standShot.pair = true; break; }
+    }
+    /* Neither of them: put the eye back where the pair solve left it, so the
+       arena portrait blends out of the shot this frame actually composed
+       rather than out of a retreat nobody is going to see. */
+    /*
+     * …AND THE RESTORE IS TOTAL, WHICH IS WHY THE PUSH-IN ABOVE IS NOT.
+     *
+     * Flooring this at the size test's own `capWant` was tried, so that a beat
+     * failing on SIZE could walk the eye in a metre a frame instead of handing
+     * every metre straight back. It works and it costs more than it buys: the
+     * eye then sits at `HERO_NEAR` for the whole of a beat it never wins, and
+     * `checkframing` — which grades every live fighter through the after-over
+     * window too — went from worst |ndc| 0.849/0.867 to 0.890 and **1.103**,
+     * a fighter a fifth of a screen outside the picture, in 20 replays. A beat
+     * that cannot keep its subject must not keep the approach either; the
+     * push-in lands on the beat's CUT (`snap`, unlimited there) or not at all.
+     */
+    if (!standShot.pair) {
+      camState.dist = before;
+      focus.x = camState.look.x; focus.z = camState.look.z; focus.tx = aim.x; focus.ty = aim.y;
+      place(camera);
+      camera.updateMatrixWorld();
+    }
+  }
+}
+
+/**
+ * THE STAND SHOT — the arena as the picture, on request.
+ *
+ * `establishingCamera` above frames the PAIR: it is the right answer for the
+ * result, where the winner stands over the fallen, and for a VS beat whose two
+ * bodies are already on the floor. It is the wrong answer when there is
+ * nothing to frame — a VS card rises before the match's first snapshot, so
+ * neither body is visible yet, and the shot became a mid-height view of empty
+ * plaster with the card over it, no wall, no blocks, no planet, no banner.
+ * That is the beat the site is most looked at.
+ *
+ * So there is a second establishing shot, and it is the STAND's `low` preset
+ * verbatim (`arena.html` CAMS.low, photographed as `reports/arena/stand-low.png`):
+ * 8 m over the coping, 32 m out, aimed 8 m past the centre at fov 56 — the
+ * four walls, the blocks, the tiers in the haze, the banner and the planet's
+ * disc, which is the arena's own portrait. (The brief's "about (0, 10, 30),
+ * fov 48" is this shot rounded; the stand's numbers are the ones that were
+ * photographed, and at fov 50 the tier wings showed only as two chips cut by
+ * the frame edges.)
+ *
+ * ── it does not touch the solver ────────────────────────────────────────────
+ *
+ * The auto camera keeps running underneath, every frame, into `camState`; this
+ * only BLENDS the drawn eye toward the preset, over 600 ms in and 600 ms out,
+ * and puts the field of view back before the solver reads it again
+ * (`releaseStandShot`, at the head of `frame()`). The eye is put back whole —
+ * position, orientation and field of view — for two reasons: `camera.fov` is
+ * the one piece the solver READS BACK (its own ease runs on it, so a borrowed
+ * 56° would feed into the next solve), and on the loop's third path, where
+ * neither camera branch runs at all (no frames, no match: a visitor's first
+ * seconds), nothing would re-place the eye and the blend would have no pose
+ * to blend FROM — it would sit at the shot for ever instead of easing back.
+ * When the shot is released the orbit is
+ * already where it would have been, and `tools/checkframing.mjs`, which slices
+ * this file and never asks for the shot, grades exactly the camera it graded
+ * before. The framing assertion stands down while the blend is up, as it does
+ * for a cut: what it grades is the fight's eye, and this is not it.
+ *
+ * Asked for by the shell — `window.__airenaCam('stand')` and `('auto')` — or
+ * by `?cam=stand` for a capture; and by the viewer itself on a card beat with
+ * no pair to stand over (`standShot.auto`, set in the loop).
+ */
+const STAND_SHOT = { pos: new THREE.Vector3(0, cfg.arena.wallHeight + 8, 32), look: new THREE.Vector3(0, 2.5, -8), fov: 56 };
+/**
+ * …AND IT IS COMPOSED FOR 16:9, so a portrait frame has to be given the same
+ * picture rather than a crop of it.
+ *
+ * `STAND_SHOT.fov` is a VERTICAL field of view. At 1440×900 (aspect 1.6) the
+ * horizontal field is 80.8°, which is what puts the banner at ndc x −0.29 and
+ * both tier wings inside the frame. At 390×844 (aspect 0.46) the same 56°
+ * vertical is 28° horizontal: the banner projects to x −1.02 — off the left
+ * bezel — the wings leave the frame, and the mobile capture came back a blank
+ * page with a card on it.
+ *
+ * So the HORIZONTAL field is what is held, not the vertical: the fov is
+ * widened until the frame carries the same horizontal angle it carries at
+ * 1.6, capped at 74° (past that the perspective bends), and the eye is pulled
+ * back along its own view line for what the cap could not buy — capped at
+ * 1.25×, because pulling all the way back turns the arena into a strip in the
+ * middle of a tall frame. At 390×844 that is fov 74 from (0, 14.4, 42), which
+ * puts the banner at −0.65 and the arena across the width. Identity at 1.6;
+ * a wider frame than 1.6 keeps the composed 56° rather than narrowing.
+ */
+const STAND_REF_ASPECT = 1.6;
+const STAND_FOV_CAP = 74;
+const STAND_PULL_CAP = 1.25;
+const _standPos = new THREE.Vector3();
+const standFit = { fov: 56, pos: _standPos };
+function fitStandShot(aspect) {
+  const tanH = Math.tan((STAND_SHOT.fov * Math.PI) / 360) * STAND_REF_ASPECT;
+  const a = Math.max(0.2, aspect);
+  const fov = THREE.MathUtils.clamp(
+    (2 * Math.atan(tanH / a) * 180) / Math.PI, STAND_SHOT.fov, STAND_FOV_CAP,
+  );
+  const have = Math.tan((fov * Math.PI) / 360) * a;
+  const pull = THREE.MathUtils.clamp(tanH / have, 1, STAND_PULL_CAP);
+  standFit.fov = fov;
+  _standPos.copy(STAND_SHOT.pos).sub(STAND_SHOT.look).multiplyScalar(pull).add(STAND_SHOT.look);
+  return standFit;
+}
+const standShot = {
+  want: 0, auto: false, pair: false, done: false, k: 0, held: false,
+  /* the last card beat's own verdict, for the sidecar — see `soloReadable` */
+  beat: null,
+  /* the solver's own eye, kept while the blend borrows it */
+  fovAuto: 0, posAuto: new THREE.Vector3(), quatAuto: new THREE.Quaternion(),
+};
+/* A camera, not a bare Object3D: `Object3D.lookAt` points −z at the target
+   only for a camera or a light, and +z for everything else — a plain object
+   here would aim the shot at the wall behind it. */
+const _standEye = new THREE.PerspectiveCamera(STAND_SHOT.fov, 1, 0.3, 400);
+/** The shell's hook. Anything but 'stand' is the fight's own camera again. */
+function requestCam(mode) {
+  standShot.want = mode === 'stand' ? 1 : 0;
+  return standShot.want ? 'stand' : camModes[camMode];
+}
+if (typeof window !== 'undefined') {
+  window.__airenaCam = requestCam;
+  if (new URLSearchParams(location.search).get('cam') === 'stand') requestCam('stand');
+}
+/** Give the solver its own field of view back, before it runs. */
+function releaseStandShot() {
+  standShot.done = false;
+  if (!standShot.held) return;
+  standShot.held = false;
+  camera.position.copy(standShot.posAuto);
+  camera.quaternion.copy(standShot.quatAuto);
+  camera.fov = standShot.fovAuto;
+  camera.updateProjectionMatrix();
+}
+/**
+ * Blend the drawn eye toward the stand shot. Called after the camera solve and
+ * BEFORE `updateOcclusion`, so the wall rule fades the wall this eye looks
+ * over rather than the one the orbit was behind.
+ */
+function applyStandShot(dt) {
+  /* ONCE A FRAME, whichever call site reaches it first — after the solve when
+     a fight is on the screen (so `updateOcclusion` fades the wall THIS eye
+     looks over), at the tail of the loop otherwise. The loop has a third
+     path, and it is the one the VS beat takes: with no frames and no match
+     announced neither camera branch runs at all, and a blend that only
+     stepped inside them stopped half way and left the eye between the boot
+     camera and the shot — which is exactly what the first capture showed. */
+  if (standShot.done) return;
+  standShot.done = true;
+  const step = dt / 0.6;
+  const want = standShot.want || standShot.auto ? 1 : 0;
+  standShot.k = THREE.MathUtils.clamp(standShot.k + (want ? step : -step), 0, 1);
+  if (standShot.k <= 0) return;
+  /* smoothstep, so the move leaves and arrives at rest — a linear ramp on a
+     600 ms cut reads as a shove at both ends */
+  const k = standShot.k * standShot.k * (3 - 2 * standShot.k);
+  standShot.posAuto.copy(camera.position);
+  standShot.quatAuto.copy(camera.quaternion);
+  standShot.fovAuto = camera.fov;
+  standShot.held = true;
+  const fit = fitStandShot(camera.aspect);
+  _standEye.position.copy(fit.pos);
+  _standEye.fov = fit.fov;
+  _standEye.aspect = camera.aspect;
+  /*
+   * AND ON A TALL FRAME THE SHOT LOOKS DOWN, so the arena is not all behind
+   * the card. In portrait the far coping — the arena's own horizon — projects
+   * to y ≈ 375 of 844 and the banner to y ≈ 311, both inside the card's
+   * 165–578, so the band ABOVE the card measured 5.4 L: a blank cream page
+   * with a VICTORY card on it. Tilting the aim down by half a frame lifts the
+   * coping to y ≈ 139 and the banner to y ≈ 80 — the arena's boundary, its
+   * tiers and its one coral mark all land in the band the reader has. Zero at
+   * 16:9, where the composed shot already works, and ramped in as the frame
+   * narrows so a tablet gets a third of it.
+   */
+  const tilt = THREE.MathUtils.clamp((1.2 - camera.aspect) * 0.7, 0, 0.55);
+  aimAt(_standEye, STAND_SHOT.look.x, STAND_SHOT.look.y, STAND_SHOT.look.z, 0, tilt);
+  camera.position.lerp(_standEye.position, k);
+  camera.quaternion.slerp(_standEye.quaternion, k);
+  camera.fov += (fit.fov - camera.fov) * k;
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  camCutAt = performance.now() / 1000;
+}
 
 /**
  * How much of the half-frame the pair and the wall-bias between them may fill.
@@ -3059,6 +5183,99 @@ const trialCam = new THREE.PerspectiveCamera(46, 1, 0.3, 400);
  * the ground distance and ignores the camera's elevation, so it reads low.
  */
 const AIM_HEADROOM = 0.62;
+/**
+ * Where in the HUD's free band the pair is placed, from its floor.
+ *
+ * 0.5 is the band's middle, which is where this sat; 0.36 puts the fighters in
+ * the lower third of the room they have and gives the upper third to the
+ * arena's own horizon. See the note at `bandMid`.
+ */
+const BAND_PLACE = 0.36;
+/**
+ * THE FIGHT CAMERA'S PITCH CEILING — how the world got into the frame.
+ *
+ * The stand's `orbit()` looks at a fixed 3.5 m and the port looks at the pair,
+ * which is 1.2 m; the difference is 4.6° of pitch and it is the whole of the
+ * founder's second directive. Measured on the frame before this: above the
+ * coping there were 18 px of sky, 22 px of deck fascia and then tier bank —
+ * no banner, no planet, no moon, no skyline anywhere in a fighting frame.
+ *
+ * A FLOOR UNDER THE AIM WAS TRIED FIRST AND IT IS THE WRONG LEVER. The aim's
+ * height is not free: `dropAt` places the pair inside whatever band the HUD
+ * leaves, and on the visitor's page — where the invitation card docks in the
+ * bottom column and `measureHud` reports a band whose centre is ABOVE the
+ * frame's — the drop is positive and the aim is legitimately below the
+ * fighters' feet. Clamping it to 2.8 m there raised the aim by three metres,
+ * dropped the pair 0.22 ndc toward the band's floor, and the band solve
+ * answered the only way it can: it backed the eye out to the 44 m cap. The
+ * capture is unmistakable — the whole 40 m pit inside 66 % of the width and
+ * two fighters 40 px tall.
+ *
+ * So the pitch is capped where pitch actually lives: the EYE's height. The
+ * aim keeps the composition the band asked for, the eye comes down until the
+ * shot is no steeper than this, and the frame's top edge rises by exactly the
+ * angle the eye gave up. At the fight's mean 20 m shot that is an eye at
+ * about 7.3 m instead of 9.2, a top of frame at +8° instead of +2.8°, and a
+ * deck roofline (16.4 m at the far ring) inside the picture with sky over it.
+ *
+ * Floored at the wall's own height plus a metre: below that the eye is INSIDE
+ * the room, the near wall stops being something the wall rule can fade
+ * (`wallHidesField` needs an eye above the coping) and becomes a lid.
+ */
+/*
+ * 15°, swept against both gates over the same 60 464 rendered frames. The
+ * whole grid, worst |ndc| at 16:9 / 4:3 and `checkcamera`'s height p99:
+ *
+ *   no cap  0.694 / 0.847   height p99 19.1  dist p99 175  (before)
+ *   20°     0.770 / 0.868   height p99 10.2  dist p99 162
+ *   18°     (not read)     height p99  8.6  dist p99 146
+ *   16°     0.847 / 0.860   height p99  7.0  dist p99 134
+ *   15°     0.849 / 0.867   height p99  6.4  dist p99 129   ← taken
+ *   14°     0.851 / 0.872   height p99  5.8  dist p99 128
+ *
+ * Everything holds; what moves is where the margin sits. The fighters give
+ * up 0.15 of `FRAME_EDGE`'s slack (0.85 against 0.92, and still inside
+ * `FRAME_TARGET`'s own 0.88) and the camera's smoothness gains three times
+ * that. 15° is where the WORLD arrives and not a degree past it: the top of
+ * frame lands at +8° of elevation, which at the far ring's 94 m puts the
+ * picture's edge above 20 m against the deck's 16.4 m roofline. 18° leaves
+ * the edge at 16.6 m — the roofline exactly, i.e. clipped — and buying more
+ * sky below 14° costs |ndc| without adding anything the frame does not have.
+ */
+const PITCH_MAX = 15;
+const PITCH_TAN = Math.tan((PITCH_MAX * Math.PI) / 180);
+/**
+ * How fast the eye climbs with distance — the fight camera's pitch, really.
+ *
+ * 0.42 put the eye 15.4 m up at a 30 m shot and pointed the top of frame BELOW
+ * the horizon at every distance the orbit uses. 0.32 is 3 m lower at 30 m and
+ * 1.8 m at 18 m (the measured mean shot) — about 5° of pitch — and it is a
+ * quieter camera as well as a flatter one, because the eye's height follows
+ * the distance and a shallower coupling means a dolly moves the eye less.
+ * Read in two places, the servo's own target and the band solve's trial
+ * height, and they must be the same number or the trial answers about an eye
+ * that never arrives.
+ *
+ * The pair was swept against both gates at 60 464 rendered frames each:
+ * 0.36/0.32 leaves `checkframing` at worst |ndc| 0.694 (against 0.826 before,
+ * i.e. the shot is LOOSER on the fighters, not tighter) and `checkcamera` at
+ * height p99 19.1 of 20 and dist p99 175 of 200. 0.42 for the rise fails the
+ * height ceiling at 21.7: the lower placement makes the band solve work the
+ * distance harder, and at the old coupling the height servo rode it.
+ *
+ * 0.32 STANDS, AND THE PITCH IS CAPPED SEPARATELY (06.09). Lowering this
+ * number was tried as the way to get the deck's roofline into a fighting
+ * frame, and it is the wrong lever twice over: it flattens the shot at every
+ * distance equally, when what the frame needs is a ceiling on the ANGLE, and
+ * it is the number two gates were swept on. `PITCH_MAX` caps the eye's height
+ * against the aim instead, so this curve is what the eye rides whenever the
+ * shot is already flat enough — and the cap turns out to be the quieter
+ * camera as well: over the same 60 464 frames `checkcamera`'s height p99 goes
+ * 19.1 → 6.4 of its 20 ceiling and dist p99 175 → 129 of 200, because the
+ * eye now tracks an aim eased at rate 12 instead of a distance the rescue
+ * loop steps.
+ */
+const EYE_RISE = 0.32;
 /** How far out a body may sit before the framing counts as having lost it. */
 const FRAME_EDGE = 0.92;
 /** What the framing solves for, leaving the edge slack for the hit shake. */
@@ -3093,18 +5310,111 @@ function eyeHides(az, dist, height, look, f, id) {
  * because swapping sides mid-chase reverses the picture and reads as a cut.
  */
 function updateCamera(a, b, dt) {
+  /* Under a card, and once the result is in, the shot is the establishing
+     one (above); the orbit is for the fight. `over` is the socket's message
+     (2.6 s after the kill, so the push-in still shows the topple), `card` the
+     DOM's — the VS beat, and the screen's own fixtures. */
+  if ((over || hudBand.card) && camModes[camMode] === 'auto') { establishingCamera(a, b, dt); return; }
+  /* The orbit is a fight camera: it never claims a card beat's pair (see
+     `standShot.pair`, decided by the establishing shot alone). Without this
+     the flag stood at last fight's value on the frame a card rose, and the
+     beat took a pair shot of a pair nobody could see. */
+  standShot.pair = false;
   const pair = [['blue', a], ['orange', b]];
   const mid = new THREE.Vector3((a.x + b.x) / 2, 1.2, (a.z + b.z) / 2);
   const sep = Math.hypot(b.x - a.x, b.z - a.z);
   const snap = camState.snap;
   camState.snap = false;
-  const ease = (rate) => (snap ? 1 : 1 - Math.exp(-rate * dt));
+  /* Back from the establishing shot: 0.6 s of eases and caps at ×5 (see
+     `establishingCamera`), and the assertion stands down as for a cut. Not
+     after a snap — the plant has already done the job, and a ×5 servo on top
+     of it was the opening jerk in the camera trail. */
+  if (camState.establishing) {
+    camState.establishing = 0;
+    if (!snap) { camState.blend = 1; camCutAt = performance.now() / 1000; }
+  }
+  camState.blend = Math.max(0, camState.blend - dt / 0.6);
+  const gain = 1 + 4 * camState.blend;
+  const ease = (rate) => (snap ? 1 : 1 - Math.exp(-rate * gain * dt));
+  if (camera.fov !== ORBIT_FOV) {
+    camera.fov = snap || Math.abs(camera.fov - ORBIT_FOV) < 0.05 ? ORBIT_FOV : camera.fov + (ORBIT_FOV - camera.fov) * ease(3);
+    camera.updateProjectionMatrix();
+  }
 
   /* Half the frame's width in metres at a subject `d` metres away, along the
      ground. The camera is elevated, so the true slant range is longer than `d`
      and this reads low — which is the direction an error here should point. */
   const hFov = 2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
   const halfFrameAt = (d) => d * Math.tan(hFov / 2);
+  /*
+   * The aim sits at the BAND's centre, not the frame's. `look.y + 0.4` used to
+   * project the pair's midpoint to ndc y ≈ 0, the middle of the screen —
+   * which at every width is inside or just above the HUD's bottom band (the
+   * name row is at 69 % / 64 % / 51 % of the height). Aiming that much lower
+   * lifts the pair to the middle of the free band: ~0.65 m at 1440×900 from
+   * 13 m, ~2 m on the phone. A function of the eye's slant range, because
+   * the rescue loop below moves the eye while it asks.
+   */
+  /*
+   * …AND LOW IN IT, NOT IN THE MIDDLE OF IT (ARENA-AAA §2).
+   *
+   * The pair used to be centred in the free band, which put the top of frame
+   * at −3.6° of elevation: from orbit(π/4, 30) the eye is 15.4 m up looking at
+   * 0.4 m, so everything above y = 15.4 − d·tan(3.6°) is clipped — y ≈ 9.5 m
+   * at the far ring. The deck's roofline (16.4 m), the sky, the planet and the
+   * moon were outside every fighting frame, and the top 145 px of stand-game
+   * measured 12.9 L of range: corduroy, not a world. The founder's second
+   * directive is that the world beyond the field is the picture's scale, and a
+   * camera that never shows it makes the whole ring an expense.
+   *
+   * Two numbers buy it and neither moves the fighter out of the band. The
+   * subject is placed at 0.36 of the band up from its floor rather than at its
+   * middle (−0.03 ndc against +0.105 at 1440×900), and the eye rides a flatter
+   * curve (`EYE_RISE` 0.32 against 0.42). Together they lift the top of frame
+   * by about 8°, which at the ring's distance admits the deck's roofline and a
+   * strip of sky over it. The band solve, `bodyInBand` and the rescue all read
+   * the same number, so nothing here trades a fighter for a roofline — and the
+   * measurement says the opposite happened: the worst any fighter reached over
+   * 60 464 rendered frames went 0.826 → 0.694 of `FRAME_EDGE`.
+   */
+  const bandMid = hudBand.yBot + (hudBand.yTop - hudBand.yBot) * BAND_PLACE;
+  const dropAt = (dist, height) => bandMid * Math.tan((camera.fov * Math.PI) / 360) * Math.hypot(dist, height - 1.6);
+  /*
+   * …AND THE AIM HAS A FLOOR, WHICH IS THE STAND'S OWN NUMBER.
+   *
+   * The pair's midpoint is 1.2 m off the floor and the drop above adds about
+   * 0.3 m at a 24 m shot, so the fight camera looks at roughly 1.5–1.9 m —
+   * against the stand's `orbit()`, which the port copied everything else
+   * from, looking at a FIXED 3.5 m. The difference is 2.5° of pitch and it is
+   * the whole of the founder's second directive: measured on
+   * `live-fighting.png`, the frame above the coping is 18 px of sky, 22 px of
+   * deck fascia and then tier bank — no banner, no planet, no moon, no far
+   * skyline anywhere in a fighting frame, because the roofline sits in the
+   * top 4 % of the picture and everything hung below it is behind the bank.
+   *
+   * A floor, not a constant: the drop still composes the pair inside the free
+   * band whenever the pair is high enough to need it, and the floor only
+   * binds where the alternative is a camera pointed at the plaster. 3.2 m is
+   * the stand's 3.5 less the 0.3 the drop is already worth, so the two files
+   * end up aiming within a fifth of a metre of each other at the fight's own
+   * distance. Read by the servo below AND by the band solve above, or the
+   * trial answers about an eye that never arrives.
+   */
+  const aimFor = (lookY, dist, height) => lookY + 0.4 - dropAt(dist, height);
+  /*
+   * The eye's own curve, capped so the shot is never steeper than `PITCH_MAX`
+   * (see there). Read by the servo below AND by the band solve's trial
+   * height, and they must be the same function or the trial answers about an
+   * eye that never arrives.
+   */
+  const eyeAt = (dist, aim, cover) => Math.max(
+    cfg.arena.wallHeight + 1.2,
+    Math.min(2.8 + dist * (EYE_RISE + 0.20 * cover), aim + dist * PITCH_TAN),
+  );
+  /* The aim's height is a state of its own, eased fast (rate 12: 63 % in
+     80 ms, instant in steady state, where the drop changes with the distance
+     only) so that the hand-overs with the establishing shot (whose aim is
+     2 m up, undropped) move the composition instead of stepping it. */
 
   /*
    * Bias the look-at inward as the fight approaches a wall.
@@ -3238,7 +5548,7 @@ function updateCamera(a, b, dt) {
    * Склейка (`snap`) исключена: это монтаж, а не движение.
    */
   const azStep = d * ease(1.6);
-  camState.az += snap ? azStep : THREE.MathUtils.clamp(azStep, -AZ_RATE * dt, AZ_RATE * dt);
+  camState.az += snap ? azStep : THREE.MathUtils.clamp(azStep, -AZ_RATE * gain * dt, AZ_RATE * gain * dt);
 
   /*
    * Close, and derived rather than guessed.
@@ -3274,7 +5584,118 @@ function updateCamera(a, b, dt) {
    * `need * 0.75` is still sized to the pair, and the servo below still has the
    * last word.
    */
-  let targetDist = THREE.MathUtils.clamp(decided ? need * 0.75 : need, decided ? 9.5 : 13, 34);
+  /*
+   * The near clamp was 13 m, sized for the 2 m stock bodies; a ~5 m generated
+   * body at 13 m does not fit the band from any aim, so melee kept asking for
+   * a frame it could not hold and the rescue loop paid for it every frame.
+   * The floor is the distance at which the tallest body is 42 % of the
+   * frame's height — 13 m for the stock bodies, ~14 for 5 m, ~16.5 for 7 m —
+   * and the kill push-in keeps its 9.5/13 of that.
+   */
+  const tallest = Math.max(bodies.blue?.height ?? 2, bodies.orange?.height ?? 2);
+  const distMin = Math.max(13, tallest / (0.42 * 2 * Math.tan((camera.fov * Math.PI) / 360)));
+  let targetDist = THREE.MathUtils.clamp(decided ? need * 0.75 : need, decided ? distMin * (9.5 / 13) : distMin, 34);
+  /*
+   * THE BAND'S OWN DISTANCE. `need` is honest arithmetic about the frame's
+   * WIDTH; the band is a constraint on its HEIGHT, and from an elevated eye
+   * the two are different problems: a pair whose axis has a component along
+   * the view stands at two depths, and the nearer body drops down the
+   * picture while the farther rises — at 21 m and the 0.42 height ratio a
+   * 12 m pair along the view puts the near feet 0.5 ndc under the aim, below
+   * the name row from any aim the band allows. Distance is what shrinks the
+   * spread. So the band asks for its own distance: the smallest at which both
+   * bodies sit inside it, found by bisection through the same trial
+   * projection `holds` uses, at the height the eye WILL have there. It joins
+   * `need` as the servo's target and the servo eases to it — measured
+   * without this, the rescue loop below re-bought the same distance every
+   * frame and the servo took it back: a sawtooth at 3 100 m/s² (p99) on
+   * `tools/checkcamera.mjs`, against its 200 ceiling.
+   */
+  /*
+   * Two heights per candidate, and a margin of its own. The eye's height
+   * eases at 1.4 toward its curve (2.8 + 0.42·dist) while the distance eases
+   * at 2.6/9, so during a tightening the eye rides ABOVE the curve for a
+   * second and the true spread is larger than the curve predicts — measured
+   * as a sawtooth: the feet crossed the band's edge, the lost-jump fired
+   * (14 → 25 m in a frame), the servo tightened again. So a candidate must
+   * fit at the height the eye has NOW as well as the height it will have
+   * there, and the steady-state target keeps 0.10 ndc inside the band (the
+   * rescue below still fires at 0.04): the eye sits a few percent further
+   * and the feet stay a finger above the name row through a dash. On the
+   * snap frame the look is the pair's own midpoint, not the previous match's
+   * — the stale look planted the opening 10 m too far and dollied in at the
+   * cap for a second.
+   */
+  /* The current height is asked only of candidates at or beyond the eye's
+     distance. Asked of a nearer one it deadlocked every tightening: the
+     height's target followed the distance the eye HAD, the eye could not
+     come in while the height was high, and the height never came down —
+     the fight camera sat 35–40 m out over a pair three metres apart. */
+  const fitsAt = (D) => {
+    const look = snap ? aimAt(0) : camState.look;
+    const raw = 2.8 + D * (EYE_RISE + 0.20 * camState.cover);
+    for (const H of [eyeAt(D, aimFor(look.y, D, raw), camState.cover), snap || D < camState.dist ? null : camState.height]) {
+      if (H === null) continue;
+      trialCam.fov = camera.fov; trialCam.aspect = camera.aspect;
+      trialCam.updateProjectionMatrix();
+      trialCam.position.set(look.x + Math.sin(camState.az) * D, H, look.z + Math.cos(camState.az) * D);
+      trialCam.lookAt(look.x, aimFor(look.y, D, H), look.z);
+      trialCam.updateMatrixWorld();
+      for (const [id, f] of pair) {
+        if (!f.alive && !decided) continue;
+        if (!bodyInBand(trialCam, id, f, FRAME_TARGET - 0.06)) return false;
+      }
+    }
+    return true;
+  };
+  /*
+   * …AND THE BAND MAY NOT BUY A DISTANCE AT WHICH THERE IS NOTHING TO SEE.
+   *
+   * The bisection's ceiling was 44 m flat, and on a page whose HUD leaves a
+   * SHORT band it went there: `live-visitor.png` (the invitation card docks
+   * in the bottom column, so `measureHud` reports a band a third of the
+   * frame) came back with both fighters inside a 193 × 90 px box — 1.3 % of
+   * the picture, jammed in the left third, with the right 740 px carrying no
+   * fighter, no mark and nothing but plaza. The owner's page, same solver,
+   * same frame size, framed its pair at 165 × 364. A stranger's first view of
+   * this product was a fight they could not see.
+   *
+   * The two rules were pulling against each other exactly as they did on the
+   * result beat (see `sizeCap` in the establishing shot, which is the same
+   * argument): the band asks the eye to retreat and there is no distance at
+   * which a 40 px fighter is worth framing. So the retreat stops at the
+   * distance where the taller body still subtends `PAIR_TALL` of the frame —
+   * 0.24 ndc, about 108 px at 900 and 12 % of the height, which is the bar
+   * the reading set for a pair. Past it the band solve has no answer to find,
+   * only a smaller fighter, and the rescue loop at the end of this function
+   * is still the guarantee that neither of them leaves the picture.
+   */
+  const PAIR_TALL = 0.24;
+  const bandCap = (() => {
+    const h = Math.max(bodies.blue?.top ?? bodies.blue?.height ?? 2, bodies.orange?.top ?? bodies.orange?.height ?? 2);
+    const slant = h / Math.max(0.05, PAIR_TALL * Math.tan((camera.fov * Math.PI) / 360));
+    const rise = Math.max(0, camState.height - 1.6);
+    return THREE.MathUtils.clamp(Math.sqrt(Math.max(1, slant * slant - rise * rise)), distMin, 44);
+  })();
+  let bandNeed = targetDist;
+  if (!fitsAt(targetDist)) {
+    let lo = targetDist, hi = Math.max(targetDist, bandCap);
+    /* ten halvings: 3 cm over the 31 m bracket. At six the answer was
+       quantised to 0.4 m and jittered frame to frame, and the servo's first
+       step toward each new value was itself a 200 m/s² event. */
+    if (fitsAt(hi)) for (let i = 0; i < 10; i++) { const m = (lo + hi) / 2; if (fitsAt(m)) hi = m; else lo = m; }
+    bandNeed = hi;
+  }
+  /* The band's answer moves as fast as a body moves in depth — a dash is a
+     step in it — and fed raw to the servo it saturated the 26 m/s cap from
+     rest (1 560 m/s² in one frame) several times a fight. Eased first, at
+     less than the servo's own rates, the servo sees a slope it can follow;
+     the 0.10 ndc margin above pays for the lag, and the rescue below is
+     still the guarantee. Widening 6, tightening 2, as everywhere else the
+     wide direction is the safe one. */
+  camState.bandNeed = snap || !camState.bandNeed ? bandNeed
+    : camState.bandNeed + (bandNeed - camState.bandNeed) * ease(bandNeed > camState.bandNeed ? 6 : 2);
+  targetDist = Math.max(targetDist, camState.bandNeed);
   /*
    * Pull back fast, close in slow.
    *
@@ -3330,7 +5751,7 @@ function updateCamera(a, b, dt) {
    * half a screen outside the picture on the opening frame. 0 of 12 after.
    * Only the first frame of a match is exempt; every dolly move still caps.
    */
-  const capDist = snap ? Infinity : 26 * dt;
+  const capDist = snap ? Infinity : 26 * gain * dt;
   camState.dist += THREE.MathUtils.clamp(stepDist, -capDist, capDist);
   /*
    * Rise, and step sideways, when something is in the way.
@@ -3412,8 +5833,13 @@ function updateCamera(a, b, dt) {
    * second doing it rather than one frame.
    */
   camState.cover += ((blocked ? 1 : 0) - camState.cover) * ease(1.1);
-  const wantHeight = 2.8 + camState.dist * (0.42 + 0.20 * camState.cover);
-  camState.height += (wantHeight - camState.height) * ease(1.4);
+  const wantHeight = eyeAt(camState.dist, camState.aimY, camState.cover);
+  /* Down at the tightening rate (2.6), up at 1.4: descending slower than
+     the distance closes left the eye above its curve for a second on every
+     tightening, which is more pitch than the band solve planned for and
+     the near body's feet under the name row. */
+  camState.height += (wantHeight - camState.height) * ease(wantHeight < camState.height ? 2.6 : 1.4);
+  camState.aimY += (aimFor(mid.y, camState.dist, camState.height) - camState.aimY) * ease(12);
 
   /*
    * The bias, tried before it is committed to.
@@ -3439,7 +5865,7 @@ function updateCamera(a, b, dt) {
       camState.height,
       look.z + Math.cos(camState.az) * camState.dist,
     );
-    trialCam.lookAt(look.x, look.y + 0.4, look.z);
+    trialCam.lookAt(look.x, camState.aimY, look.z);
     trialCam.updateMatrixWorld();
     for (const [id, f] of pair) {
       // A dead fighter is dropped while the fight is live — the corpse is not
@@ -3448,8 +5874,7 @@ function updateCamera(a, b, dt) {
       // on the socket's `over` message: that message is 2.6 s of curtain late,
       // which is the whole death animation and topple.
       if (!f.alive && !decided) continue;
-      _p.set(f.x, f.y + (bodies[id]?.height ?? 2) * 0.5, f.z).project(trialCam);
-      if (Math.abs(_p.x) > edge || Math.abs(_p.y) > edge) return false;
+      if (!bodyInBand(trialCam, id, f, edge)) return false;
     }
     return true;
   };
@@ -3517,7 +5942,13 @@ function updateCamera(a, b, dt) {
      получаешь «держится». Ровно на этом кадрирование теряло бойца на телепорте
      в 7.5 м: замер сказал |ndc| 1.118 на t=4.0 с. */
   const lost = snap || !holds(camState.look, FRAME_EDGE);
-  for (let i = 0; i < 4 && camState.dist < 44 && !holds(camState.look); i++) {
+  /* Four steps (+36 %) while the frame is merely past the target; as many as
+     it takes once it is LOST — a blink can land a body a few metres from the
+     eye, whose feet then need ~2.5× the distance to clear the band's bottom,
+     and a lost frame jumps anyway (below): more steps in that jump cost no
+     extra motion, and stopping short of the frame is the one failure this
+     loop exists to close. */
+  for (let i = 0; i < (lost ? 16 : 4) && camState.dist < 44 && !holds(camState.look); i++) {
     camState.dist = Math.min(44, camState.dist * 1.08);
   }
   if (camState.dist > beforeRescue) {
@@ -3560,7 +5991,7 @@ function updateCamera(a, b, dt) {
     camState.height,
     camState.look.z + Math.cos(camState.az) * camState.dist,
   );
-  camera.lookAt(camState.look.x, camState.look.y + 0.4, camState.look.z);
+  camera.lookAt(camState.look.x, camState.aimY, camState.look.z);
   if (k > 0.0001) {
     const amp = 0.42 * k * (camState.dist / 26);
     camera.translateX((Math.sin(t * 47) * 0.6 + Math.sin(t * 89 + 1.3) * 0.4) * amp);
@@ -3601,10 +6032,13 @@ function checkFraming(view, t) {
     // it, against FRAME_EDGE 0.92 and 0.874 for a live fighter over the same
     // matches. This is about the window being watched at all.
     if (!v || (!v.alive && !decided)) continue;
-    _p.set(v.x, v.y + (bodies[id]?.height ?? 2) * 0.5, v.z).project(camera);
-    if (Math.abs(_p.x) <= FRAME_EDGE && Math.abs(_p.y) <= FRAME_EDGE) continue;
+    /* The same rule the framing solves against — feet and head inside the
+       HUD's band, the x edge — at FRAME_EDGE's zero margin. */
+    if (bodyInBand(camera, id, v, FRAME_EDGE)) continue;
     framingLost = true;
+    _p.set(v.x, v.y + (bodies[id]?.height ?? 2) * 0.5, v.z).project(camera);
     fail(`camera lost ${id} at t=${t.toFixed(1)}s — ndc (${_p.x.toFixed(2)}, ${_p.y.toFixed(2)}), `
+      + `band ${hudBand.yBot.toFixed(2)}..${hudBand.yTop.toFixed(2)}, `
       + `body at (${v.x.toFixed(1)}, ${v.z.toFixed(1)}), eye ${camState.dist.toFixed(1)} m out`);
     return;
   }
@@ -3722,7 +6156,48 @@ const lerp = (a, b, u) => a + (b - a) * u;
 // the loop
 // ---------------------------------------------------------------------------
 
-boot.remove();
+/**
+ * THE BOOT CARD LEAVES WHEN THE FIRST FRAME LANDS, NOT WHEN THE MODULE DOES.
+ *
+ * `boot.remove()` used to stand right here, at the bottom of module
+ * evaluation — which reads as "the renderer is up" and is not the same claim
+ * as "there is a picture". Everything between this line and the first
+ * `post.render()` still had to work: the loop, the scene graph, the post
+ * pipeline compiling on the driver. If any of it did not, the card that says
+ * `CONNECTING TO THE ARENA` had already been deleted, and what a visitor got
+ * instead was a flat, silent, motionless ground — the exact picture round one
+ * photographed on `create-visitor`, where §1.8's "one uninterrupted
+ * experience over the persistent arena" has to begin.
+ *
+ * So the card stays until a frame is genuinely on the screen, and it stays on
+ * the veiled Create ground as well as on live. Two ways out, one per host:
+ *
+ *  - Inside the product shell the card belongs to `screens/live.js` (the orbit
+ *    canvas is its animation and it watches this element to know when to stop
+ *    it, §5.1). So the viewer FADES it with the class the shell already reads
+ *    and leaves the node in the DOM — deleting it made the shell's own
+ *    `classList.add('off')` a no-op and left its orbit running against a
+ *    detached canvas.
+ *  - On the standalone viewer page nothing else owns it, so it is removed.
+ *
+ * A frame deliberately not drawn (a document screen covers the arena) counts
+ * as landed. The alternative is a full-screen card sitting under an opaque
+ * document for as long as the player stays on it, eating the clicks that fall
+ * between the screen's own children.
+ */
+let bootGone = false;
+function bootLanded() {
+  if (bootGone) return;
+  bootGone = true;
+  /* The shell's clock (`app.js` marks) gets the one instant it cannot see
+     from outside: the first frame PRESENTED on the canvas. `firstFrame`
+     there is the first socket frame, which says nothing about the picture. */
+  if (typeof window !== 'undefined' && window.__airenaMarks && !window.__airenaMarks.firstDraw) {
+    window.__airenaMarks.firstDraw = Math.round(performance.now());
+  }
+  if (document.getElementById('arena')) boot.classList.add('off');
+  else boot.remove();
+}
 let last = performance.now() / 1000;
 
 /**
@@ -3795,6 +6270,479 @@ if (params.get('shots')) {
 const fps = { last: 0, min: 0, frames: 0, since: performance.now() };
 window.__airenaFps = fps;
 
+/**
+ * ONE THROW MUST NOT COST THE PICTURE.
+ *
+ * The loop used to be a single `try { frame() }`. `frame()` reads the socket
+ * buffer, poses two bodies, ticks the effects layer and THEN draws — so any
+ * exception at all, from anywhere in that first four fifths, returned before
+ * the draw and left the arena frozen on whatever pixels happened to be in the
+ * canvas. Round one photographed it: `create-visitor` reported
+ * `TypeError: Cannot read properties of undefined (reading 'abs')` once and
+ * showed a flat empty ground behind the veil, where the owner's identical
+ * screen showed the live arena. The very first thing a stranger sees was a
+ * still page, and §1.8's "one uninterrupted experience over the persistent
+ * arena" was over before it started.
+ *
+ * So the two halves are separated and each is caught on its own. If the state
+ * update throws, the world is a frame stale and IT STILL DRAWS — a fight that
+ * stops advancing is a bug, a page that stops moving is a dead product. If the
+ * draw itself throws, the state still advances and the next frame gets its own
+ * chance; a driver hiccup on one frame is not a reason to stop trying.
+ *
+ * Each half reports its FIRST failure and then goes quiet. Sixty identical
+ * stack traces a second is not diagnosis, it is a second failure on top of the
+ * first one — and the report is what a capture reads (`tools/shots.mjs`), so
+ * it has to arrive exactly once.
+ */
+let drawFailed = false;
+let postFailed = false;
+/* Once per match: swap every generated body for the side's stock body. */
+let quarantined = false;
+function quarantineBodies(reason) {
+  if (quarantined) return false;
+  quarantined = true;
+  let did = false;
+  for (const id of ['blue', 'orange']) {
+    const key = bodyRefOf[id] || '';
+    if (!/^gen:/.test(key)) continue;
+    const [ref, size] = key.split('@');
+    dispatchEvent(new CustomEvent('airena:bodyfail', { detail: { side: id, ref, message: `render failed: ${reason}` } }));
+    console.warn(`body ${ref} failed while rendering; ${id} falls back to ${STOCK_BODY[id]}:`, reason);
+    /* hidden at once, so the frame drawn right after this shows everything
+       else while the stock body is fetched from the cache */
+    if (bodies[id]) bodies[id].root.visible = false;
+    swapBody(id, STOCK_BODY[id], Number(size) || 1);
+    did = true;
+  }
+  return did;
+}
+/**
+ * TAKE BOTH FIGHTERS OUT OF THE SCENE, not merely out of sight.
+ *
+ * `quarantineBodies` hides `root` and asks for a stock body; neither is
+ * enough for the frame that is about to be drawn in the same catch. `visible
+ * = false` stops the render-list traversal at that node but does not remove
+ * the node, and on a backend that builds its render objects lazily the object
+ * that threw is still reachable — which is precisely what `live-visitor.json`
+ * recorded: the post render threw, the direct render threw too, and the page
+ * presented nothing at all.
+ *
+ * So this detaches. Called only from the render catch, once the throw has
+ * repeated, and it is not a state the session recovers from by itself: the
+ * stock body `quarantineBodies` asked for is a NEW root and `swapBody` adds
+ * it to the scene when it lands, so the arena comes back with fighters in it
+ * one swap later. Idempotent — a detached root has no parent and `remove` on
+ * it is a no-op.
+ */
+function evictBodies() {
+  if (evicted) return;
+  evicted = true; evictions++;
+  evictedRoots.clear();
+  for (const id of ['blue', 'orange']) {
+    const root = bodies[id]?.root;
+    if (!root) continue;
+    evictedRoots.set(id, { root, visible: root.visible, had: !!root.parent });
+    root.visible = false;
+    try { scene.remove(root); } catch { /* already detached */ }
+  }
+  console.warn(`both bodies detached from the scene after a repeated render throw (${evictions})`);
+}
+/**
+ * …AND THE EFFECT LAYER GOES WITH THEM.
+ *
+ * `evictBodies` walks the two fighters and nothing else, and the fighters are
+ * not the only thing in the scene that can carry a lazily-built material: so
+ * can every mesh `spawnFx` puts on stage. `vfx.js`'s own rollback covers a
+ * module that throws SYNCHRONOUSLY inside `play`; the failure this whole path
+ * exists for throws inside `post.render()`, where `play` has already returned
+ * cleanly and nothing is quarantined. A broken emitter therefore reproduces
+ * the exact page this round fixed for bodies — the throw repeats, `blank`
+ * climbs, and the canvas is presented transparent — and the only reason no
+ * capture has shown it is that this time the throw came from a body.
+ *
+ * Effects are transient by construction, so unlike the fighters they are not
+ * put back: losing what is on stage costs one cast. Removed from the scene
+ * and dropped from the pool, without disposing — a geometry marked `shared`
+ * belongs to the pool that made it, and a session that is already failing is
+ * the wrong place to free something someone else may still hold.
+ */
+function evictFx() {
+  if (!fxPool.length) return;
+  const n = fxPool.length;
+  for (let i = fxPool.length - 1; i >= 0; i--) {
+    try { scene.remove(fxPool[i].obj); } catch { /* already detached */ }
+    fxPool.splice(i, 1);
+  }
+  console.warn(`${n} effect meshes swept from the scene after a repeated render throw`);
+}
+/**
+ * …AND PUT BACK BY THE FIRST FRAME THAT RENDERS.
+ *
+ * Not every repeated throw is a bad body. The capture that made this path
+ * necessary carries `parameter 1 is not of type 'GPURenderPipeline'` — a
+ * pipeline still compiling when the sync path reached it, which passes on its
+ * own — and leaving the fighters out of a match because of two transient
+ * frames would trade a blank page for an empty arena, the same mistake in the
+ * other direction. So a frame that renders takes them back, and a throw that
+ * returns takes them out again. `EVICT_MAX` bounds the oscillation: after
+ * three rounds of it the fault is not transient, and the arena keeps the
+ * picture it can draw until the next `match` or the next `swapBody`.
+ */
+function restoreBodies() {
+  /* PAST THE BUDGET THEY STAY OUT. The polarity matters and it was wrong the
+     first time: refusing to EVICT after three rounds left the throwing body in
+     the scene for ever, which is the blank frame with the fighters in it —
+     `drawn.blank 47` in the capture that caught it. Refusing to RESTORE is the
+     rule the budget was for. */
+  if (!evicted || evictions >= EVICT_MAX) return;
+  evicted = false;
+  for (const [id, e] of evictedRoots) {
+    /* Only if this side still stands on the same body: a `swapBody` that
+       landed while the eviction was up has already put its own root in the
+       scene, and this one is the retired one. */
+    if (bodies[id]?.root !== e.root) continue;
+    if (e.had && !e.root.parent) scene.add(e.root);
+    e.root.visible = e.visible;
+  }
+  evictedRoots.clear();
+}
+/**
+ * QUALITY AUTO-SELECT (RENDER-QUALITY §7): the environment's own governor.
+ *
+ * `qualityGovernor` keeps a rolling mean of the frame's wall-clock delta over
+ * the last 120 frames after a 40-frame warm-up (the pipeline compiles and the
+ * bodies building are the browser's worst seconds, not the frame's) and only
+ * ever DEMOTES: two seconds under 45 fps → 'medium' (no AO, no reflection),
+ * under 30 → 'low' (FXAA, the shadow map to 1024). Never up — a fight must
+ * not flicker between graphs. It is HELD while a fight is on the screen and
+ * released at the boundary (searching, the result), so a graph rebuild —
+ * itself a stall — never lands mid-fight; the pending tier applies at the
+ * next boundary. Ticked next to `env.update` in `drawFrame`, never with a
+ * frame longer than 250 ms (a throttled tab is the browser choosing not to
+ * draw, not a slow frame) and never while the document is hidden. A
+ * `?quality=` pin switches it off. `gov.msPerFrame` is what the captures
+ * carry.
+ */
+/*
+ * THE METER READS WALL-CLOCK DELTAS, AND UNDER VSYNC THAT IS THE DISPLAY'S
+ * PERIOD, NOT THE FRAME'S COST. On a 30 Hz external display an idle GPU
+ * measures 33 ms every frame — 30 fps < 45 — and after the 2 s dwell the page
+ * would demote itself to `medium` for good. So the thresholds follow the
+ * display: the shortest delta the loop has seen is its cadence (accepted
+ * only if it is a plausible refresh, ≥ 30 Hz — a machine that never once
+ * drew a fast frame is slow, not a slow display), and the demotion lines are
+ * 75 % and 50 % of that rate, capped at the 45/30 the module ships. The
+ * governor reads `demote` on every tick, so the object is shared and mutated.
+ */
+/**
+ * WHAT THE FRAME COSTS, MEASURED IN THE GAME — `window.__airenaStats`.
+ *
+ * The boot gate (`tools/checkboot.mjs`) weighs BYTES, and it is green on
+ * bytes; nothing in the repo measured what the frame costs once the arena is
+ * up. Every capture beside it said the same two things — `fps.ticks` 0 and
+ * `msPerFrame` null — because the governor's own meter only reports after 160
+ * frames and the capture harness had not ticked the page that far, so "the
+ * picture is at 'high'" was recorded with no idea what 'high' was costing.
+ *
+ * So the page keeps its own rolling mean over the last 120 drawn frames, of
+ * BOTH numbers that matter and are not the same number:
+ *
+ *  - `msPerFrame` / `fps`: the wall-clock delta between draws. Under vsync
+ *    this is the display's cadence when there is headroom and the real cost
+ *    when there is not — a ceiling, not a cost.
+ *  - `drawMs`: the main-thread cost of the draw call itself. This one moves
+ *    with the tier whether or not the display is capping the rate, and it is
+ *    what the climb below reads.
+ *
+ * Reported from 24 samples so a capture that ticked the page for a handful of
+ * frames still carries a number, and reset on every tier change: a mean that
+ * spans two graphs describes neither.
+ */
+const STAT_WIN = 120;
+const statRing = { dt: new Float64Array(STAT_WIN), draw: new Float64Array(STAT_WIN), i: 0, n: 0, sumDt: 0, sumDraw: 0 };
+const stats = { msPerFrame: null, fps: null, drawMs: null, samples: 0, frames: 0, tier: quality, displayHz: null, window: STAT_WIN };
+window.__airenaStats = stats;
+function statsReset() {
+  statRing.i = 0; statRing.n = 0; statRing.sumDt = 0; statRing.sumDraw = 0;
+  stats.msPerFrame = null; stats.fps = null; stats.drawMs = null; stats.samples = 0;
+}
+function tickStats(dt, drawMs) {
+  stats.frames++;
+  if (document.hidden || !(dt > 0) || dt > 0.25) return;
+  const i = statRing.i;
+  if (statRing.n >= STAT_WIN) { statRing.sumDt -= statRing.dt[i]; statRing.sumDraw -= statRing.draw[i]; }
+  statRing.dt[i] = dt; statRing.draw[i] = drawMs;
+  statRing.sumDt += dt; statRing.sumDraw += drawMs;
+  statRing.i = (i + 1) % STAT_WIN;
+  if (statRing.n < STAT_WIN) statRing.n++;
+  stats.samples = statRing.n;
+  if (statRing.n >= 24) {
+    stats.msPerFrame = (statRing.sumDt / statRing.n) * 1000;
+    stats.fps = 1000 / stats.msPerFrame;
+    stats.drawMs = statRing.sumDraw / statRing.n;
+  }
+  stats.displayHz = refreshDt <= 0.034 ? Math.round(1 / refreshDt) : null;
+}
+
+const demote = { medium: 45, low: 30 };
+let refreshDt = Infinity;
+/* A hidden tab's rAF is the browser choosing not to draw; whatever cadence was
+   learned before it went away may not be the cadence it comes back to (a
+   window dragged to another display, a laptop off its dock). Relearn. */
+if (typeof document !== 'undefined') addEventListener('visibilitychange', () => { refreshDt = Infinity; });
+/** Move the whole page to a tier: the environment's rig now, the graph next load. */
+/*
+ * ── A TIER CHANGE HAS TWO HALVES AND THEY LAND AT DIFFERENT TIMES ─────────
+ *
+ * The environment's half (`env.setQuality` — shadow map size, instancing,
+ * dust, the sun shafts, the mist, the two far skylines, the floor reflector)
+ * is cheap, safe and immediate. It is also the larger part of the cost.
+ *
+ * The post graph's half is not, and this is the round it stopped pretending.
+ * `applyPost` rebuilt the pass in place, and a rebuild has never once drawn a
+ * frame: `high` writes four MRT attachments and `medium` three, and a shader
+ * variant compiled against the old layout drops the whole command buffer. The
+ * split in the capture set was total — 12 sidecars at `"high"` all a picture,
+ * 4 at `"medium"`/`"low"` all a BLACK canvas — and it survived both repairs
+ * (`renderAsync` warm, whole-scene variant invalidation). The fault is inside
+ * three's node cache and it is not repairable from here.
+ *
+ * The half-acting version was the worst of the three possible answers: the
+ * environment moved, the graph did not, and `window.__airenaQuality` reported
+ * a tier the picture was not drawn at — so "fps >= 30 at medium" could not be
+ * read off any capture this repo has ever taken. So the graph's half is
+ * DEFERRED rather than faked. The tier is written to `localStorage` and the
+ * next page load builds the graph at it (see the boot pick beside
+ * `initialQuality`), which is the one path that works; `__airenaPostTier`,
+ * written by `applyPost`, is the graph's own answer beside the variable's.
+ *
+ * A session therefore ends at a tier and the next one starts there. That is
+ * slower to converge than a live rebuild and it is the honest version of it:
+ * one machine, one measurement, one page load.
+ */
+function setTier(q, why) {
+  console.info(`quality: ${quality} \u2192 ${q} (${why}) \u2014 the post graph takes it at the next load`);
+  quality = q;
+  window.__airenaQuality = quality;
+  stats.tier = quality;
+  env.setQuality(quality);
+  /*
+   * AND A MEMORY THAT OUTLIVES THE SESSION HAS TO BE A MEASUREMENT.
+   *
+   * The governor's own window is 20 ticks (`GOV_TUNE`), which is the right
+   * length for "stop the picture stuttering NOW" and far too short to pin a
+   * machine's tier for every visit after this one. Measured immediately: the
+   * first capture after this went in, `live-visitor` drew 53 frames on a
+   * machine running four agents, demoted to 'low' on that, and every state
+   * captured after it in the same browser booted at 'low' — the whole
+   * evidence set graded at a tier one bad window had chosen. So the write
+   * waits for the page's OWN full window (`STAT_WIN` = 120 drawn frames,
+   * read before `statsReset` below clears it); under that the drop still
+   * lands on the environment for this session and is simply not remembered.
+   *
+   * Private mode, a blocked origin, a full store: a tier that cannot be
+   * remembered is not a reason to stop demoting the half that CAN land.
+   */
+  if (stats.samples >= STAT_WIN) {
+    try { localStorage.setItem(TIER_KEY, q); } catch { /* приватный режим */ }
+  }
+  statsReset();
+}
+/**
+ * THE CEILING: the best tier this session may still climb to.
+ *
+ * A demotion is a MEASUREMENT — this machine could not hold that tier — so it
+ * closes the door above it for good. That is the other half of the hysteresis:
+ * the climb below can lift a conservative START (a phone, a 4K viewport, a
+ * pinned-down laptop) at most once per step, and a single measured demotion
+ * makes the pair of rules settle instead of oscillating. Without it a machine
+ * sitting exactly on the line would rebuild the whole post graph every five
+ * seconds, for ever.
+ */
+let ceiling = 'high';
+const onTierDrop = (q) => {
+  /*
+   * ONE STEP BELOW THE TIER THAT FAILED — not the tier landed on.
+   *
+   * The module picks its target from the measured rate directly, so a machine
+   * running `high` under 30 fps demotes straight to `low` without ever
+   * drawing a `medium` frame. Setting the ceiling to `low` there bars `medium`
+   * for the whole session on no evidence at all — and from the stand's own
+   * numbers `medium` costs 0.6 ms more than `low` and keeps SMAA and the 2048
+   * shadow map instead of FXAA and 1024. The tier that was MEASURED as too
+   * dear is the one that closes; everything under it stays open to the climb.
+   */
+  const from = quality;
+  ceiling = QUALITIES[Math.min(QUALITIES.indexOf(from) + 1, QUALITIES.length - 1)];
+  climb = 0;
+  setTier(q, `${gov.msPerFrame?.toFixed(1)} ms/frame measured`);
+};
+/* `QUALITIES.includes`, not the raw parameter's truthiness: `?quality=hgih`
+   used to switch the whole adaptive system off — the pin was correctly
+   ignored by the tier choice up top, but the governor was not built, so there
+   was no demotion, no climb, and `window.__airenaGov` was null with every
+   capture reporting `msPerFrame: null` and no indication why. */
+/*
+ * THE METER HAS TO HAVE AN OPINION INSIDE THE WINDOW ANYONE WATCHES.
+ *
+ * The module's defaults are `warmup 40` + `fast 24`, i.e. 64 ticks before
+ * `gov.msPerFrame` is anything but null — and `tools/shots.mjs` drives 24.
+ * Measured across the 21 fresh live captures: `quality: "high"`, `forced: 0`
+ * and `msPerFrame: null` in 8 of 21, with `live-visitor.json` sitting at
+ * 108 ms/frame under drive and the governor reporting nothing about it. The
+ * `starving` escape below reads `gov.fps` too, so it was dead on any page
+ * that draws fewer than 64 frames. 10 + 10 gives the meter an answer at tick
+ * 20, which is inside both a capture and a viewer's first second, and still
+ * skips the pipeline-compile frames the warm-up exists for.
+ */
+const GOV_TUNE = { warmup: 10, fast: 10 };
+let gov = QUALITIES.includes(qualityParam) && !isWebGL
+  ? null : qualityGovernor({ tier: quality, demote, onChange: onTierDrop, ...GOV_TUNE });
+/*
+ * The handle the capture harness reads. `msPerFrame` is the module's own
+ * meter; `drawMs` and `displayHz` are the page's (`window.__airenaStats`),
+ * hung off the same object so a tool that already reads one gets all three —
+ * and so the vsync-capped wall-clock delta the captures carry can be told
+ * apart from what the frame actually costs on the main thread.
+ */
+const govStats = (g) => (g ? Object.defineProperties(g, {
+  drawMs: { get: () => stats.drawMs, configurable: true },
+  displayHz: { get: () => stats.displayHz, configurable: true },
+  tier: { get: () => quality, configurable: true },
+}) : g);
+window.__airenaGov = govStats(gov);
+/**
+ * THE CLIMB — the measured half of "start conservative, then decide".
+ *
+ * The static rule up top has to guess, and it guesses DOWN: a phone and a 4K
+ * viewport start at 'medium' because the alternative is a first fight at 20 fps
+ * on a machine that cannot be asked about itself before it has drawn anything.
+ * The governor only ever demotes ("a fight must not flicker between graphs"),
+ * so a guess that was too cautious used to stand for the whole session — a
+ * modern phone or a desktop GPU on a 4K monitor never saw the AO seating or
+ * the floor's reflection the stand was judged on.
+ *
+ * So the page measures itself and climbs once it has evidence, under four
+ * conditions that between them make a wrong climb cheap and rare:
+ *
+ *  - AT A BOUNDARY, never in a fight. The rebuild is precompiled off the main
+ *    thread (`applyPost`) but it still holds the picture for a few frames.
+ *  - FULL RATE: the rolling 120-frame mean delta is within 8 % of the display's
+ *    own cadence, so the page is not dropping frames at the tier it is on.
+ *  - CHEAP TO DRAW: the mean main-thread cost of the draw is under half the
+ *    display period. Under vsync the delta alone cannot tell a machine with
+ *    headroom from one with none — both read 16.7 ms — and this is the term
+ *    that can. The stand's own frame is CPU-bound (12.3 ms at 'high'), so this
+ *    is the number that moves when the tier does.
+ *  - FOR THREE SECONDS of that, and never above the ceiling.
+ *
+ * A climb that was wrong is corrected by the governor within its own two
+ * seconds, and then the ceiling holds the tier down for the rest of the
+ * session. `?quality=` pins switch both halves off.
+ */
+let climb = 0;
+function tryPromote(dt, inPlay) {
+  if (!gov || isWebGL || rebuilding || inPlay || document.hidden) { climb = 0; return; }
+  const up = QUALITIES[QUALITIES.indexOf(quality) - 1];
+  if (!up || QUALITIES.indexOf(up) < QUALITIES.indexOf(ceiling)) { climb = 0; return; }
+  /*
+   * THE BAR IS A 60 Hz FRAME, WHATEVER THE PANEL RUNS AT.
+   *
+   * Measured against the display's own period, a 120 Hz panel asked the page
+   * to sustain 120 fps AND draw in ≤ 4.17 ms before it would climb; the
+   * stand's own cost for the tier being climbed TO is 12.46 ms of main thread
+   * (`reports/arena/stand.json`). On 144 Hz the bar is 3.5 ms, on 165 Hz 3.0.
+   * So the climb could never fire on exactly the hardware §8.1 wrote it for —
+   * a modern phone is 120 Hz ProMotion and every one of them starts at
+   * 'medium'. The question this test is actually asking is "is there headroom
+   * at 60", and clamping the period to a 60 Hz frame is that question: ≤ 8.3
+   * ms of draw and ≤ 18 ms of delta. The demotion side has had the matching
+   * clamp all along (`Math.min(45, displayHz * 0.75)`).
+   */
+  const hz = refreshDt <= 0.034 ? 1 / refreshDt : 60;
+  const period = Math.max(1000 / 60, 1000 / hz);
+  const fast = stats.samples >= STAT_WIN && stats.msPerFrame <= period * 1.08 && stats.drawMs <= period * 0.5;
+  climb = fast ? climb + dt : 0;
+  if (climb < 3) return;
+  climb = 0;
+  const why = `${stats.msPerFrame.toFixed(1)} ms/frame, ${stats.drawMs.toFixed(1)} ms of it drawn`;
+  setTier(up, why);
+  /* A fresh meter at the new tier: the governor's own rolling mean is 120
+     frames of the OLD graph, and demoting on it would undo the climb before
+     the first frame of the new one had been weighed. The module refuses to
+     raise its own tier (`set` only ever descends), so the way to move it up
+     is to build the meter again — same demote lines, same object. */
+  gov = qualityGovernor({ tier: up, demote, onChange: onTierDrop, ...GOV_TUNE });
+  window.__airenaGov = govStats(gov);
+}
+
+/*
+ * THE PIPELINES ARE COMPILED BEFORE THE FIRST FRAME, ASYNCHRONOUSLY — and
+ * after EVERY scene object exists.
+ *
+ * The first `post.render()` used to build every material's WGSL and pipeline
+ * on the main thread in one go — measured 3.1–3.2 s in the capture harness
+ * with the environment, the two stock bodies and the VFX pools in the scene
+ * — and Chrome compiles a synchronously created pipeline serially at first
+ * use. `PassNode.compileAsync` compiles the scene's render objects against
+ * the pass's own render target and MRT with `createRenderPipelineAsync`, so
+ * the GPU process compiles them in parallel while this awaits, and the first
+ * frame keeps only the post nodes' own few pipelines. Awaited, not fired: a
+ * pipeline still compiling when the sync path reaches it is `undefined` to
+ * the encoder.
+ *
+ * It stands HERE, past the VFX pools, the telegraphs and the ghosts, because
+ * `compileAsync` compiles what the scene lists at that moment and skips what
+ * is invisible: run right after the stock bodies (as it first was) it left
+ * the two pool materials and the fourteen telegraph materials to the first
+ * frame, and everything hidden until its first use — the cones, lanes, aim
+ * lines and the two ghosts — is switched visible for the compile and put
+ * back. Nothing here is fatal: a failed precompile leaves the first frame to
+ * do what it always did.
+ */
+if (scenePassNow?.compileAsync) {
+  const t0 = performance.now();
+  const hidden = [];
+  scene.traverse((o) => { if (o.visible === false) { hidden.push(o); o.visible = true; } });
+  try {
+    await precompilePass(scenePassNow);
+    console.info(`precompile: ${Math.round(performance.now() - t0)} ms`);
+    mark('precompiled');
+  } catch (e) {
+    console.warn(`precompile: ${where(e)}`);
+  }
+  for (const o of hidden) o.visible = false;
+  /*
+   * AND THE POST GRAPH'S OWN PIPELINES, WHICH ARE NOT IN THE SCENE PASS.
+   *
+   * `precompilePass` compiles the render objects the scene pass draws. GTAO,
+   * its denoise, the bloom's whole mip chain and SMAA are not render objects
+   * — they are the graph's own passes, and every one of them was still being
+   * built synchronously inside the first `post.render()`. That is where
+   * `drawn.firstMs` was going: 2 621–4 348 ms across the six live captures,
+   * on a machine whose steady frame is 10–22 ms, and it is most of the gap
+   * between F6's ten seconds and the 9.1 s average the harness measures to
+   * the first drawn frame.
+   *
+   * `post.renderAsync()` runs the identical graph through `renderAsync`, so
+   * the pipelines are created with `createRenderPipelineAsync` in the GPU
+   * process instead of serially on this thread. It draws a real frame, which
+   * is the point: the arena is on the canvas under the boot card a beat
+   * earlier than it used to be. Not fatal — if it throws, the first frame does
+   * what it always did.
+   */
+  if (post?.renderAsync) {
+    const t1 = performance.now();
+    try {
+      await post.renderAsync();
+      console.info(`post warm: ${Math.round(performance.now() - t1)} ms`);
+      mark('postWarm');
+    } catch (e) {
+      console.warn(`post warm: ${where(e)}`);
+    }
+  }
+}
 renderer.setAnimationLoop(() => {
   fps.frames++;
   const t = performance.now();
@@ -3804,7 +6752,10 @@ renderer.setAnimationLoop(() => {
     fps.frames = 0; fps.since = t;
   }
   try { frame(); } catch (e) {
-    if (!loopFailed) { loopFailed = true; fail(`render loop: ${e.stack || e.message}`); }
+    if (!loopFailed) { loopFailed = true; fail(`render loop: ${where(e)}`); }
+  }
+  try { drawFrame(); } catch (e) {
+    if (!drawFailed) { drawFailed = true; fail(`render draw: ${where(e)}`); }
   }
 });
 
@@ -3812,6 +6763,28 @@ function frame() {
   const now = performance.now() / 1000;
   const dt = Math.min(0.1, now - last);
   last = now;
+  /* The stand shot borrowed the field of view for the last frame's picture
+     (`applyStandShot`); the solver reads its own back before it runs. */
+  releaseStandShot();
+  /*
+   * WHOSE BEAT IS THIS. EVERY card beat is the arena's, unless the pair shot
+   * has earned it.
+   *
+   * The rule used to be "the VS beat, or a card with no pair on the floor",
+   * and `pair` was raised on every streaming frame — so at the result, where
+   * a fight is still streaming behind the card, it was always true and the
+   * beat always fell to the pair shot, which aims at the pair's midpoint,
+   * which is the frame's centre, which is under the card. The capture came
+   * back an empty plaza with a VICTORY card on it.
+   *
+   * Now `pair` is the ESTABLISHING shot's own verdict from last frame — both
+   * bodies inside the band, clear of the card's rectangle, and at least
+   * `TALL_WANT` of the frame tall (`pairReadable`). When that holds, the
+   * winner-over-the-fallen framing is worth keeping and it keeps the beat.
+   * When it does not — the VS card, which leaves no room beside it — the beat
+   * is the ARENA: walls, blocks, tiers, banner, planet.
+   */
+  standShot.auto = hudBand.card && !standShot.pair;
 
   /*
    * Часы частиц идут ВСЕГДА, а не только когда есть кадры боя.
@@ -3945,10 +6918,12 @@ function frame() {
       for (const [sk, el] of Object.entries(cdEls[id])) {
         const label = el.dataset.label || el.textContent.replace(/\s[\d.]+$/, '');
         el.dataset.label = label;
-        if (!v.alive) { el.className = 'cd cool'; el.textContent = label; continue; }
+        if (!v.alive) { el.className = 'cd cool'; el.textContent = label; el.dataset.cd = ''; continue; }
         const cd = v.cd ? v.cd[sk] : 0;
         el.className = `cd ${cd > 0.001 ? 'cool' : 'ready'}`;
         el.textContent = cd > 0.001 ? `${label} ${cd.toFixed(1)}` : label;
+        /* The product HUD draws the chip as an icon tile and reads the seconds from here. */
+        el.dataset.cd = cd > 0.001 ? cd.toFixed(1) : '';
       }
       updateTelegraph(id, v, view);
       updatePlate(id, v, body.height || 2);
@@ -3961,8 +6936,14 @@ function frame() {
     }
 
     updateCamera(view.blue, view.orange, dt);
+    /* `standShot.pair` is written by the camera itself — raised by the
+       establishing shot when its pair is readable, cleared by the orbit.
+       Raising it here, on every streaming frame, is what made the result beat
+       claim a pair shot of two bodies the card was standing on. */
+    applyStandShot(dt);
     // after the camera, because both answers are about THIS frame's eye
     updateOcclusion(view, dt);
+    occluded = true;
     checkFraming(view, fr.a.t);
     $('#clock .t').textContent = fr.a.t.toFixed(1);
 
@@ -3974,21 +6955,26 @@ function frame() {
      */
     const burn = Math.max(0, cfg.suddenDeathRamp * (fr.a.t - cfg.suddenDeathAt));
     const heat = THREE.MathUtils.clamp(burn / 0.16, 0, 1);
-    floorMat.color.setRGB(0.914 - heat * 0.42, 0.902 - heat * 0.63, 0.871 - heat * 0.66);
-    scene.fog.color.setRGB(0.051 + heat * 0.20, 0.059, 0.078);
-    scene.background.setRGB(0.051 + heat * 0.20, 0.059, 0.078);
+    /*
+     * The burn is the environment's (`applySuddenDeath`): the floor to pale
+     * peach, the fog, the background and the dome's horizon to ember, the
+     * reflection scaled down with the floor. The coral rim keeps ≥ 18 L over
+     * the burnt floor; the mood is carried by the sky and the pit merely
+     * warms. A lerp from the calm end, never a literal set of numbers — the
+     * calm end IS the floor, the fog and the sky.
+     */
+    env.applySuddenDeath(heat);
     const clockEl = $('#clock .s');
     if (burn > 0) {
-      clockEl.textContent = `ВНЕЗАПНАЯ СМЕРТЬ · арена жжёт обоих, −${(burn * 100).toFixed(1)}% в секунду`;
+      clockEl.textContent = `SUDDEN DEATH · the arena burns both, −${(burn * 100).toFixed(1)}%/s`;
       clockEl.style.color = '#ff6a52';
       clockEl.classList.add('burning');
     } else if (matchInfo) {
-      /* Слово seed игроку не показывается — сид это НОМЕР боя, и «бой №483634»
-         читается любым посетителем, а `seed` только тем, кто уже свой. */
-      const left = Math.max(0, cfg.suddenDeathAt - fr.a.t);
-      clockEl.textContent = left < 10
-        ? `бой №${matchInfo.seed} · арена загорится через ${left.toFixed(0)} с`
-        : `бой №${matchInfo.seed}`;
+      /* Nothing to say yet. How long is left before the arena ignites is
+         already drawn under the clock (`data-left`, §5.2), and the fight's
+         number belongs to the phase subline alone (§9.1) — so this line stays
+         empty until sudden death gives it something of its own to report. */
+      clockEl.textContent = '';
       clockEl.style.color = '';
       clockEl.classList.remove('burning');
     }
@@ -3998,12 +6984,74 @@ function frame() {
     /* `renderer` здесь ради замера кадров: без него нельзя ни спросить
        `info.render.drawCalls`, ни отличить «кадр стоит дорого» от «кадр стоит
        дорого ИМЕННО в отрисовке». Ручка отладочная и в бою ничего не делает. */
-    window.airena = { THREE, TSL, view, frames, bodies, camera, camState, scene, renderer, cfg, over, decided, matchInfo, renderClock, shoot, startMatch, tele, ghosts, solids: SOLIDS, backend: window.__airenaBackend };
+    window.airena = { THREE, TSL, view, frames, bodies, camera, camState, scene, renderer, cfg, over, decided, matchInfo, renderClock, shoot, startMatch, tele, ghosts, solids: SOLIDS, env, quality, hudBand, measureHud, backend: window.__airenaBackend };
+  } else if ((matchInfo || over) && camModes[camMode] === 'auto' && !sweepCam) {
+    /* A match announced and no frame yet (the VS beat), or a result with the
+       socket gone quiet: the establishing shot over the bodies where they
+       STAND — the match's own bodies, just swapped in, not the previous
+       fight's positions — or the empty field. The snap the match set is
+       kept for the fight's first frame, so a page opened mid-fight plants
+       the orbit instead of swinging out of this shot for three seconds. A
+       fresh visitor before any match keeps the boot camera, whose near wall
+       the wall rule fades. */
+    const standing = (id) => (bodies[id]?.root?.visible
+      ? { x: bodies[id].root.position.x, y: 0, z: bodies[id].root.position.z, alive: true } : null);
+    const keep = camState.snap;
+    const a = standing('blue'), b = standing('orange');
+    establishingCamera(a, b, dt);
+    camState.snap = keep;
+    /*
+     * NOTHING TO ESTABLISH OVER → THE ARENA IS THE SUBJECT (`applyStandShot`).
+     * A VS card rises before the match's first snapshot, so neither body is
+     * visible yet and the pair shot aims at an empty midpoint: the capture
+     * `live-vs.png` was plaster with a card over it. With no pair, the beat
+     * takes the stand's establishing frame instead — walls, blocks, tiers,
+     * banner, planet — and hands back to the orbit over 600 ms on the first
+     * fighting frame. The result beat keeps the pair shot when — and only
+     * when — the winner is actually visible beside the card; that verdict is
+     * `establishingCamera`'s, written into `standShot.pair` above.
+     */
   }
+
+  /* If neither camera branch ran (no frames, no match: a visitor's first
+     seconds, and the VS beat), the blend still has to advance — and the wall
+     rule wants THIS eye too: from the boot camera and from the stand shot the
+     near wall hides a strip of the field and stands with its notch's cut
+     faces at bottom-centre, and with no fighters on the floor nothing else
+     was asking for the pass at all. */
+  applyStandShot(dt);
+  /* …and the floor is cleared with it. `occluded` is raised only by the
+     streaming branch, so it is exactly the question "did a fight draw this
+     frame" — the same question `restMarks` answers about the plaza's marks,
+     and `updateOcclusion(EMPTY_VIEW)` about the two ghosts. */
+  if (!occluded) { restMarks(); updateOcclusion(EMPTY_VIEW, dt); }
+  occluded = false;
 
   updateFx(now);
   tickScreen(dt);
   tickHit(now);
+}
+
+/**
+ * The half of a frame that puts pixels on the screen.
+ *
+ * Split out of `frame()` and called with its own guard (see the loop above),
+ * because the state update and the picture are not the same promise. Nothing
+ * here reads the socket or advances the world: it places the sweep camera if a
+ * stand has taken it, decides whether the frame is visible at all, and draws.
+ */
+let envClock = performance.now();
+/* `direct` — frames the post graph could not draw and the raster path did;
+   `blank` — frames NOBODY drew. A capture reads both (`window.__airenaDrawn`)
+   so "the arena is dark" can be told from "the arena was never written". */
+const drawn = { n: 0, firstAt: 0, firstMs: 0, lastMs: 0, direct: 0, blank: 0, postTier: window.__airenaPostTier || null };
+/** Consecutive throws out of `post.render()`; two of them retire the graph. */
+let postThrows = 0;
+let drawBlank = false;
+/** The phase/card the HUD was last measured in (see `measureHud`). */
+let hudBeat = '';
+window.__airenaDrawn = drawn;
+function drawFrame() {
   if (sweepCam) {
     /* Орбита вокруг точки взгляда: азимут, наклон, дистанция. Тряска
        решателя сюда не попадает — снимок сравнивают, а не переживают. */
@@ -4054,10 +7102,199 @@ function frame() {
    * его и зовут.
    */
   const covered = document.getElementById('screen')?.classList.contains('doc');
-  if (covered && !pendingShot) return;
-  /* Постобработка, если она собралась; иначе прямой кадр — бой важнее света. */
+  if (covered && !pendingShot) { bootLanded(); return; }
+  /* A graph rebuild is compiling: the renderer is pointed at the new pass's
+     target until it finishes, so the picture holds for the frames it takes
+     (see `applyPost`) rather than drawing into that target. */
+  if (rebuilding) return;
+  /*
+   * ── THE BANNER'S PLAY RULE IS WITHDRAWN (ARENA-AAA §2, founder 06.09) ─────
+   *
+   * It read: the banner is hidden while the orbit or the top camera frames a
+   * fight, because from any orbit state under dist 34 the frame's top edge
+   * crossed a banner standing at the horizon and it slid along the HUD's top
+   * row as a coral stub.
+   *
+   * That answered a frame-edge stub by DELETING the object. Measured on
+   * `live-fighting.png`: zero coral pixels anywhere above the coping in the
+   * whole fight — no banner, and with it none of the world the founder's
+   * second directive is about, because the rule fires for precisely the beat
+   * the product is watched on. The addendum puts coral on "banners and the
+   * opponent" both, during play, and names the banners as the arena's only
+   * saturated objects.
+   *
+   * The stub itself is a FRAMING fault and is answered where framing lives:
+   * the fight camera's pitch is capped so the deck's roofline and the
+   * banners' hanging points are inside the picture rather than clipped by its
+   * top edge (see `PITCH_MAX` in the solver). The banner is a permanent
+   * object from here on, exactly as it is on the stand that photographs it.
+   */
+  const inPlay = frames.length > 0 && !decided;
+  env.banner.visible = true;
+  /* The HUD's band, the feed's box and the card, from the DOM, for the
+     camera (`hudBand`): re-measured on every phase or card change and every
+     30 frames (half a second), because the panels move with the phase and
+     the layout with the width. */
+  const ds = document.body.dataset;
+  const beat = `${ds.phase || ''}/${ds.card || ''}`;
+  if (beat !== hudBeat || drawn.n % 30 === 0) { hudBeat = beat; measureHud(); }
+  hudBand.card = /^(vs|result|win|loss)$/.test(ds.card || '') || /^(vs|result)$/.test(ds.phase || '');
+  /* The card beat's own verdict, beside the picture it produced (see
+     `soloReadable`). `tools/shots.mjs` spreads `__airenaDrawn` into every
+     sidecar, so a result frame with no fighter in it now says which test
+     refused rather than leaving the next round to guess again. */
+  if (hudBand.card && standShot.beat) drawn.beat = { ...standShot.beat, pair: standShot.pair, stand: +standShot.k.toFixed(2) };
+  /* The VS beat on its own: it is the one card that announces a fight that has
+     NOT started, so nothing on the floor under it is the subject — whatever
+     stands there is the last fight's. The camera answers with the arena
+     itself (`applyStandShot`); the result card keeps the pair. */
+  hudBand.vs = ds.card === 'vs' || ds.phase === 'vs';
+  /* The post graph if it built; otherwise a direct frame — the fight matters more than the light. */
   drawHitFlash();
-  if (post) post.render(); else renderer.render(scene, camera);
+  /* Once per frame, AFTER the hit-flash pass and BEFORE the render: one
+     shadow refresh for whichever camera renders first, and the reflection's
+     zero level kept on the background. */
+  const nowMs = performance.now();
+  const dtEnv = (nowMs - envClock) / 1000;
+  envClock = nowMs;
+  env.update(Math.min(0.1, dtEnv));
+  if (gov) {
+    /*
+     * THE DEMOTION LINES MUST NOT CALIBRATE TO THE MACHINE'S OWN SLOWNESS.
+     *
+     * `refreshDt` is the shortest delta the loop has seen and the lines are
+     * 75 % and 50 % of that rate — so a machine whose FASTEST frame is 30 ms
+     * was read as a 33 Hz display and its lines became 25 / 16.5 fps: it ran
+     * `high` at 30 fps for the whole session and RENDER-QUALITY §7's "under
+     * 45 fps → medium" never fired. The 30–60 fps band, which is precisely
+     * the band the governor exists for, was where a slow machine looked like
+     * a slow display.
+     *
+     * The page already measures the draw's own main-thread cost, and that is
+     * what tells the two apart: a 30 ms frame with 25 ms of drawing in it is a
+     * slow MACHINE; a 30 ms frame with 2 ms of drawing is a slow DISPLAY. Only
+     * the second is allowed to teach the cadence. And it decays — one
+     * anomalous 6.1 ms delta used to pin the cadence at 164 Hz for the whole
+     * session and kill the climb outright — so a display that changes (a
+     * window dragged to another monitor, a tab restored) is relearned.
+     */
+    const idle = stats.drawMs === null || stats.drawMs < dtEnv * 600;
+    if (dtEnv >= 0.006 && dtEnv <= 0.25 && idle) refreshDt = Math.min(refreshDt, dtEnv);
+    if (refreshDt < 0.25) refreshDt = Math.min(0.25, refreshDt * (1 + 0.02 * Math.min(0.1, dtEnv)));
+    const displayHz = refreshDt <= 0.034 ? 1 / refreshDt : 60;
+    demote.medium = Math.min(45, displayHz * 0.75);
+    demote.low = Math.min(30, displayHz * 0.5);
+    /* The hold has a floor. A fight under the `low` line is the one case
+       RENDER-QUALITY §7 forbids, and with the rebuild precompiled off the
+       main thread a mid-fight swap costs a short hold of the picture, not a
+       freeze — so a starving fight drops a tier after the governor's 2 s
+       instead of running out at 25 fps until the boundary. */
+    const starving = gov.fps !== null && gov.fps < demote.low;
+    if (inPlay && !starving) gov.hold(); else gov.release();
+    /*
+     * AND THE METER IS NOT ALLOWED TO DISCARD THE STALLS IT EXISTS FOR.
+     *
+     * The ceiling was 0.25 s — "a throttled tab is the browser choosing not to
+     * draw, not a slow frame" — which is true of a hidden tab and false of a
+     * one-second pipeline compile on a visible one. The consequence is the
+     * module's panic rule (3 consecutive dt > 0.1 s) could only ever see the
+     * 4–10 fps band and never a half-second frame, which is exactly the shape
+     * the result and visitor captures measured. `document.hidden` already
+     * answers the throttled tab, so the ceiling is raised to 2 s for the
+     * PANIC's sake and the value handed over is still clamped at 0.25 for the
+     * rolling mean's — a 1 s frame counts as one panic tick without pulling
+     * the mean four times further than a frame can pull it.
+     */
+    if (!document.hidden && dtEnv > 0 && dtEnv <= 2) gov.tick(Math.min(0.25, dtEnv));
+    /* and the other direction, at a boundary only (`tryPromote`) */
+    tryPromote(Math.min(0.25, dtEnv), inPlay);
+  }
+  /*
+   * A FRAME THAT THROWS MUST NOT BLANK THE ARENA.
+   *
+   * Two causes are known. A post-effect can fail: the frame then falls back to
+   * a direct render. And a GENERATED BODY can fail lazily — a model-written
+   * material that builds fine and throws at shader time (`reading 'abs'` inside
+   * `buildBody`), which surfaces inside the render call on every frame. For
+   * that case the offending side is put back on its stock body once per match
+   * (`quarantineBodies`) and the failure is reported as `airena:bodyfail`, the
+   * same signal a body that failed at build time sends.
+   */
+  const drawT0 = performance.now();
+  try {
+    if (post) post.render(); else renderer.render(scene, camera);
+    postThrows = 0;
+    if (evicted) restoreBodies();
+  } catch (e) {
+    if (!postFailed) { postFailed = true; fail(`render: ${where(e)}`); }
+    /* Quarantine or not, a frame is drawn: with the failed body hidden the
+       direct render shows the environment and the other fighter while the
+       stock body arrives, instead of a cleared canvas under the veil — the
+       one blank frame a visitor met on any fight with a bad generated body,
+       and one the capture harness could not tell from a broken renderer. */
+    quarantineBodies(e.message);
+    /*
+     * AND THE FALLBACK IS PUT BACK ON THE RASTER PATH BEFORE IT DRAWS.
+     *
+     * Without `directGrade` this line rendered into the failed pass's own
+     * target with no tone map, i.e. into nothing: `live-visitor.png` came back
+     * #000000 across the whole arena with the HUD readable on top of it, and
+     * the sidecar recorded 30 draws in 14 s because the throw simply repeated.
+     * The two counters below are what tells a capture a black canvas from a
+     * drawn one — a picture nobody drew used to look exactly like a dark
+     * theme.
+     */
+    directGrade();
+    /*
+     * AND THE SECOND THROW TAKES THE THROWING OBJECT OUT OF THE FALLBACK.
+     *
+     * `quarantineBodies` only hides `root` and fires an ASYNC swap, so the
+     * retry below draws the same scene graph — and on the run that produced
+     * `live-visitor.png` the retry threw too: `drawn.direct 1 / blank 1`, 24
+     * ticks in 2 586 ms, and a WebGPU frame whose command buffer is never
+     * submitted presents a TRANSPARENT surface, which is why the round-6 black
+     * frame came back as a flat `--sky` page with the HUD floating on it.
+     *
+     * A hidden root is not out of the render list until the traversal that
+     * builds it runs again, and it is not out of the SCENE at all — so from
+     * the second consecutive throw both fighters are DETACHED, not dimmed.
+     * The worst frame this can now present is the arena with no fighters in
+     * it, which is a picture; the page it replaces was not one.
+     */
+    if (postThrows >= 1) { evictBodies(); evictFx(); }
+    try {
+      renderer.render(scene, camera);
+      drawn.direct++;
+    } catch (e2) {
+      drawn.blank++;
+      if (!drawBlank) { drawBlank = true; console.warn('the direct render failed too', e2); }
+    }
+    /*
+     * TWO IN A ROW IS NOT BAD LUCK — the number `dropPost`'s own docstring has
+     * always argued for, and the number the visitor evidence settles.
+     *
+     * Eight was chosen because `quarantineBodies` answers with an async swap
+     * and a handful of frames can still meet the material that threw. That is
+     * true and it is not the point: eight consecutive throws are eight frames
+     * the viewer spends looking at a transparent canvas, and the async swap
+     * needs the graph gone rather than retried while it lands. Reset by the
+     * first frame that renders.
+     */
+    if (++postThrows >= 2) dropPost(`${postThrows} consecutive throws: ${e.message}`);
+  }
+  /* How many frames this page has drawn and what the first one cost on the
+     main thread (the pipeline compiles land there): read by the capture
+     tool beside every picture, so "the arena had not appeared" can be told
+     apart from "the arena was never asked to draw". */
+  drawn.n++;
+  const drawMs = performance.now() - drawT0;
+  drawn.lastMs = Math.round(drawMs);
+  if (drawn.n === 1) { drawn.firstAt = Math.round(drawT0); drawn.firstMs = drawn.lastMs; }
+  /* The rolling mean the captures carry (`window.__airenaStats`): the frame's
+     wall-clock delta and the part of it this thread spent drawing. */
+  tickStats(dtEnv, drawMs);
+  /* A picture exists. Only now does the connecting card have nothing to say. */
+  bootLanded();
 
   if (pendingShot) {
     const { name, resolve } = pendingShot;

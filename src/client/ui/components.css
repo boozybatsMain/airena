@@ -1,0 +1,646 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Components — glass, buttons, chips, tiles, tables, inputs, empty states.
+   Reference: uikit.png. Screens compose these; they do not redefine them.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── glass surfaces ─────────────────────────────────────────────────────── */
+.glass {
+  /* LIGHT FALLS FROM THE TOP — ONTO A WARM FLOOR.
+     A flat wash of white reads as a sheet of paper laid on the picture. Glass
+     is brighter where the sky catches its rim and settles to its own value
+     below, and three per cent is the whole difference — the mean of the ramp
+     is `--glass-fill` itself, so nothing behind a panel reads any differently
+     than the token promises.
+     The ramp is the fill; `--glass-floor` is what the fill stands on, and it
+     is the reason a panel is the same warm object over the photograph, over
+     the battle floor and over flat `--sky` (ui/tokens.css, "ONE GLASS"). */
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .60) 0%, rgba(255, 255, 255, .48) 46%, rgba(255, 255, 255, .52) 100%),
+    var(--glass-floor);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15); backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-panel);
+  /* Three shadows, not one. The drop shadow seats the panel on the ground; the
+     inset hairline along the top edge is light catching the rim of the glass;
+     the 1 px ink ring is the edge itself.
+     Those eight pixels are the whole difference between frosted glass and a
+     white rectangle, and over a photograph the difference is the design.
+     The ring is there because `--glass-line` is white at .72, and a white
+     hairline on a near-white card over a warm off-white ground is not a line
+     at all: the create card and the mind picker read as edgeless rectangles
+     that faded out into the page. Six per cent ink is below the threshold at
+     which the eye calls something a border and above the one at which it
+     stops seeing where the panel ends. */
+  box-shadow:
+    0 0 0 1px rgba(46, 46, 51, .06),
+    0 12px 40px var(--shade),
+    inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+.glass.strong {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .82) 0%, rgba(255, 255, 255, .70) 46%, rgba(255, 255, 255, .74) 100%),
+    var(--glass-floor);
+}
+/*
+ * The two ramps are the fill ±4 %, and `prefers-contrast: more` moves the fill
+ * (ui/tokens.css). A gradient cannot be written as "the token, plus four", so
+ * the preference's ramps are stated once here rather than left behind: without
+ * this the high-contrast reader got the warmer floor and the same translucent
+ * fill, i.e. half of what the tokens promise.
+ */
+@media (prefers-contrast: more) {
+  .glass {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .88) 0%, rgba(255, 255, 255, .76) 46%, rgba(255, 255, 255, .80) 100%),
+      var(--glass-floor);
+  }
+  .glass.strong {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .97) 0%, rgba(255, 255, 255, .89) 46%, rgba(255, 255, 255, .93) 100%),
+      var(--glass-floor);
+  }
+}
+.pane-dark { background: var(--pane-dark); color: #F4EEE8; border-color: rgba(255, 255, 255, .12); }
+.panel { padding: var(--s5) var(--s6); }
+.card { padding: var(--s4) var(--s5); border-radius: var(--r-card); }
+
+/* ── buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 44px; padding: 0 22px; border-radius: var(--r-card);
+  font-family: var(--font-display); font-size: 12px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; white-space: nowrap;
+  color: var(--ink-2); background: var(--glass-strong); border: 1px solid var(--glass-line);
+  box-shadow: 0 6px 18px var(--shade);
+  transition: transform var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease), background var(--d-ui) var(--ease), opacity var(--d-ui);
+}
+.btn:hover { background: rgba(255, 255, 255, .92); transform: translateY(-1px); box-shadow: 0 10px 26px var(--shade); }
+/* pressed, not merely un-hovered: the lift goes, the shadow tucks in under it */
+.btn:active { transform: translateY(1px); box-shadow: 0 3px 10px var(--shade); }
+
+/*
+ * PRIMARY IS INK ON LIGHT.
+ *
+ * It had become a saturated navy (#4876BA → #35609E) with white letters: the
+ * loudest and coldest object on every screen it stood on — WATCH REPLAY, NEW
+ * GENERATION, CONTINUE, RELOAD, LINK MY ACCOUNT — and the one control in the
+ * product that read as a stock component rather than as this system. Neither
+ * reference has it. The kit's PRIMARY is a dusty blue and its modal CREATE is
+ * a pale sky card with dark letters; §2.3 asks for "ink on a soft sky→info
+ * gradient with a 1px light border and an arrow glyph". So that is what it is.
+ *
+ * The argument that produced the navy was contrast, and contrast answers it:
+ * `--ink-2` on the DARK end of this ramp (#C6DCEF) measures 11.6:1, more than
+ * twice what white ever had on the blue, and it holds at every stop between.
+ * Weight now comes from shape instead of saturation — the light rim, the
+ * blue-tinted lift the button casts on the ground, and the arrow. That is how
+ * a quiet interface raises its voice (§1.7).
+ */
+.btn.primary {
+  color: var(--ink-2);
+  background: linear-gradient(135deg, #E8F0F9, #C6DCEF);
+  border-color: rgba(110, 168, 255, .55);
+  box-shadow: 0 10px 28px rgba(88, 140, 208, .26), inset 0 1px 0 #fff;
+}
+/* The arrow is the one coloured thing on it — §2.3's "arrow glyph", in the
+   blue this interface already spends on selection and on links. */
+.btn.primary .ic { color: var(--info-ink); }
+.btn.primary:hover {
+  background: linear-gradient(135deg, #F2F7FC, #D3E5F5);
+  border-color: rgba(110, 168, 255, .8);
+  box-shadow: 0 14px 34px rgba(88, 140, 208, .34), inset 0 1px 0 #fff;
+}
+/* The arrow leaves before the button does. Two pixels is the whole gesture:
+   enough to answer the pointer, not enough to notice as an animation. */
+.btn.primary:hover .ic-arrow-right,
+.btn.primary:focus-visible .ic-arrow-right { transform: translateX(2px); }
+.btn.primary:active {
+  background: linear-gradient(135deg, #DEEAF6, #B9D4EB);
+  box-shadow: 0 3px 10px rgba(88, 140, 208, .3), inset 0 1px 2px rgba(46, 46, 51, .1);
+}
+
+/* The same construction in coral, for the one place a destructive or a losing
+   action needs the palette's other side. `#FFD1C2` and not the coral it was
+   sampled from: `--accent-ink` needs 4.5:1 and lands at 4.6:1 here, against
+   4.2:1 two shades darker — the last shade that is still unmistakably coral. */
+.btn.accent {
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, #FCE3DB, #FFD1C2);
+  border-color: rgba(255, 122, 92, .5);
+  box-shadow: 0 10px 28px rgba(200, 92, 62, .24), inset 0 1px 0 #fff;
+}
+.btn.accent .ic { color: var(--accent-ink); }
+.btn.accent:hover {
+  background: linear-gradient(135deg, #FEEDE7, #FFDCD0);
+  border-color: rgba(255, 122, 92, .72);
+  box-shadow: 0 14px 34px rgba(200, 92, 62, .32), inset 0 1px 0 #fff;
+}
+.btn.accent:active {
+  background: linear-gradient(135deg, #F7D8CE, #F8C2B1);
+  box-shadow: 0 3px 10px rgba(200, 92, 62, .28), inset 0 1px 2px rgba(46, 46, 51, .1);
+}
+
+/*
+ * DISABLED IS A STATE, NOT A FAULT.
+ *
+ * 45 % opacity over a blue gradient produced a pale blue block with grey
+ * letters — the exact look of a control that has failed to paint. The kit
+ * draws it as a flat sand fill with quiet text: nothing is wrong, there is
+ * simply nothing to press yet.
+ *
+ * A wash of sand and not the token at full strength: solid `--sand` on the
+ * create card made the one thing the player cannot press the heaviest block on
+ * the screen. At .45 it is unmistakably inert and still the quietest shape in
+ * the composition, which is what the kit's own DISABLED chip does. The label
+ * is `--muted` rather than `--stone` — stone on sand measures 2.0:1, too faint
+ * to read at 12 px even for a control nobody can press.
+ *
+ * `.busy` is excluded: a button disabled because its request is in flight is
+ * not the same statement, and create.js keeps it in its primary colour.
+ */
+.btn:disabled:not(.ghost):not(.busy) {
+  color: var(--muted);
+  background: rgba(201, 184, 167, .45);
+  border-color: rgba(46, 46, 51, .07);
+  transform: none; box-shadow: none;
+}
+.btn:disabled { opacity: 1; transform: none; box-shadow: none; cursor: default; }
+/* Nothing on a disabled control is coloured — the arrow least of all. Left in
+   `--info-ink` it was the one bright pixel on the sand block, and a blue arrow
+   on a grey button reads as a control that half works. */
+.btn:disabled:not(.busy) .ic { color: inherit; }
+.btn.ghost:disabled { opacity: .45; }
+/* §2.3: ghost = text + underline on hover. The underline is drawn rather than
+   `text-decoration`: the button also holds an arrow glyph, and a decoration
+   would strike through it. */
+.btn.ghost { position: relative; background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+/* `left/right: 0` is the PADDING box, so the rule follows whatever horizontal
+   padding the variant carries (`.small` 14 px, the creature actions 12 px)
+   instead of assuming the base 22 px and inverting on the narrow ones. */
+.btn.ghost::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: left;
+  transition: transform var(--d-ui) var(--ease);
+}
+.btn.ghost:hover, .btn.ghost:focus-visible { color: var(--ink-2); background: rgba(255, 255, 255, .35); transform: none; }
+.btn.ghost:hover::after, .btn.ghost:focus-visible::after { transform: scaleX(1); }
+.btn.ghost:disabled::after { display: none; }
+.btn.big { height: 52px; padding: 0 30px; font-size: 13px; }
+.btn.small { height: 34px; padding: 0 14px; font-size: 11px; }
+.btn.icon { width: 44px; padding: 0; border-radius: 50%; }
+.btn.icon.small { width: 34px; }
+.btn svg { width: 16px; height: 16px; flex: 0 0 16px; transition: transform var(--d-ui) var(--ease); }
+
+/* ── chips, pills, badges ───────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px;
+  border-radius: var(--r-chip); font-size: 10.5px; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+  background: rgba(255, 255, 255, .5); border: 1px solid var(--glass-line);
+}
+.chip.on { color: var(--ink-2); background: rgba(255, 255, 255, .82); }
+/* A chip that is a filter is a control and answers the pointer; a chip that is
+   a label (GEN 01, PREDATOR) is a fact and does not. */
+button.chip { transition: background var(--d-ui) var(--ease), color var(--d-ui) var(--ease), border-color var(--d-ui) var(--ease); }
+button.chip:hover { color: var(--ink-2); background: rgba(255, 255, 255, .78); }
+button.chip:active { background: rgba(255, 255, 255, .9); }
+.chip.info { color: var(--info-ink); background: rgba(110, 168, 255, .16); border-color: rgba(110, 168, 255, .3); }
+.chip.accent { color: var(--accent-ink); background: rgba(255, 122, 92, .16); border-color: rgba(255, 122, 92, .3); }
+.chip.success { color: var(--success-ink); background: rgba(122, 211, 166, .18); border-color: rgba(122, 211, 166, .35); }
+.chip.warning { color: var(--warning-ink); background: rgba(244, 208, 111, .25); border-color: rgba(244, 208, 111, .5); }
+.pill { border-radius: var(--r-pill); }
+
+/* segmented control: CREATURES · MINDS · SEASON */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-card); background: rgba(255, 255, 255, .42); border: 1px solid var(--glass-line); }
+.seg > button {
+  height: 34px; padding: 0 16px; border-radius: 8px; font-size: 11px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  transition: background var(--d-ui), color var(--d-ui);
+}
+.seg > button:hover { color: var(--ink-2); background: rgba(255, 255, 255, .5); }
+.seg > button:active { background: rgba(255, 255, 255, .74); }
+.seg > button.on { color: var(--ink-2); background: rgba(255, 255, 255, .86); box-shadow: 0 4px 14px var(--shade); }
+
+/* ── stat tiles ─────────────────────────────────────────────────────────── */
+.tiles { display: flex; gap: var(--s3); flex-wrap: wrap; }
+.tile {
+  min-width: 128px; padding: 14px 16px 12px; border-radius: var(--r-card);
+  background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(12px);
+  /* the same whisper of ink `.glass` carries, for the same reason: a white
+     hairline does not draw an edge on a warm off-white ground */
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .05);
+}
+.tile .v { font-size: var(--t-num); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink-2); display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.tile .v .d { font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.tile .k { margin-top: 7px; font-size: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+
+/* ── circular icon tile (abilities, ranks, marks) ───────────────────────── */
+.circle {
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--glass-strong); border: 1px solid var(--glass-line); box-shadow: 0 6px 16px var(--shade);
+}
+
+/* ability tile (ui/ability.js) */
+.ability { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 7px; width: auto; }
+.ability .ability-ring {
+  position: relative; width: var(--ab, 56px); height: var(--ab, 56px); border-radius: 50%; overflow: hidden;
+  background: var(--glass-strong); border: 1px solid var(--glass-line); box-shadow: 0 6px 16px var(--shade);
+  transition: transform var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease);
+}
+.ability:hover .ability-ring, .ability:focus-visible .ability-ring { transform: translateY(-2px); box-shadow: 0 10px 24px var(--shade); }
+.ability:active .ability-ring { transform: translateY(0); box-shadow: 0 3px 10px var(--shade); }
+/* The generated icon is ink on an opaque white square. Inset and blended it
+   read as a box inside the circle — the white never knocked out against the
+   glass, and a non-square image (the model returns those) turned the tile into
+   a rectangle. So the image IS the tile: it fills the ring and is cropped to
+   the circle, which is exactly the reference's near-white disc with a glyph. */
+.ability img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* The procedural glyph is ink on nothing and is drawn to the edges of its
+   64-grid, so it keeps a margin and its whole silhouette. */
+.ability img[data-kind="glyph"], .ability .ability-svg {
+  inset: 9%; width: 82%; height: 82%; object-fit: contain; border-radius: 0;
+}
+/* The generated icon lies ON the drawing and is revealed only once ability.js
+   has looked at it and found a glyph rather than an empty sheet, a smear or a
+   sliver. Until then — and for ever, if it never arrives — the tile shows the
+   procedural mark, so there is no empty circle and no flash of a bad one. */
+.ability img[data-kind="icon"] { opacity: 0; transition: opacity 240ms var(--ease); }
+.ability img[data-kind="icon"][data-ok="1"] { opacity: 1; }
+
+/* The name, and — when the grammar had to tell two shapes apart — the mark
+   that does it, on a line of its own.
+ *
+ * Both lines stretch to the label's width and centre their own text. A screen
+ * that lays the row out (`ui/screens/creature.css`) sets `align-items:
+ * flex-start` on this box, which left-aligned the shorter of the two: DAMAGE
+ * and STUN sat visibly off the centre of their own tiles. `align-self` is an
+ * item's answer to a container's `align-items`, and it belongs with the markup
+ * that has two lines to align. */
+.ability .ability-name {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); text-align: center; max-width: 96px; line-height: 1.25;
+}
+.ability .ability-name-main, .ability .ability-name-mark { align-self: stretch; text-align: center; }
+/* Lighter by weight and size, not by colour: the mark inherits whatever the
+   name is wearing, so it follows the label onto the arena photograph — where
+   components.css swaps in `--ink-soft` and a halo — instead of staying at a
+   grey that measures 1.3:1 under the hanging banners. */
+.ability .ability-name-mark { font-size: 9px; font-weight: 500; letter-spacing: .2em; }
+
+/* ── mind badge (ui/mind.js) ────────────────────────────────────────────── */
+.mind { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.mind { min-width: 0; }
+.mind .mind-mark { width: 20px; height: 20px; flex: 0 0 20px; }
+.mind .mind-name { overflow: hidden; text-overflow: ellipsis; }
+.mind .mind-mode { color: var(--muted); font-weight: 500; }
+
+/* ── inputs ─────────────────────────────────────────────────────────────── */
+.field {
+  width: 100%; padding: 14px 16px; border-radius: var(--r-card); resize: none;
+  background: rgba(255, 255, 255, .62); border: 1px solid var(--glass-line);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5; color: var(--ink-2);
+  transition: background var(--d-ui), border-color var(--d-ui), box-shadow var(--d-ui);
+}
+.field::placeholder { color: rgba(107, 95, 85, .7); }
+.field:focus { outline: none; background: rgba(255, 255, 255, .85); border-color: rgba(110, 168, 255, .6); box-shadow: 0 0 0 4px rgba(110, 168, 255, .16); }
+/*
+ * A field's own `outline: none` used to win over the global ring — it is one
+ * class more specific — so the two places a player types were the two places
+ * with no focus indicator at all: the create prompt showed a pale blue glow at
+ * 2.4:1 and the picker's search, which takes focus the moment the modal opens,
+ * showed nothing. The affordance stays (the fill lifts, the border warms); the
+ * indicator is put back on top of it.
+ */
+.field:focus-visible { outline: 2px solid var(--info-ink); outline-offset: 2px; box-shadow: 0 0 0 4px rgba(255, 255, 255, .85); }
+.search {
+  display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
+  border-radius: var(--r-card); background: rgba(255, 255, 255, .62); border: 1px solid var(--glass-line);
+  transition: border-color var(--d-ui) var(--ease), background var(--d-ui) var(--ease);
+}
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-family: var(--font-body); font-size: 14px; color: var(--ink-2); }
+.search svg { width: 16px; height: 16px; color: var(--muted); flex: 0 0 16px; }
+/* The input fills the row edge to edge, so the row is what gets the ring —
+   an outline drawn on the input alone would sit inside the border it shares. */
+.search input:focus-visible { box-shadow: none; }
+.search:has(input:focus-visible) {
+  background: rgba(255, 255, 255, .88);
+  outline: 2px solid var(--info-ink); outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, .85);
+}
+
+/* ── tables / rows ──────────────────────────────────────────────────────── */
+.rows { display: flex; flex-direction: column; gap: 6px; }
+.row {
+  display: grid; align-items: center; gap: var(--s4); padding: 12px 16px;
+  border-radius: var(--r-card); background: rgba(255, 255, 255, .38); border: 1px solid rgba(255, 255, 255, .5);
+  /* Frosted, not merely tinted. A 38 % white wash over a photograph lets the
+     arena's columns run through the row in focus, and a table then reads as
+     text printed on a picture. Eight pixels of blur put the picture behind
+     glass, which is the whole vocabulary of §2.3. */
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: background var(--d-ui), transform var(--d-ui), box-shadow var(--d-ui);
+}
+button.row { text-align: left; width: 100%; }
+button.row:hover { background: rgba(255, 255, 255, .7); transform: translateY(-1px); box-shadow: 0 8px 22px var(--shade); }
+button.row:active { transform: translateY(0); box-shadow: 0 2px 8px var(--shade); }
+.row.me { background: rgba(110, 168, 255, .18); border-color: rgba(110, 168, 255, .45); }
+.row .k { font-size: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.row .v { font-variant-numeric: tabular-nums; font-weight: 500; }
+.row .name { font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.head-row { padding: 0 16px 6px; }
+
+/* ── section labels with a trailing line ───────────────────────────────── */
+.label-line { display: flex; align-items: center; gap: 14px; }
+.label-line::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+
+/* ── empty state ────────────────────────────────────────────────────────── */
+/* The kit draws it as a dashed rectangle with a glyph, a line of fact and one
+   way out. The light that falls from the top is what keeps the dashes from
+   reading as a cut in the page rather than a place waiting to be filled. */
+.empty { position: relative; text-align: center; padding: var(--s7) var(--s5); border: 1px dashed rgba(46, 46, 51, .2); border-radius: var(--r-panel); }
+.empty::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(120% 86% at 50% -6%, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 68%);
+}
+.empty > * { position: relative; }
+.empty .circle { width: 46px; height: 46px; margin: 0 auto var(--s4); color: var(--stone); }
+.empty .hd { font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.empty .t-small { margin-top: 7px; max-width: 42ch; margin-left: auto; margin-right: auto; }
+.empty .btn { margin-top: var(--s5); }
+
+/* ── notes ──────────────────────────────────────────────────────────────── */
+.note { padding: 10px 14px; border-radius: var(--r-card); font-family: var(--font-body); font-size: 13px; line-height: 1.5; background: rgba(255, 255, 255, .5); border-left: 2px solid var(--stone); }
+.note.warning { border-left-color: var(--warning); background: rgba(244, 208, 111, .18); color: var(--warning-ink); }
+.note.accent { border-left-color: var(--accent); background: rgba(255, 122, 92, .14); color: var(--accent-ink); }
+.note.success { border-left-color: var(--success); background: rgba(122, 211, 166, .16); color: var(--success-ink); }
+
+/* ── rank badge (top three) ─────────────────────────────────────────────── */
+.rank-badge { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); background: rgba(255, 255, 255, .6); border: 1px solid var(--glass-line); }
+.rank-badge.r1 { background: linear-gradient(135deg, #F8E7B0, #E2BE5A); }
+.rank-badge.r2 { background: linear-gradient(135deg, #F1F1F3, #BFC4CC); }
+.rank-badge.r3 { background: linear-gradient(135deg, #F0D2BC, #C98A5E); }
+
+/* ── modal ──────────────────────────────────────────────────────────────── */
+/* A modal has to out-paint the navigation. Modals are appended to `#overlay`,
+   which sits at `--z-overlay` (30) — under `#chrome` (40) — and, because it is
+   positioned with a z-index, it is a stacking context: no z-index on the veil
+   itself can climb out of it. On a phone that showed as the tab bar
+   LIVE/CREATURE/HISTORY/LADDER painting over the open mind picker. So the
+   overlay is lifted for exactly as long as it holds a modal, and only then —
+   the VS card and the result card still belong under the chrome. `--z-tip`
+   (50) stays above, so a tooltip raised from inside the modal is still seen. */
+#overlay:has(> .modal-veil) { z-index: 45; }
+.modal-veil { position: fixed; inset: 0; z-index: 45; background: rgba(46, 46, 51, .28); backdrop-filter: blur(4px); display: grid; place-items: center; padding: var(--s5); }
+/* A near-opaque panel takes an ink edge for the same reason `.glass` does: its
+   own white hairline is invisible against it, and the picker read as a white
+   rectangle with no border at all. Declared here and not on `.glass` alone
+   because `.modal.picker` replaces the shadow the ring rides in. */
+.modal { width: min(760px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; overflow: hidden; border-color: rgba(46, 46, 51, .10); }
+.modal .modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s5) var(--s6) var(--s3); }
+.modal .modal-body { overflow-y: auto; padding: 0 var(--s6) var(--s6); }
+
+/* ── skeleton shimmer for loading rows ──────────────────────────────────── */
+/* A loading row is the shape of the row that is coming, not a grey box: it
+   carries the same frost, the same hairline and the same radius as `.row`, so
+   the table does not change material when the data lands — only its content
+   appears. The sweep is slow and eased because it is a sign of life, not a
+   progress bar (§1.5: no fake progress). */
+.skel {
+  position: relative; overflow: hidden; min-height: 44px;
+  /* Same warm floor the real row will stand on, so the table does not change
+     temperature when the data lands — only its content appears. */
+  background: linear-gradient(rgba(255, 255, 255, .42), rgba(255, 255, 255, .42)), var(--glass-floor);
+  border-radius: var(--r-card);
+  box-shadow: 0 0 0 1px rgba(46, 46, 51, .05);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.skel::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .62) 50%, transparent 80%);
+  animation: shimmer 1.6s var(--ease) infinite;
+}
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* ── labels on the photographic ground ──────────────────────────────────── */
+/*
+ * `body[data-ground="stage"]` puts the arena photograph under Creature,
+ * History, Ladder and Worker. Row text is safe — every row carries its own
+ * glass — but the labels that stand OUTSIDE a row (a table's column heads, a
+ * day group, a section rule, an ability's name, the ghost actions) sit on the
+ * picture itself, and under the arena's hanging banners `--muted` measures
+ * 1.3:1. No veil thin enough to keep the photograph can lift that; only the
+ * text can.
+ *
+ * So the text does two things: it darkens to `--ink-soft`, and it carries its
+ * own ground — a warm halo a few pixels wide, which is what light does around
+ * type laid over a hazy image anyway. Measured against the darkest backdrop
+ * pixel that actually sits under a label: 4.9:1, against 1.3:1 before, with
+ * the photograph still a photograph. Screens can ask for the treatment by
+ * name; the block below hands it to the shared components that always land on
+ * the picture.
+ */
+.on-photo { color: var(--ink-soft); text-shadow: var(--photo-halo); }
+body[data-ground="stage"] .label-line,
+body[data-ground="stage"] .label-line .t-label,
+body[data-ground="stage"] .head-row .k,
+body[data-ground="stage"] .lad-head .k,
+body[data-ground="stage"] .lad-head > div,
+body[data-ground="stage"] .head-line .t-label,
+body[data-ground="stage"] .day-label,
+body[data-ground="stage"] .creature-line .t-label,
+body[data-ground="stage"] .creature-line .mind,
+body[data-ground="stage"] .creature-actions .btn.ghost,
+body[data-ground="stage"] .ability .ability-name {
+  color: var(--ink-soft); text-shadow: var(--photo-halo);
+}
+/* Inside glass the ground is already light and the halo would only soften the
+   type. Panels, rows, tiles and modals opt back out. */
+body[data-ground="stage"] .glass .label-line,
+body[data-ground="stage"] .glass .label-line .t-label,
+body[data-ground="stage"] .glass .ability .ability-name,
+body[data-ground="stage"] .row .k,
+body[data-ground="stage"] .tile .k,
+body[data-ground="stage"] .modal .label-line,
+body[data-ground="stage"] .modal .label-line .t-label {
+  color: var(--muted); text-shadow: none;
+}
+/* The two screen-owned tables land on the picture as well and carry their own
+   row class. Frosting them is the same decision as `.row` above; it lives here
+   until `ui/screens/history.css` folds it in. */
+body[data-ground="stage"] .history .rows .hrow {
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* An empty state is a dashed rectangle on the UI kit's flat sheet. On the
+   photograph a dashed rectangle is a hole, so it takes a surface — and the
+   surface is the one every other panel in the product is made of, not a
+   near-transparent white at a shorter blur. It was the second: measured on
+   creature-empty.png the card came back (185,195,201), blue-shifted sixteen
+   points against a warm (171,172,158) ground, because a 40 % white over a
+   10 px sample of a blue sky is a picture of a blue sky. Same fill, same
+   filter, same warm floor as `.glass`; only the dashed rim is its own. */
+body[data-ground="stage"] .empty,
+body[data-ground="veil"] .empty {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .60) 0%, rgba(255, 255, 255, .48) 46%, rgba(255, 255, 255, .52) 100%),
+    var(--glass-floor);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15); backdrop-filter: blur(18px) saturate(1.15);
+  border-color: rgba(46, 46, 51, .16);
+  box-shadow: 0 12px 40px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+/* ── the tooltip (#tip is in index.html, ui/tooltip.js writes it) ───────── */
+/*
+ * HOVERABLE — WCAG 1.4.13.
+ *
+ * `base.css` makes `#tip` pointer-transparent, which is right while it is
+ * invisible and wrong the moment it is not: a mouse user could not travel onto
+ * the card to read a blurb that runs to three lines, because crossing the gap
+ * fired `pointerleave` on the trigger and the card went with it. The OPEN card
+ * takes the pointer back; `ui/tooltip.js` holds it open for 120 ms across the
+ * gap and cancels the timer when the pointer arrives. Dismissible (Esc) and
+ * Persistent were already satisfied.
+ */
+#tip.on { pointer-events: auto; }
+
+/*
+ * THE KIT'S TOOLTIP IS A GLYPH, A TITLE AND ONE SENTENCE.
+ *
+ * The glyph is not decoration. Three ability tiles sit ten pixels apart and
+ * two of them can wear the same delivery shape; a card that opens near both
+ * has to say which one it is explaining, and repeating the tile's own picture
+ * says it faster than any amount of prose. Callers that have no picture pass
+ * none and the card collapses back to two lines.
+ */
+#tip { display: grid; grid-template-columns: 1fr; column-gap: 12px; align-items: center; border: 1px solid rgba(255, 255, 255, .1); }
+/* The disc costs the sentence 46 px of its 280, so the card is allowed to be
+   wider when it carries one. */
+#tip[data-icon="1"] { grid-template-columns: 34px 1fr; max-width: 330px; }
+#tip .tip-icon { display: none; }
+#tip[data-icon="1"] .tip-icon {
+  display: grid; place-items: center; align-self: center;
+  grid-column: 1; grid-row: 1 / span 2;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(244, 238, 232, .94); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .55);
+}
+#tip .tip-icon img { width: 21px; height: 21px; }
+#tip[data-icon="1"] .tip-title, #tip[data-icon="1"] .tip-body { grid-column: 2; }
+
+/* The card points at the thing it explains. `ui/tooltip.js` sets the side it
+   settled on and how far along that edge the trigger's centre fell, clamped so
+   the notch never leaves the corner radius. */
+#tip::after {
+  content: ""; position: absolute; width: 10px; height: 10px;
+  background: var(--pane-dark); transform: rotate(45deg);
+  opacity: 0; transition: opacity 180ms var(--ease);
+}
+#tip.on::after { opacity: 1; }
+#tip[data-side="above"]::after { bottom: -5px; left: var(--tip-x, 50%); margin-left: -5px; }
+#tip[data-side="below"]::after { top: -5px; left: var(--tip-x, 50%); margin-left: -5px; }
+#tip[data-side="left"]::after { right: -5px; top: var(--tip-y, 50%); margin-top: -5px; }
+#tip[data-side="right"]::after { left: -5px; top: var(--tip-y, 50%); margin-top: -5px; }
+/* Clamped so far that the trigger is no longer under the card: an arrow that
+   points at nothing is worse than no arrow. */
+#tip.no-notch::after { display: none; }
+
+/* ── touch targets ──────────────────────────────────────────────────────── */
+/* On a phone each of these is hit with a thumb, and 34 px — or a 26 px picker
+   filter chip — is under the 44 px of WCAG 2.2 Target Size (Minimum). They grow
+   rather than get an invisible overlay: the chips wrap into rows a few pixels
+   apart, so an overlay large enough to matter would reach into the row above
+   and steal its taps. Only the interactive chip grows; `span.chip` is a label
+   and keeps the kit's 26 px.
+ *
+ * And the fields go to 16 px. Under 16 px iOS Safari zooms the viewport the
+ * moment a text field takes focus, and the create screen jumped out from under
+ * the thumb that had just tapped it — the page then stayed zoomed, with the
+ * mind cards off the right edge, for the rest of the visit. */
+@media (max-width: 900px) {
+  .btn.small { min-height: 44px; }
+  .btn.icon.small { width: 44px; min-height: 44px; }
+  .seg > button { min-height: 44px; }
+  button.chip { min-height: 44px; }
+  .field { font-size: 16px; }
+  .search { height: 48px; }
+  .search input { font-size: 16px; }
+}
+
+/* ── the focus ring ─────────────────────────────────────────────────────── */
+/*
+ * WHERE AM I.
+ *
+ * `base.css` drew the ring in `--info` (#6EA8FF). Measured off a capture, the
+ * ring pixel against the arena behind it was 1.08:1, and against the tile it
+ * encircled 2.08:1 — by computation 1.88:1 on `--sky` and 2.42:1 on white
+ * glass, both under the 3:1 that WCAG 2.2 asks of a non-text indicator. A
+ * keyboard user could tell where they were only by guessing.
+ *
+ * `--info-ink` (#2957B4) is 5.25:1 on the ground and the same blue the rest of
+ * the interface uses for selection, so nothing new is introduced. The white
+ * halo behind it is what makes the rule general: the same ring has to survive
+ * the pale create card, the arena photograph and the dark tooltip, and a
+ * single dark stroke cannot do all three alone.
+ *
+ * It is declared here rather than in `base.css` because this file is loaded
+ * after it, and one rule at the bottom of the components reaches every control
+ * on every screen.
+ */
+:focus-visible {
+  outline: 2px solid var(--info-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, .85);
+}
+/* The halo replaces whatever shadow the control was wearing, so the controls
+   that are MADE of their shadow put it back and carry both. */
+.btn:focus-visible { box-shadow: 0 0 0 4px rgba(255, 255, 255, .85), 0 6px 18px var(--shade); }
+.btn.primary:focus-visible { box-shadow: 0 0 0 4px rgba(255, 255, 255, .9), 0 10px 28px rgba(88, 140, 208, .26), inset 0 1px 0 #fff; }
+.btn.accent:focus-visible { box-shadow: 0 0 0 4px rgba(255, 255, 255, .9), 0 10px 28px rgba(200, 92, 62, .24), inset 0 1px 0 #fff; }
+.glass:focus-visible { box-shadow: 0 0 0 4px rgba(255, 255, 255, .85), 0 12px 40px var(--shade); }
+
+/* helpers */
+.stack { display: flex; flex-direction: column; }
+.hstack { display: flex; align-items: center; }
+.gap2 { gap: var(--s2); } .gap3 { gap: var(--s3); } .gap4 { gap: var(--s4); } .gap5 { gap: var(--s5); } .gap6 { gap: var(--s6); }
+.grow { flex: 1; }
+.center { text-align: center; }
+.hidden { display: none !important; }
+
+
+/* ── reduced motion ─────────────────────────────────────────────────────── */
+/*
+ * THE SETTING HAS TO MAKE THE PRODUCT CALMER, NOT WORSE.
+ *
+ * `base.css` cuts every duration to 1 ms and stops there. An animation with
+ * `iteration-count: infinite` does not stop at a short duration — it restarts,
+ * a thousand times a second, and the reader who asked for LESS motion was
+ * handed a strobe on the three things that never leave the screen: the season
+ * dot in the chrome, the live dot on the creature page, and the shimmer under
+ * every skeleton row. The setting made the product worse, which is the one
+ * thing an accessibility preference may never do.
+ *
+ * So the count is capped as well. Capping it lands each loop on its own 100 %
+ * keyframe — the season dot at full opacity, the live dot on its resting ring,
+ * the sweep off the right edge of its row — and the named rules below state
+ * the resting value outright, so nothing depends on an animation having run.
+ *
+ * It lives here rather than in `base.css` because this file is loaded after it
+ * and before every sheet that owns one of those loops, and `!important` is
+ * what a preference is allowed to be.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  #chrome .season .k::before { animation: none !important; opacity: 1; }
+  .livedot { animation: none !important; box-shadow: 0 0 0 3px rgba(255, 122, 92, .2) !important; }
+  .skel::after { animation: none !important; opacity: 0; }
+}
+
+/* Generated ability glyphs arrive in whatever colour the model chose; the product's icon language is ink on white, so every one is forced to it here. */
+.ability img[data-kind="icon"] { filter: grayscale(1) contrast(1.28); mix-blend-mode: multiply; }

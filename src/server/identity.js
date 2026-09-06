@@ -109,22 +109,22 @@ let inflight = null;
 
 /** Причины отказа. С кодом, потому что «не пустил» без причины не чинится. */
 export const REFUSED = {
-  shape: 'токен не похож на подписанный платформой',
-  header: 'заголовок токена не читается',
-  alg: 'подпись не того типа, что выписывает платформа',
-  kid: 'ключ подписи неизвестен',
-  signature: 'подпись не сходится',
-  payload: 'претензии токена не читаются',
-  aud: 'токен выписан не для встроенной игры',
-  scope: 'это не сессия игры',
-  expired: 'токен просрочен',
-  future: 'токен выписан будущим',
-  iss: 'токен выписан не тем издателем',
-  game: 'токен выписан для другой игры',
-  guest: 'платформа прислала гостя, а не аккаунт',
-  staging: 'сессия тестового канала',
-  sub: 'в токене нет игрока',
-  unbound: 'сервер не знает, какая игра его собственная',
+  shape: 'the pass does not look like one the platform signed',
+  header: 'the header of the pass cannot be read',
+  alg: 'the signature is not of the type the platform issues',
+  kid: 'the signing key is unknown',
+  signature: 'the signature does not match',
+  payload: 'the claims of the pass cannot be read',
+  aud: 'the pass was not issued for the embedded game',
+  scope: 'this is not a game session',
+  expired: 'the pass has expired',
+  future: 'the pass is dated in the future',
+  iss: 'the pass was issued by the wrong issuer',
+  game: 'the pass was issued for another game',
+  guest: 'the platform sent a guest, not an account',
+  staging: 'a session from the test channel',
+  sub: 'the pass names no player',
+  unbound: 'the server does not know which game is its own',
 };
 
 const b64json = (part) => JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
@@ -165,7 +165,7 @@ async function keys({ force = false } = {}) {
     if (next.size) cache = { at: Date.now(), keys: next, tried: cache.tried };
     return cache.keys;
   })().catch((e) => {
-    console.error(`  ключи платформы не прочитаны (${JWKS_URL}): ${e.message}`);
+    console.error(`  platform keys were not read (${JWKS_URL}): ${e.message}`);
     return cache.keys;
   }).finally(() => { inflight = null; });
 

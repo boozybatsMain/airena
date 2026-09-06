@@ -452,6 +452,53 @@ const {
 } = TSL;
 
 const TAU = Math.PI * 2;
+
+/*
+ * ── ПОЛ СВЕТЛОТЫ КИНЕТИКИ (ARENA-AAA, приёмка 06.09) ──────────────────────
+ *
+ * ЖАЛОБА СУДЬИ, ДОСЛОВНО И С ЧИСЛАМИ. `live-fighting.png`, коробка
+ * x[648-791] y[437-477]: «плотное, непрозрачное, СУЩЕСТВОПОДОБНОЕ поле
+ * обломков 143×40 px, 2 972 пикселя ниже L* 64 (минимум L* 9.5, p5 24.2)…
+ * MARK-92, НАСТОЯЩИЙ БОЕЦ, несёт 2 123 пикселя ниже L* 64. Пятикратное
+ * увеличение читается разбитым шасси, лежащим на площади: зритель не может
+ * сказать, сколько существ на полу».
+ *
+ * ОН ПРАВ АРИФМЕТИЧЕСКИ, И ВОТ ОТКУДА 9.5. Тон `stone` — линейная яркость
+ * 0.171, то есть L* 48. Дальше `plateMat` умножает его на 0.16 в жиле скола
+ * и ещё на 0.5 у основания плиты: 0.171·0.16·0.5 = 0.0137, то есть L* 9.6.
+ * Каждый множитель по отдельности осмыслен (жила — щель, основание — контакт
+ * с полом), а их произведение спорит с БОЙЦОМ за место самого тёмного
+ * предмета кадра — при том что ARENA-BRIEF §3 отдаёт это место только ему.
+ *
+ * ПОЧЕМУ ПОЛ, А НЕ ПРАВКА КАЖДОГО МНОЖИТЕЛЯ. Множителей в файле три десятка,
+ * они куплены замерами прошлых кругов (грань против грани, жила против поля,
+ * основание против парения) и держат РАЗНИЦУ внутри предмета — то, чем
+ * камень отличается от крашеной бумаги. Трогать их значит покупать те замеры
+ * заново. Пол светлоты трогает только КОМПОЗИЦИЮ: он поднимает весь цвет к
+ * порогу, сохраняя пропорцию каналов (то есть оттенок) и порядок ступеней
+ * (то есть рисунок). Разница внутри плиты сжимается, тьма исчезает.
+ *
+ * ДВА ПОРОГА, И ЭТО НЕ ПОБЛАЖКА, А РАЗНИЦА ПРЕДМЕТОВ.
+ *   · `KIN_FLOOR` 0.30 (L* 61.5) — МАССЫ: плита, кусок пола, воронка,
+ *     клин конуса, вал, стена. Их площадь и есть то, что судья считал
+ *     пикселями; выше L* 61.5 доля пикселей ниже L* 64 у развала падает с
+ *     2 972 до полутысячи, то есть заведомо ниже требуемых 0.6 бойца.
+ *   · `KIN_LINE` 0.11 (L* 39.6) — ШТРИХИ: щель трещины. Трещина шириной в
+ *     два пикселя не бывает «пятном» ни при какой светлоте, и осветлить её
+ *     до массы значит стереть её с белого пола вовсе.
+ * Оба заведомо СВЕТЛЕЕ бойца (его замер #1A140E, L* 6.8) — а темнее бойца в
+ * этом кадре по брифу нет ничего.
+ */
+const KIN_FLOOR = 0.30;
+const KIN_LINE = 0.11;
+/** Яркость узла-цвета по BT.709 — в тех же единицах, в которых меряет судья. */
+const lumOf = (c) => c.r.mul(0.2126).add(c.g.mul(0.7152)).add(c.b.mul(0.0722));
+/**
+ * Поднять цвет до порога яркости, СОХРАНИВ оттенок и рисунок: множитель один
+ * на все три канала и никогда меньше единицы, так что светлое не темнеет.
+ */
+const litFloor = (c, floor = KIN_FLOOR) => c.mul(float(floor).div(lumOf(c).max(1e-4)).max(1.0));
+
 /* Граней у выломанного куска пола (`slabMat`). Девять, а не четыре: у
    четырёхгранника при сильном разбросе радиусов грани получается «ромб», и
    борозда луча (квад 9.2×1.0) вырождается в веретено. Девять граней держат
@@ -490,7 +537,27 @@ const TONES = new Map();
  * 0.19 / 0.29. Всё, что красится тоном стихии, обязано лежать в этой полосе:
  * иначе цвет на кадре принадлежит не палитре, а вкусу файла.
  */
-const BAND = [0.26, 0.34];
+/*
+ * КРУГ 8: ПОЛОСА СЧИТАЕТСЯ ОТ ПАЛИТРЫ, А НЕ ОТ ПАМЯТИ ЭТОГО ФАЙЛА.
+ *
+ * Числа выше (0.277 / 0.228 / 0.349) верны для РЕЕСТРОВОЙ палитры, а на
+ * экран с 06.09 идёт градуированная (`vfx.js`, `palette`): у кинетики она
+ * ушла из синевы владения в тёплый графит мира и её линейные насыщенности
+ * стали 0.277 / 0.142 / 0.195. Константа `[0.26, 0.34]` при этом молча
+ * работала в обратную сторону — ПОДНИМАЛА тон обратно, то есть отменяла
+ * градуировку ровно в том модуле, из-за которого её и завели.
+ *
+ * Полоса теперь считается от той палитры, которая пришла: узкий коридор
+ * вокруг её собственной насыщенности (0.9…1.2 от неё, но не выше прежнего
+ * потолка 0.34 и не ниже 0.04, чтобы лестница не выродилась в чистый
+ * серый). Довод шапки при этом не отменён, а исполнен буквально: «всё, что
+ * красится тоном стихии, лежит в полосе САМОЙ палитры».
+ */
+const BAND_CAP = [0.04, 0.34];
+const bandOf = (s) => [
+  Math.max(BAND_CAP[0], s * 0.9),
+  Math.min(BAND_CAP[1], Math.max(s * 1.2, s + 0.02)),
+];
 /**
  * ТОНА ПОЛА ВЕРНУЛИСЬ В ОБЪЯВЛЕННУЮ ПАЛИТРУ (круг 7).
  *
@@ -538,6 +605,7 @@ function tones(P) {
   if (t) return t;
   const hsl = {};
   P[2].getHSL(hsl);
+  const BAND = bandOf(hsl.s);
   const deep = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.36);
   const mid = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.62);
   /*
@@ -557,7 +625,23 @@ function tones(P) {
    * Опустить здесь константу до `BAND` значит вернуть чаше «бурый гравий»
    * круга 1, которого в палитре нет вовсе.
    */
-  const mark = new THREE.Color().setHSL(hsl.h, Math.max(hsl.s, 0.95), Math.min(hsl.l, 0.28));
+  /*
+   * КРУГ 8 (ARENA-AAA, 06.09): ПОЛ ОСТАЛСЯ, ПОТОЛОК ПОЯВИЛСЯ.
+   *
+   * Довод выше верен и не отменяется: `mark` уходит ТОЛЬКО в `kit.decal`
+   * типа `crater`, где чаша считается как `mix((0.11,0.1,0.09), tint·0.5,
+   * 0.7)` — то есть от тона до экрана доходит 0.35 его самого, и слабый тон
+   * там вырождается в серый гравий. Но `Math.max(…, 0.95)` — пол БЕЗ
+   * потолка, и после градуировки палитры (`vfx.js`) он оказался
+   * единственным местом кинетики, которое её отменяет: чаша выходила
+   * C* до 29 при экранной насыщенности 56 % (замер по всем десяти стихиям),
+   * то есть громче кораллового баннера (47 % на кадре) — а это единственный
+   * насыщенный предмет мира (ARENA-BRIEF §5).
+   *
+   * Полоса 0.62…0.80 держит оба конца: у чаши C* 3…19 при насыщенности
+   * ≤ 38 % — стихия в ней ещё читается, а мир ещё громче её.
+   */
+  const mark = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, 0.62, 0.80), Math.min(hsl.l, 0.28));
   /*
    * `grit` — тон КРОШКИ. Частица маленькая (8–17 экранных пикселей с 26 м) и
    * стоит на белом одна, без соседей, которые её притемнили бы, поэтому у неё
@@ -566,7 +650,10 @@ function tones(P) {
    * предметом кадра и добавляла к «луже» её крапины. Стало (102,123,141) при
    * 0.28: щебень, а не синее конфетти.
    */
-  const grit = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.20);
+  /* Круг 8: 0.20 → 0.24 (L* 51.8 → 55.9). Частицы идут МИМО порога светлоты
+     `litFloor` — он стоит на узловых материалах, а крошку рисует пул, — и
+     свой пол им приходится ставить здесь, тем же числом. */
+  const grit = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.24);
   /*
    * `stone` и `crust` — ПОРОДА, А НЕ КРАШЕНЫЙ ПЕНОПЛАСТ (круг 6).
    *
@@ -609,7 +696,10 @@ function tones(P) {
    * — самый насыщенный пиксель всей кинетики) и поднял светлоту с 0.075 до
    * 0.055 в полосе палитры: (54,66,77) — та же темнота, но серо-стальная.
    */
-  const soot = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.055);
+  /* Круг 8: 0.055 → 0.12 (L* 28.1 → 40.7). Конец жизни крошки — по-прежнему
+     самое тёмное, что кладёт кинетика, но уже вчетверо светлее бойца
+     (L* 6.8), а не вдвое. */
+  const soot = new THREE.Color().setHSL(hsl.h, clampN(hsl.s, BAND[0], BAND[1]), 0.12);
   t = { deep, mid, mark, grit, stone, crust, soot };
   TONES.set(key, t);
   return t;
@@ -760,7 +850,7 @@ function slabMat(P) {
     const lit = mix(shaded, col(T.deep).mul(0.10), facet.mul(-1).clamp(0, 1).pow(1.2).mul(0.55));
     /* Вал по фронту — `mid`: выброшенная порода светлее ямы, иначе фронт не
        читается вовсе. Но это ПОЛОСКА в 0.1 радиуса, а не половина пластины. */
-    m.colorNode = mix(lit, col(T.mid).mul(0.5), lip.mul(0.85));
+    m.colorNode = litFloor(mix(lit, col(T.mid).mul(0.5), lip.mul(0.85)));
     /*
      * ПОЧТИ НЕПРОЗРАЧНО. Замер круга 1 на дугах хомута: при альфе 0.85 тёмный
      * `deep` над полом давал на экране (120,140,157) — бледно-голубое пятно.
@@ -801,7 +891,7 @@ function barMat(P) {
     const fade = withFade(m);
     m.userData.u = { fade };
     const fres = oneMinus(tabs(TSL.dot(normalView, positionViewDirection))).clamp(0, 1);
-    m.colorNode = mix(col(T.deep).mul(0.55), col(T.mid), fres.pow(2.2).mul(0.7));
+    m.colorNode = litFloor(mix(col(T.deep).mul(0.55), col(T.mid), fres.pow(2.2).mul(0.7)));
     m.opacityNode = float(0.97).mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
   }, 6);
@@ -845,7 +935,7 @@ function slugMat(P) {
     /* Кромка по френелю остаётся: она обводит силуэт тёмным и не даёт комку
        слиться с бежевым укрытием, когда он летит на его фоне. */
     const fres = oneMinus(tabs(TSL.dot(normalView, positionViewDirection))).clamp(0, 1);
-    m.colorNode = mix(face, col(T.stone).mul(0.22), fres.pow(2.0).mul(0.55));
+    m.colorNode = litFloor(mix(face, col(T.stone).mul(0.22), fres.pow(2.0).mul(0.55)));
     m.opacityNode = float(1).mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
   }, 6);
@@ -876,8 +966,28 @@ function plateMat(P, key = 'plate') {
    * а щебень выбоины лежит 3–4 с (после заказа 04.09; было 11–13): на одном
    * ключе выбоина переписывала бы `fade` стене, и стена перестала бы гаснуть.
    * Поэтому у щебня выбоины ключ свой. Срок укоротился, перекрытие осталось.
+   *
+   * ── И КОЛЬЦО ПЛИТ ИМЕНУЕТСЯ ПЛИТОЙ (ARENA-AAA, приёмка 06.09) ───────────
+   *
+   * Ключ шёл `kin:${key}:…`, то есть подключ плиты жил в ОДНОМ пространстве
+   * имён с семействами материалов модуля (`kin:slab`, `kin:bar`, `kin:cone`,
+   * `kin:flat`, `kin:wave`, `kin:pit`). Одно имя там уже совпало: `beam`
+   * берёт `coneMat` — оболочку конуса Маха, у которой `userData.u` это
+   * `{ fade }`, — а `cone` берёт `plateMat(P, 'cone')`, у которой в `u` ещё
+   * `seed` и `lit`. Кольцо на шесть штук наполняется тем, кто пришёл первым,
+   * и дальше выдаёт ЧУЖОЙ материал: конусу достаётся граф плиты (тихо не тот
+   * рисунок), а плите — материал без `seed`, то есть `TypeError` внутри
+   * модуля. Цена ошибки — не кадр: `play` уводит пару «стихия:доставка» в
+   * карантин ДО КОНЦА СЕССИИ, и кинетический конус — самая частая доставка
+   * самой частой стихии — перестаёт рисоваться вовсе. Поймано прогоном всех
+   * стихий × доставок через живой `Vfx` (сообщение «vfx kinetic cone —
+   * эмиттер в карантине»).
+   *
+   * Своё пространство имён у подключей плиты закрывает этот класс ошибки
+   * целиком, а не одно совпадение: теперь `plateMat` не может столкнуться ни
+   * с одним семейством модуля, как бы ни назвали новый подключ.
    */
-  return pooled(`kin:${key}:${hex(P)}`, () => {
+  return pooled(`kin:plate:${key}:${hex(P)}`, () => {
     const T = tones(P);
     const m = new THREE.MeshBasicNodeMaterial({
       transparent: true, depthWrite: true, side: THREE.FrontSide, blending: THREE.NormalBlending,
@@ -964,7 +1074,7 @@ function plateMat(P, key = 'plate') {
      */
     const lip = smoothstep(float(0.978), float(0.997), h).mul(oneMinus(top))
       .mul(smoothstep(float(0.30), float(0.56), grain));
-    m.colorNode = mix(body, col(P[0]).mul(0.95), lip);
+    m.colorNode = litFloor(mix(body, col(P[0]).mul(0.95), lip));
     m.opacityNode = float(1).mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
   }, 6);
@@ -986,7 +1096,8 @@ function crackMat(P) {
     m.userData.u = { fade, grow, seed };
     const d = attribute('adist', 'float');
     const grain = mx_noise_float(vec3(positionWorld.xz.mul(7.0), seed)).mul(0.5).add(0.5);
-    m.colorNode = mix(col(T.deep).mul(0.18), col(T.deep).mul(0.7), grain);
+    /* Щель — ШТРИХ, а не масса: свой, более низкий порог (см. `KIN_LINE`). */
+    m.colorNode = litFloor(mix(col(T.deep).mul(0.18), col(T.deep).mul(0.7), grain), KIN_LINE);
     const front = oneMinus(smoothstep(grow, grow.add(0.1), d));
     m.opacityNode = front.mul(grain.mul(0.06).add(0.96)).mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
@@ -1026,7 +1137,7 @@ function coneMat(P) {
      * уплотнения, а не «серые кости на проволоке».
      */
     const mouth = oneMinus(smoothstep(float(-1.0), float(-0.88), positionLocal.x));
-    m.colorNode = mix(mix(col(T.deep).mul(0.7), col(T.deep).mul(0.1), fres.pow(1.4)), col(T.deep).mul(0.3), mouth);
+    m.colorNode = litFloor(mix(mix(col(T.deep).mul(0.7), col(T.deep).mul(0.1), fres.pow(1.4)), col(T.deep).mul(0.3), mouth));
     m.opacityNode = smoothstep(float(0.5), float(0.82), fres).mul(0.99).max(mouth.mul(0.97))
       .mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
@@ -1052,7 +1163,7 @@ function flatMat(P) {
     m.userData.u = { fade, bias, base, rag };
     const t = positionLocal.x.clamp(0, 1).mul(bias).clamp(0, 1);
     const grain = mx_noise_float(positionWorld.mul(5.0)).mul(0.5).add(0.5);
-    m.colorNode = mix(col(T.deep).mul(0.62), col(T.deep).mul(0.18), t);
+    m.colorNode = litFloor(mix(col(T.deep).mul(0.62), col(T.deep).mul(0.18), t));
     /*
      * `rag` — ВЫКРОШЕННАЯ КРОМКА (нужна дугам хомута, не нужна клину).
      * Дуга из `RingGeometry` — идеальный сектор с математически ровными
@@ -1164,7 +1275,7 @@ function waveMat(P) {
     const wedge = tstep(tcos(half), tcos(ang));
     const grain = mx_noise_float(vec3(positionLocal.xz.mul(9.0), seed.add(3))).mul(0.5).add(0.5);
     /* Передний край ТЕМНЕЕ тыла: там порода вздыблена, позади — уже осыпь. */
-    m.colorNode = mix(col(T.deep).mul(0.5), col(T.deep).mul(0.12), grain.mul(0.6).add(uu.mul(0.4)).clamp(0, 1));
+    m.colorNode = litFloor(mix(col(T.deep).mul(0.5), col(T.deep).mul(0.12), grain.mul(0.6).add(uu.mul(0.4)).clamp(0, 1)));
     m.opacityNode = band.mul(crumb).mul(wedge).mul(grain.mul(0.06).add(0.96)).mul(fade).clamp(0, 1);
     return markGlow(m, float(0));
   }, 6);
@@ -1285,7 +1396,7 @@ function pitMat(P) {
       /* Пыль приходит и уходит вместе с ямой: тот же фронт, только с опозданием
          (выброс долетает позже, чем раскрывается воронка). */
       .mul(oneMinus(smoothstep(grow.mul(1.18), grow.mul(1.18).add(0.06), edge)));
-    m.colorNode = mix(face, col(T.crust), powder);
+    m.colorNode = litFloor(mix(face, col(T.crust), powder));
     m.opacityNode = body.mul(front).mul(rough.mul(0.06).add(0.95)).max(powder.mul(0.96))
       .mul(fade).clamp(0, 1);
     return markGlow(m, float(0));

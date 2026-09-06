@@ -1,0 +1,2082 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Battle HUD — the viewer's own DOM, restyled (docs/REDESIGN.md §5).
+
+   `src/viewer/main.js` owns the NODES: it writes names, health, cooldown chips,
+   feed lines, plates, damage numbers. This file owns how they LOOK, and
+   `screens/live.js` owns the few attributes CSS cannot compute for itself
+   (`data-clock`, `data-label`, `data-cd`, `data-side`).
+
+   Two surfaces share every rule: the real `#hud` and the simulated `.hud-fake`
+   that `live.js` builds for the screenshot states (§10). The simulated one
+   cannot reuse the ids — a second `#bar-oct` in the document would steal every
+   query the viewer makes — so the side is carried by a class as well, and the
+   selectors accept either.
+   ────────────────────────────────────────────────────────────────────────── */
+
+#hud {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  font-family: var(--font-display); color: var(--ink);
+  /* navigating off LIVE used to delete both fighter panels, the clock and six
+     ability tiles in one frame while the arena kept drawing behind the
+     cross-fade; the layer now has a route out of its own (§37) */
+  transition: opacity var(--d-ui) var(--ease);
+  /*
+   * How far down the frame the viewer's floating nameplates may rise.
+   *
+   * The viewer places them from a creature's projected screen point and nothing
+   * else, so a fighter that walks under the camera puts its plate on top of a
+   * 60 px phase word. `screens/live.js` reads this once per resize and lifts
+   * anything above it — the number lives here because everything else that
+   * decides the top of the frame lives here too.
+   */
+  --plate-floor: 208px;
+  /*
+   * WHERE THE LEFT PANEL STARTS — read by the width below, so the two numbers
+   * that decide whether a fighter panel can reach the centre axis live in one
+   * place. `#clock .s` is 260 px centred on 50 %, i.e. it begins at
+   * `50vw − 130`; the panel's right edge is `--bar-left + width`, and at 1280
+   * and 1440 both of those landed INSIDE the blue panel (§26).
+   */
+  --bar-left: max(196px, 16.5vw);
+  /*
+   * HOW TALL THE PANEL STACK IS — and therefore how far up the frame the one
+   * remaining scrim is allowed to reach. `bottom: 84px` plus a name row, a
+   * health bar and a row of tiles with their captions: the scrim's top edge is
+   * the panels' top edge and never a pixel higher, so nothing above the panels
+   * is washed. Every size that moves the panels moves this with them:
+   * 84 + 147 at 1440×900, 64 + 122 at 1280×720.
+   */
+  --scrim-h: 232px;
+}
+.hud-fake {
+  position: absolute; inset: 0; pointer-events: none; font-family: var(--font-display);
+  color: var(--ink); --bar-left: max(196px, 16.5vw);
+}
+
+/*
+ * ─── COLOUR IS OWNERSHIP, NOT SLOT ─────────────────────────────────────────
+ *
+ * BLUE IS THE PLAYER'S CREATURE. ORANGE IS THE OPPONENT'S. ALWAYS.
+ *
+ * `reports/arena/ARENA-AAA.md` §1, the founder's addendum, and it supersedes
+ * REDESIGN §2.1 ("colours never change with ownership"). The old rule was
+ * defensible on its own terms — a colour fixed to the arena's left and right
+ * halves is a colour the player can learn once — but it cost the reading the
+ * whole HUD exists for: in half of all fights the player's own health bar, own
+ * ability rings, own floor telegraph, own damage numbers and own feed lines
+ * came out coral, i.e. in exactly the colour the OTHER creature was wearing in
+ * the fight before. Ownership is the question a battle screen answers first,
+ * and it now has one answer everywhere.
+ *
+ * The server computes it per socket and sends it as `match.mine`;
+ * `screens/live.js` and `src/viewer/main.js` both publish it as
+ * `body[data-mine]`, from that one message. Everything below reads the
+ * attribute and nothing recomputes it.
+ *
+ * WHY FOUR VARIABLES RATHER THAN A PILE OF SWAPPED RULES. Two dozen places in
+ * this file paint something in the colour of an arena SLOT — the feed's dots
+ * and names, the cast plates, the say-bubbles, the damage pills, both fighter
+ * panels — and every one of them is handed the slot as a `data-side` attribute
+ * or an id by code that has no business knowing about ownership. So the slot
+ * stays the key and the LOOKUP moves: `--slot-blue` is "whatever the blue slot
+ * is painted in", and the one rule that flips is the definition of those four
+ * tokens. A spectator (no `data-mine`) keeps blue = first slot, orange =
+ * second, which is the honest reading when neither creature is theirs.
+ */
+body {
+  --slot-blue: var(--side-own); --slot-blue-ink: var(--info-ink);
+  --slot-orange: var(--side-foe); --slot-orange-ink: var(--accent-ink);
+}
+body[data-mine="orange"] {
+  --slot-blue: var(--side-foe); --slot-blue-ink: var(--accent-ink);
+  --slot-orange: var(--side-own); --slot-orange-ink: var(--info-ink);
+}
+
+/*
+ * ONE FAINT SCRIM, AND IT STOPS WHERE THE PANELS START.
+ *
+ * There used to be two veils — a 440 px band of `--sky-2` at .84 down the top
+ * of the frame and a 380 px band at .9 up the bottom — and between them they
+ * decided the game's picture. On a 900 px frame only an 80 px stripe was left
+ * unveiled, and the fight zone (y 150–450, where the bodies stand in every
+ * fighting capture) was washed 30–60 % toward the page colour: the bodies'
+ * darkest values read L 21 where the same bodies on the render stand read
+ * 6–14, and the corners landed at #F2ECE6 in every desktop capture. The umbra,
+ * the GTAO seating and the 0.15 reflection under a body were all tuned on the
+ * stand and were arriving through milk.
+ *
+ * The post graph owns the picture (`src/viewer/main.js`: ACES, the wash
+ * vignette at 0.4, GTAO, the denoise). The HUD owns its own type. So the top
+ * veil is gone entirely — the phase word, the wordmark and the rail carry
+ * their own halos, which is what a halo is for — and what is left is a single
+ * scrim that fades in under the fighter panels and reaches .1 at the very
+ * bottom edge, where the tab bar and the ability captions are. It never rises
+ * above `--scrim-h`, which is set to the height of the panel stack at each
+ * size: the arena above that line is the renderer's, undiluted.
+ *
+ * `z-index: -1` is load-bearing. A pseudo-element is the last child, and two
+ * positioned siblings with no z-index paint in DOM order — so the scrim was
+ * painting OVER the panel it exists to support, and the names it was meant to
+ * lift came out washed. `#hud` is a stacking context of its own (position +
+ * z-index), so a negative index sinks it under the HUD's content and no
+ * further: the arena canvas is a sibling of `#hud`, outside it.
+ */
+#hud::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--scrim-h); z-index: -1;
+  background: linear-gradient(180deg,
+    rgba(244, 238, 232, 0) 0%, rgba(244, 238, 232, .05) 52%,
+    rgba(244, 238, 232, .1) 100%);
+  opacity: 0; transition: opacity var(--d-screen) var(--ease); pointer-events: none;
+}
+body[data-phase="fighting"] #hud::after,
+body[data-phase="result"] #hud::after,
+body[data-phase="replay"] #hud::after,
+body[data-phase="vs"] #hud::after { opacity: 1; }
+/*
+ * A REPLAY IS A FIGHT WITH NO PHASE OF ITS OWN.
+ *
+ * `app.js` derives `data-phase` from the socket, and a recorded match sends the
+ * same `match` message a live one does — so nothing ever writes `replay` and
+ * the selectors above could not reach it. `screens/live.js` sets this class
+ * instead, and the names, the `#4 · 1,583 MMR` lines and both `180 / 180`
+ * stop sitting on a bare floor at 2:1 (§25).
+ */
+#hud.replay::after { opacity: 1; }
+/*
+ * THE SMALLEST TYPE ON THE BRIGHTEST GROUND THE PRODUCT HAS — AT FULL INK.
+ *
+ * This line SOFTENED to `--ink-soft` exactly what the comment above it says it
+ * is hardening: measured `#7 · 1,536 MMR` at 2.67:1 on `live-replay.png`. A
+ * replay is shot on the same floor a live fight is; it gets the same ink and
+ * the same halo as everywhere else (§61).
+ */
+#hud.replay :is(.sub, .hp > b) { color: var(--ink); text-shadow: var(--photo-halo); }
+
+/* the shell's result card replaces both of these */
+#banner { display: none !important; }
+#clock .byline { display: none !important; }
+
+/* ── fighter panels ─────────────────────────────────────────────────────── */
+
+:is(#hud, .hud-fake) .bar-wrap {
+  position: absolute; bottom: 84px;
+  /* never past `50vw − 148`: the centre column belongs to VS, the clock and
+     the sudden-death line, and a panel that reaches into it puts two pieces of
+     type on one another at the width the product is reviewed at (§26) */
+  width: min(33vw, 420px, max(200px, calc(50vw - 148px - var(--bar-left))));
+  /* 320 ms — the panels, the phase word and the feed all move on one clock,
+     because a phase change is one event and not three (§45) */
+  opacity: 1; transition: opacity 320ms var(--ease);
+}
+:is(#bar-oct, .s-blue) { left: var(--bar-left); --side: var(--slot-blue); --side-ink: var(--slot-blue-ink); }
+:is(#bar-gor, .s-orange) { right: var(--chrome-pad); --side: var(--slot-orange); --side-ink: var(--slot-orange-ink); }
+
+/*
+ * ─── THE OWNERSHIP MIRROR ──────────────────────────────────────────────────
+ *
+ * THE PLAYER'S PANEL IS ON THE LEFT. WHICHEVER SLOT THE SERVER GAVE THEM.
+ *
+ * The colours already follow ownership (`--slot-*`, above), and colour alone
+ * would leave the frame reading blue on the RIGHT in half of all fights —
+ * against the VS card that had just put the player's name on the left, against
+ * the result card's own reading order, and against the my-chip in the corner.
+ * Position is the other half of the same statement, so it moves with it: the
+ * player's panel takes the left anchor and the un-mirrored layout, the
+ * opponent's takes the right anchor and the mirrored one.
+ *
+ * The rules below are the two above, exchanged, plus every rule in this file
+ * that mirrors a row for the right-hand panel. They are gathered here rather
+ * than added to each of those selectors because a mirror is one idea: read as
+ * a block it can be checked, and if the addendum is ever reversed it can be
+ * deleted as a block. Specificity is (1,1,1) against the (1,0,0) of the
+ * `:is(#id, .class)` rules they override, so nothing needs `!important`.
+ *
+ * `.s-blue` / `.s-orange` are the simulated HUD's copies of the two ids
+ * (`.hud-fake`, for the `?ui=` captures) and travel with them.
+ *
+ * A phone stacks the two panels instead of facing them, so none of this
+ * applies there — the ≤ 900 block already un-mirrors both and `.mine` decides
+ * which one takes the lower slot. Only the colours cross over.
+ */
+/* Desktop and tablet only: a phone stacks the panels full-width and the
+   ≤ 900 block un-mirrors both — see the landscape branch at the end of this
+   file for the one narrow case that faces them again. */
+@media (min-width: 901px) {
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) { left: var(--bar-left); right: auto; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) { left: auto; right: var(--chrome-pad); }
+  /* the side dot needs nothing here: both panels draw it as the LAST item of
+     the name's flex row (`order: 1`, below), so it already rides the end of
+     the name whichever end of the frame the name is standing at — and its
+     colour comes from `--side`, which the two rules above have exchanged */
+  /* the opponent's column, now on the right, takes the mirrored layout … */
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .namerow {
+    grid-template-columns: auto minmax(0, auto);
+    grid-template-areas: "tag name" "sub sub";
+    justify-content: end; justify-items: end;
+  }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .col > .sidetag,
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .sidetag:not(:empty) { align-self: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .sidetag { justify-content: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .sub { justify-content: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .cds { justify-content: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .hp > b { left: auto; right: 0; }
+  /* … and the player's column, now on the left, gives it back */
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .namerow {
+    grid-template-columns: minmax(0, auto) auto;
+    grid-template-areas: "name tag" "sub sub";
+    justify-content: start; justify-items: start;
+  }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .col > .sidetag,
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .sidetag:not(:empty) { align-self: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .sidetag { justify-content: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .sub { justify-content: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .cds { justify-content: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .hp > b { left: 0; right: auto; }
+  /* the pill inside the name row rides the line, not the column, either way */
+  body[data-mine="orange"] :is(#hud, .hud-fake) .namerow > .sidetag:not(:empty) {
+    align-self: center; margin-top: 0;
+  }
+}
+
+/* no fight on screen, no panels */
+body[data-phase="searching"] #hud .bar-wrap,
+body[data-phase="idle"] #hud .bar-wrap,
+body[data-phase="connecting"] #hud .bar-wrap { opacity: 0; }
+/*
+ * THE VS CARD GETS THE STAGE, AND IT GETS IT ON EVERY SURFACE.
+ *
+ * The panels say the same two names, the same two ratings and the same two
+ * minds one inch under the card that exists to introduce them. The hide used to
+ * hang off a class handed to `.hud-fake` — a node built elsewhere in the
+ * lifecycle — and on the desktop capture it never arrived: `#hud` faded,
+ * `.hud-fake` did not, and every fact on the card was printed twice. `body`
+ * carries which card is up (§4.2), so the rule reaches both surfaces and any
+ * later one; `visibility` makes it a hide rather than a fade to nearly-nothing,
+ * the same pattern `#feedwrap` already uses (§18, §20, §50).
+ */
+body[data-card="vs"] :is(#hud, .hud-fake) .bar-wrap,
+:is(#hud, .hud-fake).under-vs .bar-wrap {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+body[data-card="vs"] :is(#clock, .clock-sim),
+#hud.under-vs #clock, .hud-fake.under-vs .clock-sim { opacity: 0; }
+
+/*
+ * THE PANEL IS A COLUMN, AND THE YOU MARKER IS A CELL OF THE NAME ROW.
+ *
+ * The viewer's DOM puts `.sidetag` after the ability tiles (§5.1), so the
+ * layout has to bring it back beside the name — which is where the reference
+ * writes YOUR CREATURE. Two grid attempts on `.col` failed the same way (a
+ * spanning bar and tile row inflate whichever track will take them) and the
+ * wrapping-flex attempt failed a third: flex-wrap has no tracks but it still
+ * has a LINE, so the moment the name plus the pill exceeded the panel's width
+ * the pill went to line two — and on the mirrored panel line two starts a
+ * screen-width away. `live-replay.png` shows `YOU` at x1128 marking a name that
+ * begins at x1200, with bare arena between them.
+ *
+ * The marker cannot move house because a name grew two letters. So it is not a
+ * sibling of the name any more: `screens/live.js` moves the node INSIDE
+ * `.namerow` (the viewer's own element, moved once, never rebuilt, still found
+ * by every query that wants it) and the row is a two-track grid whose name
+ * track shrinks and ellipsises. `grid-template-areas` mirrors for the orange
+ * panel, which is the whole of the reading-direction difference. Ten pixels
+ * from the name, on either side, whatever the name is (§7, §48, §59, §62).
+ */
+/*
+ * EIGHT, NOT TWELVE — AND THE WHOLE STACK UNDER 150 px.
+ *
+ * The panel used to run 182 px from the top of the name to the bottom of the
+ * ability captions, and it is anchored 84 px off the floor: together they
+ * claimed the bottom 30 % of a 900 px frame across a third of its width on
+ * each side, so a fighter that walked into the bottom fifth of the picture
+ * stood behind its own health bar (measured on `live-visitor-w.png`: the
+ * jellyfish's body at y 460–560 under a bar at y 517). Nothing here is
+ * removed — the name, the identity line, the bar, the number, three tiles and
+ * their two-line captions are all still on screen — the stack is simply drawn
+ * at the size a caption actually needs: 8 px between rows, a 21 px name, a
+ * 42 px tile, and the caption's reserved two lines measured rather than
+ * guessed. 149 px at 1440×900, 119 px at 1280×720 (§12).
+ */
+:is(#hud, .hud-fake) .bar-wrap .col {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+}
+/* the fallback shape, for a frame before the pill has been moved into place */
+:is(#hud, .hud-fake) .col > .namerow { order: 1; }
+:is(#hud, .hud-fake) .col > .sidetag { order: 2; align-self: flex-start; }
+:is(#hud, .hud-fake) .col > .hprow { order: 3; }
+:is(#hud, .hud-fake) .col > .cds { order: 4; }
+:is(#bar-gor, .s-orange) .col > .sidetag { align-self: flex-end; }
+
+:is(#hud, .hud-fake) .namerow {
+  display: grid; grid-template-columns: minmax(0, auto) auto;
+  grid-template-areas: "name tag" "sub sub";
+  align-items: center; justify-content: start; justify-items: start;
+  gap: 5px 10px; max-width: 100%;
+}
+/* `min-width: 0` on the item, not only `minmax(0, …)` on the track: a grid
+   item's automatic minimum size is its MIN-CONTENT, and `.name` is
+   `white-space: nowrap` — so the track could not shrink and a long name ran
+   off the panel and was cut without even an ellipsis (`MANTIS REA`) */
+:is(#hud, .hud-fake) .namerow > .name { grid-area: name; min-width: 0; }
+:is(#hud, .hud-fake) .namerow > .sidetag { grid-area: tag; align-self: center; }
+:is(#hud, .hud-fake) .namerow > .sub { grid-area: sub; min-width: 0; }
+:is(#bar-gor, .s-orange) .namerow {
+  grid-template-columns: auto minmax(0, auto);
+  grid-template-areas: "tag name" "sub sub";
+  justify-content: end; justify-items: end;
+}
+
+:is(#hud, .hud-fake) .name {
+  display: flex; align-items: center; gap: 13px; min-width: 0;
+  font-size: clamp(16px, 1.35vw, 19px); font-weight: 500; letter-spacing: .13em;
+  text-transform: uppercase; line-height: 1; color: var(--ink-2);
+  /* the veil that used to stand behind this row is down to a tenth of what it
+     was, so the ground a glyph needs is carried by the glyph: three stops of
+     `--sky-2`, tight and wide, which lift the pixels immediately behind the
+     letter without washing the arena around it */
+  text-shadow: 0 1px 3px rgba(244, 238, 232, .96), 0 0 12px rgba(244, 238, 232, .9),
+    0 0 22px rgba(244, 238, 232, .6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+/* the side dot may never be the thing that gets squeezed out of the row */
+:is(#bar-oct, .s-blue) .name::after,
+:is(#bar-gor, .s-orange) .name::before { order: 1; }
+:is(#bar-oct, .s-blue) .name::after,
+:is(#bar-gor, .s-orange) .name::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--side); flex: 0 0 7px;
+}
+
+:is(#hud, .hud-fake) .sub {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  /*
+   * `--ink`, NOT `--muted`, AND NOT ONLY ON A PHONE.
+   *
+   * `--muted` is specified against `--sky`; the ground here is whatever the
+   * camera is looking at. Measured on the 1440×900 capture against the local
+   * arena floor: `#3 · 1,594 MMR` 2.45:1 and `#819 · 1,197 MMR` 2.29:1 — the
+   * whole secondary layer of the flagship screen below AA, while the phone
+   * already had the correction because it was written inside the ≤900 block.
+   * The halo lifts the pixels immediately behind a glyph; the ink is what
+   * carries the line (§25, §27).
+   */
+  color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2;
+  text-shadow: var(--photo-halo);
+}
+:is(#bar-gor, .s-orange) .sub { justify-content: flex-end; }
+:is(#hud, .hud-fake) .sub .sep { opacity: .75; }
+/*
+ * THE CREATURE'S MIND, FOR THE WHOLE FIGHT AND NOT ONLY FOR THE CARD.
+ *
+ * §5.1: the shell re-renders `#meta-*` as a mind badge. It did not — `subLine()`
+ * built `#rank · MMR` and dropped the model — so the product's central claim,
+ * that an AI model is the creature's mind, was on screen for the 2.4 s of the
+ * VS card and then gone for the ninety seconds the player actually watches
+ * (§66, §68).
+ */
+:is(#hud, .hud-fake) .sub .mind {
+  gap: 6px; font-size: 10px; font-weight: 500; letter-spacing: var(--track-label);
+  /* `--muted` is specified against `--sky`; the ground here is a photograph of
+     an arena, which is the argument the whole `.sub` rule above is written on */
+  color: var(--ink-soft);
+}
+:is(#hud, .hud-fake) .sub .mind .mind-mark { width: 14px; height: 14px; flex: 0 0 14px; }
+
+/* health */
+:is(#hud, .hud-fake) .hprow { width: 100%; padding-bottom: 16px; }
+:is(#hud, .hud-fake) .hp {
+  position: relative; height: 6px; border-radius: 999px; width: 100%;
+  background: rgba(46, 46, 51, .16); box-shadow: 0 1px 0 rgba(255, 255, 255, .5);
+}
+:is(#hud, .hud-fake) .hp > i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--side) 55%, white), var(--side));
+  transition: width 140ms linear;
+}
+/*
+ * THE ONE `!important` IN THIS FILE, AND WHY IT EARNS ITS KEEP.
+ *
+ * `src/viewer/main.js` writes `style.width` on this element itself, every
+ * frame, through a reference it resolved once at load — and the live capture
+ * showed both bars painted their full 420 px under the numbers `41 / 180` and
+ * `23 / 180`. Correcting the same property from the shell is a race against
+ * 30 Hz that the shell loses; it does not have to run that race. The width is
+ * taken off the inline channel entirely and given to `--hp`, which the viewer
+ * never touches and `screens/live.js` derives from the very text the viewer
+ * printed beside the bar. The fill and the number then cannot disagree.
+ *
+ * The simulated HUD is excluded on purpose: `.hud-fake` builds its own bars and
+ * sets their width directly, and nothing else writes to them.
+ */
+#hud .hp > i { width: var(--hp, 0%) !important; }
+/*
+ * AND IT ARRIVES AT THE TRUTH RATHER THAN SWEEPING DOWN TO IT.
+ *
+ * `transition: width 140ms linear` plus a full starting value meant that
+ * joining a fight already in progress animated every bar from 100 % — and the
+ * live captures were taken inside that 140 ms: 60 % of the track under the
+ * label `45 / 180`. `screens/live.js` marks the FIRST value an element ever
+ * receives and clears the mark on the next frame (§43, §49).
+ */
+#hud .hp > i[data-snap] { transition: none; }
+:is(#hud, .hud-fake) .hp > b {
+  position: absolute; top: 10px; left: 0; font-weight: 500; font-size: 10.5px;
+  letter-spacing: .12em; color: var(--ink); font-variant-numeric: tabular-nums;
+  text-shadow: var(--photo-halo);
+}
+:is(#bar-gor, .s-orange) .hp > b { left: auto; right: 0; }
+/*
+ * AND THE FILL EMPTIES TOWARD ITS OWN OUTER EDGE.
+ *
+ * Only the LABEL was mirrored, so both bars grew from the left — measured on
+ * `live-fighting.png` at y 723 the opponent at 3/180 left a 27 px coral sliver
+ * at x 1078–1104, the INSIDE edge of a right-aligned panel, 330 px from the
+ * name it belongs to, while the player's bar filled from its own outside edge.
+ * Two health states that grow the same way cannot be read as a tug-of-war. The
+ * fill is a block inside a `position: relative` track, so `margin-left: auto`
+ * is the whole of it; under the ownership mirror the two exchange with the
+ * panels they live in (§17).
+ */
+@media (min-width: 901px) {
+  :is(#bar-gor, .s-orange) .hp > i { margin-left: auto; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .hp > i { margin-left: 0; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .hp > i { margin-left: auto; }
+}
+
+/*
+ * WHICH ONE IS MINE — AND THE COMMENT THAT USED TO STAND HERE SAID THE
+ * OPPOSITE OF THE CODE UNDER IT.
+ *
+ * It read: "side colour answers 'which floor telegraph is whose', not 'which
+ * creature is mine' — it is fixed to the arena side." That was REDESIGN §2.1,
+ * and `reports/arena/ARENA-AAA.md` §1 retires it: the player's creature is
+ * BLUE and stands on the LEFT, the opponent's is coral and stands on the
+ * right, whatever slot the server dealt; only a spectator, who owns neither,
+ * falls back to blue = first slot. The four `--slot-*` tokens at the top of
+ * this file are that rule, and the mirror block under them is the other half
+ * of it. A wrong comment beside right code is how the next reader re-breaks
+ * it, so it is written out here rather than deleted.
+ *
+ * What is left of the original point still holds: colour says WHOSE, and
+ * weight says MINE a second time, for a reader who cannot use hue. The
+ * player's panel carries a heavier name, a thicker bar with a lit fill, and
+ * the YOU pill on the name line above (see the grid).
+ */
+:is(#hud, .hud-fake) .bar-wrap.mine .name { font-weight: 600; color: var(--ink-2); }
+:is(#hud, .hud-fake) .bar-wrap.mine .hp { height: 8px; background: rgba(46, 46, 51, .2); }
+:is(#hud, .hud-fake) .bar-wrap.mine .hp > i {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--side) 42%, white), var(--side));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--side) 45%, transparent);
+}
+:is(#hud, .hud-fake) .bar-wrap.mine .hp > b { color: var(--ink); font-weight: 600; top: 12px; }
+
+/* ── ability tiles (§5.3) ───────────────────────────────────────────────── */
+
+/*
+ * THE PITCH IS SET BY THE LABEL, NOT BY THE TILE.
+ *
+ * A 48 px tile with an 18 px gap is a 66 px pitch, and the name under it was a
+ * 74 px box: every label overlapped its neighbour by eight pixels, so the three
+ * names read as one string — measured on the captures as `KINETIC ACID AURA
+ * KINETIC`, with about four pixels of white between two different abilities.
+ * At 34 px the boxes exactly touched, which is the same defect with no margin
+ * of error. The row is where a creature's rules are written during a fight;
+ * three names that cannot be told apart are worse than no names. So the gap is
+ * whatever the label needs, and it is checked against the box every time the
+ * row is resized: a 40 px tile and a 36 px gap make a 76 px pitch against a
+ * 70 px caption, and six pixels of white is the difference between three names
+ * and one (§6, §12).
+ */
+/*
+ * THE SWEEP INTERPOLATES.
+ *
+ * `--cd-frac` is written on the 110 ms tick, and an UNREGISTERED custom
+ * property cannot be interpolated — so the conic ring stepped nine times a
+ * second on a 48 px circle standing directly under a health bar that moves
+ * smoothly. Registered as a number it transitions like any other value, and
+ * 130 ms is a shade longer than the tick, so the sweep never catches up and
+ * stops (§47, §52).
+ */
+@property --cd-frac {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+:is(#hud, .hud-fake) .cds { display: flex; gap: 36px; padding-bottom: 27px; }
+:is(#bar-gor, .s-orange) .cds { justify-content: flex-end; }
+
+:is(#hud, .hud-fake) .cd {
+  position: relative; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%;
+  box-sizing: border-box;
+  /* the viewer writes the label as a text node every frame; it is never shown */
+  font-size: 0; color: transparent;
+  background-color: var(--glass-strong);
+  background-image: var(--glyph, none);
+  background-size: var(--glyph-size, 72%);
+  background-repeat: no-repeat; background-position: center;
+  background-origin: border-box; background-clip: border-box;
+  /* generated glyphs arrive in whatever colour the model chose; luminosity blending over the white face makes every one ink-on-white monoline */
+  background-blend-mode: luminosity;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-line); box-shadow: 0 6px 16px var(--shade);
+  pointer-events: auto; cursor: default;
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease),
+    --cd-frac 130ms linear;
+}
+:is(#hud, .hud-fake) .cd:hover { transform: translateY(-2px); }
+:is(#hud, .hud-fake) .cd:active { transform: translateY(0); }
+/*
+ * THE ABILITY'S OWN NAME, STACKED, WITH ROOM RESERVED FOR IT.
+ *
+ * The tile used to drop the element word for width, so the reveal taught EMBER
+ * BEAM and the fight said BEAM. It fits because it STACKS: `EMBER` over `BEAM`
+ * is two words under a circle — exactly what `BLOOD SCENT` is in the reference
+ * — and `screens/live.js` writes the break into `data-short` (`white-space:
+ * pre-line` renders it). A kit with two lunges adds a third, quieter line for
+ * the tie-breaker rather than crushing `· KNOCK` onto the second.
+ *
+ * Two lines are RESERVED whatever the name is. `AURA` beside `KINETIC / LUNGE`
+ * gave one row two different heights; a reserved minimum makes the block under
+ * the tiles one rectangle, which is what stops the row reading as ragged (§6,
+ * §11, §15, §24).
+ */
+:is(#hud, .hud-fake) .cd::before {
+  content: attr(data-label); position: absolute; top: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%); width: 70px; text-align: center;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  /* the ability's name over the arena floor, measured at 3.69:1 in `--muted` */
+  color: var(--ink); line-height: 1.1;
+  /* TWO lines are reserved and the padding under the row is cut to exactly
+     those two, so the common panel sits as low as it can; a kit whose
+     tie-breaker needs a third (`KINETIC LUNGE / · DAMAGE`) spends it in the
+     84 px of clearance below, where there is nothing to collide with (§12) */
+  white-space: pre-line; min-height: 2.2em; max-height: 3.3em; overflow: hidden;
+  text-shadow: var(--photo-halo);
+}
+/* the attribute is only written when there is a shape word to write */
+:is(#hud, .hud-fake) .cd[data-short]::before { content: attr(data-short); }
+/*
+ * AVAILABLE IS SAID OUT LOUD, NOT LEFT AS THE ABSENCE OF A COOLDOWN.
+ *
+ * A cooling tile gained a full-strength conic ring and a dark badge with a
+ * 1.5 px halo; a ready tile gained nothing — so the loudest objects in the
+ * ability row were the ones that cannot be used, and `live-fighting-m.png`
+ * (all six cooling at 00:06) was a wall of dark badges. The ready tile takes a
+ * solid white face and a soft ring in its own side's colour; the spent one's
+ * badge halo drops to a hairline, so it is quieter than the tile beside it
+ * rather than louder (§52, §62).
+ */
+:is(#hud, .hud-fake) .cd.ready {
+  background-color: #fff;
+  box-shadow: 0 6px 16px var(--shade),
+    0 0 0 1.5px color-mix(in srgb, var(--side) 55%, transparent);
+}
+/*
+ * A COOLDOWN NEVER REPLACES THE ART.
+ *
+ * Every earlier attempt put the seconds where the glyph is. An opaque disc made
+ * a blank circle with a number in it; a 30 % wash made the number illegible
+ * (`3.2` crossed by the AURA rings so exactly that the capture read `3⌀2`); and
+ * the last one made the two cooling tiles in the flagship capture bare numbers
+ * with no ability in them at all — the player loses each ability's identity
+ * exactly when they are watching it work.
+ *
+ * So the two stop competing for the middle. The glyph stays, washed back to
+ * about 40 % so a spent ability still reads as itself; the seconds move to a
+ * 20 px `--pane-dark` pill on the bottom-right, where nothing was; and the
+ * remaining time is a full conic sweep, 3 px wide and inset 2 px, in the side's
+ * colour (§1, §4, §5.3).
+ *
+ * The whole stack is background layers on the tile because a pseudo-element
+ * cannot sit under `background-image` — which is why `screens/live.js` hands
+ * the glyph over as `--glyph` rather than writing it directly.
+ */
+:is(#hud, .hud-fake) .cd.cool[data-cd]:not([data-cd=""]) {
+  background-image:
+    /*
+     * The wash, ABOVE the glyph and stopping short of the ring — .25, not .6.
+     *
+     * At .6 a cooling tile's glyph came out at 2.4:1 against its own face, and
+     * `live-fighting.png` measured the three of them at 1.62, 1.40 and 1.40:1
+     * — three blank white discs with numbers on them, in the row that answers
+     * "what is he about to do". `screens/live.js` now re-keys the generated
+     * picture to full ink before it ever reaches this stack, so a quarter of a
+     * wash is enough to say SPENT and still leaves the ability legible at
+     * about 5.6:1 (§6, §5.3).
+     */
+    radial-gradient(circle closest-side at 50% 50%,
+      rgba(255, 255, 255, .25) 0 calc(100% - 6px), rgba(255, 255, 255, 0) calc(100% - 6px)),
+    var(--glyph, none),
+    /* the tile's own surface, punched so only a 3 px annulus is left open */
+    radial-gradient(circle closest-side at 50% 50%,
+      rgba(255, 255, 255, .97) 0 calc(100% - 5px),
+      rgba(255, 255, 255, 0) calc(100% - 5px) calc(100% - 2px),
+      rgba(255, 255, 255, .97) calc(100% - 2px)),
+    /* what is left of the cooldown, sweeping from twelve o'clock */
+    conic-gradient(from -90deg,
+      var(--side) 0 calc(var(--cd-frac, 0) * 360deg),
+      rgba(255, 255, 255, 0) 0);
+  background-size: 100% 100%, var(--glyph-size, 72%), 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  /*
+   * THE BLEND IS FOR THE GLYPH, AND ONLY FOR THE GLYPH.
+   *
+   * `.cd` sets a single `background-blend-mode: luminosity` so a generated
+   * icon comes out ink-on-white whatever colour the model chose. A single
+   * value applies to EVERY layer, and the cooling stack has four — including
+   * the conic sweep that carries the side colour. Luminosity takes the layer's
+   * luminance and the backdrop's hue, and the backdrop here is near-white
+   * `--glass-strong`: measured on `live-hud.png` the READY rings (a
+   * box-shadow, which escapes the blend) read #A4BFEB / #F2A590 while the
+   * COOLING rings on the same panels read #93A2B9 / #B8958D — 54 % and 44 % of
+   * the chroma gone, on the side-coloured surface the player looks at most.
+   * Per layer — wash, glyph, surface punch, sweep — the glyph keeps its
+   * treatment and the sweep keeps its side (§4).
+   */
+  background-blend-mode: normal, luminosity, normal, normal;
+}
+:is(#hud, .hud-fake) .cd.cool[data-cd]:not([data-cd=""])::after { opacity: 1; transform: none; }
+/*
+ * THE FIRST FRAME OF A COOLDOWN IS WRITTEN, NOT ANIMATED INTO.
+ *
+ * `--cd-frac` is registered with `initial-value: 0` and a 130 ms transition,
+ * and the badge fades in from `scale(.72)` over 220 ms — so a tile that had
+ * just fired drew an almost-empty ring with a badge measured at 1.4:1, in the
+ * exact seconds the row is being read to find out what is spent. On the frame a
+ * tile becomes cool, `screens/live.js` writes `data-cdnew` and both start where
+ * they belong: full ring, solid badge. The attribute is gone two frames later,
+ * so every later value still interpolates (§44, §50).
+ */
+:is(#hud, .hud-fake) .cd[data-cdnew] {
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+:is(#hud, .hud-fake) .cd[data-cdnew]::after { opacity: 1; transform: none; transition: none; }
+/*
+ * The seconds, as a badge rather than as a mask over the drawing. It fades in
+ * and out with `--d-ui` instead of the disc appearing and vanishing in one
+ * frame, which was a pop several times per fight per tile (§47).
+ */
+:is(#hud, .hud-fake) .cd::after {
+  content: attr(data-cd); position: absolute; right: 0; bottom: 0;
+  min-width: 20px; height: 20px; padding: 0 4px; border-radius: 999px;
+  box-sizing: border-box; display: grid; place-items: center;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .01em; font-variant-numeric: tabular-nums;
+  color: var(--sky); background: var(--pane-dark);
+  box-shadow: 0 2px 7px rgba(46, 46, 51, .3), 0 0 0 1px rgba(255, 255, 255, .88);
+  opacity: 0; transform: scale(.72);
+  transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+/*
+ * A DEAD FIGHTER'S CHIPS ARE FROZEN, NOT ERASED.
+ *
+ * `main.js` marks every chip of a defeated fighter `cd cool` with an EMPTY
+ * `data-cd` — a state that used to fall through to the cooling treatment and
+ * paint three blank white discs where three abilities had been. There is no
+ * cooldown to draw, so nothing is drawn over the art (§4, §60, §70).
+ */
+:is(#hud, .hud-fake) .cd:focus-visible { outline: 2px solid var(--info-ink); outline-offset: 3px; }
+
+/* the YOU marker */
+:is(#hud, .hud-fake) .sidetag { display: flex; }
+:is(#bar-gor, .s-orange) .sidetag { justify-content: flex-end; }
+:is(#hud, .hud-fake) .sidetag:empty { display: none; }
+:is(#hud, .hud-fake) .sidetag:not(:empty) {
+  align-self: flex-start; margin-top: 1px; height: 22px; padding: 0 10px; align-items: center;
+  border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--side-ink);
+  background: color-mix(in srgb, var(--side) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--side) 38%, transparent);
+}
+:is(#bar-gor, .s-orange) .sidetag:not(:empty) { align-self: flex-end; }
+/* inside the name row it is a cell, and a cell rides the line it marks */
+:is(#hud, .hud-fake) .namerow > .sidetag:not(:empty),
+:is(#bar-gor, .s-orange) .namerow > .sidetag:not(:empty) { align-self: center; margin-top: 0; }
+
+/*
+ * A KNOCKOUT IS THE CLEAREST THING THAT HAPPENS IN A FIGHT, AND IT WAS SAID
+ * THE LEAST CLEARLY.
+ *
+ * Half opacity over the whole column made the loser's name, its `#15 · 1,386
+ * MMR`, its `0 / 180` and its three ability tiles the palest elements on the
+ * screen — the tiles read as blank discs — at the single most important instant
+ * of the match. The dimming belongs to the TYPE; the drawings stay legible
+ * (never under 55 %, §1) and the fact is stated in words instead: a DOWN pill
+ * in the slot that already carries YOU, written by `screens/live.js` (§60, §70).
+ */
+:is(#hud, .hud-fake) .bar-wrap.dead :is(.name, .sub, .hp > b) { opacity: .78; }
+:is(#hud, .hud-fake) .bar-wrap.dead .cd { opacity: .82; }
+:is(#hud, .hud-fake) .bar-wrap.dead .cd::before { opacity: .6; }
+/* nothing to count down: the ring and the pill go, the drawing stays */
+:is(#hud, .hud-fake) .bar-wrap.dead .cd::after { opacity: 0; }
+:is(#hud, .hud-fake) .bar-wrap.dead .hp { opacity: .7; }
+/* zero is not a place the bar travels to over 140 ms: the loser's fill was
+   still painting 17 % of its track under the label `0 / 180` (§64) */
+:is(#hud, .hud-fake) .bar-wrap.dead .hp > i,
+#hud .hp > i[data-hp="0.0%"] { transition: none; }
+/*
+ * A KNOCKOUT IS ANNOUNCED WITHOUT TAKING AWAY THE ONE MARKER THAT SAYS WHOSE
+ * CREATURE THIS IS.
+ *
+ * `DOWN` used to be written OVER `YOU`, so on a phone — where the player's own
+ * panel is simply the lower of two identical strips — nothing on screen
+ * identified the player's creature at the instant the fight turned on it. Both
+ * facts share the pill; `data-solo` is the case where there was no marker to
+ * keep (§60).
+ */
+/*
+ * AND IT IS SAID IN THE CREATURE'S OWN COLOUR.
+ *
+ * The three declarations here used to be `--accent` — so at the instant the
+ * PLAYER's creature was knocked out, the one pill on screen that says "this
+ * one is yours" turned the OPPONENT's hue, 11 px from that creature's own blue
+ * slot dot (`live-fighting-m.png`, `live-visitor.png`). `--accent` is the
+ * opponent under the addendum and `ARENA-BRIEF` §5 allows exactly two accents,
+ * both spoken for: there is no third hue available for "danger", so a knockout
+ * cannot be one. It is said the way the clock rail already says its states —
+ * in words and in weight — and the pill keeps the side it is marking. The
+ * dead-panel dimming above carries the rest of the statement (§60, §70).
+ */
+:is(#hud, .hud-fake) .sidetag[data-down] {
+  color: var(--side-ink);
+  background: color-mix(in srgb, var(--side) 20%, transparent);
+  border-color: color-mix(in srgb, var(--side) 44%, transparent);
+  font-weight: 700;
+}
+:is(#hud, .hud-fake) .sidetag[data-down]::after { content: " · Down"; opacity: .82; }
+:is(#hud, .hud-fake) .sidetag[data-down][data-solo]::after { content: none; }
+
+/* ── VS + clock, centre bottom ──────────────────────────────────────────── */
+
+/*
+ * ANCHORED FROM THE TOP, NOT THE BOTTOM.
+ *
+ * The block is VS, the clock, and a status line that is usually absent and
+ * occasionally two rows tall (`SUDDEN DEATH · THE ARENA BURNS BOTH`). Hung from
+ * its bottom edge, every one of those states put VS on a different line: at
+ * rest it sat level with the ability tiles, and the moment sudden death arrived
+ * it jumped 37 px up onto the fighters' names. Hung from its top edge it sits
+ * on the health bars — where the reference puts it — and the status line grows
+ * downward into the empty middle column, which is what that space is for.
+ */
+:is(#clock, .clock-sim) {
+  position: absolute; left: 50%; top: calc(100% - 200px); bottom: auto; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  opacity: 0; transition: opacity var(--d-ui) var(--ease); text-align: center;
+}
+body[data-phase="fighting"] #clock { opacity: 1; }
+/*
+ * THE FIGHT'S INSTRUMENTS RETIRE TOGETHER.
+ *
+ * The feed already stood down for the result card and the tiles already stopped
+ * counting; the clock did not, so all four result captures show `VS 00:28 /
+ * 01:02 LEFT` frozen under a VICTORY card that is itself counting down to the
+ * NEXT fight — two clocks in one frame, one of them stalled on a bout that is
+ * over (§42, §53).
+ */
+body[data-screen="live"][data-phase="result"] :is(#clock, .clock-sim) {
+  opacity: 0; transition: opacity var(--d-ui) var(--ease);
+}
+/*
+ * `:is()` TAKES THE SPECIFICITY OF ITS STRONGEST ARGUMENT.
+ *
+ * The base rule above is `:is(#clock, .clock-sim)`, which the cascade scores at
+ * (1,0,0) because of the id — so a bare `.clock-sim { opacity: 1 }` at (0,1,0)
+ * lost to it and the simulated clock was pinned at zero. The VS glyph and
+ * `00:28` — the anchor of the reference composition — were missing from six of
+ * the twelve live captures for that one reason. Repeating the class raises this
+ * rule above the base and nowhere else (§54, §61).
+ */
+:is(#clock, .clock-sim).clock-sim { opacity: 1; }
+:is(#clock, .clock-sim)::before {
+  content: "VS"; order: 0; font-size: 28px; font-weight: 300; letter-spacing: var(--track-state);
+  padding-left: var(--track-state); color: var(--ink-2); line-height: 1;
+  text-shadow: 0 1px 4px rgba(244, 238, 232, .95), 0 0 10px rgba(244, 238, 232, .8);
+}
+/*
+ * ONE NUMBER, WITH ITS OWN WORD (§5.2).
+ *
+ * The block used to state one time three ways: a 22 px countdown to sudden
+ * death with no caption, a 74 px rule filling TOWARDS the deadline while the
+ * number counted DOWN, and `ELAPSED 00:28` under both — so the only labelled
+ * number was the footnote, and in the replay capture the two disagreed
+ * outright (`00:28` over `ELAPSED 00:01`). §5.2 asks for VS, one clock and the
+ * status line, and that is what is here.
+ *
+ * The hero is the time LEFT and it carries a 9.5 px word on its own baseline.
+ * The rule under it DEPLETES — the fill is what remains — so the rule and the
+ * number travel in the same direction.
+ *
+ * AND THE CLOCK BELONGS TO NEITHER FIGHTER.
+ *
+ * The rail used to be `--info` — the PLAYER's colour, on a bar that means time
+ * — crossing to `color-mix(--accent 55%, --info)` at `near` and to `--accent`
+ * outright at `on`. So the one neutral instrument in the middle of the frame
+ * animated from "the player" to "the opponent" as the bout aged, which reads
+ * as a side losing rather than as a clock running out; the same argument
+ * retires `--warning` on the numeral one block below. Under the addendum both
+ * side colours are spoken for, so the rail takes the only thing left that
+ * means nobody: ink. It DEEPENS rather than changing hue — 45 % of `--ink` at
+ * rest, 68 % as the deadline nears, full ink past it — over the same `--stone`
+ * track it always had (§3, §15).
+ */
+:is(#clock, .clock-sim)::after {
+  content: ""; order: 2; width: 74px; height: 2px; border-radius: 999px;
+  --rail-fill: color-mix(in srgb, var(--ink) 45%, transparent);
+  background: linear-gradient(90deg,
+    var(--rail-fill) 0 calc((1 - var(--burn, 0)) * 100%),
+    color-mix(in srgb, var(--stone) 20%, transparent) 0);
+  transition: background 300ms linear;
+}
+/* no deadline to run down (a replay, a fight with no `suddenDeathAt`): a rule
+   that would sit permanently full says nothing, so it is not drawn */
+:is(#clock, .clock-sim):not([data-burn])::after { display: none; }
+:is(#clock, .clock-sim)[data-burn="near"]::after { --rail-fill: color-mix(in srgb, var(--ink) 68%, transparent); }
+:is(#clock, .clock-sim)[data-burn="on"]::after { --rail-fill: var(--ink); }
+
+/*
+ * THE HERO AND ITS WORD SHARE A BASELINE.
+ *
+ * `01:02` on its own is a number a spectator has to guess the meaning of, and
+ * the guess it invites — "the fight ends then" — is wrong. `1:02 LEFT` is the
+ * same pixels with the question answered. When there is no deadline the
+ * elapsed time is promoted into the hero slot with its own word rather than the
+ * whole block collapsing, which is what left `VS  ELAPSED 00:00` and no clock
+ * at all on the replay phone capture (§5.2).
+ */
+:is(#clock, .clock-sim) .t {
+  order: 1; display: flex; flex-direction: row; align-items: baseline; justify-content: center;
+  gap: 7px; font-size: 0; line-height: 0; margin-top: -2px;
+}
+:is(#clock, .clock-sim) .t::after {
+  content: attr(data-left); order: 1; font-size: 22px; font-weight: 500; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-2); line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--photo-halo);
+}
+:is(#clock, .clock-sim) .t[data-left=""]::after,
+:is(#clock, .clock-sim) .t:not([data-left])::after { content: attr(data-elapsed); }
+:is(#clock, .clock-sim) .t::before {
+  content: "left"; order: 2; font-size: 9.5px; font-weight: 600; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); line-height: 1;
+  text-shadow: var(--photo-halo);
+}
+:is(#clock, .clock-sim) .t[data-left=""]::before,
+:is(#clock, .clock-sim) .t:not([data-left])::before { content: "elapsed"; }
+/* past the deadline the slot names what is happening instead of counting to it,
+   and a phrase does not get a number's size — nor a word after it */
+:is(#clock, .clock-sim)[data-burn="on"] .t::after { font-size: 13px; letter-spacing: .16em; }
+/*
+ * URGENCY IS SPENT IN WEIGHT, NOT IN A FOURTH HUE.
+ *
+ * `near` printed the numeral in `--warning-ink` (#705608, S 0.93 — the most
+ * saturated ink anywhere on the live screen, and the accent ARENA-BRIEF §5
+ * bans by name) and `on` printed it in `--accent-ink`, the opponent's colour.
+ * One row apart the clock said "time is running out" in two different hues,
+ * neither of which is about time. The numeral stays `--ink-2` at every burn
+ * and gains weight instead; the renderer's own `applySuddenDeath` and the
+ * rule under the number are already carrying the alarm (§3, §15).
+ */
+:is(#clock, .clock-sim)[data-burn="near"] .t::after { color: var(--ink-2); font-weight: 700; }
+:is(#clock, .clock-sim)[data-burn="on"] .t::after { color: var(--ink-2); font-weight: 700; }
+:is(#clock, .clock-sim)[data-burn="on"] .t::before { content: none; }
+/* nothing to say at all: no number and no deadline */
+:is(#clock, .clock-sim) .t[data-left=""][data-elapsed=""],
+:is(#clock, .clock-sim) .t:not([data-left]):not([data-elapsed]) { display: none; }
+:is(#clock, .clock-sim) .s {
+  order: 3; max-width: 260px; font-size: 10px; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink) !important; line-height: 1.4;
+  text-shadow: var(--photo-halo);
+}
+:is(#clock, .clock-sim).mute .s { display: none; }
+/* and the SUDDEN DEATH line under it says the same thing in the same voice:
+   ink, not the opponent's coral (§3) */
+:is(#clock, .clock-sim) .s.burning { color: var(--ink-2) !important; font-weight: 600; }
+
+/* ── live feed (§5.2) ───────────────────────────────────────────────────── */
+
+/*
+ * DOCKED UNDER THE CHIP, IN THE CORNER THE FIGHT DOES NOT USE.
+ *
+ * The panel used to be 300 px wide, nine rows tall and vertically CENTRED in a
+ * 150→320 band — which put it across the middle third of the right-hand side,
+ * ndc x 0.49…0.96 by y −0.11…0.58, while the camera solver is allowed to place
+ * a fighter out to x 0.88. It did exactly that: `live-fighting-w.png` has the
+ * cutter's body under the panel's bottom-left corner. A column of world news
+ * may not stand in front of the fight it is reporting.
+ *
+ * So it is a corner panel now, not a column: hung from the top under the
+ * account chip, 244 px wide, four rows at most, and its glass is halved (.5,
+ * from .74) so what little of the arena it does cover still reads through it.
+ * Under 1280 px `screens/live.js` folds it to its head by default — the width
+ * where the right fifth stops being spare. It still gives way entirely when a
+ * fighter walks into it (`.ghost`, below).
+ */
+#feedwrap {
+  position: absolute; right: var(--chrome-pad); top: 88px; bottom: auto; width: 244px;
+  height: fit-content; max-height: none; margin: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  /*
+   * .5, not .74. The panel is over the arena, and at .74 it was a solid white
+   * card sitting on the picture. Halved, the glass is an edge and a shadow with
+   * the floor still visible through it — and the type on it still measures
+   * 6.3:1, because `--muted` over half-white on `--sky` is #F5F0EC.
+   */
+  background: rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--glass-line); border-radius: var(--r-panel);
+  box-shadow: 0 12px 40px var(--shade);
+  /* faded out means GONE — a panel at zero opacity that still occupies the
+     column is what leaves half a `LIVE FEED` at the edge of a phone (§7) */
+  opacity: 0; visibility: hidden;
+  /* one clock for the whole HUD exit: the card that replaces these things may
+     not arrive while they are still at 77 % (§35, §39) */
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+/*
+ * THE RIGHT COLUMN KEEPS ITS PLACE.
+ *
+ * The panel used to be removed the moment `#feed` ran dry, and `#feed` is dry
+ * for the whole of every wait and the first second of every fight — the two
+ * stretches a stranger spends most of their first minute in. So the column
+ * blinked in and out and the two states it mattered most in were the two it was
+ * never present for. It is now shown for the wait as well (the previous fight's
+ * narration and the world's results are exactly what there is to read between
+ * fights), and when there is genuinely nothing yet it says so in one line
+ * instead of vanishing. There is no veil over the arena at all any more, so a
+ * glass panel is read against the picture itself (§5.2, §19).
+ *
+ * It still steps aside for the VS card, which is saying the same two names.
+ */
+body[data-screen="live"][data-phase="fighting"] #feedwrap,
+body[data-screen="live"][data-phase="searching"] #feedwrap,
+#hud.replay #feedwrap { opacity: 1; visibility: visible; transition: opacity var(--d-ui) var(--ease); }
+/*
+ * THE GLASS GIVES WAY TO A FIGHTER, AS A BLOCK DOES. The corner it stands in
+ * is spare in every capture, but the camera's framing allows a fighter out to
+ * 88 % of the half-width and nothing forbids one arriving there. `main.js`'s
+ * occlusion pass projects both fighters every frame and sets this class while
+ * either stands inside the panel's box; .24 is `FADE_TO`, what a block fades
+ * to.
+ * Written at the show rule's own specificity so it wins over it and loses to
+ * the hide rules below.
+ */
+body[data-screen="live"][data-phase="fighting"] #feedwrap.ghost,
+#hud.replay #feedwrap.ghost { opacity: .24; transition: opacity 120ms var(--ease); }
+#hud.under-vs #feedwrap, #hud.under-card #feedwrap,
+body[data-card="vs"] #feedwrap, body[data-card="away"] #feedwrap { opacity: 0; visibility: hidden; }
+/*
+ * THE RESULT IS ONE BEAT, AT EVERY WIDTH.
+ *
+ * A phone already stood the feed down for the result card; a desktop did not,
+ * so the flagship capture showed the card, a six-line panel of world news and
+ * two rows of ability tiles with live cooldown rings still sweeping — three
+ * things competing at the one moment §6.2 wants to be a single statement. The
+ * fight is over: the feed steps back and the tiles stop counting (§59, §69).
+ */
+body[data-screen="live"][data-phase="result"] #feedwrap { opacity: 0; visibility: hidden; }
+/*
+ * AND SO DO THE TWO PANELS.
+ *
+ * The result card is centred now — it carries the winner's own portrait, so it
+ * no longer has to guess which half of the frame the winner is standing in
+ * (§22, §64) — and a 420 × 480 card centred on a 900 px viewport lands its
+ * bottom edge on the fighter panels' name row: `live-result-loss` shows `You`
+ * printed under the card, which §12 forbids outright. The panels say the two
+ * names, the two ratings and the two healths of a fight that has FINISHED; the
+ * card says what the fight did. One of them is the moment. The final pose stays
+ * behind the card, undimmed — it is the subject worth keeping, and the picture
+ * belongs to the renderer (§6.2, §12).
+ */
+body[data-screen="live"][data-phase="result"] :is(#hud, .hud-fake) .bar-wrap {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+/*
+ * .6, NOT .35 — AND THE TILES STOP BEING FOCUS STOPS.
+ *
+ * At .35 the ability captions measured about 2:1 against the arena while the
+ * tiles were still `tabIndex = 0` and still carried tooltips: a focusable
+ * control whose label is under the 3:1 non-text floor. `screens/live.js` takes
+ * them out of the tab order for the card's duration; the wash is lifted to the
+ * point the names are still readable behind it (§30).
+ */
+body[data-phase="result"] :is(#hud, .hud-fake) .cd { opacity: .6; --cd-frac: 0; }
+body[data-phase="result"] :is(#hud, .hud-fake) .cd::after { opacity: 0; }
+
+/* the one line that stands in for a feed with nothing in it yet */
+.feed-wait {
+  padding: 0 14px 14px;
+  font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--muted);
+}
+#feedwrap:not(.empty) .feed-wait { display: none; }
+#feedwrap.off .feed-wait { display: none; }
+/*
+ * NOTHING TO SAY YET IS ONE LINE, NOT A PANEL.
+ *
+ * `live-replay.png` showed FIGHT LOG as a 190 px glass box holding its own
+ * title and the word `Watching…`, with a hundred pixels of empty glass around
+ * them — a panel occupying the right column to report that it has nothing in
+ * it. Bound to its content it is a caption (§63).
+ */
+/* the panel is hung from its top edge at every size now, so an empty log is
+   already bound to its own content; nothing left to re-anchor */
+
+.feed-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 8px 14px; }
+.feed-title { font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.feed-toggle {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  color: var(--muted); pointer-events: auto; flex: 0 0 26px;
+  transition: background var(--d-ui), color var(--d-ui), transform var(--d-ui) var(--ease);
+}
+.feed-toggle:hover { background: rgba(255, 255, 255, .55); color: var(--ink-2); }
+.feed-toggle svg { transform: rotate(180deg); transition: transform var(--d-ui) var(--ease); }
+#feedwrap.off .feed-toggle svg { transform: rotate(0deg); }
+#feedwrap.off :is(#feed, .feed-sim) { display: none; }
+#feedwrap.off .feed-head { padding-bottom: 12px; }
+
+/*
+ * THE OLDEST LINE FADES; IT IS NOT CUT.
+ *
+ * `nth-child(n+7) { display: none }` deleted the seventh row in one frame — and
+ * it also counted the two sub-heads, so adding `THIS FIGHT` / `THE ARENA` would
+ * have eaten two lines of narration. A height bound with the mask already on
+ * the column does the same job continuously: the list runs out under the fade
+ * instead of stopping at a hard edge (§46, §53, §56).
+ */
+/*
+ * A WHOLE NUMBER OF ROWS.
+ *
+ * `max-height: 320px` cut wherever 320 px happened to fall, so the flagship
+ * captures ended on `KRAKEN is on a five-fight win streak` with its timestamp
+ * sliced through the middle. One row is padding + one line of 12.5/1.45; the
+ * column is ten of them, so the mask always fades a full line (§6).
+ */
+:is(#feed, .feed-sim) {
+  /* FOUR ROWS, COUNTED — not a height with a fade over it.
+     Nine rows made a 300 px column down the right of the fight. Four is the
+     newest exchange and where the world stands, which is what the panel is
+     actually read for during a bout. The cap used to be a `max-height` plus a
+     mask, and in a 244 px panel every line wraps: the fifth row was sliced
+     through its own glyphs and the fade read as a rendering fault rather than
+     as an edge. Counting the children instead means the panel always ends on
+     its own rounded border, and it shrinks when there is less to say. */
+  padding: 0 14px 12px;
+}
+:is(#feed, .feed-sim) > :nth-child(n+5) { display: none; }
+/*
+ * AND A SUB-HEAD IN THE LAST SLOT IS A STRAY WORD.
+ *
+ * `THE ARENA` landed fourth with its three rows behind the cap above, so the
+ * panel ended on a label introducing nothing — `live-visitor.png`, round two.
+ * A group can only be a group if a row survives under it, and at position four
+ * none can. (`:last-child` does not see this: the rows are still in the DOM,
+ * they are simply not drawn.)
+ */
+:is(#feed, .feed-sim) > .feed-group:nth-child(n+4) { display: none; }
+/*
+ * NOTHING HERE CLIPS TEXT.
+ *
+ * A `max-height` on the row looked like the tidy way to hold an entry to two
+ * lines, and with `box-sizing: border-box` the padding came out of the same
+ * budget: the second line of `Now watching · SPIRE-08 vs LENS-00` was sliced
+ * through the middle and the sub-head under it printed on the half that was
+ * left — §12's overlap, reported by the capture gate. Clipped text keeps its
+ * own rect whatever the paint does. The panel is bounded by COUNTING rows, not
+ * by cutting them.
+ */
+#feedwrap.sim #feed { display: none; }
+.feed-sim { display: none; }
+#feedwrap.sim .feed-sim { display: block; }
+
+:is(#feed, .feed-sim) > div {
+  position: relative; padding: 6px 0 6px 14px;
+  font-family: var(--font-body); font-size: 12px; line-height: 1.4; color: var(--ink-2);
+  border-top: 1px solid rgba(46, 46, 51, .07);
+}
+:is(#feed, .feed-sim) > div:first-child { border-top: 0; }
+:is(#feed, .feed-sim) > div::before {
+  content: ""; position: absolute; left: 0; top: 13px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--stone);
+}
+/*
+ * TWO GROUPS UNDER ONE TITLE.
+ *
+ * All six lines of the deterministic FIGHTING capture were lobby news — SPIKE
+ * reached #100, KRAKEN is on a streak — and not one described the fight on
+ * screen, so the panel labelled LIVE FEED answered nothing about the live
+ * fight. The narration of the current match is pinned above a hairline; the
+ * world follows under its own sub-head (§56, §63).
+ */
+:is(#feed, .feed-sim) > .feed-group {
+  padding: 12px 0 6px; border-top: 1px solid var(--hairline);
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600;
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted);
+}
+:is(#feed, .feed-sim) > .feed-group::before { content: none; }
+/* a label with nothing under it is not a group; it is a stray word */
+:is(#feed, .feed-sim) > .feed-group:last-child { display: none; }
+:is(#feed, .feed-sim) > .feed-group:first-child { padding-top: 0; border-top: 0; }
+:is(#feed, .feed-sim) > .feed-group + div { border-top: 0; }
+/*
+ * A NEW LINE ARRIVES — SIDEWAYS, NOT UPWARDS (§53).
+ *
+ * The entrance used to start at `translateY(-6px)`, which for 220 ms puts the
+ * new row six pixels INTO the row above it. The capture gate reads boxes, not
+ * paint, and caught it: `This fight × sweeps a kinetic: 214×4` on
+ * `live-visitor-w`, §12's overlap, several times a minute for the life of
+ * every fight. The rows are stacked vertically, so the one direction that
+ * cannot land on a neighbour is across.
+ */
+:is(#feed, .feed-sim) > .feed-in { animation: feed-in 220ms var(--ease) both; }
+@keyframes feed-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+/* the dot and the name wear the slot's colour, and the slot's colour is the
+   player's blue or the opponent's coral (`--slot-*`, top of file) */
+:is(#feed, .feed-sim) > div[data-side="blue"]::before { background: var(--slot-blue); }
+:is(#feed, .feed-sim) > div[data-side="orange"]::before { background: var(--slot-orange); }
+:is(#feed, .feed-sim) > div[data-side="blue"] .nm { color: var(--slot-blue-ink); font-weight: 600; }
+:is(#feed, .feed-sim) > div[data-side="orange"] .nm { color: var(--slot-orange-ink); font-weight: 600; }
+:is(#feed, .feed-sim) .ft {
+  float: right; margin-left: 10px; font-size: 10.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums; opacity: .8;
+}
+:is(#feed, .feed-sim) b { font-weight: 600; }
+/*
+ * A QUOTE GETS ITS OWN LINE, AND NOT ONLY BECAUSE IT READS BETTER.
+ *
+ * `main.js` writes a spoken line as `<span>NAME</span> · <i>“…”</i>` — two
+ * inline siblings. In a 244 px panel the quote wraps, and an inline element
+ * that wraps has ONE bounding rect spanning every line it touches: the `<i>`'s
+ * box then covers the name's box on the first line, which is what the capture
+ * gate reported as `PRESS-60 × “no line of sigh: 59×15` on three states. A
+ * block starts on its own line and has a rect of its own — and a creature's
+ * quip under the creature's name is the shape the line always wanted.
+ */
+:is(#feed, .feed-sim) > div > i { display: block; margin-top: 1px; }
+/*
+ * THE HIT LEAVES A TRACE. A damage pill lives 1.1 s over a body and then the
+ * fight has no record of it at all; the feed row that narrates the same hit
+ * carries the number in a column of its own, right-aligned and tabular, so a
+ * spectator can read what the exchange actually cost (§51).
+ */
+:is(#feed, .feed-sim) .fd {
+  float: right; margin-left: 10px; font-family: var(--font-display);
+  font-size: 12px; font-weight: 600; color: var(--ink-2);
+  font-variant-numeric: tabular-nums; letter-spacing: .02em;
+}
+
+/* ── boot card ──────────────────────────────────────────────────────────── */
+
+#boot {
+  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+  transition: opacity var(--d-screen) var(--ease);
+}
+#boot.off { opacity: 0; pointer-events: none; }
+#boot .boot-in {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 30px 44px 26px; border-radius: var(--r-panel);
+  background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--glass-line); box-shadow: 0 12px 40px var(--shade);
+}
+#boot .boot-orbit { width: 160px; height: 160px; }
+#boot .boot-t { font-size: var(--t-label); font-weight: 500; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+
+/* ── connection state ───────────────────────────────────────────────────── */
+
+#netstate {
+  position: absolute; top: 186px; left: 50%; transform: translateX(-50%);
+  padding: 8px 16px; border-radius: 999px; opacity: 0;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent-ink); background: rgba(255, 122, 92, .16);
+  border: 1px solid rgba(255, 122, 92, .34);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: opacity var(--d-ui) var(--ease); pointer-events: none;
+}
+#netstate::after { content: "Connection lost — reconnecting"; }
+#netstate.on { opacity: 1; }
+
+/* ── things the viewer floats over the fight ────────────────────────────── */
+
+/*
+ * `--lift` is written by `screens/live.js` and by nothing else: the viewer owns
+ * `left` and `top` and rewrites them every frame, so the correction has to
+ * travel on a channel the viewer never touches.
+ */
+#hud .plate {
+  position: absolute; width: 88px;
+  /* two translate functions, not one calc: mixing a percentage and a custom
+     property inside calc() is one parser away from dropping the whole
+     declaration, and a dropped transform puts the plate's corner where its
+     centre should be */
+  transform: translate(-50%, -100%) translateY(var(--lift, 0px));
+  text-align: center; color: var(--ink-2);
+}
+/*
+ * WHAT THE PLATE SAYS WHILE A FIGHTER WINDS UP.
+ *
+ * The viewer writes the socket's composite key into `.lab` — `Lunge·Damage+Stun`,
+ * a debug string, on the most looked-at pixel in the product — and it never
+ * clears it, so the last one stayed on screen long after the cast ended. So the
+ * text node is hidden and `screens/live.js` supplies the product's own name for
+ * the same ability in `data-cast`, which is drawn only while the cast bar is up.
+ */
+#hud .plate .lab { display: none; }
+#hud .plate.casting[data-cast]::before {
+  content: attr(data-cast); display: block;
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px;
+  /* the same tight opaque contour the chrome's labels carry: a blurred halo
+     lightens a dark body without ever separating a 9.5 px glyph from it */
+  text-shadow:
+    0 0 1px rgba(244, 238, 232, 1), 0 0 2px rgba(244, 238, 232, 1),
+    0 0 3px rgba(244, 238, 232, 1), 0 0 7px rgba(244, 238, 232, .85);
+}
+/*
+ * THE HEALTH RULE ON THE PLATE IS A SECOND COPY OF THE PANEL'S OWN BAR.
+ *
+ * Both captures show it as what it is without a name beside it: a 4 px coloured
+ * line hanging in the middle of an empty sky, one blue and one orange, with
+ * nothing to say who they belong to. The panel below (and, on a phone, the
+ * opponent's strip above) already carries both fighters' health at a size that
+ * can be read. What the plate is worth keeping for is the CAST bar — 0.65 s of
+ * wind-up that is otherwise invisible — so that is all it draws now, and
+ * between casts it has no height at all.
+ */
+#hud .plate .t:not(.cast) { display: none; }
+/*
+ * 6 px, NOT 4 — AND THE EMPTY PART OF THE TRACK IS A THING YOU CAN SEE.
+ *
+ * Measured on `live-fighting-w.png`: the fill ran x 812–828 at L 68 and the
+ * REST of the 88 px track read L 86 against a plaza at L 91 — 1.14:1, so what
+ * the reader got was a 16 × 4 px dash floating in the air rather than a
+ * wind-up with an amount left in it. A telegraph the reader cannot measure is
+ * not a telegraph. The track is now a real object at `--stone` (3.4:1 on the
+ * plaza, WCAG 1.4.11 for a non-text component), seated on a ring of the page
+ * ground so it separates from a dark body as well as from the floor, and the
+ * bar is 6 px so the two states differ by area and not only by hue (§8).
+ */
+#hud .plate .t { height: 6px; border-radius: 999px; background: rgba(46, 46, 51, .18); overflow: hidden; margin-top: 3px; }
+#hud .plate .t > i { display: block; height: 100%; background: var(--stone); }
+#hud .plate[data-side="blue"] { --side: var(--slot-blue); }
+#hud .plate[data-side="orange"] { --side: var(--slot-orange); }
+#hud .plate[data-side="blue"] .t > i,
+#hud .plate[data-side="orange"] .t > i { background: var(--side); }
+/*
+ * THE CAST BAR IS THE CASTER'S COLOUR — NOT AMBER, AND NOT COOL GREY.
+ *
+ * The fill was `--warning` (#F4D06F). Measured on `live-visitor-w.png` at
+ * (905–990, 264–270) that is 54.5 % saturation — the most saturated pixel in
+ * the frame, ahead of the coral banner at 47 % — and ARENA-BRIEF §5 bans it by
+ * name: "coral only on the banner, blue only in own-side telegraphs and HUD;
+ * no amber." A wind-up is not a caution either; it is one fighter about to do
+ * something, and the one thing the bar has to say is WHICH fighter. So it
+ * takes the side colour the plate already carries, the way the health rule two
+ * lines up does — which under the addendum means the player's wind-ups are
+ * blue and the opponent's coral, wherever either of them is standing.
+ *
+ * The track was `rgba(46, 46, 51, .1)` — a cool ink grey rendering #CCC2B4 on
+ * a world whose every surface sits at Lab b* +5 to +9. A low-alpha `--stone`
+ * keeps the hue of the plaza it floats over.
+ */
+#hud .plate .t.cast {
+  background: var(--stone);
+  box-shadow: 0 0 0 1.5px rgba(244, 238, 232, .92), 0 1px 3px rgba(46, 46, 51, .16);
+}
+#hud .plate .t.cast > i { background: var(--side, var(--stone)); }
+#hud .plate:not(.casting) .t.cast { display: none; }
+
+/*
+ * A quip belongs to a fighter, and a white rectangle belongs to nobody. The dot
+ * says whose voice it is in the same colour the floor telegraph and the panel
+ * use, and `--sx` (written by `screens/live.js`) keeps a fighter standing at
+ * the edge of a 390 px screen from speaking off the side of it.
+ */
+/*
+ * AND IT STANDS ABOVE THE PLATE, NOT ON IT.
+ *
+ * The viewer anchors both to the same projected point and both are
+ * `translate(-50%, -100%)`, so a quip and the name it belongs to were laid on
+ * one another whenever a creature spoke while its plate was up — measured on
+ * `live-fighting-w` as `LINE-17 × “eight arms, one: 44×15`. The plate is a
+ * name line plus, during a wind-up, a cast label and a 4 px bar: 34 px clears
+ * all three, and the bubble is the thing that moves because it is the
+ * temporary one.
+ */
+#hud .saybubble {
+  position: absolute;
+  /* `--ly` is the same floor `--plate-floor` holds the nameplate under, applied
+     to the bubble's own top edge: it stands 34 px above the plate, so the
+     plate's lift is not its lift (`screens/live.js`) */
+  transform: translate(-50%, -100%) translateX(var(--sx, 0px))
+    translateY(calc(-34px + var(--ly, 0px)));
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 7px 13px 7px 24px; border-radius: 999px;
+  font-family: var(--font-body); font-size: 12px; line-height: 1.35; color: var(--ink-2) !important;
+  background: rgba(255, 255, 255, .78); border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1); backdrop-filter: blur(12px) saturate(1.1);
+  box-shadow: 0 8px 24px var(--shade);
+}
+#hud .saybubble::before {
+  content: ""; position: absolute; left: 11px; top: 50%; margin-top: -3px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--stone);
+}
+#hud .saybubble[data-side="blue"]::before { background: var(--slot-blue); }
+#hud .saybubble[data-side="orange"]::before { background: var(--slot-orange); }
+
+/*
+ * Two hits in one tick project to one point, and `−35` drawn over `−35` is a
+ * smear that reads as neither. `--dx`/`--dy` come from `screens/live.js`, which
+ * hands each new plate the next offset in a small ring.
+ */
+#hud .dmg {
+  position: absolute;
+  transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) translateX(var(--sx, 0px));
+  padding: 2px 9px; border-radius: 999px;
+  /*
+   * THE SECOND `!important`, AND IT IS THE SAME ARGUMENT AS THE FIRST.
+   *
+   * `src/viewer/main.js` writes `style.fontSize` on this element from inside
+   * its own animation — `20 - u * 5` px, rewritten every frame — so the size
+   * this stylesheet asks for never applied and three pills at ~20 px overlapped
+   * into one unreadable smear on the phone capture. The shell cannot win a race
+   * against 30 Hz on the same property; it can take the property off the inline
+   * channel. Remove this the day `main.js` stops writing the size (§55, §62).
+   */
+  font-family: var(--font-body); font-size: 15px !important; font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1.25;
+  color: var(--ink-2) !important;
+  /*
+   * A MARK THAT LANDS ON A BODY DOES NOT GET A SURFACE.
+   *
+   * It was `--glass-strong` with a hairline and a drop shadow, and the viewer
+   * moved it above the VICTIM's head — which at melee range plants it on the
+   * other fighter. Measured on `live-fighting.png` the `−20` chip filled
+   * #F1EDE8 (L 93.9) with a maximum of L 97.9 against 14 px of STONE GOLEM at
+   * mean L 29.0 to its left: an opaque near-white pill punching a hole in the
+   * darkest object in the frame, and 4.4 L BRIGHTER than the arena's brightest
+   * built surface (the coping, L 92.8) in a picture whose whole discipline is
+   * that nothing exceeds `--sky-2`. The one thing the mark needs is to be
+   * read, and a halo does that without taking a silhouette: side ink, heavier,
+   * on four stacked rings of the page ground — nothing more than ~9 px from a
+   * glyph is touched, so the pill can no longer be the whitest thing on screen
+   * (§11, §19).
+   */
+  background: none; border: 0; box-shadow: none;
+  /*
+   * A TIGHT CONTOUR, NOT NINE PIXELS OF HAZE.
+   *
+   * The halo used to end on two wide, part-alpha rings — 6 px at .95 and 9 px
+   * at .8 — and at 13 px the stems are about two pixels wide, so most of what
+   * reached the screen was ink composited with the page ground rather than
+   * ink. Measured on `live-fighting-m.png` the `−33` peaked at #D2A392 (hue 16,
+   * S 0.42, L 0.70) against the arena's own terracotta banner in the same frame
+   * at #CDA68E (hue 22, S 0.40, L 0.69): six degrees of hue between a side mark
+   * and a piece of architecture. Three fully opaque rings at 1, 2 and 3 px
+   * separate the glyph from whatever it landed on and keep the glyph's own
+   * chroma; one soft ring at 7 px is all that is left of the wash (§5, §7).
+   */
+  text-shadow:
+    0 0 1px var(--sky-2), 0 0 2px var(--sky-2), 0 0 3px var(--sky-2),
+    0 0 7px rgba(244, 238, 232, .82);
+  /*
+   * THE FADE IS HELD OFF UNTIL THE NUMBER HAS BEEN READ.
+   *
+   * `main.js` writes `opacity = 1 - u*u` on this node every frame of an 1,100
+   * ms life, so the pill spends most of that life under 50 % alpha: measured
+   * at 1.67:1 against a CLEAN plaza at the darkest glyph pixel, and 1.4:1 when
+   * it landed inside the victim's silhouette. WCAG's floor for large text is
+   * 3:1. This is the same argument the two `!important`s above make and the
+   * same channel: the shell cannot win a race against 30 Hz on a property, so
+   * it takes the property off the inline channel — an animation outranks a
+   * normal inline declaration in the cascade without needing `!important`, and
+   * it reproduces the viewer's own intent (the mark leaves) with the reading
+   * put first. Full chroma for the first 550 ms, then gone (§7).
+   */
+  animation: dmg-read 1100ms linear both;
+}
+@keyframes dmg-read { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
+/* a hit worth twenty is a different event from a hit worth four (§51) */
+#hud .dmg[data-big] { font-size: 17px !important; padding: 3px 11px; }
+/*
+ * THE HUE IS RIGHT ON FRAME ONE, NOT ONE 110 ms TICK LATER.
+ *
+ * `screens/live.js` stamps `data-side` from its own tick, so every pill spent
+ * up to one tick as `--ink-2` with no side at all — the first frames of the
+ * one mark the arena produces were colourless. But the viewer already writes
+ * something at CREATION that answers the question: `data-from`, the side that
+ * DEALT the hit. The pill stands on the VICTIM, so the victim is simply the
+ * other slot, and the two rules below say that in CSS with nothing to wait for.
+ * `data-side` follows and agrees; it is kept because it is the attribute the
+ * rest of this file, and the `?ui=` simulations, key on.
+ */
+#hud .dmg[data-from="orange"] { color: var(--slot-blue-ink) !important; }
+#hud .dmg[data-from="blue"] { color: var(--slot-orange-ink) !important; }
+#hud .dmg[data-side="blue"] { color: var(--slot-blue-ink) !important; }
+#hud .dmg[data-side="orange"] { color: var(--slot-orange-ink) !important; }
+/*
+ * AND THE DEALER KEEPS A CARET, WHICH IS WHAT `main.js` ALREADY PROMISES.
+ *
+ * The pill is anchored over the creature that was HIT and inked in that
+ * creature's colour, so position, colour and the health bar that moves on the
+ * same frame all say one thing. The other half of the event — who threw it —
+ * was handed to this sheet as `--from` / `data-from` and this sheet never drew
+ * it, so a hit named its victim and never its author. A 5 px caret on the
+ * pill's leading edge, in the DEALER's ownership colour, is the second mark:
+ * two facts in two marks instead of two facts fighting inside one (§7).
+ */
+#hud .dmg[data-from="blue"] { --dealer: var(--slot-blue); }
+#hud .dmg[data-from="orange"] { --dealer: var(--slot-orange); }
+#hud .dmg[data-from]::before {
+  /* tucked into the pill's own 9 px of padding rather than hung 9 px clear of
+     it: the caret belongs to the number, not beside it */
+  content: ""; position: absolute; right: calc(100% - 6px); top: 50%; margin-top: -4px;
+  width: 0; height: 0; border: 4px solid transparent;
+  border-left-color: var(--dealer, transparent); border-right-width: 0;
+  filter: drop-shadow(0 0 2px rgba(244, 238, 232, .95));
+}
+
+/* the simulated HUD never intercepts a pointer */
+.hud-fake, .hud-fake * { pointer-events: none !important; }
+/*
+ * A screenshot state stands in for the real HUD rather than fighting it: the
+ * viewer rewrites health and cooldowns thirty times a second, so the only way
+ * to hold a frozen frame is to hide what it writes and draw the copy.
+ */
+#hud.sim .bar-wrap, #hud.sim #clock, #hud.sim .plate,
+#hud.sim .saybubble, #hud.sim .dmg { display: none !important; }
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+/* 1340, not 1180: at 1280 the blue panel ran to 631 px and the clock's status
+   line began at 490 — the collision was above the old breakpoint (§26) */
+@media (max-width: 1340px) {
+  #hud, .hud-fake { --bar-left: max(140px, 12vw); }
+  :is(#hud, .hud-fake) .bar-wrap {
+    width: min(30vw, 340px, max(190px, calc(50vw - 140px - var(--bar-left))));
+  }
+  :is(#clock, .clock-sim) .s { max-width: 220px; }
+}
+
+@media (max-height: 800px) {
+  /*
+   * A SHORT FRAME GETS THE SAME PANEL, SMALLER — 119 px OF IT.
+   *
+   * At 1280×720 the bottom fifth of the picture starts at y 576 and the panel
+   * stack ran 460→640: a fighter that came forward stood behind its own name.
+   * Every number in the desktop stack steps down one notch here (16 px name,
+   * 34 px tile, a caption whose two reserved lines are measured at 8.5/1.12)
+   * and the panel clears the band the camera keeps the fighters in (§12).
+   */
+  #hud, .hud-fake { --scrim-h: 186px; }
+  :is(#hud, .hud-fake) .bar-wrap { bottom: 64px; }
+  :is(#hud, .hud-fake) .bar-wrap .col { gap: 4px; }
+  :is(#hud, .hud-fake) .namerow { gap: 3px 8px; }
+  :is(#hud, .hud-fake) .name { font-size: 15px; letter-spacing: .11em; gap: 9px; }
+  :is(#hud, .hud-fake) .sub { font-size: 9.5px; gap: 7px; line-height: 1.15; }
+  :is(#hud, .hud-fake) .sub .mind { font-size: 9px; }
+  :is(#hud, .hud-fake) .hprow { padding-bottom: 12px; }
+  :is(#hud, .hud-fake) .hp > b { font-size: 9.5px; top: 7px; }
+  :is(#hud, .hud-fake) .bar-wrap.mine .hp > b { top: 9px; }
+  /* 32 px tile, 28 px gap: a 60 px pitch against a 54 px caption box */
+  :is(#hud, .hud-fake) .cds { gap: 28px; padding-bottom: 23px; }
+  :is(#hud, .hud-fake) .cd { width: 32px; height: 32px; flex-basis: 32px; }
+  :is(#hud, .hud-fake) .cd::before {
+    width: 54px; top: calc(100% + 4px); font-size: 8.5px; letter-spacing: .04em;
+    line-height: 1.08; min-height: 2.16em; max-height: 3.25em;
+  }
+  :is(#hud, .hud-fake) .cd::after { min-width: 17px; height: 17px; font-size: 8.5px; }
+  :is(#hud, .hud-fake) .sidetag:not(:empty) { height: 19px; padding: 0 8px; font-size: 8.5px; }
+  :is(#clock, .clock-sim) { top: calc(100% - 176px); }
+  #hud { --plate-floor: 176px; }
+}
+
+@media (max-width: 900px) {
+  /* no fight, no feed: on a phone the folded feed head would sit on the searching subline */
+  body[data-phase="searching"] #feedwrap, body[data-phase="idle"] #feedwrap { display: none; }
+  /*
+   * THE MIDDLE OF A PHONE BELONGS TO THE FIGHT, AND THE FIGHTERS SHARE A ROW.
+   *
+   * Two earlier layouts failed in opposite directions. Four full-width rows —
+   * feed, clock, foe, me — put the opponent's whole panel dead centre over the
+   * fighting mech and drew the clock straight through the model. Moving the
+   * opponent up into a glass card fixed the collision and created a worse
+   * problem: one fighter in a card with its own surface and shadow, the other
+   * bare type at the bottom — two creatures in one fight, drawn as if they were
+   * different kinds of thing (§7).
+   *
+   * They are the same kind of thing. Both stand, bare, at the bottom, where the
+   * 46 vh veil is already ground enough to carry ink; the foe above mine, a row
+   * apart; the clock keeps the top with the phase word, which is where the
+   * state of the match belongs. The middle is left to the arena.
+   *
+   * (The band table this comment used to carry is superseded by the one in
+   * THE PANEL IS A STRIP, NOT A STACK, below, which is where the numbers
+   * actually live now.)
+   */
+  /*
+   * THE BATTLE IS THE BIGGEST THING ON THE PHONE, NOT THE SMALLEST.
+   *
+   * Three bands stood above the arena — a two-line phase block, a clock pill
+   * on a band of its own, and the feed — and two panels plus the tab bar stood
+   * under it, leaving the fight about 250 px of an 844 px screen. §1.6 asks for
+   * one dominant thing per screen and the dominant thing was the furniture.
+   *
+   * The phase word collapses to one 22 px line with the fight's number inline
+   * (`ui/screens/live.css`), the feed folds to a single 36 px ticker, and the
+   * clock leaves the top band for the gap between the two fighters — which is
+   * also where screen.png puts it. The arena keeps everything that is left.
+   *
+   * (Same: the current band table is in THE PANEL IS A STRIP, NOT A STACK.)
+   */
+  #hud { --plate-floor: 150px; }
+  /*
+   * AND THE FLOOR DROPS WHEN THE VISITOR'S INVITATION IS STANDING ON IT.
+   *
+   * A stranger's card docks at `top: 146px` on a phone (`ui/screens/live.css`)
+   * and runs to about 200 — under a floor of 150, which was measured against
+   * the folded feed alone. The capture gate read the collision on
+   * `live-visitor-m` as `fists beat photo × Create a creatur`: a fighter's quip
+   * across the one button the screen exists to offer. The floor is the lowest
+   * thing docked at the top, and for a visitor mid-fight that is the card.
+   */
+  /* 240, not 218: the card wraps to two rows at 358 px (`You are watching the
+     arena.` plus its button), so its bottom edge is nearer 222 than 202 and a
+     bubble held at 218 still landed on it — the gate read the collision as
+     `ARRESTER × Create a creatur`. The floor is the lowest thing docked at the
+     top plus the clearance a quip needs under it. */
+  body:has(.live-cta:not(:empty)) #hud { --plate-floor: 240px; }
+  /* the opponent's row starts H−308, so that is where the scrim stops: it is
+     the ground under BOTH stacked panels and nothing above them (§12) */
+  #hud, .hud-fake { --scrim-h: calc(308px + env(safe-area-inset-bottom)); }
+
+  :is(#hud, .hud-fake) .bar-wrap {
+    left: var(--chrome-pad); right: var(--chrome-pad); width: auto;
+    top: auto; bottom: calc(230px + env(safe-area-inset-bottom));
+  }
+  /*
+   * ─── THE PANEL IS A STRIP, NOT A STACK ─────────────────────────────────
+   *
+   * ON A PHONE THE FIGHT WAS GETTING A THIRD OF THE SCREEN AND THE HUD HALF.
+   *
+   * Measured on `live-fighting-m.png` (390×844): the arena ran from the feed
+   * pill's bottom edge (y 137) to the foe's name row (y ≈ 415) — 278 px, 32.9 %
+   * of the height — while y 415–844 was 429 px, 50.8 %, of rails and tab bar.
+   * The one fighter mass in frame was 103×193 px, 3.2 %. A broadcast overlay
+   * gives the action the frame and the numbers the margins; this inverted it.
+   *
+   * Nothing is removed. The four rows a panel draws — name, identity line,
+   * health, three ability tiles with their captions — stop being FOUR ROWS:
+   * the tiles move BESIDE the name and the bar instead of under them, which is
+   * the one rearrangement that costs no information. `.col` becomes a two-track
+   * grid with the tile column spanning both rows, so a panel is about 78 px
+   * instead of the ~148 it was, and the pair returns ~144 px to the arena:
+   *
+   *   0–64    chrome              136–540   THE FIGHT  (404 px, 47.9 %)
+   *   68–94   phase word          H−308 … H−230  the opponent, one strip
+   *   100–136 feed, folded        H−222 … H−179  VS + clock
+   *                               H−162 … H−84   my strip
+   *                               H−84  … H      tab bar
+   *
+   * The name column is what pays for it — about 167 px of the 358 — so the
+   * name, the identity line and the YOU pill all step down one notch here.
+   * They are still the largest type in the strip and they are still the first
+   * thing read; what they are no longer doing is standing on the fight.
+   *
+   * (`--scrim-h`, the two `bottom` anchors and the clock's `top` above and
+   * below are the same plan expressed as numbers; they move together (§14).)
+   */
+  :is(#hud, .hud-fake) .bar-wrap .col {
+    display: grid; align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name tiles" "hp tiles";
+    gap: 5px 12px;
+  }
+  :is(#hud, .hud-fake) .col > .namerow { grid-area: name; }
+  :is(#hud, .hud-fake) .col > .hprow { grid-area: hp; }
+  :is(#hud, .hud-fake) .col > .cds { grid-area: tiles; align-self: start; }
+  /* the fallback pill — `screens/live.js` moves it into `.namerow` on its first
+     tick and it is `:empty` for a spectator; it rides the name's own cell for
+     the frame before the move rather than claiming a track of its own */
+  :is(#hud, .hud-fake) .col > .sidetag { grid-area: name; justify-self: end; align-self: center; }
+  /*
+   * THE TAB BAR IS 84 px TALL ON A NOTCHED PHONE, AND IT IS 84 px OF IT.
+   *
+   * `2 + 46 + 2 + env(safe-area-inset-bottom)` (`ui/chrome.css`) — so a bare
+   * `bottom: 84px` put the player's own ability labels flush against the bar
+   * with zero clearance on exactly the devices most people watch on. Every
+   * other bottom offset in the client already adds the inset; these were an
+   * omission, invisible in captures only because headless Chrome reports a 0 px
+   * inset (§31, §35).
+   */
+  :is(#hud, .hud-fake) .bar-wrap.mine { top: auto; bottom: calc(84px + env(safe-area-inset-bottom)); }
+  /*
+   * No fight of mine to follow: the showcase pair keeps the same stack, blue
+   * in the lower slot.
+   *
+   * ONE ATTRIBUTE, ONE DECISION. This selected `#hud:not([data-mine])` while
+   * the rules 240 lines down select `body[data-mine="orange"]`, so one layout
+   * question was being answered from two attributes written by two writers —
+   * `src/viewer/main.js` sets and DELETES `body`'s on the `match` message, and
+   * `#hud`'s copy is only written on `screens/live.js`'s 110 ms tick. In that
+   * window (a spectator match arriving: the one event that means "nobody here
+   * is yours") `#hud` still carried the previous fight's slot and the panels
+   * could be swapped by one rule set and not the other. `body` is the source;
+   * nothing in this file reads `#hud`'s copy any more (§22).
+   */
+  body:not([data-mine]) #bar-oct { top: auto; bottom: calc(84px + env(safe-area-inset-bottom)); }
+  /*
+   * THE OPPONENT'S IDENTITY LINE STANDS ON SOMETHING.
+   *
+   * `#819 · 1,197 MMR` sat directly on a mid-tone arena floor with nothing
+   * behind it — measured barely legible at 390 px, while my own panel's marker
+   * one row down gets a glass pill. Same component, two treatments, one
+   * screen. The foe's line gets the same surface (§3, §69).
+   */
+  /* `102 / 180` measured 2.61:1 sitting directly on the mech and the arena
+     wall, outside the reach of the bottom veil at that height: the same pill
+     the rating line already gets (§50, §61) */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .sub,
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .hp > b {
+    padding: 2px 9px; border-radius: 999px;
+    background: rgba(255, 255, 255, .6); border: 1px solid var(--glass-line);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: var(--ink); text-shadow: none;
+  }
+
+  /* no box: the bottom veil is 46 vh of ground and both fighters stand on it */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) { padding: 0; }
+  /*
+   * THE OPPONENT KEEPS ITS TILES.
+   *
+   * They were the first thing the phone gave up, and giving them up took half
+   * the fight with them: when the enemy's next move lands is one of the three
+   * questions a battle has to answer without being read, and on the device most
+   * people will watch on it was the one question with no answer anywhere on
+   * screen. They come back without their labels — the opponent's row has no
+   * room for two lines of type under three circles, and the tooltip (a tap, §7)
+   * still says what each one is — so what is restored is exactly the timing.
+   */
+  /* 40 px, for the reason every other tile is 44: these carry the same
+     tooltip and the same rules as the ones opposite, and 34 failed WCAG 2.5.8
+     on the opponent's half of the fight alone. Three of them and two 18 px gaps
+     come to 156 px, comfortably inside 390 − 2 × 16, and 18 px of gap is what a
+     54 px label needs to clear the label beside it (§37, §60) */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cds { gap: 18px; padding-bottom: 28px; padding-left: 9px; }
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd { width: 40px; height: 40px; flex-basis: 40px; }
+  /*
+   * ONE COMPONENT, ONE TREATMENT — AND ONE NAME PER ABILITY.
+   *
+   * The foe's tiles used to print the shape word ALONE (`BEAM`, `MORTAR`,
+   * `FIELD`) while mine, 130 px below, carried the full stacked name. §9.1 is
+   * explicit that the tile stacks the name on two lines rather than dropping
+   * the element word — and the row could not even be read: `live-visitor-m.png`
+   * labelled two different abilities `FAN` and `FAN`. Same `data-short` as the
+   * row opposite, at the size a 54 px box over a 58 px pitch will take (§7, §9,
+   * §32, §60, §69).
+   */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd::before {
+    content: attr(data-short); width: 54px; top: calc(100% + 5px);
+    font-size: 7.5px; letter-spacing: .04em; line-height: 1.15;
+    white-space: pre-line; min-height: 2.3em; max-height: 3.5em;
+  }
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd::after {
+    font-size: 8.5px; min-width: 17px; height: 17px; padding: 0 3px;
+  }
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .col { gap: 9px; }
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .sub { justify-content: flex-start; }
+  /* the health number is a pill now, and a pill is fourteen pixels taller than
+     the bare line the old padding was measured against: at 13 it sat on the
+     ability tiles underneath it */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .hprow { padding-bottom: 26px; }
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .hp { height: 4px; }
+  /* −9 px of the pill's own padding, so the digits still start on the bar's
+     left edge rather than nine pixels inside it */
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .hp > b { top: 7px; left: -9px; right: auto; }
+
+  /* the result card is a full-width sheet at 390 px; the opponent's strip sits
+     directly under it and reads through the glass */
+  body[data-phase="result"] :is(#hud, .hud-fake) .bar-wrap:not(.mine) { opacity: 0; }
+
+  /*
+   * ONE READING DIRECTION. The desktop mirrors the right-hand panel so the two
+   * fighters face each other across the arena; a phone has no across — both
+   * panels are the full width of the screen, one above the other, and mirroring
+   * one of them only moved the YOU pill a screen-width away from the name it
+   * belongs to and pushed the ability tiles under the BACK button.
+   */
+  :is(#hud, .hud-fake) .bar-wrap .col { gap: 9px; }
+  /* a phone has no across: both panels read left to right, pill after the name */
+  :is(#hud, .hud-fake) .namerow,
+  :is(#bar-gor, .s-orange) .namerow {
+    grid-template-columns: minmax(0, auto) auto;
+    grid-template-areas: "name tag" "sub sub";
+    justify-content: start; justify-items: start; align-items: center;
+  }
+  /* Both strips read the same way now. The opponent's row used to be a single
+     three-column line — name, rating and pill side by side — which was the
+     right shape when the row had the screen's whole width; beside a tile
+     column it has 167 px, and three tracks in 167 px is three ellipses. */
+  :is(#hud, .hud-fake) .col > .sidetag,
+  :is(#bar-gor, .s-orange) .col > .sidetag { order: 2; align-self: flex-start; }
+  :is(#hud, .hud-fake) .sub { justify-content: flex-start; }
+  :is(#hud, .hud-fake) .cds { justify-content: flex-start; }
+  :is(#hud, .hud-fake) .hp > b { left: 0; right: auto; }
+  /* 13 px, and the pill and the identity line with it: the name column is
+     167 px wide and `STONE GOLEM` plus a `YOU` pill is what has to fit in it
+     without either of them ellipsising (§14) */
+  :is(#hud, .hud-fake) .name { font-size: 13px; letter-spacing: .07em; gap: 7px; }
+  :is(#hud, .hud-fake) .name::after, :is(#hud, .hud-fake) .name::before { width: 5px; height: 5px; flex-basis: 5px; }
+  :is(#hud, .hud-fake) .namerow { gap: 3px 8px; }
+  /* secondary text goes to full ink on a phone: the scrim is thinner than the
+     screen is tall and these lines measured 1.02–1.26:1 over a dark wall */
+  :is(#hud, .hud-fake) .sub { font-size: 9px; gap: 5px; letter-spacing: .08em; color: var(--ink); line-height: 1.25; }
+  :is(#hud, .hud-fake) .hprow { padding-bottom: 19px; }
+  :is(#hud, .hud-fake) .hp > b { font-size: 9.5px; top: 11px; color: var(--ink); }
+  :is(#hud, .hud-fake) .bar-wrap.mine .hp > b { top: 13px; }
+  /*
+   * 44 px, BECAUSE THEY ARE CONTROLS.
+   *
+   * These are the only things in a fight a finger can touch — `screens/live.js`
+   * gives each one `tabIndex` and the ability's blurb as a label, and a tap
+   * opens the tooltip that is the fight's only teaching. Everything else on
+   * the phone was raised to 44 px; these were left at 36 and failed WCAG 2.5.8
+   * on the one control that holds a creature's rules. Three tiles and two gaps
+   * come to 164 px, comfortably inside 390 − 2 × 16.
+   */
+  /* the label under a tile is wider than the tile: 7 px of lead-in keeps the
+     outermost caption inside the screen instead of half a word off it */
+  :is(#hud, .hud-fake) .cds { gap: 20px; padding-bottom: 30px; padding-left: 7px; }
+  :is(#hud, .hud-fake) .cd { width: 44px; height: 44px; flex-basis: 44px; }
+  /* 58 px of label over a 64 px pitch, two reserved lines of 8.5 px: `KINETIC`
+     over `LUNGE` is the longest thing the grammar can put here, and it fits */
+  :is(#hud, .hud-fake) .cd::before {
+    font-size: 8.5px; width: 58px; letter-spacing: .03em; top: calc(100% + 7px);
+    line-height: 1.24; min-height: 2.48em; max-height: 3.8em; color: var(--ink);
+  }
+  :is(#hud, .hud-fake) .cd::after { font-size: 9px; min-width: 18px; height: 18px; }
+  :is(#hud, .hud-fake) .sidetag:not(:empty) { height: 16px; padding: 0 7px; font-size: 8px; letter-spacing: .12em; }
+
+  /* the clock joins the phase line at the top: it is the state of the match,
+     and it belongs with the words that name the match, not between the bodies */
+  /*
+   * ONE ROW, AND IN THE GAP BETWEEN THE TWO FIGHTERS.
+   *
+   * The pill used to hold a band of its own at the top of the screen and grow a
+   * THIRD row whenever the viewer wrote the fight's number into `#clock .s` —
+   * reaching ~196 px while the feed panel started at 190, so the feed's rounded
+   * top sliced the id horizontally through the middle of its glyphs. It is now
+   * one row, sized by its content, standing between the two stacked panels
+   * where screen.png puts it — and `screens/live.js` no longer lets the bout's
+   * number in here at all (§10, §13, §30, §46, §51).
+   */
+  /*
+   * AND IT IS HUNG FROM ITS TOP EDGE HERE TOO.
+   *
+   * The desktop rule 800 lines above documents this exact failure and solves
+   * it by anchoring from the top; this override reintroduced it. Hung from
+   * `bottom: 248` the pill grew UPWARD, and sudden death gives it a status
+   * line: measured on `live-fighting-m.png` (390×844) the pill's top edge
+   * reached y 505 — 55 px above the 560 the block's own plan reserves for it —
+   * with MARK-92's captions running y 505–542 underneath, `KINETIC LUNGE`
+   * sliced to `KINETI / LUN` and the third caption buried outright. Neither
+   * `.json` sidecar saw it: the status line is a descendant of the clock, so
+   * the overlap probe reads one box where there are two.
+   *
+   * Anchored from the top the pill's first row stays at H−284 in every state
+   * and the status line grows DOWN, into the 59 px of empty arena between the
+   * opponent's captions (ending ≈ H−292) and my own name row (starting
+   * ≈ H−233), which is what that strip is for.
+   */
+  :is(#clock, .clock-sim) {
+    left: 50%; right: auto; transform: translateX(-50%);
+    bottom: auto; top: calc(100% - 222px - env(safe-area-inset-bottom));
+    max-width: calc(100% - 2 * var(--chrome-pad));
+    flex-direction: row; flex-wrap: wrap;
+    justify-content: center; align-items: center; gap: 2px 11px;
+    /* 5, not 6: measured on the burning capture the pill ran 560→602 against a
+       name row that starts at 608, and the strip it stands in is 59 px — two
+       pixels of padding are worth more here than anywhere else on the screen */
+    padding: 5px 14px; border-radius: 999px;
+    background: rgba(255, 255, 255, .66);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+    border: 1px solid var(--glass-line); box-shadow: 0 8px 26px var(--shade);
+  }
+  :is(#clock, .clock-sim)::before { font-size: 14px; text-shadow: none; }
+  /* the deadline rule keeps its own slot in the pill's row */
+  :is(#clock, .clock-sim)::after { width: 50px; }
+  :is(#clock, .clock-sim) .t {
+    width: auto; flex-direction: row; align-items: baseline; justify-content: center; gap: 6px;
+    margin-top: 0;
+  }
+  :is(#clock, .clock-sim) .t::before { font-size: 8px; text-shadow: none; }
+  :is(#clock, .clock-sim) .t::after { font-size: 18px; text-shadow: none; }
+  :is(#clock, .clock-sim)[data-burn="on"] .t::after { font-size: 11px; }
+  /*
+   * ONE ROW OF ITS OWN, NOT THREE ROWS INSIDE THE PILL.
+   *
+   * `width: 100%` inside a wrapping flex row takes the width the pill already
+   * has — about 172 px of content — so `SUDDEN DEATH · THE ARENA BURNS BOTH,
+   * −0.6 %/S` wrapped to THREE lines and grew the pill by 55 px. Nowrapped, the
+   * sentence is the pill's own min-content: the pill widens to the 358 px it is
+   * already allowed and the line costs one 13 px row instead of three. Sudden
+   * death is the one rule change in a fight; a bar the width of the screen for
+   * the seconds it lasts is the right size for it.
+   */
+  :is(#clock, .clock-sim) .s {
+    width: 100%; font-size: 9px; line-height: 1.25; max-width: none;
+    text-align: center; text-shadow: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /*
+   * BOUND BY WHAT IT HOLDS, NOT BY A FRACTION OF THE VIEWPORT.
+   *
+   * `top: 322px; max-height: 22vh` put the feed's bottom at `322 + .22H` and
+   * the player's own panel's top at `H − 244`: the two met on any viewport
+   * shorter than about 726 px — an iPhone SE, most 640–720 Androids, anything
+   * with the browser toolbar showing — and the feed's last rows landed on the
+   * player's own name and rating. The list is four counted rows now, so the
+   * panel is about 236 px whatever the screen is, and a phone opens it folded
+   * anyway (§12, §31, §34).
+   */
+  #feedwrap {
+    left: var(--chrome-pad); right: var(--chrome-pad); width: auto;
+    top: 100px; bottom: auto; max-height: none; margin: 0;
+  }
+  /* folded, it is a control and not a panel: an empty glass box the width of
+     the screen sitting in the middle of the arena is litter. A control has to
+     hold its own against a bright floor, so it is the strongest glass here. */
+  /* Docked where the panel itself starts — under the clock, hard right — so it
+     expands in place instead of floating at an arbitrary mid-screen height over
+     the creatures, which is where it was found sitting (§7). */
+  /*
+   * FOLDED, IT IS ONE ROW — A TICKER, NOT A BOX.
+   *
+   * The collapsed pill was 76 px of glass holding a title and a line, sitting
+   * across the top third of the fight. Title, newest line and chevron on ONE
+   * 36 px row says the same two things in half the height, and the arena keeps
+   * the difference (§10, §13, §65).
+   */
+  #feedwrap.off {
+    left: var(--chrome-pad); right: var(--chrome-pad); width: auto;
+    top: 100px; bottom: auto;
+    background: rgba(255, 255, 255, .84);
+  }
+  #feedwrap.off .feed-title { color: var(--ink); }
+  /*
+   * A COLLAPSED FEED STILL SAYS THE LAST THING THAT HAPPENED.
+   *
+   * On the device most spectators watch on, the play-by-play is behind a
+   * chevron by default — so the fold keeps its job but stops being silent: the
+   * newest line rides the pill as a single-line ticker (§68).
+   */
+  #feedwrap.off .feed-head { flex-wrap: nowrap; gap: 0; align-items: center; }
+  #feedwrap.off .feed-title { order: 1; flex: 0 0 auto; }
+  /*
+   * AND THE TICKER CARRIES THE SIDE, BECAUSE IT IS THE ONLY FEED A PHONE HAS.
+   *
+   * The expanded rows dot and ink every name from `--slot-*`; the collapsed
+   * pill printed the whole clause as one neutral string, so on
+   * `live-fighting-m.png` the creature's name sampled #7C7B7D–#A09E9F with no
+   * dot — a grey where the desktop feed renders #436AB9 with a #7EB0FA dot.
+   * The fold is the ONLY feed surface at 390 px, i.e. the addendum's "feed
+   * name colours" rule was unmet at the size where the arena is smallest and
+   * the feed is working hardest.
+   *
+   * `screens/live.js` now splits the newest line into its actor and its clause
+   * (`data-latest-nm` / `data-latest`) and copies the row's `data-side` up
+   * here. The name takes the slot's ink and wears its 6 px dot — drawn as a
+   * radial-gradient background so one pseudo-element can be both, since the
+   * head has only two and the clause needs the other (§5).
+   */
+  #feedwrap.off .feed-head { --side: var(--stone); --side-ink: var(--ink-2); }
+  #feedwrap.off .feed-head[data-side="blue"] { --side: var(--slot-blue); --side-ink: var(--slot-blue-ink); }
+  #feedwrap.off .feed-head[data-side="orange"] { --side: var(--slot-orange); --side-ink: var(--slot-orange-ink); }
+  #feedwrap.off .feed-head[data-latest-nm]::before {
+    content: attr(data-latest-nm); order: 2; flex: 0 1 auto; min-width: 0;
+    margin-left: 10px; padding-left: 25px;
+    border-left: 1px solid var(--hairline);
+    background: radial-gradient(circle 3px at 14px 50%, var(--side) 99%, transparent 100%);
+    font-family: var(--font-display); font-size: 10px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; line-height: 1.35;
+    color: var(--side-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #feedwrap.off .feed-head[data-latest-nm=""]::before { content: none; }
+  #feedwrap.off .feed-head[data-latest]::after {
+    content: attr(data-latest); order: 3; flex: 1 1 auto; min-width: 0;
+    margin: 0 10px 0 7px;
+    font-family: var(--font-body); font-size: 11.5px; line-height: 1.35;
+    color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* with no actor to name, the clause keeps the separator the name would have
+     carried */
+  #feedwrap.off .feed-head:not([data-latest-nm])::after,
+  #feedwrap.off .feed-head[data-latest-nm=""]::after {
+    margin-left: 10px; padding-left: 11px; border-left: 1px solid var(--hairline);
+  }
+  #feedwrap.off .feed-head[data-latest=""]::after { content: none; }
+  #feedwrap.off .feed-toggle { order: 4; }
+  :is(#feed, .feed-sim) > div { font-size: 11.5px; padding: 6px 0 6px 14px; }
+  /* the narration of the fight was behind a 26 px chevron */
+  .feed-toggle { width: 44px; height: 44px; flex: 0 0 44px; margin: -9px -9px -9px 0; }
+  .feed-head { padding: 13px 13px 10px 16px; }
+  /* one 36 px row: the toggle keeps its 44 px target through negative margins */
+  #feedwrap.off .feed-head { padding: 7px 13px 7px 16px; }
+  #feedwrap.off .feed-toggle { margin: -11px -9px -11px 0; }
+  #boot .boot-orbit { width: 120px; height: 120px; }
+  #netstate { top: 148px; font-size: 9.5px; }
+  #hud .saybubble { font-size: 11.5px; }
+}
+
+/* ── a phone turned sideways ─────────────────────────────────────────────── */
+
+/*
+ * THE ONE THING A PLAYER ROTATES THE PHONE FOR.
+ *
+ * There was no orientation query and no working height guard anywhere in
+ * `src/client/ui`: at 844×390 the portrait rules applied unchanged, and they
+ * are written for 844 px of height. Measured on those rules: the clock pinned
+ * at 140–176, my own panel starting around y 146 and running straight through
+ * it and over the opponent's strip, `#feedwrap` entirely off-screen below the
+ * fold, and the replay BACK button landing on the ability tiles. Nothing
+ * captured it because the shots run at 1440×900 and 390×844 only.
+ *
+ * Sideways, the desktop composition is the right one again — two fighters
+ * facing each other across the arena — at phone scale: panels back to left and
+ * right, the clock and the phase word squeezed into the top strip, and the feed
+ * gone, because 390 px of height has no column to spare and the fight is what
+ * the phone was turned for.
+ */
+@media (max-width: 900px) and (max-height: 560px) {
+  #hud { --plate-floor: 116px; }
+
+  /*
+   * OVER THE TAB BAR, NOT UNDER IT.
+   *
+   * `bottom: 12px` put both fighter panels beneath `#chrome .rail` — 50–84 px
+   * of navigation at `z-index: 40` against the HUD's 10 — and the `.cds` row is
+   * the last child of `.col`, so the ability tiles and the health number were
+   * exactly what disappeared. The portrait branch 250 lines above documents the
+   * same failure and clears it with the inset; sideways the bar is shorter, so
+   * 62 px is the clearance. Nothing captured it: the shots run at 1440×900 and
+   * 390×844 only (§26, §28).
+   */
+  :is(#hud, .hud-fake) .bar-wrap {
+    top: auto; bottom: calc(62px + env(safe-area-inset-bottom));
+    left: var(--chrome-pad); right: auto; width: 42vw;
+  }
+  :is(#hud, .hud-fake) .bar-wrap.mine { bottom: calc(62px + env(safe-area-inset-bottom)); }
+  /* `body`, not `#hud` — one attribute for one decision (§22) */
+  :is(#bar-gor, .s-orange), body:not([data-mine]) #bar-gor {
+    left: auto; right: var(--chrome-pad); bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+  :is(#bar-oct, .s-blue), body:not([data-mine]) #bar-oct {
+    left: var(--chrome-pad); right: auto; bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+
+  /* the mirrored reading direction comes back: the two panels face each other */
+  :is(#bar-gor, .s-orange) .namerow {
+    grid-template-columns: auto minmax(0, auto);
+    grid-template-areas: "tag name" "sub sub";
+    justify-content: end; justify-items: end; align-items: center;
+  }
+  :is(#bar-gor, .s-orange) .col > .sidetag { order: 0; align-self: flex-end; }
+  :is(#bar-gor, .s-orange) .sub { justify-content: flex-end; }
+  :is(#bar-gor, .s-orange) .cds { justify-content: flex-end; }
+  :is(#bar-gor, .s-orange) .hp > b { left: auto; right: 0; }
+
+  /*
+   * AND SIDEWAYS THE OWNERSHIP MIRROR COMES BACK WITH IT.
+   *
+   * This is the one narrow layout that faces the two panels across the arena,
+   * so it is the one narrow layout where "the player's panel is on the left"
+   * has a meaning. Same exchange as the desktop block near the top of this
+   * file, written against this block's own anchors (§1 of the addendum).
+   */
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) { left: var(--chrome-pad); right: auto; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) { left: auto; right: var(--chrome-pad); }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .namerow {
+    grid-template-columns: auto minmax(0, auto);
+    grid-template-areas: "tag name" "sub sub";
+    justify-content: end; justify-items: end; align-items: center;
+  }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .col > .sidetag { order: 0; align-self: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .sub { justify-content: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .cds { justify-content: flex-end; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .hp > b { left: auto; right: 0; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .namerow {
+    grid-template-columns: minmax(0, auto) auto;
+    grid-template-areas: "name tag" "sub sub";
+    justify-content: start; justify-items: start; align-items: center;
+  }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .col > .sidetag { order: 2; align-self: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .sub { justify-content: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .cds { justify-content: flex-start; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .hp > b { left: 0; right: auto; }
+  /* sideways the bars face each other too, so each empties toward its own
+     outer edge (§17) */
+  :is(#bar-gor, .s-orange) .hp > i { margin-left: auto; }
+  body[data-mine="orange"] :is(#bar-gor, .s-orange) .hp > i { margin-left: 0; }
+  body[data-mine="orange"] :is(#bar-oct, .s-blue) .hp > i { margin-left: auto; }
+
+  /* sideways the two panels are short columns facing each other and there is
+     no width to put a tile row beside a name: the stacked shape the desktop
+     block writes comes back, at this block's own sizes (§14) */
+  :is(#hud, .hud-fake) .bar-wrap .col {
+    display: flex; flex-direction: column; align-items: stretch; gap: 7px 8px;
+  }
+  :is(#hud, .hud-fake) .col > .namerow { order: 1; }
+  :is(#hud, .hud-fake) .col > .sidetag { order: 2; align-self: flex-start; justify-self: auto; }
+  :is(#hud, .hud-fake) .col > .hprow { order: 3; }
+  :is(#hud, .hud-fake) .col > .cds { order: 4; align-self: auto; }
+  :is(#bar-gor, .s-orange) .col > .sidetag { align-self: flex-end; }
+  :is(#hud, .hud-fake) .hprow { padding-bottom: 16px; }
+  :is(#hud, .hud-fake) .hp > b { font-size: 9px; top: 9px; }
+  :is(#hud, .hud-fake) .bar-wrap.mine .hp > b { top: 11px; }
+  /* no labels: three circles and their timers are the whole of what fits — but
+     44 px, because they are still the only controls in a fight and 36 failed
+     WCAG 2.5.8. Three of them and two gaps come to 152 px, inside 42vw of an
+     844 px landscape viewport (§26) */
+  :is(#hud, .hud-fake) .cds,
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cds { gap: 10px; padding-bottom: 0; }
+  :is(#hud, .hud-fake) .cd,
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd { width: 44px; height: 44px; flex-basis: 44px; }
+  :is(#hud, .hud-fake) .cd::before,
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd::before { display: none; }
+  :is(#hud, .hud-fake) .cd::after,
+  :is(#hud, .hud-fake) .bar-wrap:not(.mine) .cd::after {
+    font-size: 8px; min-width: 16px; height: 16px; padding: 0 3px;
+  }
+
+  :is(#clock, .clock-sim) { top: 12px; bottom: auto; padding: 5px 12px; gap: 1px 10px; }
+  :is(#clock, .clock-sim)::before { font-size: 13px; }
+  :is(#clock, .clock-sim)::after { width: 44px; }
+  :is(#clock, .clock-sim) .t::after { font-size: 15px; }
+  :is(#clock, .clock-sim) .t::before { font-size: 7.5px; }
+
+  /* 390 px of height has no column to spare */
+  #feedwrap { display: none; }
+  #netstate { top: 62px; }
+  #boot .boot-orbit { width: 84px; height: 84px; }
+  /* sideways the panels are two short columns on the floor of the frame; the
+     scrim is the strip they stand on and nothing more */
+  #hud, .hud-fake { --scrim-h: calc(150px + env(safe-area-inset-bottom)); }
+}
+
+/* the tile lifts on hover and the plates fade; neither is worth motion sickness */
+@media (prefers-reduced-motion: reduce) {
+  :is(#hud, .hud-fake) .cd,
+  :is(#hud, .hud-fake) .cd:hover { transform: none; transition: none; }
+  :is(#hud, .hud-fake) .cd::after { transition: none; }
+  :is(#feed, .feed-sim) > .feed-in { animation: none; }
+  :is(#clock, .clock-sim)::after { transition: none; }
+  .feed-toggle svg { transition: none; }
+}

@@ -1,0 +1,698 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Chrome: wordmark, nav rail, season chip, my chip. Owned by app.js.
+
+   EVERY rule here is scoped under `#chrome`. The class names this file uses —
+   `me`, `back`, `season`, `rail` — are ordinary English words that a screen
+   will sooner or later pick for its own modifier. It happened: the ladder gave
+   the player's own standings row `class="me"`, the row inherited
+   `position: absolute; top: …; right: …` from the my-chip and was torn out of
+   the table onto the wordmark. Scoped, the two vocabularies cannot meet.
+   ────────────────────────────────────────────────────────────────────────── */
+#chrome { position: fixed; inset: 0; z-index: var(--z-chrome); pointer-events: none; }
+#chrome > * { pointer-events: auto; transition: opacity var(--d-ui) var(--ease); }
+#chrome { transition: opacity var(--d-screen) var(--ease); }
+/*
+ * THE FIGHT IS THE CONTENT — BUT THE NAVIGATION IS STILL NAVIGATION.
+ *
+ * §4.1: the shell steps back while a fight is in `fighting` and comes back on
+ * hover, focus or touch. It is the whole shell that steps back, not a selected
+ * list of its furniture — a wordmark, four rail labels, a season readout and a
+ * creature card at full strength around a dimmed set of dots is not a quiet
+ * shell, it is the same shell with its punctuation missing (live-hud.png).
+ *
+ * Two things make the state affordable rather than merely obedient:
+ *
+ *   · every word in the shell carries its own ground on Live (the per-glyph
+ *     halo below), so what steps back is dark type on a warm surround rather
+ *     than dark type over whatever the renderer drew a sixtieth of a second
+ *     ago;
+ *   · it is a REST state with three ways out — hover, focus, and an invisible
+ *     catch a thumb's width around the rail that answers the pointer as it
+ *     APPROACHES rather than when it arrives. This is the auto-hiding chrome a
+ *     video player has had for twenty years, and the recovery is what makes it
+ *     legitimate: the words are one gesture away, always, and every one of
+ *     them is a link or a heading rather than content the player must read.
+ *
+ * The fade lives on `#chrome`'s CHILDREN and not on `#chrome`, because a fade
+ * on the container cannot be lifted from inside it — which is what pinned a
+ * visitor's only button at 2.10:1.
+ */
+/*
+ * .55, AND THE WORDS STEP BACK BY INK RATHER THAN BY ALPHA.
+ *
+ * The number used to be .35 on `#chrome` AND a second .35 on the tagline, the
+ * credo, the inactive dots and the thumbnail — the two multiply to .1225, and
+ * the measurement is what that looks like: on `live-fighting-w.png` the
+ * tagline came in at 1.33:1, the ARENA wordmark at 2.29, the nav's LIVE at
+ * 2.03, the identity chip at 2.24, against 12.8–13.4:1 for the same elements
+ * on `live-searching.png`. Worst of all, `live-visitor-w.png` put the top-right
+ * CREATE A CREATURE button — the one conversion control a stranger has — at
+ * 2.10:1 while someone else's fight ran behind it.
+ *
+ * Three corrections, and the third is the one that matters.
+ *
+ *   · The compounding is gone: nothing here fades twice.
+ *   · The blanket is .55.
+ *   · The wordmark and the four rail labels — the things a player must be able
+ *     to read in order to LEAVE — do not ride the blanket at all. They step
+ *     back the way this file already argues a dimmed rail item should (see
+ *     `.rail a.dim`, below): the alpha stays and the INK moves, `--ink-soft`
+ *     and `--ink-2` down to `--muted`, which is a visible step back and still
+ *     5.2:1 on the ground the chrome carries under them.
+ *
+ * That is the whole of what a fade can buy. Dark type at α over a light ground
+ * tops out at about 3.6:1 for `--ink-2` at .55 and needs α ≥ .64 to reach AA —
+ * so any element whose only quietening is opacity is under AA by arithmetic,
+ * and the answer is not a bigger number, it is fading the DECORATION and
+ * re-inking the WORDS. The tagline, the credo, the season readout, the
+ * inactive dots and the thumbnail are decoration and brand copy, read once on
+ * arrival; they take the fade and no reading is lost.
+ */
+body[data-phase="fighting"][data-screen="live"] #chrome > * { opacity: .55; }
+body[data-phase="fighting"][data-screen="live"] #chrome .wordmark,
+body[data-phase="fighting"][data-screen="live"] #chrome .rail { opacity: 1; }
+/*
+ * AND THE STEP BACK IS ONE NOTCH, NOT TWO — BECAUSE THE COLUMN THAT CARRIED
+ * THEM IS GONE.
+ *
+ * `--muted` was chosen against `#chrome::before`, a 260 px scrim that held the
+ * ground under these words at a known value ("still 5.2:1 on the ground the
+ * chrome carries under them"). That scrim was painting 18 % of the frame and
+ * the founder's rule took it out, so the premise went with it: measured on
+ * `live-fighting-w.png` against the pixels immediately around each glyph,
+ * `--muted` came back CREATURE 3.54:1, HISTORY 3.89, ARENA 4.26 — the words
+ * that say where you are and how to leave, under AA, over a coral banner.
+ *
+ * So the ink stops at `--ink-soft`, which is the ink every other label in the
+ * product takes when it stands on a picture (`ui/components.css`, `.on-photo`)
+ * and which the halo above is measured with. The shell still steps back —
+ * the tagline, the credo, the season readout, the inactive dots and the
+ * thumbnail all take the .55 blanket, and the rail's own dots drop to .62 —
+ * and the four words a player might need in a hurry stay readable.
+ */
+body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .mark,
+body[data-phase="fighting"][data-screen="live"] #chrome .rail a { color: var(--ink-soft); }
+/* The season readout rides the blanket and keeps its ink: measured either way
+   it lands at 4.0:1 on the plaza it stands over — the chip is past the end of
+   every scrim in the product and no ink or alpha available here moves it
+   further, which is a note for whoever next revisits that corner. It is a
+   readout and not a control, and 4.0 is where the FULL-strength version of it
+   sat before any of this. */
+/* The page you are standing on stays the strongest word on the rail — one
+   notch of ink above the other three, as it is in every other state. */
+body[data-phase="fighting"][data-screen="live"] #chrome .rail a.on,
+body[data-phase="fighting"][data-screen="live"] #chrome .rail a:hover { color: var(--ink-2); }
+/*
+ * A VISITOR'S ONE BUTTON IS NEVER DIMMED FOR SOMEBODY ELSE'S FIGHT.
+ *
+ * `app.js` builds the corner as one chip with four shapes, and for a stranger
+ * that shape is `Create a creature →` — the only route into the product on the
+ * screen they land on. It measured 2.10:1 under the old fade. A person with no
+ * creature has no fight to be the content of, so the chip keeps its ink.
+ */
+body[data-phase="fighting"][data-screen="live"] #chrome .me:has(.btn.primary) { opacity: 1; }
+/*
+ * A GLASS CARD FADES ITS OWN GROUND WITH ITS INK, SO THE SAME ALPHA BUYS LESS.
+ *
+ * Everything else in the shell is type standing on a halo of its own, which
+ * does not fade — so .55 of ink over a full-strength surround measured
+ * 5.0–6.9:1.
+ * The my-chip is a white surface with type on it, and .55 takes the surface
+ * away at the same rate: the creature's name came out at 3.88:1 on the card
+ * that is the one link to it. .72 puts it back over 6:1 and the chip still
+ * reads as the quietest object in the corner, because what it is competing
+ * with is a fight.
+ */
+body[data-phase="fighting"][data-screen="live"] #chrome .me { opacity: .72; }
+/* and neither is the one way out of a replay */
+body[data-phase="fighting"][data-screen="live"] #chrome .back { opacity: 1; }
+/*
+ * ABOVE 3:1 IS NOT THE CONTRACT. THE CONTRACT IS 4.5.
+ *
+ * The tagline, the credo and the season readout are the last three strings in
+ * the product that stand on the render with nothing but a halo under them, and
+ * measured on `live-fighting.png` (darkest-2 % ink against the 85th percentile
+ * of the local ground) all three were under AA while a fight ran:
+ * `LIVING MACHINES / ENDLESS BATTLES` 3.53:1, `A NEW KIND OF LIFE` 2.73:1,
+ * `36 PLAYER CREATURES` 2.37:1 and `17D 00H 09M` 2.13:1. The last two are the
+ * worst because they fade TWICE: `--ink-soft` is already .82 of ink and the
+ * blanket then took 55 % of that, which is .45 of an ink on a warm plaza.
+ *
+ * The block at the top of this file states the arithmetic that decides this —
+ * dark type at α over a light ground tops out near 3.6:1 at .55 and no scrim,
+ * ink or weight moves it — and then draws the wrong conclusion for these three:
+ * that brand copy may sit under the floor because it is read once. REDESIGN
+ * §2.1 sets 4.5:1 for a `--muted`-weight string and does not exempt copy, and a
+ * player with low vision does not get to skip the sentence that says what the
+ * product is.
+ *
+ * So these three stop fading at all and step back the way the wordmark and the
+ * four rail labels already do in the block above: by INK. `--ink-soft` is what
+ * every label in the product takes when it stands on a picture, and on this
+ * exact frame the rail's own `CREATURE` — same ink, same halo, same 10.5 px —
+ * measures 5.5:1, against 4.28 for `--ink` at .75 and 3.13 for `--ink-2` at
+ * .55 on the credo. An alpha step is worth nothing here anyway: the halo is painted with
+ * the glyph, so fading the type also thins the only ground it has, and the two
+ * losses compound. What carries the recession instead is what already carried
+ * it — 9.5–10.5 px against the wordmark's 18, a lighter weight, and wide
+ * tracking.
+ *
+ * `--ink` and not `--ink-soft`, and the reason is anti-aliasing rather than
+ * arithmetic. At 9.5–10.5 px under .16–.2 em of tracking barely any pixel of a
+ * glyph is fully covered, so the darkest ink the measurement can find is
+ * already a blend: `--ink-soft` modelled 7.3:1 and photographed 4.30 on the
+ * credo and 4.33 on the season's value line — both still under the contract.
+ * `--ink` at full alpha is one notch of ink for about a notch and a half of
+ * measured contrast, and the four strings clear 4.5 with the margin a
+ * photograph of a moving picture needs (§1).
+ */
+body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .tag,
+body[data-phase="fighting"][data-screen="live"] #chrome .credo,
+body[data-phase="fighting"][data-screen="live"] #chrome .season { opacity: 1; }
+body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .tag,
+body[data-phase="fighting"][data-screen="live"] #chrome .credo,
+body[data-phase="fighting"][data-screen="live"] #chrome .season .k,
+body[data-phase="fighting"][data-screen="live"] #chrome .season .v,
+body[data-phase="fighting"][data-screen="live"] #chrome .season .v.t { color: var(--ink); }
+body[data-phase="fighting"][data-screen="live"] #chrome .rail a:not(.on) .dot,
+body[data-phase="fighting"][data-screen="live"] #chrome .me .thumb { opacity: .62; }
+/* The active dot is the one mark on the rail that carries meaning rather than
+   shape — it says which of the four you are on — so it keeps more than the
+   others and still steps back from its label. */
+body[data-phase="fighting"][data-screen="live"] #chrome .rail a.on .dot { opacity: .8; }
+@media (hover: hover) {
+  /* Only during a fight, only under a real pointer, and behind the links
+     (`z-index: -1`) so it catches the approach without taking their clicks.
+     Nothing else is under this column while the arena is fighting. */
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail::before {
+    content: ""; position: absolute; inset: -28px -40px; z-index: -1; pointer-events: auto;
+  }
+}
+/* Hover anywhere on the bar, or a Tab into it, and the whole shell comes back:
+   the state is a rest state, not a permanent condition of the fight. */
+body[data-phase="fighting"][data-screen="live"] #chrome:hover > *,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within > * { opacity: 1; }
+/*
+ * AND FOR A READER WHO HAS ASKED FOR CONTRAST, NOTHING STEPS BACK AT ALL.
+ *
+ * A fade is an arithmetic ceiling, not a colour choice: dark type at .55 over
+ * ANY ground tops out near 3.6:1 and no scrim, ink or weight moves it. That is
+ * the right trade for decoration whose words are one hover, one Tab or one
+ * touch away — it is the auto-hiding chrome of every video player — and it is
+ * the wrong trade for a reader who has told the system they cannot make that
+ * trade. `prefers-contrast: more` is that reader saying so, and here it means:
+ * the fight can compete with the navigation, the navigation stays — full ink
+ * on the words as well as full alpha on the furniture.
+ */
+@media (prefers-contrast: more) {
+  body[data-phase="fighting"][data-screen="live"] #chrome > *,
+  body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .tag,
+  body[data-phase="fighting"][data-screen="live"] #chrome .credo,
+  body[data-phase="fighting"][data-screen="live"] #chrome .season,
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail a .dot,
+  body[data-phase="fighting"][data-screen="live"] #chrome .me .thumb { opacity: 1; }
+  body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .tag,
+  body[data-phase="fighting"][data-screen="live"] #chrome .credo,
+  body[data-phase="fighting"][data-screen="live"] #chrome .season .v { color: var(--ink-2); }
+  body[data-phase="fighting"][data-screen="live"] #chrome .wordmark .mark { color: var(--ink-2); }
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail a { color: var(--ink-soft); }
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail a.on { color: var(--ink-2); }
+}
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .wordmark .tag,
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .credo,
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .season,
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .rail a .dot,
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .me .thumb,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .wordmark .tag,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .credo,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .season,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .rail a .dot,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .me .thumb { opacity: 1; }
+/* the ink comes back with the alpha: a shell that is present again is present
+   in the ink every other state prints it in */
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .wordmark .mark,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .wordmark .mark { color: var(--ink-2); }
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .rail a,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .rail a { color: var(--ink-soft); }
+body[data-phase="fighting"][data-screen="live"] #chrome:hover .rail a.on,
+body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .rail a.on { color: var(--ink-2); }
+/* The tagline, the credo and the thumbnail are the other things that move
+   here, and they move on the UI clock. The dot folds `opacity` into the
+   transition it already carries, a few lines down, rather than replacing it. */
+#chrome .wordmark .tag, #chrome .credo, #chrome .me .thumb { transition: opacity var(--d-ui) var(--ease); }
+
+/*
+ * THE SHELL STANDS ON A PICTURE, AND ON LIVE THE PICTURE MOVES.
+ *
+ * Every other layer in the product gets to choose its own ground. A screen puts
+ * its labels on glass; a document ground draws a feathered scrim down the whole
+ * left column for exactly this column (`ui/base.css`, `.ground-photo::before`);
+ * Create and Birth stand on a 70 % wash. The chrome has none of that on Live:
+ * the wordmark, the four rail labels and the season readout sit directly on the
+ * frame the renderer drew a sixtieth of a second ago, and that frame is whatever
+ * the fight is doing — a pale floor, then the shadow under a six-metre body.
+ * `--muted` at 12 px measures 5.4:1 on `--sky`, about 3.0:1 through the veil
+ * over a dark creature and about 1.4:1 with no veil at all, and no wash thin
+ * enough to keep the arena can close that. The season chip has the same problem
+ * on the backdrop, where it stands past the end of the scrim — safe today only
+ * because the placeholder image happens to be sky there (§2.4 says the image is
+ * to be replaced).
+ *
+ * So the words carry their own ground with them, everywhere, the way `.credo`
+ * already does because it lies on the arena floor: the warm halo `.on-photo`
+ * gives a screen's labels over the backdrop (`ui/components.css`). Its colour
+ * IS the page ground, so on flat `--sky` there is nothing to see; over the dark
+ * third of a frame it is the reason the navigation is still there. Unconditional
+ * rather than keyed to `data-ground`, because the case it guards against is a
+ * picture nobody in this file has looked at.
+ *
+ * The my-chip is exempt — it is glass, and brings its own ground.
+ */
+#chrome .wordmark .mark,
+#chrome .wordmark .tag,
+#chrome .rail a,
+#chrome .season .k,
+#chrome .season .v { text-shadow: var(--photo-halo); }
+/* Except in the tab bar, which IS a glass strip: there the halo would only
+   soften four labels that already stand on their own surface. */
+@media (max-width: 900px) {
+  #chrome .rail a { text-shadow: none; }
+}
+
+/*
+ * AND ON LIVE THE GROUND IS THE GLYPH'S OWN, NOT 260 px OF THE ARENA.
+ *
+ * There was a `#chrome::before` here: a fixed column, 260 px wide (max 32vw),
+ * full height, `rgba(244,238,232,.76)` feathering to nothing, raised on every
+ * Live beat. It was answering a real defect — the halo below is a 10 px glow,
+ * and the four rail labels measured CREATURE 3.23 / HISTORY 2.74 on
+ * `live-fighting`, under AA at 12 px on the product's default screen.
+ *
+ * It answered it by painting the picture. Measured on `live-result-win.png`
+ * along row y = 330 the same tier surface reads L 91.6 at x = 10, 90.2 at 70,
+ * 86.0 at 190, 81.8 at 250 and flattens at 81.3 from 280 out: the HUD lifted
+ * the renderer's frame by 10.3 L over the left 260 px. Worse, it ate the
+ * arena's only saturated object — the banner at (114,290) came out #F8C4B5,
+ * C 21.7, against its symmetric twin at (1345,280) at #FC876C, C 54.4, a 2.5×
+ * chroma split inside one frame that the stand captures do not have. The
+ * founder's rule is that the picture belongs to the renderer, and 18 % of the
+ * frame at .76 is not a rule the HUD gets to keep.
+ *
+ * So the ground shrinks to the glyphs. Four stacked rings of the page colour
+ * — 2, 4, 9 and 18 px — put the label's immediate surround at the value it
+ * would have on flat `--sky`, which is what the contrast number is actually
+ * measured against, and nothing further than about 18 px from a letter is
+ * touched at all. It costs the arena a few hundred pixels of haze around ~60
+ * glyphs instead of 234,000 px of wash, and the same treatment covers the
+ * season readout, which stands past the end of every scrim in the product
+ * anyway (§10, §24).
+ *
+ * The chip in the corner is exempt: it is glass and brings its own ground.
+ */
+body[data-screen="live"] #chrome .wordmark .mark,
+body[data-screen="live"] #chrome .wordmark .tag,
+body[data-screen="live"] #chrome .credo,
+body[data-screen="live"] #chrome .season .k,
+body[data-screen="live"] #chrome .season .v,
+body[data-screen="live"] #chrome .rail a {
+  text-shadow:
+    0 0 1px rgba(244, 238, 232, 1), 0 0 2px rgba(244, 238, 232, 1),
+    0 0 3px rgba(244, 238, 232, 1), 0 0 5px rgba(244, 238, 232, 1),
+    0 0 8px rgba(244, 238, 232, .97), 0 0 14px rgba(244, 238, 232, .88),
+    0 0 22px rgba(244, 238, 232, .7);
+}
+/* the dot beside a label is a 12 px ring of the same ink and needs the same
+   ground; a box-shadow is the halo a border can have */
+body[data-screen="live"] #chrome .rail a .dot {
+  box-shadow: 0 0 0 2.5px rgba(244, 238, 232, .8), 0 0 9px rgba(244, 238, 232, .85);
+}
+body[data-screen="live"] #chrome .rail a { color: var(--ink-soft); }
+/* The current page and the pointed-at one keep the full ink, so the column
+   still has a hierarchy inside its new ground. */
+body[data-screen="live"] #chrome .rail a.on,
+body[data-screen="live"] #chrome .rail a:hover { color: var(--ink-2); }
+/* On a phone the rail is a glass strip along the bottom: it brings its own
+   ground, so the per-glyph halo above would only soften four labels that are
+   already standing on a surface. */
+@media (max-width: 900px) {
+  body[data-screen="live"] #chrome .rail a { text-shadow: none; }
+  body[data-screen="live"] #chrome .rail a .dot { box-shadow: none; }
+}
+
+/* wordmark */
+#chrome .wordmark { position: absolute; top: var(--chrome-pad); left: var(--chrome-pad); display: block; }
+#chrome .wordmark .mark {
+  font-size: var(--t-wordmark); font-weight: 500; letter-spacing: var(--track-wordmark);
+  text-transform: uppercase; color: var(--ink-2); line-height: 1;
+  transition: color var(--d-ui) var(--ease);
+}
+/*
+ * A WORN SIGN, MEASURED OFF BOTH REFERENCES.
+ *
+ * screen.png and uikit.png print the mark the same way and it is not a flat
+ * word: sampled against their ground, A / R / A stand at full ink while I, E
+ * and N sit at roughly three fifths of it. The eye finds ARENA inside AIRENA,
+ * and the mark reads as something that has been standing in this arena for a
+ * while rather than as a font at 18 px. A logotype has no contrast floor to
+ * meet (WCAG 1.4.3 exempts brand marks), which is the only reason a design can
+ * spend opacity here and nowhere else in the shell.
+ *
+ * Pointing at it brings the whole word up — the one place in the product where
+ * hover says "this is a way home" rather than "this is a control".
+ */
+#chrome .wordmark .mark span { transition: opacity var(--d-ui) var(--ease); }
+#chrome .wordmark .mark span:nth-child(2) { opacity: .42; }
+#chrome .wordmark .mark span:nth-child(4) { opacity: .58; }
+#chrome .wordmark .mark span:nth-child(5) { opacity: .70; }
+#chrome .wordmark:hover .mark span, #chrome .wordmark:focus-visible .mark span { opacity: 1; }
+#chrome .wordmark .tag { margin-top: 10px; font-size: 9.5px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); line-height: 1.5; }
+#chrome .wordmark:hover .mark { color: var(--ink); }
+
+/* The line that closes the left column (screen.png, bottom left). The rail
+   ends a third of the way down the page and nothing stood under it, so the
+   column read as a margin the layout had forgotten rather than as one side of
+   the composition. It is a credo, not a control: no pointer, no link, and it
+   carries the photograph's halo because on Live it lies on the arena floor. */
+#chrome .credo {
+  position: absolute; left: var(--chrome-pad); bottom: var(--chrome-pad);
+  max-width: calc(var(--rail-w) - var(--s2));
+  font-size: 9.5px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--muted); line-height: 1.75; pointer-events: none;
+  text-shadow: var(--photo-halo);
+}
+/* The version sits a full line below the credo, as it does in screen.png: near
+   enough to belong to the same block, far enough not to read as its fourth
+   line. Tabular so it does not shift when it becomes v0.2. */
+#chrome .credo .v { margin-top: 18px; letter-spacing: .12em; text-transform: none; font-variant-numeric: tabular-nums; }
+
+/* nav rail
+   26 px between items, not 22: screen.png sets the four labels on a ~44 px
+   pitch and the tighter one read as a list rather than as four destinations. */
+#chrome .rail { position: absolute; top: 140px; left: var(--chrome-pad); display: flex; flex-direction: column; gap: 26px; }
+#chrome .rail a {
+  display: flex; align-items: center; gap: 14px; font-size: 12px; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+  transition: color var(--d-ui) var(--ease), transform var(--d-ui) var(--ease);
+}
+#chrome .rail a .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid currentColor; position: relative; flex: 0 0 12px; transition: background var(--d-ui), opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease); }
+#chrome .rail a .dot::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: currentColor; opacity: 0; transform: scale(.4); transition: opacity var(--d-ui) var(--ease), transform var(--d-ui) var(--ease); }
+/* Pointing at a destination leans it a little toward the page it opens; the
+   press then settles it back rather than pushing it further, so the click has
+   somewhere to land. Three pixels on a 220 ms clock — the item answers the
+   pointer, and nothing here reads as an animation. */
+#chrome .rail a:hover { color: var(--ink-2); transform: translateX(3px); }
+#chrome .rail a:hover .dot { transform: scale(1.12); }
+#chrome .rail a:active { transform: translateX(1px); }
+#chrome .rail a.on { color: var(--ink-2); }
+#chrome .rail a.on .dot::after { opacity: 1; transform: none; }
+/*
+ * "Dimmed" used to mean `opacity: .55`, and opacity dims the LABEL: HISTORY
+ * measured 2.20:1 on the desktop capture and 2.30:1 at 9.5 px on the phone —
+ * the two items a first-time visitor is most likely to try. The state is real
+ * and worth showing, so it moves off the text and onto the glyph: the word
+ * stays at `--muted` (4.8:1) and the indicator carries the "nothing here yet".
+ */
+#chrome .rail a.dim { color: var(--muted); }
+#chrome .rail a.dim .dot, #chrome .rail a.dim > .ic { opacity: .45; }
+#chrome .rail a.dim:hover { color: var(--ink-2); }
+#chrome .rail a.dim:hover .dot, #chrome .rail a.dim:hover > .ic { opacity: .75; }
+#chrome .rail a .short { display: none; }
+/* `icon()` returns an <svg class="ic ic-live">. The icon is the mobile
+   indicator; the desktop rail keeps the dot and hides it. */
+#chrome .rail a > .ic { display: none; flex: 0 0 auto; }
+/* The live glyph is a dot between two signal arcs. Left unfilled the dot reads
+   as a lower-case "o" and the whole mark as the ASCII "(o)"; filled, it is a
+   broadcast. (The stroke geometry itself belongs to `ui/icons.js`.) */
+#chrome .rail a > .ic-live circle { fill: currentColor; stroke: none; }
+
+/* season chip
+   §4.1 and screen.png both stack three lines: the season, the population, the
+   clock. One line joined by middots reads as a sentence; three read as a
+   readout, which is what it is. The value lines hang off the marker dot's
+   text axis, not off the dot.
+
+   THE CHIP STANDS ON THE VIEWPORT, AND IT NEVER MOVES.
+   It rode `--axis-x` for a while — the screen's own middle, which on a document
+   sits half a rail right of the viewport's — so that it would line up with the
+   headline underneath it. It bought that alignment with 84 px of travel on
+   every crossing between Live and a document screen: a piece of fixed
+   furniture sliding sideways under a 600 ms cross-fade, on the most-travelled
+   navigation in the product, which reads as the shell losing its footing
+   rather than as a chip finding a column. Both references print the readout on
+   the frame's centre line. Fixed chrome stands on the frame; only the content
+   under it follows `--axis-x`. */
+#chrome .season {
+  position: absolute; top: var(--chrome-pad); left: 50vw; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+}
+#chrome .season .k { font-size: 10.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+/* THE MARKER MEANS "LIVE", NOT "THE OPPONENT". Under the addendum coral names
+   one creature — the one the player is fighting — so spending it on a dot that
+   is on screen in every state, including `searching` and `away` where there is
+   no opponent at all, puts the enemy's colour in the corner of an empty arena.
+   The dot says something is running; `--stone` says that and nothing else. */
+#chrome .season .k::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--stone); animation: chrome-season-pulse 3.2s var(--ease) infinite; }
+/* The readout stands past the end of every scrim in the product — over the
+   arena on Live, over the photograph's middle third on a document — and
+   measured 4.24:1 on live-hud.png as `--muted`. The halo stays; the ink goes
+   up to the same `--ink-soft` a screen's labels take over the photograph
+   (`ui/components.css`, `.on-photo`). `.k` is still the heading: `--ink-2`,
+   weight 600, and it is the line that carries the marker dot. */
+#chrome .season .v { padding-left: 13px; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+/* The countdown was `--stone` for a beat of hierarchy and measured 3.1:1 on
+   the capture against the sky behind it. All three lines carry the same ink;
+   what separates them is that the first is the heading. */
+#chrome .season .v.t { color: var(--ink-soft); }
+@keyframes chrome-season-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+/* my chip */
+#chrome .me { position: absolute; top: calc(var(--chrome-pad) - 6px); right: var(--chrome-pad); display: flex; align-items: center; gap: 10px; }
+/* Measured off screen.png: the chip's corner is a panel's, not a card's, and
+   the creature's picture very nearly fills its height — 40 of 52, against the
+   36 it had, which left the thumbnail floating in a chip with a wide margin
+   instead of being the object the chip is built around. */
+#chrome .me .card-me {
+  display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 18px 0 6px;
+  border-radius: var(--r-panel); transition: transform var(--d-ui) var(--ease), box-shadow var(--d-ui) var(--ease);
+}
+#chrome .me .card-me:hover { transform: translateY(-1px); box-shadow: 0 16px 44px var(--shade), inset 0 1px 0 rgba(255, 255, 255, .7); }
+#chrome .me .card-me:active { transform: translateY(0); }
+/* The reference puts the creature itself in this tile, not a pictogram. The
+   stored ability icon is ink on white and reads as a thumbnail when it FILLS
+   the tile; the pictogram is only the fallback, and stays a pictogram. */
+#chrome .me .thumb { width: 40px; height: 40px; border-radius: var(--r-card); background: rgba(255, 255, 255, .68); display: grid; place-items: center; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .8); }
+#chrome .me .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-card); }
+#chrome .me .thumb svg { width: 22px; height: 22px; color: var(--stone); }
+#chrome .me .lines { display: flex; flex-direction: column; gap: 3px; text-align: left; }
+#chrome .me .n { font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chrome .me .s { font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+/* §4.1: `#782 · 1,214 MMR ▲24`. The HUD, the VS card and the ladder footer all
+   set rank and rating with a middot; this chip is the one place that printed
+   them with a space and read as two numbers that happened to be adjacent. The
+   delta is the exception — it hangs off the rating, not beside it. */
+#chrome .me .s span + span:not(.d)::before { content: "·"; margin-right: 6px; color: var(--stone); }
+/* THE PLAYER'S OWN NEWS, IN THE PLAYER'S OWN COLOUR — AND NEVER IN THE
+   OPPONENT'S. A climb was `--success-ink` (a fourth hue, green, in a
+   two-colour system) and a DROP was `--accent-ink` — the player's bad news
+   printed in the enemy's ink, inside the player's own chip. Both are facts
+   about this creature: the rise takes `--info-ink`, the fall steps back to
+   plain ink — `app.js` already prints `▼21`, so the direction is said in the
+   glyph and does not need a hue to say it twice (§7). */
+#chrome .me .s .d { color: var(--info-ink); letter-spacing: .06em; }
+#chrome .me .s .d.down { color: var(--ink-2); }
+#chrome .me .plus { width: 44px; height: 44px; border-radius: 50%; }
+#chrome .me .plus svg { transition: transform var(--d-ui) var(--ease); }
+#chrome .me .plus:hover svg { transform: rotate(90deg); }
+
+/*
+ * THE CORNER BEFORE THERE IS A CREATURE — two readouts, not a second CTA.
+ *
+ * `app.js` builds all three states out of the same 52 px chip, so the shell
+ * does not change material as a stranger crosses the first hour: the arena's
+ * pulse while they are describing one, the wait while it is being made, their
+ * own creature afterwards. Neither readout is a link — a chip that reports is
+ * not a chip that is pressed — so both drop the card's lift and its cursor.
+ */
+#chrome .me .born, #chrome .me .pulse { cursor: default; }
+#chrome .me .born .n, #chrome .me .pulse .s {
+  font-size: 10.5px; font-weight: 500; letter-spacing: .18em; color: var(--muted);
+}
+/* The clock is the live thing on the chip, so it carries the ink and the size
+   the name carries on the creature card. Tabular, like every number here. */
+#chrome .me .born .s .t { font-size: 13px; font-weight: 500; letter-spacing: .1em; color: var(--ink-2); }
+#chrome .me .pulse .n { font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+#chrome .me .pulse .thumb svg { width: 20px; height: 20px; color: var(--muted); }
+/* the same argument as the season dot: this mark means "the arena is running" */
+#chrome .me .pulse .ic-live circle { fill: var(--stone); stroke: none; }
+
+/* A beacon, not a spinner: a dot with one ring leaving it every three seconds.
+   §1.5 forbids fake progress, and this reports nothing but that something is
+   happening — the same statement the birth screen's orbit makes, small enough
+   for a corner. The keyframes END at rest, so the reduced-motion cap in
+   `ui/components.css` (one iteration, 1 ms) leaves a plain dot behind. */
+#chrome .me .born .thumb .spark {
+  position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--info);
+  /* A resting halo under the moving ring: a still — a screenshot, a reader who
+     asked for no motion — must still read as a beacon rather than as a dot
+     lost in a white tile. */
+  box-shadow: 0 0 0 4px rgba(110, 168, 255, .16), 0 0 12px rgba(110, 168, 255, .35);
+}
+#chrome .me .born .thumb .spark::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  border: 1px solid var(--info); opacity: 0;
+  animation: chrome-born-ring 3s var(--ease) infinite;
+}
+@keyframes chrome-born-ring {
+  0% { transform: scale(1); opacity: .55; }
+  70%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* replay back button */
+#chrome .back { position: absolute; top: 96px; left: var(--chrome-pad); }
+
+/*
+ * ARRIVAL.
+ *
+ * The shell is the first thing on screen and it used to appear in one frame,
+ * fully formed, while the arena behind it was still black. Four beats — the
+ * wordmark, the rail, the readout, the player — is the same 600 ms budget a
+ * screen cross-fade spends (§2.3), and it says in what order the page is meant
+ * to be read. `app.js` puts `.intro` on for the FIRST build only: the chrome is
+ * rebuilt when its shape changes (a creature is born, a replay opens a back
+ * button), and a shell that re-introduces itself mid-session is a flicker.
+ *
+ * The season chip fades without moving: it carries `translateX(-50%)` to sit on
+ * `--axis-x`, and a keyframe ending in `transform: none` would drop it half its
+ * own width to the right.
+ */
+/*
+ * `backwards`, NOT `both`.
+ *
+ * `chrome-in` ends on `opacity: 1`, and a forwards fill KEEPS that value after
+ * the animation is over — which is fine while the fight's fade lives on
+ * `#chrome`, and wrong the moment it lives on `#chrome`'s children (it does
+ * now, so that a visitor's button can be exempted from inside). With a
+ * forwards fill the shell would arrive at full strength over a fight already
+ * in progress and stay there. `backwards` still holds the from-state before
+ * the delay — which is the whole point of the stagger — and releases the
+ * element to its own computed opacity at the end. The same applies to the
+ * corner's swap, below.
+ */
+#chrome.intro > * { animation: chrome-in 520ms var(--ease) backwards; }
+#chrome.intro .rail { animation-delay: 90ms; }
+#chrome.intro .season { animation-name: chrome-in-fade; animation-delay: 160ms; }
+#chrome.intro .me { animation-delay: 230ms; }
+/* Everything else in the shell hangs from the top of the frame and settles
+   downward into it. The credo stands on the floor of the page, and a line that
+   drops onto its own baseline from above reads as a caption that missed its
+   mark; it rises into place instead. Same distance, same clock, opposite sign. */
+#chrome.intro .credo { animation-name: chrome-in-up; animation-delay: 320ms; }
+@keyframes chrome-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes chrome-in-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes chrome-in-fade { from { opacity: 0; } to { opacity: 1; } }
+/* The corner is the one part of the shell that changes state while the player
+   watches it — the pulse becomes the wait, the wait becomes their creature —
+   and `app.js` rebuilds it as a new element each time. Without this the change
+   lands in one frame and reads as a repaint rather than as news. */
+#chrome .me.swap { animation: chrome-in 320ms var(--ease) backwards; }
+
+/* mobile */
+@media (max-width: 900px) {
+  #chrome .wordmark .mark { letter-spacing: .3em; font-size: 14px; }
+  /* The worn mark is a 18 px effect. At 14 px over a running arena the ghosted
+     "I" stops reading as a design and starts reading as a glyph that failed to
+     paint, so the three stepped letters keep their order and lose their depth. */
+  #chrome .wordmark .mark span:nth-child(2) { opacity: .60; }
+  #chrome .wordmark .mark span:nth-child(4) { opacity: .74; }
+  #chrome .wordmark .mark span:nth-child(5) { opacity: .84; }
+  #chrome .wordmark .tag { display: none; }
+  #chrome .season { display: none; }
+  #chrome .rail {
+    top: auto; bottom: 0; left: 0; right: 0; flex-direction: row; justify-content: space-around; gap: 0;
+    padding: 2px var(--s3) calc(2px + env(safe-area-inset-bottom));
+    background: var(--glass-strong); border-top: 1px solid var(--glass-line); backdrop-filter: blur(18px);
+    /* The white hairline is the same non-line `.glass` documents: on a warm
+       off-white page a rim at `rgba(255,255,255,.72)` draws nothing, and the
+       bar's top edge — the one place a hundred ladder rows scroll under the
+       navigation — simply was not there. A whisper of ink states the edge and
+       a wide soft shadow puts the strip in front of the page rather than
+       printed into it. Upward, because the content is above it. */
+    box-shadow: 0 -1px 0 rgba(46, 46, 51, .07), 0 -12px 34px rgba(46, 46, 51, .07);
+  }
+  /* This is the app's whole navigation and it is hit with a thumb: the anchor
+     itself carries the 46 px, not the bar's padding. The bar's own height is
+     unchanged — the padding it lost, the links gained. */
+  #chrome .rail a {
+    flex: 1; min-height: 46px; flex-direction: column; justify-content: center; gap: 5px;
+    font-size: 9.5px; letter-spacing: .14em;
+  }
+  /* The desktop rail's lean is a gesture for a column of four destinations; in
+     a tab bar the same three pixels shove one tab sideways under the thumb. */
+  #chrome .rail a:hover, #chrome .rail a:active { transform: none; }
+  /* Four identical empty rings told a phone user nothing. The icon is the
+     item; the dot goes back to being the desktop rail's indicator. */
+  #chrome .rail a .dot { display: none; }
+  #chrome .rail a > .ic { display: block; opacity: .8; }
+  #chrome .rail a.on > .ic { opacity: 1; }
+  #chrome .me { top: 12px; right: var(--chrome-pad); gap: 8px; }
+  #chrome .me .card-me { height: 44px; padding: 0 14px 0 5px; gap: 10px; }
+  #chrome .me .thumb { width: 34px; height: 34px; }
+  /*
+   * THE NAME IS THE POINT OF THE CHIP.
+   *
+   * 110 px at 10.5 px with `.14em` tracking is about nine characters, and the
+   * spec lets a name run to twenty-two: MONOCYCLE CUTTER — a real name, in
+   * ladder-m.png — collapsed to `MONOCYC…` in the one place on a phone that
+   * says which creature is the player's. The width it needs comes out of the
+   * numbers under it (10 px is still tabular and still legible) rather than
+   * out of the tap area, and `38vw` keeps the chip clear of the `+` on the
+   * narrowest phones.
+   */
+  #chrome .me .n { max-width: min(150px, 38vw); font-size: 10.5px; }
+  #chrome .me .born .s .t { font-size: 12px; }
+  #chrome .me .s { font-size: 10px; letter-spacing: .1em; gap: 5px; }
+  #chrome .me .s span + span:not(.d)::before { margin-right: 5px; }
+  #chrome .credo { display: none; }
+  /*
+   * The `+` used to be `display: none` here, and it is the ONLY route to
+   * `#/create` for a player who already has a creature — the other three are
+   * visitor empty states. A phone therefore had no way to reach the Improve
+   * step of Create → … → Improve → Climb at all, and the loop could not close.
+   * It stays, at a thumb's size, beside the collapsed chip.
+   */
+  #chrome .me .plus { width: 44px; height: 44px; flex: 0 0 44px; }
+  /* The pill lived at `top: 96px`, which on a 390-wide screen is exactly where
+     the phase word and the match line are drawn — it covered the leading "A"
+     of `ARENA · MATCH #254212330`. There is no room left in the top band: the
+     state word runs the full width and the my-chip owns the corner. So it
+     crosses to the one part of a phone-sized battle that nothing occupies —
+     the right side of the strip between the fighter panel and the tab bar
+     (50 px tall plus the home indicator's inset) — where it is also the
+     easiest thing on the screen for a thumb to reach. */
+  #chrome .back { top: auto; left: auto; right: var(--chrome-pad); bottom: calc(50px + var(--s3) + env(safe-area-inset-bottom)); height: 44px; }
+  /*
+   * THE FIGHT QUIETENS WHAT STANDS IN ITS FRAME — AND A THUMB HAS NO HOVER.
+   *
+   * The desktop fade is affordable because it is one pointer movement away
+   * from being undone. A phone has no such movement: the only gesture over the
+   * tab bar is a tap, and a tap on a 35 % strip is a navigation, not a
+   * recovery. So the whole-chrome fade is lifted here and spent on the two
+   * pieces that actually stand inside the arena's picture — the wordmark in
+   * the top-left and the creature chip in the top-right. The bottom strip,
+   * which is the app's entire navigation and sits below the arena's
+   * composition rather than on it, keeps its ink.
+   */
+  body[data-phase="fighting"][data-screen="live"] #chrome > * { opacity: 1; }
+  /* The wordmark steps back by ink here too — at 14 px over a running arena a
+     .35 logotype was the least legible thing in the frame — and only the chip
+     rides an alpha, because it is a picture and a card rather than a word.
+     .72 for the same reason the desktop rule gives: a glass card takes its own
+     ground down with its ink, and the name on it is 10.5 px here. */
+  body[data-phase="fighting"][data-screen="live"] #chrome .me { opacity: .72; }
+  body[data-phase="fighting"][data-screen="live"] #chrome .me:has(.btn.primary) { opacity: 1; }
+  body[data-phase="fighting"][data-screen="live"] #chrome:focus-within .me { opacity: 1; }
+  /* the tab bar is a glass strip below the arena's composition, not on it: it
+     keeps the ink it has in every other state */
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail a { color: var(--ink-soft); }
+  body[data-phase="fighting"][data-screen="live"] #chrome .rail a.on { color: var(--ink-2); }
+}
