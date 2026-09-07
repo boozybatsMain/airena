@@ -1,0 +1,27 @@
+
+  SCREEN STATES
+
+  base   http://localhost:8787
+  out    /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+  sizes  1440×900
+  tree   8699fb678a on main[2m + 29 uncommitted files[0m
+  db     /Users/boozybats/Public/Repos/work/Airena/data/airena.db  1808.0 MB, modified 2026-09-07 03:54
+
+  claim  STONE GOLEM (c_18e20e72-6bb) → g_f366f4da-a26
+  replay m_64c9c945-11e on constants c-d3c58948
+
+
+  THE FIGHT
+    live-hud             0 err    0 overlap    0 covered
+    live-fighting        0 err    0 overlap    0 covered
+
+  STATE                  ERRORS   OVERLAPS  COVERED
+  ────────────────────── ──────── ───────── ────────
+  THE FIGHT
+  live-hud               0        0         0
+  live-fighting          0        0         0
+
+  2 captures in /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+
+  CLEAN
+

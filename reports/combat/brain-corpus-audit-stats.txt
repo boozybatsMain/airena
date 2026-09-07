@@ -1,0 +1,234 @@
+google/gemini-3.7-flash:plain	BILGE CRAB (c_b7a28147-337) active kit_active=1 n=150 win=69% avgSec=36.9 faults/match=0.00 say/match=8.4 dmg=110/100 us/think=4
+   uses/match: k2=3.75 k1=1.55 k3=3.11 | hits: k3=391 | misses: k1:aim=90 k3:airborne=43 k3:aim=12 k3:range=16
+   refused: - | verbs/match: faceAt=515 ready=1534 moveTo=71 use=8 say=8 move=437 los=5
+google/gemini-3.7-flash:plain	THE RIFT (c_c4eb7da3-a72) active kit_active=1 n=150 win=68% avgSec=39.5 faults/match=0.00 say/match=8.1 dmg=88/58 us/think=4
+   uses/match: k2=2.76 k1=3.13 k3=3.47 | hits: k1=313 k3=1387 | misses: k1:cover=43 k1:aim=13
+   refused: - | verbs/match: ready=1649 face=550 moveTo=186 use=9 say=8 move=357
+google/gemini-3.7-flash:plain	MANTIS REAPER (c_c764acde-f2f) active kit_active=1 n=150 win=60% avgSec=30.1 faults/match=0.00 say/match=6.5 dmg=156/124 us/think=5
+   uses/match: k3=2.73 k2=2.25 k1=2.81 | hits: k2=264 k1=417 | misses: k2:aim=8 k2:range=15 k2:airborne=3 k1:range=3 k2:cover=1
+   refused: - | verbs/match: face=413 ready=1021 use=8 moveTo=73 move=334 los=305 say=6
+google/gemini-3.7-flash:plain	GRAVEDIGGER (c_af623a2f-f7e) active kit_active=1 n=150 win=57% avgSec=38.3 faults/match=0.00 say/match=12.7 dmg=56/115 us/think=4
+   uses/match: k2=3.73 k1=2.80 k3=2.97 | hits:  | misses: k2:aim=232
+   refused: k3:silenced=55 k1:silenced=12 | verbs/match: faceAt=535 ready=1606 moveTo=128 use=11 move=407 say=13 ray=209
+google/gemini-3.7-flash:plain	TOWER (c_bee0fcba-180) active kit_active=1 n=150 win=51% avgSec=35.5 faults/match=0.00 say/match=15.9 dmg=109/99 us/think=3
+   uses/match: k2=5.63 k1=3.41 k3=2.86 | hits: k1=415 k3=309 | misses: k3:aim=27 k3:cover=56 k1:cover=28
+   refused: - | verbs/match: faceAt=493 ready=1296 use=12 moveTo=493 say=16
+google/gemini-3.7-flash:plain	LASER CUTTER (c_bbf95643-d91) active kit_active=1 n=150 win=51% avgSec=33.7 faults/match=0.00 say/match=0.0 dmg=116/109 us/think=5
+   uses/match: k3=5.37 k2=3.12 k1=2.91 | hits: k1=345 | misses: k1:cover=54 k2:cover=45
+   refused: - | verbs/match: faceAt=467 ready=931 use=11 ray=611 move=467
+google/gemini-3.7-flash:plain	ACID CUTTER (c_cdb90c01-ad9) active kit_active=1 n=150 win=51% avgSec=28.6 faults/match=0.00 say/match=7.7 dmg=143/125 us/think=3
+   uses/match: k2=2.66 k3=2.65 k1=1.89 | hits: k2=324 k3=294 | misses: k3:aim=38 k2:cover=36 k1:range=13 k1:aim=1 k3:cover=2 k2:aim=1
+   refused: k1:silenced=39 | verbs/match: faceAt=390 moveTo=39 ready=878 use=8 say=8 move=352
+google/gemini-3.7-flash:plain	GRIM HIGHLANDER (c_a6994a7b-c82) active kit_active=1 n=150 win=50% avgSec=33.7 faults/match=0.00 say/match=8.9 dmg=113/107 us/think=5
+   uses/match: k3=2.59 k1=2.83 k2=3.31 | hits: k3=1546 k1=354 | misses: k1:cover=15 k1:aim=35 k2:range=15 k1:airborne=4 k2:aim=1 k2:airborne=2
+   refused: k1:silenced=13 k2:silenced=7 | verbs/match: faceAt=467 ready=1185 moveTo=170 use=9 say=9 ray=3 pathTo=302 move=297
+google/gemini-3.7-flash:plain	BLACK KITE (c_7c8ffee4-b3b) active kit_active=1 n=150 win=50% avgSec=36.3 faults/match=0.00 say/match=7.6 dmg=80/85 us/think=3
+   uses/match: k2=3.01 k1=2.15 k3=2.39 | hits: k3=295 k2=248 | misses: k2:aim=158 k3:aim=30 k3:airborne=1 k3:cover=13
+   refused: - | verbs/match: faceAt=506 ready=1510 moveTo=498 use=8 say=8 ray=3
+google/gemini-3.7-flash:plain	KILLER WASP (c_280b5a22-908) active kit_active=1 n=150 win=50% avgSec=40.0 faults/match=0.00 say/match=7.7 dmg=56/63 us/think=12
+   uses/match: k2=3.49 k3=2.81 k1=0.64 | hits: k3=299 k1=79 | misses: k3:cover=45 k3:aim=30 k1:cover=5 k1:aim=2
+   refused: k2:silenced=42 k3:silenced=6 | verbs/match: face=561 ready=1669 pathTo=125 moveTo=125 ray=441 use=8 say=8 move=428 los=3
+google/gemini-3.7-flash:plain	MONOCYCLE CUTTER (c_a843173b-ea4) active kit_active=1 n=150 win=50% avgSec=28.7 faults/match=0.00 say/match=7.3 dmg=155/125 us/think=4
+   uses/match: k1=2.57 k2=2.57 k3=1.95 | hits: k1=290 k2=313 k3=259 | misses: k1:cover=26 k2:cover=9 k3:range=11 k3:aim=5 k1:aim=6 k2:aim=4
+   refused: k2:silenced=9 k3:silenced=19 | verbs/match: faceAt=391 moveTo=39 ready=760 ray=7 move=345 say=7 use=7
+google/gemini-3.7-flash:plain	BARROW (c_f9fb473a-187) active kit_active=1 n=150 win=49% avgSec=38.2 faults/match=0.00 say/match=6.9 dmg=67/71 us/think=3
+   uses/match: k3=6.01 k2=2.89 k1=3.72 | hits: k2=1942 | misses: 
+   refused: k3:silenced=13 k1:silenced=48 | verbs/match: faceAt=535 ready=1387 use=13 move=535 say=7
+google/gemini-3.7-flash:plain	SLEDGEHAMMER (c_3aa2bb0f-f14) active kit_active=1 n=150 win=49% avgSec=31.0 faults/match=0.00 say/match=9.4 dmg=119/94 us/think=4
+   uses/match: k1=3.34 k2=3.09 k3=2.95 | hits: k3=417 | misses: k2:range=29 k3:range=21 k1:aim=96 k1:cover=4 k3:aim=1 k3:airborne=2 k2:aim=1 k2:airborne=4
+   refused: - | verbs/match: faceAt=426 ready=1268 moveTo=88 move=262 ray=3 use=9 say=9
+google/gemini-3.7-flash:plain	CHRONOMETER (c_3d990e92-7b6) retired kit_active=1 n=150 win=49% avgSec=33.2 faults/match=0.00 say/match=7.3 dmg=120/108 us/think=8
+   uses/match: k2=1.81 k1=2.77 k3=2.70 | hits: k1=1500 k3=2040 | misses: 
+   refused: - | verbs/match: faceAt=458 ready=1799 use=7 say=7 moveTo=162 move=289
+google/gemini-3.7-flash:plain	VILE SHRIMP (c_877bf4e7-bf1) active kit_active=1 n=150 win=48% avgSec=37.7 faults/match=0.00 say/match=6.5 dmg=98/90 us/think=7
+   uses/match: k3=6.01 k2=3.48 k1=1.23 | hits: k2=408 k1=156 | misses: k1:aim=20 k2:cover=36 k1:cover=7
+   refused: k1:silenced=15 k3:silenced=25 k2:silenced=102 | verbs/match: ready=1578 use=12 faceAt=526 move=526 ray=508 say=7
+google/gemini-3.7-flash:plain	DRAGONFLY (c_e8a4582b-3d4) active kit_active=1 n=150 win=47% avgSec=33.0 faults/match=0.00 say/match=5.0 dmg=100/102 us/think=6
+   uses/match: k3=3.27 k1=1.75 | hits: k3=357 k1=234 | misses: k3:aim=26 k3:cover=60 k1:cover=19 k1:aim=1
+   refused: - | verbs/match: faceAt=456 ready=908 move=456 los=4 use=5 say=5
+google/gemini-3.7-flash:plain	FURNACE (c_04539cd5-46c) active kit_active=1 n=150 win=47% avgSec=26.6 faults/match=0.00 say/match=7.7 dmg=136/131 us/think=11
+   uses/match: k1=2.53 k3=1.99 k2=1.84 | hits: k2=255 | misses: k2:range=4 k1:cover=10 k1:aim=16 k1:airborne=2 k2:aim=1
+   refused: k2:silenced=78 k1:silenced=21 k3:silenced=31 | verbs/match: faceAt=360 los=362 ready=1072 pathTo=344 moveTo=344 ray=3 use=8 say=8 move=16
+google/gemini-3.7-flash:plain	CHRONOTHUNDER (c_c314eeb0-2b1) retired kit_active=1 n=150 win=47% avgSec=34.6 faults/match=0.00 say/match=6.0 dmg=99/102 us/think=33
+   uses/match: k3=2.69 k2=3.30 k1=1.83 | hits: k3=285 k2=387 | misses: k3:cover=59 k3:aim=54 k2:cover=65 k2:aim=4
+   refused: - | verbs/match: faceAt=486 ready=1196 pathTo=104 moveTo=104 move=377 use=8 say=6
+google/gemini-3.7-flash:plain	COLDSNAP (c_7ea987df-b0a) active kit_active=1 n=150 win=47% avgSec=30.5 faults/match=0.00 say/match=3.1 dmg=147/110 us/think=5
+   uses/match: k2=3.25 k1=2.35 k3=2.57 | hits: k1=991 k3=377 | misses: k2:cover=42 k2:aim=22 k3:range=7 k3:cover=1
+   refused: k3:silenced=68 k1:silenced=16 | verbs/match: faceAt=424 ready=1244 cooldown=381 moveTo=198 use=9 say=3 move=211
+google/gemini-3.7-flash:plain	HEAVY REACTOR (c_86e14a3c-519) active kit_active=1 n=150 win=46% avgSec=28.9 faults/match=0.00 say/match=8.8 dmg=134/128 us/think=2
+   uses/match: k1=3.01 k3=2.51 k2=2.45 | hits: k3=1192 | misses: k2:range=14 k2:cover=1 k2:aim=1
+   refused: k2:silenced=13 k3:silenced=62 | verbs/match: faceAt=395 ready=1174 moveTo=156 use=9 say=9 move=230
+google/gemini-3.7-flash:plain	ASH AND ICE (c_15a339f3-1cd) active kit_active=1 n=150 win=45% avgSec=30.3 faults/match=0.00 say/match=8.8 dmg=143/124 us/think=4
+   uses/match: k3=3.70 k2=2.59 k1=2.34 | hits: k1=292 k2=310 | misses: k1:aim=19 k2:aim=37 k2:cover=10 k1:airborne=3 k1:range=31 k1:cover=1
+   refused: k3:silenced=20 k1:silenced=30 | verbs/match: ready=1247 use=9 moveTo=412 face=421 los=7 move=4 say=9
+google/gemini-3.7-flash:plain	BOLIDE (c_61d1f99d-43f) active kit_active=0 n=150 win=44% avgSec=32.3 faults/match=0.00 say/match=4.9 dmg=84/93 us/think=4
+   uses/match: laser=4.11 blink=0.63 jump=0.11 | hits: laser=480 | misses: laser:cover=67 laser:aim=1
+   refused: laser:silenced=8 | verbs/match: ready=554 face=451 move=404 say=5 use=5 ray=4
+google/gemini-3.7-flash:plain	THUNDERSTRIKE (c_e24810eb-c7c) active kit_active=1 n=150 win=44% avgSec=38.6 faults/match=0.00 say/match=4.3 dmg=55/74 us/think=4
+   uses/match: k1=6.08 k3=1.80 k2=2.81 | hits: k2=323 | misses: k2:cover=46
+   refused: k1:silenced=18 k3:silenced=4 | verbs/match: faceAt=540 ready=2183 use=11 moveTo=536 rand=2 say=4
+google/gemini-3.7-flash:plain	ODIN (c_70986a43-271) active kit_active=0 n=150 win=43% avgSec=24.7 faults/match=0.00 say/match=3.8 dmg=91/97 us/think=4
+   uses/match: charge=1.01 smash=2.78 | hits: charge=40 smash=369 | misses: smash:cover=14 smash:airborne=23 smash:range=10
+   refused: - | verbs/match: faceAt=331 los=331 ready=660 move=264 use=4 say=4 moveTo=28
+google/gemini-3.7-flash:plain	SALT BULL (c_83089e56-e2f) active kit_active=1 n=150 win=41% avgSec=34.6 faults/match=0.00 say/match=9.6 dmg=104/112 us/think=3
+   uses/match: k3=5.48 k1=1.50 k2=2.62 | hits: k1=198 k2=373 | misses: k1:airborne=9 k2:range=4 k2:airborne=7 k1:aim=4
+   refused: - | verbs/match: faceAt=480 ready=889 use=10 say=10 move=444 moveTo=26 ray=2
+google/gemini-3.7-flash:plain	MERCURY EEL (c_73fc47a4-2d5) active kit_active=1 n=150 win=40% avgSec=37.5 faults/match=0.00 say/match=7.6 dmg=74/94 us/think=5
+   uses/match: k2=3.12 k1=2.61 k3=1.85 | hits: k2=263 k3=239 | misses: k3:airborne=22 k2:aim=76 k2:cover=73 k3:cover=5 k3:aim=1
+   refused: - | verbs/match: ready=1564 los=521 faceAt=479 moveTo=516 say=8 use=8 face=1
+google/gemini-3.7-flash:plain	ETCHER (c_1eb4e823-708) active kit_active=1 n=150 win=40% avgSec=28.8 faults/match=0.00 say/match=0.0 dmg=130/146 us/think=3
+   uses/match: k1=2.54 k2=2.13 k3=2.39 | hits: k3=325 | misses: k1:cover=22 k1:aim=15 k3:range=21 k3:aim=4
+   refused: - | verbs/match: faceAt=392 ready=881 moveTo=211 use=7 move=181
+google/gemini-3.7-flash:plain	COLDSNAP (c_15f84e8a-0fb) retired kit_active=1 n=22 win=95% avgSec=36.3 faults/match=0.00 say/match=0.0 dmg=152/49 us/think=3
+   uses/match: k3=5.45 k2=3.23 k1=3.00 | hits: k2=57 k1=59 | misses: k1:range=2 k2:aim=1 k2:cover=2
+   refused: k2:silenced=15 | verbs/match: faceAt=505 ready=1501 ray=58 los=484 moveTo=22 move=470 use=13
+google/gemini-3.7-flash:plain	ASH WOLF (c_255ab41e-6cf) active kit_active=1 n=150 win=11% avgSec=33.2 faults/match=0.00 say/match=10.3 dmg=94/154 us/think=4
+   uses/match: k2=5.28 k1=2.57 k3=2.48 | hits: k1=274 | misses: k1:cover=4 k1:aim=20 k1:airborne=1 k3:range=8 k3:aim=4
+   refused: - | verbs/match: faceAt=459 ready=1173 use=10 say=10 los=456 moveTo=64 ray=3 move=389
+haiku	LENS-00 (c_ae4bc2aa-d58) active kit_active=0 n=150 win=43% avgSec=34.4 faults/match=0.00 say/match=0.0 dmg=89/29 us/think=70
+   uses/match: laser=4.23 blink=0.29 jump=0.27 | hits: laser=495 | misses: laser:cover=97 laser:aim=9
+   refused: - | verbs/match: move=476 face=476 ready=482 use=5
+haiku	HAMMERBACK-00 (c_2f990392-e68) active kit_active=0 n=150 win=41% avgSec=31.9 faults/match=0.00 say/match=0.0 dmg=76/50 us/think=46
+   uses/match: charge=2.06 smash=1.81 | hits: charge=97 smash=243 | misses: smash:range=22 smash:airborne=6
+   refused: - | verbs/match: faceAt=439 ready=798 move=272 use=4 stop=124
+kit-stub	ARRESTER (c_08afabcb-3de) active kit_active=1 n=150 win=72% avgSec=33.9 faults/match=0.00 say/match=3.7 dmg=132/76 us/think=6
+   uses/match: k2=5.37 k3=3.12 k1=2.53 | hits: k1=281 k3=1259 | misses: k1:range=47 k1:aim=40
+   refused: - | verbs/match: faceAt=461 ready=2693 say=4 use=11 moveTo=469
+kit-stub	BATTERING RAM (c_d59474aa-b10) retired kit_active=1 n=150 win=68% avgSec=32.0 faults/match=0.00 say/match=3.3 dmg=119/79 us/think=17
+   uses/match: k3=2.96 k2=3.95 k1=1.89 | hits: k3=1208 k1=230 | misses: k1:aim=20 k1:range=29 k1:cover=1
+   refused: - | verbs/match: faceAt=438 ready=2608 moveTo=442 say=3 use=9
+kit-stub	ICEBREAKER (c_3fdf18d5-48c) active kit_active=1 n=150 win=67% avgSec=33.6 faults/match=0.00 say/match=3.6 dmg=120/78 us/think=6
+   uses/match: k2=5.31 k3=3.07 k1=2.24 | hits: k1=258 k3=1121 | misses: k1:range=45 k1:aim=18 k1:cover=2
+   refused: - | verbs/match: faceAt=458 ready=2681 say=4 use=11 moveTo=465
+kit-stub	ICEBREAKER (c_7cbb994e-6bf) retired kit_active=1 n=150 win=63% avgSec=31.6 faults/match=0.00 say/match=3.3 dmg=124/78 us/think=21
+   uses/match: k3=2.91 k2=3.87 k1=2.12 | hits: k3=1192 k1=256 | misses: k1:range=36 k1:aim=18 k1:cover=2
+   refused: - | verbs/match: faceAt=431 ready=2552 moveTo=435 say=3 use=9
+kit-stub	ARRESTER (c_29cc3c22-81a) retired kit_active=1 n=150 win=63% avgSec=31.8 faults/match=0.00 say/match=3.3 dmg=111/82 us/think=17
+   uses/match: k2=4.35 k3=2.89 k1=1.90 | hits: k3=1163 k1=216 | misses: k1:aim=25 k1:range=34 k1:airborne=2
+   refused: - | verbs/match: faceAt=435 ready=2585 say=3 use=9 moveTo=438
+kit-stub	COLDSNAP (c_59071c0c-eaa) retired kit_active=1 n=150 win=61% avgSec=27.4 faults/match=0.00 say/match=3.0 dmg=145/110 us/think=9
+   uses/match: k2=3.01 k3=2.66 k1=2.41 | hits: k3=277 k1=307 k2=281 | misses: k2:cover=78 k3:aim=106 k2:aim=33 k1:cover=32
+   refused: - | verbs/match: faceAt=366 ready=2149 moveTo=371 say=3 use=8
+kit-stub	STORM (c_f7ddf8fc-1df) active kit_active=1 n=150 win=59% avgSec=31.1 faults/match=0.00 say/match=3.3 dmg=134/110 us/think=6
+   uses/match: k1=2.75 k2=3.27 k3=3.11 | hits: k1=310 k2=274 k3=232 | misses: k3:aim=204 k2:cover=116 k1:cover=28 k2:aim=31
+   refused: - | verbs/match: faceAt=422 ready=2427 moveTo=427 say=3 use=9
+kit-stub	MAGMAR (c_6175cdca-964) active kit_active=1 n=150 win=59% avgSec=38.7 faults/match=0.00 say/match=3.9 dmg=77/68 us/think=7
+   uses/match: k3=3.51 k2=5.00 k1=1.95 | hits: k1=244 | misses: k1:range=25 k1:aim=22
+   refused: - | verbs/match: faceAt=536 ready=3141 moveTo=542 say=4 use=10
+kit-stub	SINKHOLE (c_0225ecc7-136) retired kit_active=1 n=150 win=57% avgSec=32.9 faults/match=0.00 say/match=3.4 dmg=113/86 us/think=19
+   uses/match: k3=3.05 k2=3.84 k1=1.77 | hits: k3=1273 k1=200 | misses: k1:aim=25 k1:range=35
+   refused: - | verbs/match: faceAt=451 ready=2680 moveTo=455 say=3 use=9
+kit-stub	ASH (c_6ae13905-d20) active kit_active=1 n=150 win=53% avgSec=32.2 faults/match=0.00 say/match=3.4 dmg=127/107 us/think=6
+   uses/match: k1=2.75 k2=3.35 k3=2.97 | hits: k1=310 k2=281 | misses: k2:aim=32 k3:aim=224 k2:cover=117 k1:cover=36
+   refused: - | verbs/match: faceAt=440 ready=2566 moveTo=444 say=3 use=9
+kit-stub	MAGMAR (c_f5bbda9f-0d0) retired kit_active=1 n=150 win=47% avgSec=36.6 faults/match=0.00 say/match=3.6 dmg=81/73 us/think=116
+   uses/match: k3=3.30 k1=2.19 k2=4.31 | hits: k1=252 | misses: k1:aim=40 k1:airborne=7 k1:range=23 k1:cover=1
+   refused: - | verbs/match: faceAt=510 ready=3049 moveTo=510 say=4 use=10
+opus	SEAM-70 (c_04cc9eb0-595) active kit_active=0 n=150 win=51% avgSec=33.1 faults/match=0.00 say/match=1.0 dmg=93/85 us/think=45
+   uses/match: laser=5.25 blink=0.85 | hits: laser=541 | misses: laser:cover=158 laser:aim=6
+   refused: - | verbs/match: ready=505 cooldown=457 ray=10965 move=457 faceAt=457 say=1 rand=1120 use=6
+opus	SOIL-33 (c_fe0d7767-89e) active kit_active=0 n=150 win=51% avgSec=23.1 faults/match=0.00 say/match=3.7 dmg=108/91 us/think=8
+   uses/match: charge=1.59 smash=2.36 | hits: smash=330 charge=156 | misses: smash:cover=1 smash:range=9 smash:airborne=11
+   refused: - | verbs/match: rand=45 ready=566 moveTo=66 faceAt=302 say=4 pathTo=53 move=233 ray=2 use=4
+opus	NEEDLE-42 (c_e3d88cca-bb4) active kit_active=0 n=150 win=50% avgSec=32.1 faults/match=0.00 say/match=1.6 dmg=89/73 us/think=21
+   uses/match: laser=3.83 blink=1.09 jump=0.11 | hits: laser=496 | misses: laser:cover=63
+   refused: - | verbs/match: faceAt=442 ready=492 cooldown=315 moveTo=115 rand=106 ray=6132 move=323 pathTo=86 los=6 use=5 say=2
+opus	SHAFT-50 (c_19ff07a7-841) active kit_active=0 n=150 win=48% avgSec=27.9 faults/match=0.00 say/match=1.0 dmg=96/92 us/think=9
+   uses/match: charge=0.67 smash=2.77 | hits: smash=394 charge=37 | misses: smash:airborne=7 smash:range=4
+   refused: - | verbs/match: say=1 ready=693 faceAt=378 moveTo=145 move=229 cooldown=17 use=3
+opus	BOULDER-42 (c_2d2c593e-838) active kit_active=0 n=150 win=47% avgSec=27.4 faults/match=0.00 say/match=1.3 dmg=96/88 us/think=10
+   uses/match: charge=0.90 smash=2.67 | hits: smash=353 charge=74 | misses: smash:airborne=19 smash:range=18
+   refused: - | verbs/match: ready=669 faceAt=372 pathTo=55 move=368 use=4 say=1
+opus	DECK-75 (c_c40e5ef2-c39) active kit_active=0 n=150 win=47% avgSec=25.9 faults/match=0.00 say/match=1.0 dmg=96/109 us/think=15
+   uses/match: charge=1.41 smash=2.97 | hits: charge=75 smash=367 | misses: smash:range=12 smash:airborne=5
+   refused: smash:silenced=12 | verbs/match: say=1 ready=614 faceAt=349 pathTo=42 moveTo=42 move=294 ray=7 use=4
+opus	PRESS-60 (c_4bfb6d5b-6f3) active kit_active=0 n=150 win=46% avgSec=24.1 faults/match=0.00 say/match=3.7 dmg=97/116 us/think=11
+   uses/match: charge=1.22 smash=2.78 | hits: smash=369 charge=73 | misses: smash:airborne=6 smash:range=10 smash:cover=2
+   refused: smash:silenced=28 | verbs/match: rand=344 faceAt=323 ready=567 pathTo=31 ray=367 move=317 say=4 use=4 moveTo=0
+opus	RIDGE-50 (c_a7d3cfba-205) active kit_active=0 n=150 win=45% avgSec=25.2 faults/match=0.00 say/match=1.3 dmg=94/109 us/think=12
+   uses/match: charge=0.95 smash=2.63 | hits: charge=75 smash=359 | misses: smash:range=9 smash:airborne=10
+   refused: - | verbs/match: ready=612 move=250 faceAt=322 moveTo=68 ray=12 use=4 say=1
+opus	GRAIN-50 (c_736d9716-bef) active kit_active=0 n=150 win=45% avgSec=33.7 faults/match=0.00 say/match=4.6 dmg=78/103 us/think=29
+   uses/match: laser=3.91 blink=1.34 jump=0.02 | hits: laser=459 | misses: laser:cover=40 laser:aim=1
+   refused: - | verbs/match: ready=497 cooldown=465 move=430 faceAt=466 say=5 moveTo=35 use=5
+opus	WEDGE-40 (c_375283c7-637) active kit_active=0 n=150 win=42% avgSec=29.4 faults/match=0.00 say/match=0.0 dmg=90/85 us/think=10
+   uses/match: charge=1.39 smash=2.81 | hits: charge=69 smash=331 | misses: smash:airborne=33 smash:cover=12 smash:range=28
+   refused: - | verbs/match: ready=720 move=269 faceAt=396 moveTo=118 ray=2 face=7 use=4 rand=7
+opus	LINE-17 (c_336cd583-4d0) active kit_active=0 n=150 win=33% avgSec=38.1 faults/match=0.00 say/match=6.0 dmg=55/47 us/think=91
+   uses/match: laser=2.41 blink=0.69 jump=0.33 | hits: laser=305 | misses: laser:cover=51
+   refused: - | verbs/match: ready=548 faceAt=533 pathTo=92 ray=7449 move=533 say=6 los=140 use=3
+opus	MARK-92 (c_05721d7b-fff) active kit_active=0 n=150 win=24% avgSec=37.8 faults/match=0.00 say/match=5.9 dmg=45/101 us/think=19
+   uses/match: laser=2.89 blink=0.83 | hits: laser=269 | misses: laser:cover=27
+   refused: laser:silenced=19 | verbs/match: ready=653 pathTo=29 say=6 move=526 faceAt=528 ray=7946 use=4
+opus	SPIRE-08 (c_a0ccc3c9-76e) active kit_active=0 n=150 win=2% avgSec=42.9 faults/match=0.00 say/match=4.9 dmg=3/25 us/think=845
+   uses/match: blink=1.64 jump=0.19 laser=0.11 | hits: laser=17 | misses: 
+   refused: - | verbs/match: faceAt=604 cooldown=1185 ready=687 move=604 say=5 use=2 los=0
+sub:fable:plain	GLASS WASP (c_dc319c88-aee) active kit_active=1 n=150 win=64% avgSec=35.8 faults/match=0.00 say/match=4.9 dmg=106/92 us/think=36
+   uses/match: k2=2.34 k1=3.17 k3=3.30 | hits: k2=292 k1=401 | misses: k1:cover=49 k2:cover=36 k1:aim=18
+   refused: - | verbs/match: cooldown=995 rand=21 ray=390 move=405 ready=1280 faceAt=498 say=5 use=9 pathTo=611 los=6 moveTo=48 stop=45
+sub:fable:plain	THUNDER CLOCKMAKER (c_a4e2d394-5b4) retired kit_active=1 n=150 win=54% avgSec=38.5 faults/match=0.00 say/match=3.5 dmg=101/87 us/think=126
+   uses/match: k3=2.92 k1=3.35 k2=3.33 | hits: k3=308 k2=382 | misses: k2:cover=68 k3:cover=75 k3:aim=35
+   refused: k1:silenced=5 | verbs/match: say=4 rand=43 ready=1042 cooldown=1514 pathTo=1796 moveTo=502 faceAt=538 los=4 use=10 ray=41 move=37
+sub:fable:plain	BARROW SHADE (c_4109357b-a49) active kit_active=1 n=150 win=53% avgSec=35.0 faults/match=0.00 say/match=4.2 dmg=82/79 us/think=6
+   uses/match: k3=3.13 k1=2.59 k2=2.78 | hits: k1=1385 k3=269 | misses: k3:aim=157
+   refused: - | verbs/match: faceAt=485 say=4 moveTo=31 ready=1197 move=454 use=9 rand=8
+sub:fable:plain	GEAR HOPPER (c_998fea28-c41) active kit_active=1 n=150 win=46% avgSec=38.3 faults/match=0.00 say/match=4.2 dmg=56/66 us/think=13
+   uses/match: k2=3.37 k3=0.67 k1=0.59 | hits: k2=256 k3=90 | misses: k2:aim=227 k3:airborne=1 k3:cover=4 k3:aim=2
+   refused: - | verbs/match: say=4 ready=1476 rand=1252 pathTo=985 moveTo=498 face=529 use=5 ray=33 move=32 faceAt=0
+sub:opus:plain	BARROW WARDEN (c_35e1741f-274) active kit_active=1 n=150 win=59% avgSec=37.7 faults/match=0.00 say/match=6.1 dmg=95/81 us/think=14
+   uses/match: k2=3.49 k1=3.13 k3=2.75 | hits: k1=1431 k2=349 | misses: k2:aim=126
+   refused: k1:silenced=102 k3:silenced=1 | verbs/match: recall=920 ready=1315 cooldown=1002 pathTo=526 moveTo=526 faceAt=523 say=6 remember=18 use=10
+sub:opus:plain	MINE HEDGEHOG (c_8bb73425-8cd) active kit_active=1 n=150 win=47% avgSec=33.4 faults/match=0.00 say/match=4.1 dmg=100/111 us/think=12
+   uses/match: k1=2.59 k3=2.15 k2=2.45 | hits: k1=1195 k2=241 | misses: k2:range=101 k2:aim=15 k2:cover=3
+   refused: k2:silenced=22 k3:silenced=27 k1:silenced=29 | verbs/match: recall=1387 ready=1379 faceAt=440 pathTo=208 moveTo=113 move=340 remember=12 use=9 say=4 cooldown=226 face=22 rand=30
+sub:opus:plain	THUNDER CLOCKMAKER (c_c70e1e4a-f8a) retired kit_active=1 n=150 win=42% avgSec=36.3 faults/match=0.00 say/match=5.8 dmg=96/105 us/think=112
+   uses/match: k3=2.59 k2=2.60 k1=1.23 | hits: k3=309 k2=333 | misses: k3:cover=64 k2:cover=29
+   refused: k1:silenced=154 k3:silenced=22 k2:silenced=19 | verbs/match: rand=54 faceAt=505 ready=1446 moveTo=283 move=222 say=6 use=9
+sub:opus:plain	FOUNDRY FIST (c_e4653a50-181) active kit_active=1 n=150 win=33% avgSec=33.5 faults/match=0.00 say/match=5.2 dmg=116/127 us/think=8
+   uses/match: k3=4.81 k1=2.41 k2=2.09 | hits: k1=274 k2=283 | misses: k2:range=15 k1:aim=6 k1:cover=3
+   refused: k1:silenced=116 k3:silenced=35 | verbs/match: faceAt=461 ready=1290 cooldown=405 moveTo=42 ray=739 move=399 say=5 use=11 stop=20
+z-ai/glm-5.3-flash:plain	STONE GOLEM (c_18e20e72-6bb) active kit_active=1 n=150 win=71% avgSec=28.5 faults/match=0.00 say/match=3.9 dmg=161/119 us/think=9
+   uses/match: k2=2.97 k3=2.17 k1=2.21 | hits: k3=285 k1=315 k2=356 | misses: k2:aim=34 k2:cover=1 k1:range=8 k1:cover=1 k3:aim=2
+   refused: k1:silenced=101 k3:stunned=29 k3:silenced=20 | verbs/match: recall=389 cooldown=1167 pathTo=44 move=380 faceAt=380 ray=9 use=9 say=4 remember=9 rand=6
+z-ai/glm-5.3-flash:plain	STONE GOLEM (c_303e3387-581) active kit_active=1 n=150 win=60% avgSec=35.1 faults/match=0.00 say/match=0.0 dmg=116/136 us/think=3
+   uses/match: k2=2.77 k1=2.33 k3=2.01 | hits: k2=1522 k1=322 | misses: k1:range=12 k1:cover=1 k1:aim=5
+   refused: k3:silenced=153 k2:silenced=23 k1:silenced=11 | verbs/match: face=487 moveTo=275 ready=926 use=9 move=212
+z-ai/glm-5.3-flash:plain	ICE MAGE (c_ba1bb611-82e) active kit_active=1 n=150 win=43% avgSec=33.5 faults/match=0.00 say/match=8.7 dmg=95/94 us/think=5
+   uses/match: k2=3.57 k3=2.30 k1=2.43 | hits: k3=1765 k1=276 | misses: k2:aim=133 k1:cover=43 k1:aim=29
+   refused: - | verbs/match: los=463 ready=1388 move=455 faceAt=388 say=9 face=10 use=10 recall=253 rand=111 remember=2 moveTo=3
+z-ai/glm-5.3-flash:plain	RACE CHECK (c_925ab5a2-cf1) active kit_active=0 n=150 win=37% avgSec=32.9 faults/match=0.00 say/match=0.0 dmg=77/81 us/think=3
+   uses/match: laser=3.81 jump=0.31 blink=0.08 | hits: laser=437 | misses: laser:cover=62 laser:aim=12
+   refused: - | verbs/match: ready=458 faceAt=457 move=453 use=4 rand=285
+z-ai/glm-5.3-flash:plain	COURIER (c_cb22b5c1-9ef) active kit_active=0 n=150 win=33% avgSec=30.8 faults/match=0.00 say/match=0.0 dmg=80/84 us/think=4
+   uses/match: laser=3.71 blink=0.44 | hits: laser=448 | misses: laser:cover=20
+   refused: - | verbs/match: ready=774 ray=423 move=267 face=423 los=8 use=4 moveTo=156
+z-ai/glm-5.3-flash:think	GLASS JELLYFISH (c_b53d1c3d-3d3) active kit_active=1 n=150 win=61% avgSec=36.2 faults/match=0.00 say/match=4.6 dmg=101/91 us/think=6
+   uses/match: k3=1.97 k1=3.31 k2=2.09 | hits: k1=427 k3=158 | misses: k3:aim=67 k3:cover=58 k1:aim=3 k1:cover=49
+   refused: - | verbs/match: recall=509 move=503 remember=508 faceAt=408 ready=485 use=8 say=5
+z-ai/glm-5.3-flash:think	SHARK (c_2249bd51-8c1) active kit_active=0 n=150 win=32% avgSec=28.4 faults/match=0.00 say/match=0.0 dmg=70/77 us/think=5
+   uses/match: jump=0.78 charge=1.77 smash=2.24 | hits: charge=46 smash=268 | misses: smash:airborne=42 smash:range=13 smash:cover=5
+   refused: - | verbs/match: remember=330 recall=387 ready=595 move=309 face=387 moveTo=54 use=5
+z-ai/glm-5.3-flash:think	GLASS JELLYFISH (c_2653c932-fff) retired kit_active=1 n=23 win=0% avgSec=27.5 faults/match=0.00 say/match=1.0 dmg=0/189 us/think=1066
+   uses/match: k3=1.00 | hits:  | misses: k3:aim=22 k3:cover=1
+   refused: - | verbs/match: rand=321 say=1 cooldown=373 move=373 faceAt=367 ready=118
+z-ai/glm-5.3-flash:think	ARMOR CRAB (c_423a100a-a20) retired kit_active=1 n=150 win=0% avgSec=24.9 faults/match=0.00 say/match=0.0 dmg=0/204 us/think=1283
+   uses/match:  | hits:  | misses: 
+   refused: - | verbs/match: recall=1000 remember=355 move=333 ready=667 faceAt=29
+z-ai/glm-5.3-flash:think	ASH MOTH (c_1632796b-2fd) retired kit_active=1 n=28 win=0% avgSec=25.2 faults/match=0.00 say/match=66.2 dmg=0/201 us/think=1152
+   uses/match: k3=1.00 | hits:  | misses: 
+   refused: - | verbs/match: faceAt=338 ready=338 move=338 say=66
+z-ai/glm-5.3:think	OSKTUS-86 (c_4170a163-701) active kit_active=0 n=150 win=39% avgSec=32.3 faults/match=0.00 say/match=0.0 dmg=91/89 us/think=4
+   uses/match: laser=5.08 blink=0.88 jump=0.50 | hits: laser=517 | misses: laser:cover=122 laser:aim=5
+   refused: laser:silenced=15 | verbs/match: faceAt=440 ready=382 moveTo=342 move=102 use=7 rand=11 face=5
+рукописный эталон	PRISM (c_4a015fb3-c2e) active kit_active=1 n=150 win=0% avgSec=36.8 faults/match=0.00 say/match=0.0 dmg=0/113 us/think=9
+   uses/match:  | hits:  | misses: 
+   refused: - | verbs/match: faceAt=513 moveTo=513
+рукописный эталон	FIRING (c_3d616571-08f) retired kit_active=1 n=150 win=0% avgSec=38.4 faults/match=0.00 say/match=3.7 dmg=0/105 us/think=169
+   uses/match: k1=3.67 k2=0.79 | hits:  | misses: k1:cover=264 k1:aim=130 k2:aim=54
+   refused: - | verbs/match: faceAt=537 ready=1073 moveTo=533 say=4 use=4
+рукописный эталон	CRUSHER (c_a696c00e-b5a) active kit_active=1 n=150 win=0% avgSec=35.9 faults/match=0.00 say/match=0.0 dmg=0/122 us/think=4
+   uses/match:  | hits:  | misses: 
+   refused: - | verbs/match: faceAt=500 moveTo=500
+рукописный эталон	ROCKFALL (c_4c466a69-0c8) retired kit_active=1 n=150 win=0% avgSec=26.5 faults/match=0.00 say/match=2.5 dmg=0/206 us/think=4
+   uses/match: k1=2.53 k2=0.12 | hits:  | misses: k1:cover=114 k1:aim=41 k2:aim=13
+   refused: - | verbs/match: faceAt=359 ready=717 moveTo=356 say=3 use=3

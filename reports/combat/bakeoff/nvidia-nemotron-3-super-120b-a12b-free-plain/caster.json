@@ -1,0 +1,137 @@
+{
+  "model": "nvidia/nemotron-3-super-120b-a12b:free:plain",
+  "modelId": "nvidia/nemotron-3-super-120b-a12b:free",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "NVIDIA: Nemotron 3 Super (free)",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      {
+        "delivery": "lob",
+        "effects": [
+          "damage",
+          "blind"
+        ],
+        "element": "radiation"
+      },
+      {
+        "delivery": "zone",
+        "effects": [
+          "burn",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 156,
+      "maxSpeed": 6.36,
+      "accel": 24,
+      "turnRate": 8.5,
+      "radius": 1.44,
+      "jumpHeight": 1.28
+    }
+  },
+  "generatedAt": "2026-09-06T23:53:02.797Z",
+  "admitted": false,
+  "stage": "probe",
+  "problems": [
+    {
+      "code": "never_hits",
+      "message": "мозг применил умения 4 раз и ни разу не попал за оба пробных боя"
+    }
+  ],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 13.53,
+      "faults": 0,
+      "thinks": 203,
+      "orders": 402,
+      "uses": 1,
+      "hits": 0,
+      "damageDealt": 0,
+      "fuelSpent": 203,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 14,
+      "faults": 0,
+      "thinks": 210,
+      "orders": 415,
+      "uses": 1,
+      "hits": 0,
+      "damageDealt": 0,
+      "fuelSpent": 210,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 13.93,
+      "faults": 0,
+      "thinks": 209,
+      "orders": 414,
+      "uses": 1,
+      "hits": 0,
+      "damageDealt": 0,
+      "fuelSpent": 209,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 14.07,
+      "faults": 0,
+      "thinks": 211,
+      "orders": 418,
+      "uses": 1,
+      "hits": 0,
+      "damageDealt": 0,
+      "fuelSpent": 211,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": null,
+  "elapsedMs": 3632,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 3632,
+      "chars": 1142
+    }
+  ],
+  "usage": {
+    "in": 8885,
+    "out": 393,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": null,
+  "provider": "Nvidia",
+  "sourceChars": 1142,
+  "promptHash": "c10afa154e2741ca1f82e685e1b176b8149dbeb43e8293e0c8b570cbd93a298f",
+  "promptChars": 34956,
+  "readmittedAt": "2026-09-07T00:22:59.180Z"
+}

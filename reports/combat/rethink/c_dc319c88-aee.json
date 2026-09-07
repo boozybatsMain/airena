@@ -1,0 +1,187 @@
+{
+  "id": "c_dc319c88-aee",
+  "name": "GLASS WASP",
+  "rating": 1160,
+  "fights": 8032,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2617,
+    "tacticsCard": "This fighter circles at about twelve units, strafing sideways and flipping its orbit direction every three seconds, closing in or backing off to hold that range. It fires a beam if the enemy is in visible range, otherwise leads its projectile shots ahead of the target's movement, and it actively sidesteps incoming shots by pushing perpendicular to their flight path. When it loses sight of the enemy it walks straight at their last known position, which is a risky habit — it charges in blind.",
+    "sourceSha": "ade47785de3d80e2a00a41f017d9cfc92fe0928090f7cec7e5bac05cc024ede8",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_dc319c88-aee.before.ade47785.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 4710,
+    "tacticsCard": "This fighter tries to sit in a comfortable 8–14 range band, kiting away if the enemy closes in and stepping forward if they drift out, with a lazy sideways sway when the range is already fine; it snaps a sidestep the instant a projectile or telegraphed aimed skill is about to hit it. It answers mainly with its longest-range bolt (k1) using predictive leading, falling back to k2 and then an unconditional k3 the moment those are off cooldown, so it never actually holds k3 for a good opportunity — it just dumps it as soon as available.",
+    "rating": 1160,
+    "fights": 8078,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "frost"
+    }
+  ],
+  "kitCost": 37,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 22.63,
+      "faults": 0,
+      "thinks": 340,
+      "orders": 599,
+      "uses": 23,
+      "hits": 11,
+      "damageDealt": 246,
+      "stubDamageDealt": 198,
+      "aliveTicks": 678,
+      "idleInReachTicks": 95,
+      "stillTicks": 96,
+      "fuelSpent": 1175,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 36.37,
+      "faults": 0,
+      "thinks": 545,
+      "orders": 954,
+      "uses": 34,
+      "hits": 7,
+      "damageDealt": 150,
+      "stubDamageDealt": 166.8,
+      "aliveTicks": 1090,
+      "idleInReachTicks": 347,
+      "stillTicks": 2,
+      "fuelSpent": 1540,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 33.17,
+      "faults": 0,
+      "thinks": 497,
+      "orders": 835,
+      "uses": 32,
+      "hits": 10,
+      "damageDealt": 222,
+      "stubDamageDealt": 126,
+      "aliveTicks": 994,
+      "idleInReachTicks": 249,
+      "stillTicks": 3,
+      "fuelSpent": 1428,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 22.97,
+      "faults": 0,
+      "thinks": 344,
+      "orders": 646,
+      "uses": 24,
+      "hits": 10,
+      "damageDealt": 229.20000000000002,
+      "stubDamageDealt": 249.60000000000002,
+      "aliveTicks": 688,
+      "idleInReachTicks": 44,
+      "stillTicks": 94,
+      "fuelSpent": 1330,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 97141,
+  "forgeMs": 89818,
+  "admitMs": 313,
+  "cardMs": 7004,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 89817,
+      "chars": 4710
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 7985,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.147358,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 4710,
+  "promptHash": "5894200d699b3b9bbc731cfaaadcf649ac0068096e7704bce8db10a8834cb937",
+  "generatedAt": "2026-09-07T11:00:45.565Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:08:44.377Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:05:00.398Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "662863bc2585639d527bd5d72eefde51f48b14c9e1ed738791ec6da8332d1773",
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 1.144,
+    "idleInReach": 0.213,
+    "still": 0.057,
+    "casts": 28.25
+  },
+  "card": "This fighter tries to sit in a comfortable 8–14 range band, kiting away if the enemy closes in and stepping forward if they drift out, with a lazy sideways sway when the range is already fine; it snaps a sidestep the instant a projectile or telegraphed aimed skill is about to hit it. It answers mainly with its longest-range bolt (k1) using predictive leading, falling back to k2 and then an unconditional k3 the moment those are off cooldown, so it never actually holds k3 for a good opportunity — it just dumps it as soon as available."
+}

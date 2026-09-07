@@ -1,0 +1,185 @@
+{
+  "id": "c_e8a4582b-3d4",
+  "name": "DRAGONFLY",
+  "rating": 1172,
+  "fights": 12349,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 3188,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to sit around twelve units away, backing off if it gets closer than nine and closing in past fourteen, while constantly strafing and flipping strafe direction every 1.6 seconds. It watches for enemy projectiles heading its way and sidesteps perpendicular to them, and will burn a blink to escape only if it's already below 85 percent health — which is backwards, since a healthy fighter blinking early would avoid the damage entirely instead of waiting to be hurt first.",
+    "sourceSha": "ee7252f7facef382f190f352a401eaa00b3e48acabbb986766268b8d25909035",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_e8a4582b-3d4.before.ee7252f7.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2693,
+    "tacticsCard": "This fighter tries to orbit the enemy at a fixed range of about 15.5, strafing side to side and randomly reversing direction every couple of seconds so its movement is hard to predict. Its main answer to everything is offense first: it fires its primary ranged attack (with lead-aiming) at any range up to 25 as long as it's off cooldown, and only falls back to a secondary projectile if that's unavailable — it never actually holds ground and waits, it just keeps shooting whenever possible.",
+    "rating": 1244,
+    "fights": 12405,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 15.3,
+      "faults": 0,
+      "thinks": 230,
+      "orders": 482,
+      "uses": 14,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 168,
+      "aliveTicks": 458,
+      "idleInReachTicks": 50,
+      "stillTicks": 2,
+      "fuelSpent": 230,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 20.47,
+      "faults": 0,
+      "thinks": 307,
+      "orders": 636,
+      "uses": 17,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 192,
+      "aliveTicks": 613,
+      "idleInReachTicks": 136,
+      "stillTicks": 2,
+      "fuelSpent": 307,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 16.53,
+      "faults": 0,
+      "thinks": 248,
+      "orders": 518,
+      "uses": 12,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 192,
+      "aliveTicks": 495,
+      "idleInReachTicks": 80,
+      "stillTicks": 6,
+      "fuelSpent": 248,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 18.2,
+      "faults": 0,
+      "thinks": 273,
+      "orders": 568,
+      "uses": 17,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 168,
+      "aliveTicks": 545,
+      "idleInReachTicks": 46,
+      "stillTicks": 9,
+      "fuelSpent": 273,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 110211,
+  "forgeMs": 103425,
+  "admitMs": 395,
+  "cardMs": 6386,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 103425,
+      "chars": 2693
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9502,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.1090192,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2693,
+  "promptHash": "97f16d7dbdaf0fe402e0a7e80c0bfbd202a75ec0ad875bbc6ff4f9d51899138e",
+  "generatedAt": "2026-09-07T10:58:55.353Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:09:33.300Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:06:06.984Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "3617b6eb7154ff6c528eb8e71c970fcfcdfbcdf705a9a2c0d63c375b1e76efb4",
+  "behaviour": {
+    "wins": 4,
+    "damageShare": 1.333,
+    "idleInReach": 0.148,
+    "still": 0.009,
+    "casts": 15
+  },
+  "card": "This fighter tries to orbit the enemy at a fixed range of about 15.5, strafing side to side and randomly reversing direction every couple of seconds so its movement is hard to predict. Its main answer to everything is offense first: it fires its primary ranged attack (with lead-aiming) at any range up to 25 as long as it's off cooldown, and only falls back to a secondary projectile if that's unavailable — it never actually holds ground and waits, it just keeps shooting whenever possible."
+}

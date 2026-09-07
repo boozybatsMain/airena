@@ -859,3 +859,34 @@
   .history .outcome { font-size: 19px; }
   .history .detail-delta .dv { font-size: 26px; }
 }
+
+/*
+ * ── a phone: the list stops before the tab bar, not behind it ─────────────
+ *
+ * The tab bar (`ui/chrome.css` `#chrome .rail` at ≤900) floats over `#screen`
+ * at a fixed height and is not part of this scroller's own flow, so nothing
+ * before this rule pushed against it except at the TRUE bottom of the career
+ * — `.doc.history`'s own end-of-list mask and margin, above. At rest, on a
+ * 390×844 capture, the row sitting where the list met the bar's own 50 px
+ * band was cut across its own middle: a fight's mind and clock behind
+ * frosted glass nobody had scrolled to yet. Shortening the header only moves
+ * that row to a different one — the career is dozens of fights long at every
+ * height this screen supports, so some row always sits at the bottom edge.
+ * The scroller is given the bar's floor instead: `.doc.history` is the flex
+ * child that actually scrolls (`flex: 1 1 auto` on the screen's own column,
+ * top of this file), so shortening the SCREEN by the bar's height shortens
+ * the box `.doc.history` scrolls inside of the same amount — a row is
+ * clipped by the ordinary edge of the list, never painted on and hidden
+ * behind chrome it has not reached yet.
+ *
+ * The margin is the bar's 50px plus half a row: `.hrow`'s own name and mind
+ * both truncate rather than wrap, so a row here holds a steady height, and
+ * `tools/checklayout.mjs` already treats a row less than half inside its own
+ * scroller as not shown — so anything the probe still counts has cleared the
+ * bar underneath it.
+ */
+@media (max-width: 900px) {
+  #screen > .screen[data-screen="history"] {
+    bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+}

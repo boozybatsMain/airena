@@ -1,0 +1,7017 @@
+{
+ "meta": {
+  "seed": 7,
+  "n": 80,
+  "kits": 80,
+  "games": 10,
+  "pilots": [
+   "stub",
+   "rusher",
+   "kiter",
+   "controller"
+  ],
+  "cooldown": 3,
+  "real": false,
+  "ridge": 1,
+  "boot": 200,
+  "minEach": 4,
+  "matches": 800,
+  "poolSize": 8,
+  "runtimeSec": 30.699,
+  "leagueSec": 30.219,
+  "argv": [
+   "--n=80",
+   "--games=10",
+   "--pilots=stub,rusher,kiter,controller",
+   "--cooldown=3",
+   "--seed=7",
+   "--out=/Users/boozybats/Public/Repos/work/Airena/reports/combat/atombalance-dryrun.md"
+  ],
+  "generated": "2026-09-06T23:57:59.419Z"
+ },
+ "health": {
+  "matches": 800,
+  "errors": 0,
+  "draws": 14,
+  "blueWins": 395,
+  "orangeWins": 391,
+  "seconds": 30412.16999999999,
+  "timed": 800,
+  "reasons": {
+   "kill": 786,
+   "double-ko": 14
+  },
+  "faults": 0,
+  "idleSides": 12,
+  "pilotMissing": {},
+  "pilotBroken": {},
+  "usesPerSide": 42356,
+  "hitsPerSide": 8648,
+  "errorMessages": {},
+  "pilotsUsed": {
+   "controller": 404,
+   "kiter": 488,
+   "rusher": 336,
+   "stub": 372
+  }
+ },
+ "coverage": {
+  "delivery": {
+   "beam": 22,
+   "cone": 28,
+   "bolt": 27,
+   "lob": 27,
+   "zone": 25,
+   "dash": 26,
+   "blink": 22,
+   "self": 15,
+   "jump": 21
+  },
+  "effect": {
+   "damage": 42,
+   "burn": 47,
+   "knock": 8,
+   "pull": 11,
+   "stun": 17,
+   "root": 10,
+   "shield": 22,
+   "heal": 34,
+   "cleanse": 35,
+   "blind": 11,
+   "silence": 11,
+   "wall": 34,
+   "boost": 22,
+   "weaken": 14
+  }
+ },
+ "uncovered": [],
+ "fit": {
+  "r2": 0.9189132854732626,
+  "cvR2": -0.06911745191068186,
+  "rows": 80,
+  "features": 109,
+  "intercept": -0.1599206173747309,
+  "seIntercept": 0.1430603118042669,
+  "costOnly": {
+   "slope": 0.008779160767055127,
+   "r2": 0.04366934776958953
+  }
+ },
+ "features": [
+  "d:beam",
+  "d:cone",
+  "d:bolt",
+  "d:lob",
+  "d:zone",
+  "d:dash",
+  "d:blink",
+  "d:self",
+  "d:jump",
+  "e:damage",
+  "e:burn",
+  "e:knock",
+  "e:pull",
+  "e:stun",
+  "e:root",
+  "e:shield",
+  "e:heal",
+  "e:cleanse",
+  "e:blind",
+  "e:silence",
+  "e:wall",
+  "e:boost",
+  "e:weaken",
+  "c:speed",
+  "c:turn",
+  "c:damage",
+  "c:armor",
+  "c:cooldown",
+  "c:range",
+  "c:vision",
+  "n2",
+  "n3",
+  "cost",
+  "p:beam×boost",
+  "p:beam×burn",
+  "p:beam×cleanse",
+  "p:beam×damage",
+  "p:beam×heal",
+  "p:beam×knock",
+  "p:beam×pull",
+  "p:beam×root",
+  "p:beam×shield",
+  "p:beam×silence",
+  "p:beam×stun",
+  "p:beam×wall",
+  "p:blink×boost",
+  "p:blink×cleanse",
+  "p:blink×heal",
+  "p:blink×shield",
+  "p:blink×wall",
+  "p:bolt×blind",
+  "p:bolt×burn",
+  "p:bolt×cleanse",
+  "p:bolt×damage",
+  "p:bolt×knock",
+  "p:bolt×pull",
+  "p:bolt×root",
+  "p:bolt×silence",
+  "p:bolt×stun",
+  "p:bolt×wall",
+  "p:bolt×weaken",
+  "p:cone×blind",
+  "p:cone×burn",
+  "p:cone×cleanse",
+  "p:cone×damage",
+  "p:cone×knock",
+  "p:cone×pull",
+  "p:cone×root",
+  "p:cone×shield",
+  "p:cone×stun",
+  "p:cone×wall",
+  "p:dash×blind",
+  "p:dash×boost",
+  "p:dash×burn",
+  "p:dash×damage",
+  "p:dash×heal",
+  "p:dash×shield",
+  "p:dash×silence",
+  "p:dash×stun",
+  "p:dash×wall",
+  "p:dash×weaken",
+  "p:jump×boost",
+  "p:jump×cleanse",
+  "p:jump×heal",
+  "p:jump×shield",
+  "p:jump×wall",
+  "p:lob×blind",
+  "p:lob×boost",
+  "p:lob×burn",
+  "p:lob×cleanse",
+  "p:lob×damage",
+  "p:lob×heal",
+  "p:lob×shield",
+  "p:lob×stun",
+  "p:lob×wall",
+  "p:lob×weaken",
+  "p:self×boost",
+  "p:self×cleanse",
+  "p:self×heal",
+  "p:self×shield",
+  "p:self×wall",
+  "p:zone×burn",
+  "p:zone×cleanse",
+  "p:zone×damage",
+  "p:zone×pull",
+  "p:zone×root",
+  "p:zone×shield",
+  "p:zone×silence",
+  "p:zone×wall"
+ ],
+ "coefficients": [
+  {
+   "name": "d:beam",
+   "coef": 0.0461930452841126,
+   "se": 0.026815442676363828,
+   "t": 1.722628480969622
+  },
+  {
+   "name": "d:cone",
+   "coef": -0.05243449940281256,
+   "se": 0.025446668306106236,
+   "t": -2.0605644232895615
+  },
+  {
+   "name": "d:bolt",
+   "coef": -0.06324933707685174,
+   "se": 0.02870946560611305,
+   "t": -2.2030830508870283
+  },
+  {
+   "name": "d:lob",
+   "coef": -0.08485543298202575,
+   "se": 0.02829301692117055,
+   "t": -2.9991652434396903
+  },
+  {
+   "name": "d:zone",
+   "coef": 0.07215741613823776,
+   "se": 0.031159394946051255,
+   "t": 2.315751517741909
+  },
+  {
+   "name": "d:dash",
+   "coef": -0.08790495725036604,
+   "se": 0.0329876640288766,
+   "t": -2.664782725245903
+  },
+  {
+   "name": "d:blink",
+   "coef": 0.0685718433602226,
+   "se": 0.03644245622824669,
+   "t": 1.8816471351640751
+  },
+  {
+   "name": "d:self",
+   "coef": 0.08768529714205534,
+   "se": 0.03132048712415656,
+   "t": 2.799614731228949
+  },
+  {
+   "name": "d:jump",
+   "coef": 0.013836624787431329,
+   "se": 0.0255471903414324,
+   "t": 0.5416104316172534
+  },
+  {
+   "name": "e:damage",
+   "coef": 0.1213485305548966,
+   "se": 0.03229106215605376,
+   "t": 3.7579603287266536
+  },
+  {
+   "name": "e:burn",
+   "coef": 0.06788404531187225,
+   "se": 0.03358759660590464,
+   "t": 2.0211045794190095
+  },
+  {
+   "name": "e:knock",
+   "coef": 0.04236901617405305,
+   "se": 0.03583581245799717,
+   "t": 1.1823093511194533
+  },
+  {
+   "name": "e:pull",
+   "coef": -0.019502328285418376,
+   "se": 0.043031957985697956,
+   "t": -0.45320569173032155
+  },
+  {
+   "name": "e:stun",
+   "coef": -0.027203128652888837,
+   "se": 0.02963096658522094,
+   "t": -0.9180641669130349
+  },
+  {
+   "name": "e:root",
+   "coef": -0.08525585100175313,
+   "se": 0.03973400808919453,
+   "t": -2.145664510118677
+  },
+  {
+   "name": "e:shield",
+   "coef": 0.05069666460956035,
+   "se": 0.023077903516501286,
+   "t": 2.1967621354041516
+  },
+  {
+   "name": "e:heal",
+   "coef": 0.11125947157111833,
+   "se": 0.027452189812343233,
+   "t": 4.052845049216916
+  },
+  {
+   "name": "e:cleanse",
+   "coef": -0.006227289089772784,
+   "se": 0.02925600318789811,
+   "t": -0.21285508651943041
+  },
+  {
+   "name": "e:blind",
+   "coef": -0.028757614459884433,
+   "se": 0.028966815405102705,
+   "t": -0.9927779100915105
+  },
+  {
+   "name": "e:silence",
+   "coef": -0.0017689322414078678,
+   "se": 0.038763135978380235,
+   "t": -0.04563439455451883
+  },
+  {
+   "name": "e:wall",
+   "coef": -0.051335513547688144,
+   "se": 0.03098483427827389,
+   "t": -1.6567948399092731
+  },
+  {
+   "name": "e:boost",
+   "coef": -0.10264215234135547,
+   "se": 0.03062679352490081,
+   "t": -3.351384213887859
+  },
+  {
+   "name": "e:weaken",
+   "coef": -0.10508449136422435,
+   "se": 0.03844272526134799,
+   "t": -2.7335338649853975
+  },
+  {
+   "name": "c:speed",
+   "coef": 0.02470560514700293,
+   "se": 0.039821252085621914,
+   "t": 0.6204125649761594
+  },
+  {
+   "name": "c:turn",
+   "coef": -0.05000944723521063,
+   "se": 0.05072101478392468,
+   "t": -0.9859709520453134
+  },
+  {
+   "name": "c:damage",
+   "coef": -0.06720122324316559,
+   "se": 0.035693829613943975,
+   "t": -1.8827126136365342
+  },
+  {
+   "name": "c:armor",
+   "coef": -0.11155510031030877,
+   "se": 0.04823741708694569,
+   "t": -2.312625904269209
+  },
+  {
+   "name": "c:cooldown",
+   "coef": 0.0321367604033477,
+   "se": 0.04187389790459651,
+   "t": 0.7674652232416138
+  },
+  {
+   "name": "c:range",
+   "coef": 0.05005407032955139,
+   "se": 0.0349710931637964,
+   "t": 1.431298418242457
+  },
+  {
+   "name": "c:vision",
+   "coef": -0.034598872321756784,
+   "se": 0.032925693895450456,
+   "t": -1.0508168007519962
+  },
+  {
+   "name": "n2",
+   "coef": -0.03816431372734802,
+   "se": 0.027694343483746716,
+   "t": -1.3780544662395022
+  },
+  {
+   "name": "n3",
+   "coef": 0.001972370482230556,
+   "se": 0.013785977147528118,
+   "t": 0.14307077845288682
+  },
+  {
+   "name": "cost",
+   "coef": 0.015997047571954106,
+   "se": 0.0040710542200659925,
+   "t": 3.9294607016299556
+  },
+  {
+   "name": "p:beam×boost",
+   "coef": 0.007718136683668404,
+   "se": 0.03362038603865945,
+   "t": 0.22956716424354742
+  },
+  {
+   "name": "p:beam×burn",
+   "coef": -0.029428822532801477,
+   "se": 0.04901420849912219,
+   "t": -0.6004141132530687
+  },
+  {
+   "name": "p:beam×cleanse",
+   "coef": -0.018669918797719606,
+   "se": 0.025733543901108626,
+   "t": -0.7255090425736227
+  },
+  {
+   "name": "p:beam×damage",
+   "coef": -0.005530974237046366,
+   "se": 0.04234326514557207,
+   "t": -0.13062228947227875
+  },
+  {
+   "name": "p:beam×heal",
+   "coef": -0.08109632664549195,
+   "se": 0.062351994697927744,
+   "t": -1.3006212076834676
+  },
+  {
+   "name": "p:beam×knock",
+   "coef": -0.05421048396582625,
+   "se": 0.027593366597339304,
+   "t": -1.964620147910966
+  },
+  {
+   "name": "p:beam×pull",
+   "coef": 0.011107058908763078,
+   "se": 0.052851773231808986,
+   "t": 0.21015489603437304
+  },
+  {
+   "name": "p:beam×root",
+   "coef": 0.028055972791826582,
+   "se": 0.035694268736710714,
+   "t": 0.7860077761719678
+  },
+  {
+   "name": "p:beam×shield",
+   "coef": 0.046989860029157345,
+   "se": 0.02244652260953854,
+   "t": 2.093413792708775
+  },
+  {
+   "name": "p:beam×silence",
+   "coef": -0.012768595968440573,
+   "se": 0.04814015624292542,
+   "t": -0.2652379419794056
+  },
+  {
+   "name": "p:beam×stun",
+   "coef": 0.03428370190205988,
+   "se": 0.03560218112741949,
+   "t": 0.9629663356680087
+  },
+  {
+   "name": "p:beam×wall",
+   "coef": -0.08533914360033996,
+   "se": 0.050322773933257035,
+   "t": -1.6958354424882272
+  },
+  {
+   "name": "p:blink×boost",
+   "coef": 0.07676378353733858,
+   "se": 0.0404980070309315,
+   "t": 1.8954953382942539
+  },
+  {
+   "name": "p:blink×cleanse",
+   "coef": 0.04570224135936257,
+   "se": 0.0346141029260196,
+   "t": 1.3203358601273458
+  },
+  {
+   "name": "p:blink×heal",
+   "coef": 0.046493848957233144,
+   "se": 0.03391975810445734,
+   "t": 1.3707010767604344
+  },
+  {
+   "name": "p:blink×shield",
+   "coef": 0.042184463266166275,
+   "se": 0.03880083592164243,
+   "t": 1.0872050115455507
+  },
+  {
+   "name": "p:blink×wall",
+   "coef": -0.009524689192420045,
+   "se": 0.04165182990035699,
+   "t": -0.22867396739124804
+  },
+  {
+   "name": "p:bolt×blind",
+   "coef": 0.05836032883604515,
+   "se": 0.031051937147283732,
+   "t": 1.8794424502160318
+  },
+  {
+   "name": "p:bolt×burn",
+   "coef": 0.07372163462987759,
+   "se": 0.037907499600738075,
+   "t": 1.9447770337361474
+  },
+  {
+   "name": "p:bolt×cleanse",
+   "coef": 0.003847508469080747,
+   "se": 0.031451067785563336,
+   "t": 0.12233315877583112
+  },
+  {
+   "name": "p:bolt×damage",
+   "coef": 0.11731863902083761,
+   "se": 0.05066100640970488,
+   "t": 2.315758160666217
+  },
+  {
+   "name": "p:bolt×knock",
+   "coef": 0.053759100004281524,
+   "se": 0.02854001250562253,
+   "t": 1.8836396793340824
+  },
+  {
+   "name": "p:bolt×pull",
+   "coef": -0.11387530241556097,
+   "se": 0.05878267996655723,
+   "t": -1.9372254289928115
+  },
+  {
+   "name": "p:bolt×root",
+   "coef": -0.14603565498361346,
+   "se": 0.05296374388852794,
+   "t": -2.757275907288063
+  },
+  {
+   "name": "p:bolt×silence",
+   "coef": 0.004114351121082822,
+   "se": 0.03696454811621613,
+   "t": 0.11130532715150063
+  },
+  {
+   "name": "p:bolt×stun",
+   "coef": -0.03446185931034849,
+   "se": 0.041074910856075474,
+   "t": -0.8390002215975878
+  },
+  {
+   "name": "p:bolt×wall",
+   "coef": -0.01846081787749496,
+   "se": 0.028762226715740063,
+   "t": -0.6418424435613088
+  },
+  {
+   "name": "p:bolt×weaken",
+   "coef": 0.006854176016752375,
+   "se": 0.03387827701578871,
+   "t": 0.2023177274794122
+  },
+  {
+   "name": "p:cone×blind",
+   "coef": -0.021942996936857626,
+   "se": 0.023039998463199134,
+   "t": -0.952387083354467
+  },
+  {
+   "name": "p:cone×burn",
+   "coef": -0.07216825628748688,
+   "se": 0.032099202574643666,
+   "t": -2.2482881348739556
+  },
+  {
+   "name": "p:cone×cleanse",
+   "coef": -0.11445415157342384,
+   "se": 0.029968226150005984,
+   "t": -3.819183391119764
+  },
+  {
+   "name": "p:cone×damage",
+   "coef": -0.010213836095981938,
+   "se": 0.038974202721497195,
+   "t": -0.26206658206630207
+  },
+  {
+   "name": "p:cone×knock",
+   "coef": 0.02949078356819475,
+   "se": 0.02756906370655904,
+   "t": 1.0697056629158759
+  },
+  {
+   "name": "p:cone×pull",
+   "coef": 0.1316200532367094,
+   "se": 0.03693336654937345,
+   "t": 3.5637166479464146
+  },
+  {
+   "name": "p:cone×root",
+   "coef": -0.07050638689321789,
+   "se": 0.028467709751853577,
+   "t": -2.476714407579876
+  },
+  {
+   "name": "p:cone×shield",
+   "coef": -0.0733353524932016,
+   "se": 0.03797439998230276,
+   "t": -1.9311787026886043
+  },
+  {
+   "name": "p:cone×stun",
+   "coef": 0.027825617467290606,
+   "se": 0.03476830608159122,
+   "t": 0.8003155920795186
+  },
+  {
+   "name": "p:cone×wall",
+   "coef": -0.05595397034243744,
+   "se": 0.03004607462803373,
+   "t": -1.8622722280743786
+  },
+  {
+   "name": "p:dash×blind",
+   "coef": -0.08287865324461768,
+   "se": 0.030310734962417672,
+   "t": -2.734300350927784
+  },
+  {
+   "name": "p:dash×boost",
+   "coef": 0.037710604520316805,
+   "se": 0.032887867334615926,
+   "t": 1.1466418341035065
+  },
+  {
+   "name": "p:dash×burn",
+   "coef": 0.02546310706323076,
+   "se": 0.037733782110959936,
+   "t": 0.6748092992203634
+  },
+  {
+   "name": "p:dash×damage",
+   "coef": -0.032279433997816936,
+   "se": 0.045611695175956236,
+   "t": -0.7077008182505071
+  },
+  {
+   "name": "p:dash×heal",
+   "coef": -0.0531439266944443,
+   "se": 0.02486603340181891,
+   "t": -2.1372096560666933
+  },
+  {
+   "name": "p:dash×shield",
+   "coef": 0.0072353282077592986,
+   "se": 0.021077180252546738,
+   "t": 0.34327780666415564
+  },
+  {
+   "name": "p:dash×silence",
+   "coef": -0.010659014902751842,
+   "se": 0.026594308457542303,
+   "t": -0.40080060437626763
+  },
+  {
+   "name": "p:dash×stun",
+   "coef": 0.022071295555131994,
+   "se": 0.03264088231933993,
+   "t": 0.6761856293956432
+  },
+  {
+   "name": "p:dash×wall",
+   "coef": 0.11312936490075957,
+   "se": 0.04996689527679849,
+   "t": 2.2640863370450353
+  },
+  {
+   "name": "p:dash×weaken",
+   "coef": -0.12080064138157831,
+   "se": 0.06698833568353706,
+   "t": -1.8033085931893973
+  },
+  {
+   "name": "p:jump×boost",
+   "coef": 0.051233136973630175,
+   "se": 0.033928964482209036,
+   "t": 1.5100118071830557
+  },
+  {
+   "name": "p:jump×cleanse",
+   "coef": 0.014764662629117856,
+   "se": 0.04546206591074834,
+   "t": 0.3247688448233746
+  },
+  {
+   "name": "p:jump×heal",
+   "coef": 0.05230498663177071,
+   "se": 0.03124705067809808,
+   "t": 1.6739175537111641
+  },
+  {
+   "name": "p:jump×shield",
+   "coef": 0.003181532720277387,
+   "se": 0.033606219281129786,
+   "t": 0.09467095044707538
+  },
+  {
+   "name": "p:jump×wall",
+   "coef": 0.002915227975115019,
+   "se": 0.03626317491721722,
+   "t": 0.08039086433468658
+  },
+  {
+   "name": "p:lob×blind",
+   "coef": 0.0938839696807512,
+   "se": 0.03552545641081221,
+   "t": 2.6427238145820846
+  },
+  {
+   "name": "p:lob×boost",
+   "coef": -0.10733356952613315,
+   "se": 0.030600776799027944,
+   "t": -3.5075439499804686
+  },
+  {
+   "name": "p:lob×burn",
+   "coef": -0.06538786974226313,
+   "se": 0.037553680446320736,
+   "t": -1.741184058796277
+  },
+  {
+   "name": "p:lob×cleanse",
+   "coef": 0.06013159910374801,
+   "se": 0.034521941000747354,
+   "t": 1.741837143584894
+  },
+  {
+   "name": "p:lob×damage",
+   "coef": 0.05068056859046265,
+   "se": 0.03687799201954704,
+   "t": 1.3742767926084372
+  },
+  {
+   "name": "p:lob×heal",
+   "coef": -0.014340249109110045,
+   "se": 0.04188252766212668,
+   "t": -0.3423921599191725
+  },
+  {
+   "name": "p:lob×shield",
+   "coef": 0.06909169216296125,
+   "se": 0.03154795862009227,
+   "t": 2.1900527065785527
+  },
+  {
+   "name": "p:lob×stun",
+   "coef": 0.014867281996600036,
+   "se": 0.0382614327413788,
+   "t": 0.38857096902493765
+  },
+  {
+   "name": "p:lob×wall",
+   "coef": 0.07194640778138657,
+   "se": 0.036875239331703925,
+   "t": 1.95107636140899
+  },
+  {
+   "name": "p:lob×weaken",
+   "coef": 0.01690349368845258,
+   "se": 0.031080600066856246,
+   "t": 0.5438599528996269
+  },
+  {
+   "name": "p:self×boost",
+   "coef": -0.07008437467462042,
+   "se": 0.041166030955581925,
+   "t": -1.7024807358824885
+  },
+  {
+   "name": "p:self×cleanse",
+   "coef": 0.03671705212000177,
+   "se": 0.03257243876416217,
+   "t": 1.1272429548750802
+  },
+  {
+   "name": "p:self×heal",
+   "coef": 0.10087912013274201,
+   "se": 0.03191053233756116,
+   "t": 3.1613111014760324
+  },
+  {
+   "name": "p:self×shield",
+   "coef": 0.0026217073100888817,
+   "se": 0.036453904204474606,
+   "t": 0.07191842320601356
+  },
+  {
+   "name": "p:self×wall",
+   "coef": -0.004045653906813622,
+   "se": 0.021937302073809357,
+   "t": -0.18441893598409592
+  },
+  {
+   "name": "p:zone×burn",
+   "coef": 0.1356842521813156,
+   "se": 0.032939828808095636,
+   "t": 4.119154746425653
+  },
+  {
+   "name": "p:zone×cleanse",
+   "coef": 0.0406530775268931,
+   "se": 0.030591948445650843,
+   "t": 1.3288816042272265
+  },
+  {
+   "name": "p:zone×damage",
+   "coef": 0.0013735672744369916,
+   "se": 0.03459134278648739,
+   "t": 0.03970841152120743
+  },
+  {
+   "name": "p:zone×pull",
+   "coef": 0.06965151646273196,
+   "se": 0.038434696806106707,
+   "t": 1.812204134563782
+  },
+  {
+   "name": "p:zone×root",
+   "coef": 0.008948236673192552,
+   "se": 0.027821916179613097,
+   "t": 0.3216254630135612
+  },
+  {
+   "name": "p:zone×shield",
+   "coef": -0.04727256659365082,
+   "se": 0.03285463096145585,
+   "t": -1.4388402855326452
+  },
+  {
+   "name": "p:zone×silence",
+   "coef": -0.08050696352119567,
+   "se": 0.04084659248873687,
+   "t": -1.9709591086060565
+  },
+  {
+   "name": "p:zone×wall",
+   "coef": -0.06600223928544527,
+   "se": 0.04832574250667138,
+   "t": -1.3657780690350207
+  }
+ ],
+ "pieces": [
+  {
+   "axis": "effect",
+   "id": "damage",
+   "currentCost": 7,
+   "value": 12.13485305548966,
+   "se": 3.229106215605376,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 1.733550436498523,
+   "kits": 42,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "heal",
+   "currentCost": 6,
+   "value": 11.125947157111833,
+   "se": 2.745218981234323,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 1.8543245261853054,
+   "kits": 34,
+   "pilotNote": null
+  },
+  {
+   "axis": "delivery",
+   "id": "self",
+   "currentCost": 3,
+   "value": 8.768529714205533,
+   "se": 3.132048712415656,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 2.922843238068511,
+   "kits": 15,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "delivery",
+   "id": "zone",
+   "currentCost": 5,
+   "value": 7.215741613823775,
+   "se": 3.1159394946051253,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 1.443148322764755,
+   "kits": 25,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "delivery",
+   "id": "blink",
+   "currentCost": 5,
+   "value": 6.857184336022259,
+   "se": 3.644245622824669,
+   "significant": false,
+   "proposedCost": 10,
+   "perPoint": 1.371436867204452,
+   "kits": 22,
+   "pilotNote": "significant only under rusher"
+  },
+  {
+   "axis": "effect",
+   "id": "burn",
+   "currentCost": 7,
+   "value": 6.788404531187226,
+   "se": 3.358759660590464,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 0.9697720758838894,
+   "kits": 47,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "shield",
+   "currentCost": 4,
+   "value": 5.069666460956035,
+   "se": 2.307790351650129,
+   "significant": true,
+   "proposedCost": 10,
+   "perPoint": 1.2674166152390087,
+   "kits": 22,
+   "pilotNote": "significant only under stub"
+  },
+  {
+   "axis": "channel",
+   "id": "range",
+   "currentCost": 2,
+   "value": 5.005407032955139,
+   "se": 3.4971093163796403,
+   "significant": false,
+   "proposedCost": 10,
+   "perPoint": 2.5027035164775695,
+   "kits": 6,
+   "pilotNote": "significant only under stub"
+  },
+  {
+   "axis": "delivery",
+   "id": "beam",
+   "currentCost": 5,
+   "value": 4.619304528411259,
+   "se": 2.681544267636383,
+   "significant": false,
+   "proposedCost": 9,
+   "perPoint": 0.9238609056822519,
+   "kits": 22,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "effect",
+   "id": "knock",
+   "currentCost": 5,
+   "value": 4.236901617405305,
+   "se": 3.583581245799717,
+   "significant": false,
+   "proposedCost": 8,
+   "perPoint": 0.8473803234810611,
+   "kits": 8,
+   "pilotNote": null
+  },
+  {
+   "axis": "channel",
+   "id": "cooldown",
+   "currentCost": 3,
+   "value": 3.21367604033477,
+   "se": 4.187389790459651,
+   "significant": false,
+   "proposedCost": 6,
+   "perPoint": 1.0712253467782566,
+   "kits": 7,
+   "pilotNote": "significant only under controller"
+  },
+  {
+   "axis": "channel",
+   "id": "speed",
+   "currentCost": 2,
+   "value": 2.470560514700293,
+   "se": 3.9821252085621914,
+   "significant": false,
+   "proposedCost": 5,
+   "perPoint": 1.2352802573501465,
+   "kits": 4,
+   "pilotNote": null
+  },
+  {
+   "axis": "delivery",
+   "id": "jump",
+   "currentCost": 5,
+   "value": 1.3836624787431329,
+   "se": 2.55471903414324,
+   "significant": false,
+   "proposedCost": 3,
+   "perPoint": 0.2767324957486266,
+   "kits": 21,
+   "pilotNote": "significant only under controller"
+  },
+  {
+   "axis": "effect",
+   "id": "silence",
+   "currentCost": 6,
+   "value": -0.1768932241407868,
+   "se": 3.8763135978380237,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.029482204023464464,
+   "kits": 11,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "cleanse",
+   "currentCost": 3,
+   "value": -0.6227289089772784,
+   "se": 2.9256003187898107,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.20757630299242613,
+   "kits": 35,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "pull",
+   "currentCost": 3,
+   "value": -1.9502328285418375,
+   "se": 4.303195798569796,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.6500776095139459,
+   "kits": 11,
+   "pilotNote": "significant only under stub"
+  },
+  {
+   "axis": "effect",
+   "id": "stun",
+   "currentCost": 6,
+   "value": -2.7203128652888835,
+   "se": 2.963096658522094,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.45338547754814723,
+   "kits": 17,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "blind",
+   "currentCost": 5,
+   "value": -2.8757614459884433,
+   "se": 2.8966815405102704,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.5751522891976887,
+   "kits": 11,
+   "pilotNote": null
+  },
+  {
+   "axis": "channel",
+   "id": "vision",
+   "currentCost": 4,
+   "value": -3.4598872321756784,
+   "se": 3.2925693895450454,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -0.8649718080439196,
+   "kits": 4,
+   "pilotNote": "sign flips across pilots (stub -14.4, controller +12.8)"
+  },
+  {
+   "axis": "channel",
+   "id": "turn",
+   "currentCost": 2,
+   "value": -5.000944723521063,
+   "se": 5.072101478392468,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -2.5004723617605316,
+   "kits": 7,
+   "pilotNote": null
+  },
+  {
+   "axis": "effect",
+   "id": "wall",
+   "currentCost": 5,
+   "value": -5.133551354768814,
+   "se": 3.098483427827389,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -1.0267102709537628,
+   "kits": 34,
+   "pilotNote": null
+  },
+  {
+   "axis": "delivery",
+   "id": "cone",
+   "currentCost": 4,
+   "value": -5.2434499402812556,
+   "se": 2.5446668306106237,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -1.3108624850703139,
+   "kits": 28,
+   "pilotNote": null
+  },
+  {
+   "axis": "delivery",
+   "id": "bolt",
+   "currentCost": 4,
+   "value": -6.324933707685173,
+   "se": 2.870946560611305,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -1.5812334269212933,
+   "kits": 27,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "channel",
+   "id": "damage",
+   "currentCost": 3,
+   "value": -6.720122324316559,
+   "se": 3.5693829613943975,
+   "significant": false,
+   "proposedCost": 1,
+   "perPoint": -2.2400407747721864,
+   "kits": 3,
+   "pilotNote": null
+  },
+  {
+   "axis": "delivery",
+   "id": "lob",
+   "currentCost": 4,
+   "value": -8.485543298202575,
+   "se": 2.829301692117055,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -2.121385824550644,
+   "kits": 27,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "effect",
+   "id": "root",
+   "currentCost": 5,
+   "value": -8.525585100175313,
+   "se": 3.973400808919453,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -1.7051170200350625,
+   "kits": 10,
+   "pilotNote": "sign flips across pilots (stub -19.8, rusher -21.5, kiter +8.7)"
+  },
+  {
+   "axis": "delivery",
+   "id": "dash",
+   "currentCost": 4,
+   "value": -8.790495725036603,
+   "se": 3.29876640288766,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -2.197623931259151,
+   "kits": 26,
+   "pilotNote": "significant only under kiter"
+  },
+  {
+   "axis": "effect",
+   "id": "boost",
+   "currentCost": 4,
+   "value": -10.264215234135547,
+   "se": 3.062679352490081,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -2.5660538085338866,
+   "kits": 22,
+   "pilotNote": "significant only under rusher"
+  },
+  {
+   "axis": "effect",
+   "id": "weaken",
+   "currentCost": 4,
+   "value": -10.508449136422435,
+   "se": 3.844272526134799,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -2.6271122841056087,
+   "kits": 14,
+   "pilotNote": "significant only under stub"
+  },
+  {
+   "axis": "channel",
+   "id": "armor",
+   "currentCost": 3,
+   "value": -11.155510031030877,
+   "se": 4.823741708694569,
+   "significant": true,
+   "proposedCost": 1,
+   "perPoint": -3.718503343676959,
+   "kits": 5,
+   "pilotNote": "significant only under rusher"
+  }
+ ],
+ "pricing": {
+  "k": 189.79475470132348,
+  "target": 128,
+  "sum": 128,
+  "min": 1,
+  "max": 10
+ },
+ "pairs": [
+  {
+   "pair": "bolt×root",
+   "kits": 2,
+   "coef": -14.603565498361345,
+   "se": 5.296374388852794,
+   "significant": true
+  },
+  {
+   "pair": "zone×burn",
+   "kits": 8,
+   "coef": 13.56842521813156,
+   "se": 3.2939828808095637,
+   "significant": true
+  },
+  {
+   "pair": "cone×pull",
+   "kits": 3,
+   "coef": 13.16200532367094,
+   "se": 3.693336654937345,
+   "significant": true
+  },
+  {
+   "pair": "dash×weaken",
+   "kits": 3,
+   "coef": -12.08006413815783,
+   "se": 6.698833568353706,
+   "significant": false
+  },
+  {
+   "pair": "bolt×damage",
+   "kits": 6,
+   "coef": 11.731863902083761,
+   "se": 5.066100640970488,
+   "significant": true
+  },
+  {
+   "pair": "cone×cleanse",
+   "kits": 4,
+   "coef": -11.445415157342383,
+   "se": 2.9968226150005983,
+   "significant": true
+  },
+  {
+   "pair": "bolt×pull",
+   "kits": 3,
+   "coef": -11.387530241556098,
+   "se": 5.8782679966557225,
+   "significant": false
+  },
+  {
+   "pair": "dash×wall",
+   "kits": 3,
+   "coef": 11.312936490075957,
+   "se": 4.996689527679849,
+   "significant": true
+  },
+  {
+   "pair": "lob×boost",
+   "kits": 2,
+   "coef": -10.733356952613315,
+   "se": 3.0600776799027942,
+   "significant": true
+  },
+  {
+   "pair": "self×heal",
+   "kits": 6,
+   "coef": 10.0879120132742,
+   "se": 3.191053233756116,
+   "significant": true
+  },
+  {
+   "pair": "lob×blind",
+   "kits": 3,
+   "coef": 9.38839696807512,
+   "se": 3.552545641081221,
+   "significant": true
+  },
+  {
+   "pair": "beam×wall",
+   "kits": 2,
+   "coef": -8.533914360033997,
+   "se": 5.032277393325703,
+   "significant": false
+  },
+  {
+   "pair": "dash×blind",
+   "kits": 2,
+   "coef": -8.287865324461768,
+   "se": 3.0310734962417674,
+   "significant": true
+  },
+  {
+   "pair": "beam×heal",
+   "kits": 6,
+   "coef": -8.109632664549196,
+   "se": 6.235199469792774,
+   "significant": false
+  },
+  {
+   "pair": "zone×silence",
+   "kits": 3,
+   "coef": -8.050696352119568,
+   "se": 4.084659248873687,
+   "significant": false
+  },
+  {
+   "pair": "blink×boost",
+   "kits": 4,
+   "coef": 7.676378353733858,
+   "se": 4.04980070309315,
+   "significant": false
+  },
+  {
+   "pair": "bolt×burn",
+   "kits": 9,
+   "coef": 7.372163462987759,
+   "se": 3.7907499600738075,
+   "significant": false
+  },
+  {
+   "pair": "cone×shield",
+   "kits": 4,
+   "coef": -7.3335352493201595,
+   "se": 3.797439998230276,
+   "significant": false
+  },
+  {
+   "pair": "cone×burn",
+   "kits": 8,
+   "coef": -7.216825628748688,
+   "se": 3.2099202574643666,
+   "significant": true
+  },
+  {
+   "pair": "lob×wall",
+   "kits": 2,
+   "coef": 7.194640778138657,
+   "se": 3.6875239331703926,
+   "significant": false
+  },
+  {
+   "pair": "cone×root",
+   "kits": 2,
+   "coef": -7.050638689321789,
+   "se": 2.8467709751853576,
+   "significant": true
+  },
+  {
+   "pair": "self×boost",
+   "kits": 4,
+   "coef": -7.008437467462042,
+   "se": 4.116603095558193,
+   "significant": false
+  },
+  {
+   "pair": "zone×pull",
+   "kits": 2,
+   "coef": 6.965151646273196,
+   "se": 3.8434696806106707,
+   "significant": false
+  },
+  {
+   "pair": "lob×shield",
+   "kits": 2,
+   "coef": 6.909169216296125,
+   "se": 3.154795862009227,
+   "significant": true
+  },
+  {
+   "pair": "zone×wall",
+   "kits": 3,
+   "coef": -6.600223928544527,
+   "se": 4.832574250667139,
+   "significant": false
+  },
+  {
+   "pair": "lob×burn",
+   "kits": 7,
+   "coef": -6.538786974226313,
+   "se": 3.755368044632074,
+   "significant": false
+  },
+  {
+   "pair": "lob×cleanse",
+   "kits": 6,
+   "coef": 6.013159910374801,
+   "se": 3.4521941000747356,
+   "significant": false
+  },
+  {
+   "pair": "bolt×blind",
+   "kits": 3,
+   "coef": 5.836032883604515,
+   "se": 3.1051937147283732,
+   "significant": false
+  },
+  {
+   "pair": "cone×wall",
+   "kits": 3,
+   "coef": -5.595397034243744,
+   "se": 3.004607462803373,
+   "significant": false
+  },
+  {
+   "pair": "beam×knock",
+   "kits": 3,
+   "coef": -5.421048396582625,
+   "se": 2.7593366597339304,
+   "significant": false
+  },
+  {
+   "pair": "bolt×knock",
+   "kits": 2,
+   "coef": 5.375910000428153,
+   "se": 2.854001250562253,
+   "significant": false
+  },
+  {
+   "pair": "dash×heal",
+   "kits": 4,
+   "coef": -5.31439266944443,
+   "se": 2.486603340181891,
+   "significant": true
+  },
+  {
+   "pair": "jump×heal",
+   "kits": 7,
+   "coef": 5.230498663177071,
+   "se": 3.124705067809808,
+   "significant": false
+  },
+  {
+   "pair": "jump×boost",
+   "kits": 6,
+   "coef": 5.123313697363018,
+   "se": 3.3928964482209034,
+   "significant": false
+  },
+  {
+   "pair": "lob×damage",
+   "kits": 6,
+   "coef": 5.068056859046266,
+   "se": 3.687799201954704,
+   "significant": false
+  },
+  {
+   "pair": "zone×shield",
+   "kits": 3,
+   "coef": -4.727256659365082,
+   "se": 3.285463096145585,
+   "significant": false
+  },
+  {
+   "pair": "beam×shield",
+   "kits": 2,
+   "coef": 4.698986002915735,
+   "se": 2.244652260953854,
+   "significant": true
+  },
+  {
+   "pair": "blink×heal",
+   "kits": 10,
+   "coef": 4.649384895723315,
+   "se": 3.391975810445734,
+   "significant": false
+  },
+  {
+   "pair": "blink×cleanse",
+   "kits": 8,
+   "coef": 4.570224135936257,
+   "se": 3.4614102926019603,
+   "significant": false
+  },
+  {
+   "pair": "blink×shield",
+   "kits": 4,
+   "coef": 4.218446326616627,
+   "se": 3.880083592164243,
+   "significant": false
+  },
+  {
+   "pair": "zone×cleanse",
+   "kits": 2,
+   "coef": 4.06530775268931,
+   "se": 3.0591948445650843,
+   "significant": false
+  },
+  {
+   "pair": "dash×boost",
+   "kits": 2,
+   "coef": 3.7710604520316804,
+   "se": 3.288786733461593,
+   "significant": false
+  },
+  {
+   "pair": "self×cleanse",
+   "kits": 8,
+   "coef": 3.671705212000177,
+   "se": 3.2572438764162173,
+   "significant": false
+  },
+  {
+   "pair": "bolt×stun",
+   "kits": 4,
+   "coef": -3.4461859310348486,
+   "se": 4.107491085607547,
+   "significant": false
+  },
+  {
+   "pair": "beam×stun",
+   "kits": 3,
+   "coef": 3.428370190205988,
+   "se": 3.560218112741949,
+   "significant": false
+  },
+  {
+   "pair": "dash×damage",
+   "kits": 5,
+   "coef": -3.2279433997816938,
+   "se": 4.561169517595624,
+   "significant": false
+  },
+  {
+   "pair": "cone×knock",
+   "kits": 2,
+   "coef": 2.949078356819475,
+   "se": 2.756906370655904,
+   "significant": false
+  },
+  {
+   "pair": "beam×burn",
+   "kits": 6,
+   "coef": -2.9428822532801475,
+   "se": 4.901420849912219,
+   "significant": false
+  },
+  {
+   "pair": "beam×root",
+   "kits": 3,
+   "coef": 2.805597279182658,
+   "se": 3.5694268736710715,
+   "significant": false
+  },
+  {
+   "pair": "cone×stun",
+   "kits": 3,
+   "coef": 2.7825617467290606,
+   "se": 3.476830608159122,
+   "significant": false
+  },
+  {
+   "pair": "dash×burn",
+   "kits": 13,
+   "coef": 2.546310706323076,
+   "se": 3.7733782110959937,
+   "significant": false
+  },
+  {
+   "pair": "dash×stun",
+   "kits": 3,
+   "coef": 2.2071295555131996,
+   "se": 3.2640882319339934,
+   "significant": false
+  },
+  {
+   "pair": "cone×blind",
+   "kits": 2,
+   "coef": -2.1942996936857626,
+   "se": 2.3039998463199134,
+   "significant": false
+  },
+  {
+   "pair": "beam×cleanse",
+   "kits": 2,
+   "coef": -1.8669918797719607,
+   "se": 2.5733543901108624,
+   "significant": false
+  },
+  {
+   "pair": "bolt×wall",
+   "kits": 5,
+   "coef": -1.846081787749496,
+   "se": 2.8762226715740065,
+   "significant": false
+  },
+  {
+   "pair": "lob×weaken",
+   "kits": 4,
+   "coef": 1.6903493688452578,
+   "se": 3.1080600066856245,
+   "significant": false
+  },
+  {
+   "pair": "lob×stun",
+   "kits": 4,
+   "coef": 1.4867281996600037,
+   "se": 3.8261432741378796,
+   "significant": false
+  },
+  {
+   "pair": "jump×cleanse",
+   "kits": 6,
+   "coef": 1.4764662629117857,
+   "se": 4.546206591074834,
+   "significant": false
+  },
+  {
+   "pair": "lob×heal",
+   "kits": 2,
+   "coef": -1.4340249109110046,
+   "se": 4.188252766212668,
+   "significant": false
+  },
+  {
+   "pair": "beam×silence",
+   "kits": 2,
+   "coef": -1.2768595968440573,
+   "se": 4.814015624292542,
+   "significant": false
+  },
+  {
+   "pair": "beam×pull",
+   "kits": 3,
+   "coef": 1.1107058908763079,
+   "se": 5.285177323180899,
+   "significant": false
+  },
+  {
+   "pair": "dash×silence",
+   "kits": 3,
+   "coef": -1.0659014902751842,
+   "se": 2.65943084575423,
+   "significant": false
+  },
+  {
+   "pair": "cone×damage",
+   "kits": 11,
+   "coef": -1.0213836095981939,
+   "se": 3.8974202721497195,
+   "significant": false
+  },
+  {
+   "pair": "blink×wall",
+   "kits": 6,
+   "coef": -0.9524689192420045,
+   "se": 4.165182990035699,
+   "significant": false
+  },
+  {
+   "pair": "zone×root",
+   "kits": 2,
+   "coef": 0.8948236673192552,
+   "se": 2.7821916179613098,
+   "significant": false
+  },
+  {
+   "pair": "beam×boost",
+   "kits": 2,
+   "coef": 0.7718136683668404,
+   "se": 3.3620386038659453,
+   "significant": false
+  },
+  {
+   "pair": "dash×shield",
+   "kits": 2,
+   "coef": 0.7235328207759298,
+   "se": 2.1077180252546737,
+   "significant": false
+  },
+  {
+   "pair": "bolt×weaken",
+   "kits": 6,
+   "coef": 0.6854176016752375,
+   "se": 3.3878277015788707,
+   "significant": false
+  },
+  {
+   "pair": "beam×damage",
+   "kits": 4,
+   "coef": -0.5530974237046367,
+   "se": 4.234326514557207,
+   "significant": false
+  },
+  {
+   "pair": "bolt×silence",
+   "kits": 2,
+   "coef": 0.4114351121082822,
+   "se": 3.6964548116216127,
+   "significant": false
+  },
+  {
+   "pair": "self×wall",
+   "kits": 2,
+   "coef": -0.4045653906813622,
+   "se": 2.1937302073809355,
+   "significant": false
+  },
+  {
+   "pair": "bolt×cleanse",
+   "kits": 2,
+   "coef": 0.3847508469080747,
+   "se": 3.1451067785563334,
+   "significant": false
+  },
+  {
+   "pair": "jump×shield",
+   "kits": 4,
+   "coef": 0.3181532720277387,
+   "se": 3.3606219281129786,
+   "significant": false
+  },
+  {
+   "pair": "jump×wall",
+   "kits": 9,
+   "coef": 0.2915227975115019,
+   "se": 3.6263174917217222,
+   "significant": false
+  },
+  {
+   "pair": "self×shield",
+   "kits": 4,
+   "coef": 0.26217073100888816,
+   "se": 3.6453904204474608,
+   "significant": false
+  },
+  {
+   "pair": "zone×damage",
+   "kits": 11,
+   "coef": 0.13735672744369917,
+   "se": 3.4591342786487393,
+   "significant": false
+  }
+ ],
+ "pilotAgreement": [
+  {
+   "a": "stub",
+   "b": "rusher",
+   "kits": 63,
+   "r": 0.22723483606205158
+  },
+  {
+   "a": "stub",
+   "b": "kiter",
+   "kits": 73,
+   "r": 0.5283065885566149
+  },
+  {
+   "a": "stub",
+   "b": "controller",
+   "kits": 66,
+   "r": 0.4289609037297193
+  },
+  {
+   "a": "rusher",
+   "b": "kiter",
+   "kits": 67,
+   "r": 0.25565578376605386
+  },
+  {
+   "a": "rusher",
+   "b": "controller",
+   "kits": 62,
+   "r": 0.2842044704877318
+  },
+  {
+   "a": "kiter",
+   "b": "controller",
+   "kits": 70,
+   "r": 0.4953673571503503
+  }
+ ],
+ "pilotFits": {
+  "stub": {
+   "n": 74,
+   "r2": 0.9238772953047715,
+   "coef": [
+    0.044171691451353606,
+    -0.014762717020303809,
+    0.03314598741004917,
+    0.027532829693901993,
+    -0.05427962682035721,
+    -0.10599550707505889,
+    -0.006183136943530021,
+    0.06895194266510395,
+    0.007418536638836957,
+    0.23939942989541266,
+    0.04403054765005479,
+    0.051452595691115585,
+    -0.1853574581361946,
+    0.05777407517085668,
+    -0.19822045800274543,
+    0.12610860307354949,
+    0.08295118926264289,
+    0.008896218316765923,
+    -0.0500817163461829,
+    -0.0037816027781050476,
+    -0.09733493835303295,
+    0.02709105865576685,
+    -0.1657464653009128,
+    0.07395477979543422,
+    -0.08620149155953345,
+    -0.04342774318904394,
+    -0.15575302544240005,
+    0.09319700496260835,
+    0.17154951491736137,
+    -0.14396369490043948,
+    -0.1801450101806267,
+    0.05866304448980439,
+    0.03517855339893078,
+    0.06742796491626739,
+    -0.11649084908851212,
+    -0.044444144309218094,
+    0.09577247844364907,
+    -0.004223953005338944,
+    -0.16069906316719954,
+    -0.11605861892163569,
+    -0.12016385500034375,
+    0.10668788216169743,
+    0.09821233536941827,
+    0.09463924651086482,
+    -0.08986638785422389,
+    0.10569938393194014,
+    0.05895741654768749,
+    0.026158695393506588,
+    -0.024543434313439694,
+    0.08863143557770609,
+    0.010228706142378153,
+    0.1899387927986938,
+    0.2460903161099675,
+    0.1881781033160346,
+    0.016115986602154932,
+    -0.045035311975654926,
+    -0.11576131083870918,
+    0.06867371127900611,
+    -0.011653675435862152,
+    -0.12585767687948385,
+    -0.1816297407378614,
+    0.07605066042334319,
+    -0.14115856684450082,
+    -0.15881982723464302,
+    -0.2090869397964705,
+    -0.0021099264094922993,
+    0.13112614965616615,
+    -0.12930880827092023,
+    -0.0255273544029471,
+    0.024382705116839227,
+    -0.06314481511573852,
+    -0.03721914186343396,
+    0.1507683033680554,
+    0.01733900817481309,
+    -0.07612413823859342,
+    -0.227039286324495,
+    0.040344235044444864,
+    -0.07185048389494333,
+    0.009023029767059007,
+    0.040226539680252436,
+    -0.10286865239922519,
+    -0.09935520678823237,
+    -0.020238055243486625,
+    0.1838450487770154,
+    -0.05038227227280834,
+    0.043585865777345724,
+    -0.041261285629116275,
+    0.05224285978951446,
+    -0.007570005140583627,
+    -0.021185155248167813,
+    0.07994093778185003,
+    0.058217518093898045,
+    0.1210980362717827,
+    -0.08792492727768968,
+    0.20031129960010502,
+    0.1522192544706385,
+    -0.051428335111237546,
+    0.07248178895303893,
+    0.08956673964959562,
+    0.02023538698097378,
+    -0.005922293448170804,
+    0.10197216775015405,
+    -0.01309041315309968,
+    0.16071898838894844,
+    0.026480753991303094,
+    0.0781605868328336,
+    -0.061803876396159134,
+    -0.2331034880940913,
+    -0.18529890569082785
+   ],
+   "se": [
+    0.043275800845961755,
+    0.04093972431152252,
+    0.038101610200150716,
+    0.04941660543270885,
+    0.05486309428175049,
+    0.05470069582910946,
+    0.05370848486124299,
+    0.04441454347522603,
+    0.04054471944911441,
+    0.05464772277473273,
+    0.051421385605493364,
+    0.08242213053913588,
+    0.0559152298727714,
+    0.05899517102010518,
+    0.04879628081824768,
+    0.037909021212846505,
+    0.04995468434096644,
+    0.048067915310478215,
+    0.041362541374248135,
+    0.06590817214866376,
+    0.05076408356397605,
+    0.060850713496832576,
+    0.06701144706044924,
+    0.04720421387863981,
+    0.08257570980190014,
+    0.047121841240464514,
+    0.08377106029972085,
+    0.08147874800044197,
+    0.05948499715213454,
+    0.05993926608258526,
+    0.043978041988163706,
+    0.02271444776889722,
+    0.007094484699118174,
+    0.034714560492053785,
+    0.050149923008124805,
+    0.05242534079266808,
+    0.05336215416152954,
+    0.08194270843012408,
+    0.06463946552423253,
+    0.08019678486722338,
+    0.05298990022390268,
+    0.032407726362234046,
+    0.06251823414313552,
+    0.047409221411013364,
+    0.04635184765117388,
+    0.07107603626849561,
+    0.05306899657817228,
+    0.044537559794776124,
+    0.05658502382661233,
+    0.06304552279804042,
+    0.06194587540243188,
+    0.06717266890032933,
+    0.1038661951482577,
+    0.09096707577867943,
+    0.045333081854206744,
+    0.06489915022161404,
+    0.05671489460940144,
+    0.04796598039131361,
+    0.04961874927427328,
+    0.05523210240032118,
+    0.07359844499205173,
+    0.0348733347488072,
+    0.04788398377591731,
+    0.05591015574699137,
+    0.058316449916557794,
+    0.026358973609434573,
+    0.042479542443887026,
+    0.04752576159752681,
+    0.06926798499073786,
+    0.04836696302723422,
+    0.05102989660366276,
+    0.0451739675464529,
+    0.061960832657660114,
+    0.0555445311030562,
+    0.05984419452304518,
+    0.05099583430873371,
+    0.03289085586842713,
+    0.04904768256205146,
+    0.05898561558661313,
+    0.05560953168122297,
+    0.08229101528378467,
+    0.04200318337109566,
+    0.08523575350217423,
+    0.053886202283438225,
+    0.05274646102011548,
+    0.07113743718954704,
+    0.049643217943717954,
+    0.043359038153571464,
+    0.05290380082751068,
+    0.07795740760634268,
+    0.05776562344688797,
+    0.0738857182008212,
+    0.0624354657209845,
+    0.07689605087496974,
+    0.07095727403888022,
+    0.05935961988704553,
+    0.05916955010369664,
+    0.048671235746141114,
+    0.04589160764320068,
+    0.048362421825023316,
+    0.026495539702199013,
+    0.06308877348907124,
+    0.07880061600852989,
+    0.07389069113512167,
+    0.04199317295582606,
+    0.03483377925989068,
+    0.045316804205598804,
+    0.06542283163647858,
+    0.07687415923310802
+   ]
+  },
+  "rusher": {
+   "n": 69,
+   "r2": 0.9121995398744309,
+   "coef": [
+    -0.019909630998847943,
+    -0.1180966467682163,
+    -0.03033462002119075,
+    -0.0831563018086851,
+    0.06423111054436041,
+    -0.07100373372634038,
+    0.18694809165774767,
+    0.04282858596414128,
+    0.02849314515702921,
+    0.19718456793932024,
+    0.059319261211519654,
+    0.05885166949635982,
+    -0.03602402277645897,
+    -0.014776644268026854,
+    -0.21541017942375992,
+    -0.02955432935778966,
+    0.14091189638824927,
+    -0.09477493000835767,
+    -0.001270148544481851,
+    0.04067394134298571,
+    0.0029097193258429397,
+    -0.18497614069592166,
+    -0.024755122111839847,
+    0.010335884492076609,
+    -0.004685691830675947,
+    -0.008454728646916196,
+    -0.17686404571021647,
+    0.013043621616350863,
+    0.11762274519307167,
+    -0.08314783303084847,
+    0.08674820325125332,
+    -0.09421933236681179,
+    -0.011288997484005114,
+    0.03913964152352322,
+    -0.045094827020761286,
+    0,
+    -0.029154664121680517,
+    -0.21783229485404923,
+    0.018809762434285213,
+    -0.05242145377464135,
+    -0.003972465817975525,
+    -0.04874411165081912,
+    0.011717581123996651,
+    0.11185601890665336,
+    -0.06290247399639542,
+    0.13320035475528288,
+    -0.09563125398268911,
+    0.06688041478415563,
+    -0.0012515766420401755,
+    -0.0028117015833347167,
+    -0.010939046545710734,
+    0.007618616619794912,
+    -0.26136986878555923,
+    0.057620509249944565,
+    0.10429334904944303,
+    -0.0700470905354031,
+    -0.1104832992475288,
+    0.2099560685778402,
+    -0.1169819068111611,
+    -0.028703815845585907,
+    0.02477740637554197,
+    0.021258127302045206,
+    0.05101737913677785,
+    -0.049870911063911366,
+    0.2484867167599237,
+    -0.026918679560435782,
+    0.01388915858289191,
+    -0.09815933364380011,
+    -0.010690716245513248,
+    -0.017158721182178278,
+    -0.024166349102783605,
+    -0.053147162763377165,
+    -0.07758121489060547,
+    -0.04914411340137727,
+    0.09159838180583382,
+    0.10542472668243737,
+    -0.07428799093686653,
+    -0.08552447115187754,
+    0.0752696059827157,
+    -0.005848357652066274,
+    -0.21522577260759285,
+    0.19900763697035942,
+    0.10234201296161068,
+    0.1233867734903026,
+    -0.06735631914641337,
+    0.012968985938224778,
+    0.03381317137801639,
+    -0.10695937405526869,
+    0.007965145769444995,
+    0.0628523937834428,
+    -0.1887240432817937,
+    0,
+    0.022007719855950004,
+    -0.037512325467124734,
+    0.08533827610639733,
+    -0.06548518036948008,
+    -0.1280647476493894,
+    0.03175622623420295,
+    0.08305248095254318,
+    0.058819447886812294,
+    0.0048348114893691976,
+    0.08695706010764112,
+    0.16274084101498795,
+    0.017357667527091298,
+    -0.09081581618181254,
+    -0.022053891104889364,
+    0.09194921752110363,
+    -0.06821954892319836,
+    0.024200343972017715
+   ],
+   "se": [
+    0.04348398730550718,
+    0.062290614555838,
+    0.04347996780885509,
+    0.05107501322741198,
+    0.05511172071532008,
+    0.04489356799289032,
+    0.044952573248475215,
+    0.040207739160419434,
+    0.04287606690085964,
+    0.043936705980522676,
+    0.037608821441331895,
+    0.058023554834729256,
+    0.04968128218513973,
+    0.06254660808438334,
+    0.046246707370921715,
+    0.044237853839290874,
+    0.047105828339814464,
+    0.04871041535829543,
+    0.060351459639239734,
+    0.06323565540548612,
+    0.05496352766698779,
+    0.05907662180706502,
+    0.05980809121488148,
+    0.04028575243724102,
+    0.05818890284612779,
+    0.04613254633076862,
+    0.06529498422405539,
+    0.06474767492973234,
+    0.06115060899986948,
+    0.10194679588880426,
+    0.057481425796699605,
+    0.03483517739710789,
+    0.010049569411462792,
+    0.052432886024301274,
+    0.05926958907483238,
+    0,
+    0.06812282887823433,
+    0.052650922033580495,
+    0.05840444623715388,
+    0.047501106737748156,
+    0.052500431962532616,
+    0.034862523342935596,
+    0.0432374604855998,
+    0.06641254482052925,
+    0.04078065312711648,
+    0.05282427253717595,
+    0.049542792681866316,
+    0.05785048196858959,
+    0.044783559089032116,
+    0.06458277943927834,
+    0.0535761857745122,
+    0.0640730403941229,
+    0.07599987293567119,
+    0.04786013337440875,
+    0.04801070495964734,
+    0.05233475824397121,
+    0.04945507368979943,
+    0.08463544726050855,
+    0.04629004777482845,
+    0.04792736674384168,
+    0.07333413235842488,
+    0.04176659332688199,
+    0.0631198503206883,
+    0.05691395312936204,
+    0.0591672515582508,
+    0.05346234243771531,
+    0.04881049652202065,
+    0.03700567379172208,
+    0.051055544877745364,
+    0.037644117819991926,
+    0.08072498257575764,
+    0.0781158183128954,
+    0.04022117427797458,
+    0.0546819394125358,
+    0.06606491870690125,
+    0.05183361922228014,
+    0.04088586327829615,
+    0.038944100745091643,
+    0.05432452747893461,
+    0.04919447660247354,
+    0.06419939020808425,
+    0.05003509292720168,
+    0.057940837005345476,
+    0.054509353380743426,
+    0.06943710534297994,
+    0.06109725646693232,
+    0.06795763176998265,
+    0.04122874019361858,
+    0.0670154305410137,
+    0.06699500694674075,
+    0.051236622938937076,
+    0,
+    0.046564116477561285,
+    0.027710702595596787,
+    0.04926772281211524,
+    0.05687444833427791,
+    0.04307767465747374,
+    0.0628578892595053,
+    0.04742287606240805,
+    0.0411500607787934,
+    0.045496074528326894,
+    0.04542913055245905,
+    0.05361701076702625,
+    0.051731978401593666,
+    0.035463856045912186,
+    0.038535862941620785,
+    0.05941997553354518,
+    0.046084200182206735,
+    0.04578267706227677
+   ]
+  },
+  "kiter": {
+   "n": 78,
+   "r2": 0.9164965785643252,
+   "coef": [
+    0.07844208620890475,
+    -0.005750100102340371,
+    -0.07209422396281336,
+    -0.14661119542513054,
+    0.11796982446934047,
+    -0.1073119265763168,
+    0.0014641541149677311,
+    0.18557705326003027,
+    -0.05168567198664977,
+    0.04650239590101563,
+    0.03941430286570725,
+    -0.0023526999071263933,
+    -0.006255041277237267,
+    -0.07109306395557743,
+    0.08741167366964783,
+    0.039073469517487115,
+    0.08330070714066581,
+    -0.008901966383530833,
+    0.025437933207562647,
+    -0.06276084464020255,
+    0.019905945493431512,
+    -0.07359849230963238,
+    -0.06982769427639153,
+    0.04272419682716645,
+    -0.07306449450410489,
+    -0.15320788673017832,
+    -0.08109631825656391,
+    0.07580615748582249,
+    0.04707876621791411,
+    -0.031430909337320664,
+    -0.04694338678273302,
+    0.04660000591426684,
+    0.019215806479676318,
+    -0.05612898736206732,
+    -0.06188487489136873,
+    0.011883589869466398,
+    0.055851886903337616,
+    -0.06550737384831715,
+    0.015172063275876186,
+    0.10710954833176944,
+    0.0006161943036736289,
+    0.11871349203058763,
+    -0.004219508800192345,
+    0.07682101579946961,
+    -0.1315095888078638,
+    0.09374463841251217,
+    0.04203830108415546,
+    0.1400674472127441,
+    -0.0677932980300569,
+    0.025890272389889155,
+    -0.02755576231740657,
+    0.09981288476530777,
+    -0.0023668170220490035,
+    0.07561753610938736,
+    0.03664358845607913,
+    -0.13576642975618478,
+    0.010444461661616241,
+    -0.09230968602433157,
+    0.11172630211170946,
+    -0.04602029523911293,
+    0.027243885487834348,
+    0.014494947026209886,
+    -0.11324436876023306,
+    -0.03350015146581898,
+    -0.019368990683683154,
+    -0.054454180400977804,
+    0.1425550984736203,
+    -0.0760168830538507,
+    -0.18159008824515271,
+    -0.026714999987056596,
+    -0.09129602579753777,
+    -0.017387095190868534,
+    -0.03836730601005201,
+    0.024574901393022156,
+    -0.13038093743964327,
+    -0.11801916101542806,
+    0.0789437887532776,
+    0.05087046527963516,
+    0.027274620873851362,
+    0.12311252988563981,
+    -0.0660900374320597,
+    0.012778497383103741,
+    -0.035413513999048817,
+    0.010392216401755569,
+    0.09173323320800271,
+    0.054902679037392495,
+    0.05588584368962635,
+    -0.08053481997958636,
+    -0.038276616800769846,
+    0.09119379863500746,
+    0.0629046611160244,
+    -0.01815111612492892,
+    0.013779394604788013,
+    -0.0946315355287686,
+    0.11269627610661989,
+    -0.0440235466006009,
+    0.07548942400516977,
+    -0.022018825864228063,
+    0.19198898650846247,
+    -0.11696947138093651,
+    -0.06043658832905047,
+    0.1284323771597423,
+    0.03636055174709191,
+    0.0018782398955937637,
+    0.10728173463395206,
+    0.08455021545660955,
+    0.1022564185769764,
+    -0.14268133039728964,
+    0.032566686247455824
+   ],
+   "se": [
+    0.03426932810602113,
+    0.034332009533603984,
+    0.035389243149689116,
+    0.036469129270194744,
+    0.038603240008565264,
+    0.03572867720269864,
+    0.05886473007991849,
+    0.03242192650260471,
+    0.030979469080662108,
+    0.03395479590434464,
+    0.04336230963009188,
+    0.040568075672584206,
+    0.05800353356799517,
+    0.03773707985265364,
+    0.03504941176766383,
+    0.029855836527269787,
+    0.036205903977758525,
+    0.04057645253922422,
+    0.037425455425683624,
+    0.04345675527265767,
+    0.03688636690783864,
+    0.04375133040770681,
+    0.0497549355762837,
+    0.045297870327621975,
+    0.06991112592400266,
+    0.04572379101866477,
+    0.05157139389267747,
+    0.07133170605574658,
+    0.057094068884014,
+    0.04109317831841433,
+    0.04005936124771639,
+    0.02144234399499184,
+    0.00622164904275038,
+    0.04082650618679324,
+    0.0634316555848985,
+    0.03183582358151865,
+    0.03246420634364189,
+    0.07042017159398406,
+    0.039918117233280107,
+    0.04030293765065937,
+    0.03487364423818168,
+    0.03297466949710222,
+    0.05550101964320903,
+    0.046412133133009924,
+    0.057571188934844406,
+    0.06610372588269041,
+    0.05049063863360953,
+    0.0423902314651581,
+    0.05823310573665975,
+    0.05800114802291631,
+    0.035217525168224184,
+    0.049945527229401,
+    0.018817844891999762,
+    0.0608159139478743,
+    0.04554741715894252,
+    0.07901209256579088,
+    0.022644967021939674,
+    0.044564127772983284,
+    0.049156848666558985,
+    0.03680337196739249,
+    0.05380911017151703,
+    0.035741140794308804,
+    0.04375322463817964,
+    0.05035413577798967,
+    0.04917581150920518,
+    0.03024309479697406,
+    0.047779419074059956,
+    0.03449634592368204,
+    0.06320870069297631,
+    0.035772190317582046,
+    0.05107617259736237,
+    0.04519734410106607,
+    0.04333134315988322,
+    0.053313531024600756,
+    0.055968827708635045,
+    0.046038092630089344,
+    0.0591751980062746,
+    0.030736776716508388,
+    0.046347036564404136,
+    0.06316462813485853,
+    0.0887260876172331,
+    0.04705633142443938,
+    0.04221497120962243,
+    0.03629924508815263,
+    0.03654246510162546,
+    0.04465640863044181,
+    0.03832993624858824,
+    0.03690635926486177,
+    0.040446158198986684,
+    0.0391634142432793,
+    0.0396194825522802,
+    0.03625747923091552,
+    0.03199061942649942,
+    0.038078589688864455,
+    0.05206089022483043,
+    0.05064663176865549,
+    0.03707089740999558,
+    0.03691531134584146,
+    0.03968495578126016,
+    0.04571800390435841,
+    0.02999268819396797,
+    0.043140442980130846,
+    0.039583662198238376,
+    0.04723907141902884,
+    0.054516263774366386,
+    0.03590099288712111,
+    0.036030739365521446,
+    0.057903360324396226,
+    0.03912306999006725
+   ]
+  },
+  "controller": {
+   "n": 72,
+   "r2": 0.932829465573909,
+   "coef": [
+    0.046767017282923755,
+    -0.04760489341154176,
+    -0.07370860516895997,
+    -0.05413945960064089,
+    -0.000923542993886469,
+    -0.020920389610763375,
+    0.055950919952776845,
+    0.023907234793302826,
+    0.07067171875678205,
+    0.07180050916632094,
+    0.08432817208125451,
+    -0.014011211293339427,
+    -0.08674479912615417,
+    0.03459552194473071,
+    -0.04745559657219418,
+    0.08993354337681507,
+    0.1751590432491787,
+    0.024003112507048494,
+    -0.08576906685691789,
+    -0.06522481124792119,
+    -0.07516823710465576,
+    -0.10300415713438861,
+    -0.07463249714121616,
+    0.037844009069961514,
+    -0.02783264663289945,
+    -0.08924712160074859,
+    -0.02106482116020013,
+    -0.1539906024400469,
+    -0.0007523839834248487,
+    0.1282933595350493,
+    0.0001609560649100496,
+    -0.03617571510817592,
+    0.015807204059674364,
+    -0.09294487133984616,
+    0.032422646300672715,
+    -0.06412995143411955,
+    -0.09348430958805036,
+    -0.08628013254905241,
+    -0.00518000875190742,
+    -0.08904415063447373,
+    0.14183251545398096,
+    0.010907947514419723,
+    -0.08544890053460717,
+    -0.029966904056523785,
+    -0.07303036959841945,
+    -0.06559330063477359,
+    0.1479389154588798,
+    -0.005909875560385806,
+    0.18672530372882165,
+    -0.08933037778498965,
+    0.12907418781476315,
+    0.10367824761767881,
+    0.033035954262450394,
+    0.2288118497674203,
+    -0.03794044879471229,
+    -0.175271610913031,
+    -0.1862641519352913,
+    -0.08208394231002981,
+    -0.07235665878921016,
+    -0.05160094952141127,
+    0.04103926418483895,
+    -0.06896854468119444,
+    -0.11787897610769499,
+    -0.12320119810932285,
+    -0.10292463265053296,
+    0.0362247758082487,
+    0.10890652340593984,
+    -0.0997778701591947,
+    -0.03364088620998404,
+    0.22396304876936254,
+    0.001070264503254947,
+    -0.16816525732781978,
+    0.008466826833654672,
+    -0.03376646307831701,
+    -0.04558575223618194,
+    0.000630211445069169,
+    -0.02466082129380414,
+    -0.0020233105078048836,
+    0.045731778274285366,
+    0.0683312409385934,
+    -0.01977083456212154,
+    0.0503603739057121,
+    0.02623535135416932,
+    -0.10795598522678078,
+    0.05475478975913858,
+    -0.07749676756155496,
+    0.09377316812559919,
+    0.1089065234059398,
+    -0.10416902908363834,
+    -0.028980134943651443,
+    0.10024354366172449,
+    0.04384778032749598,
+    0.05525795906743939,
+    0.0055661825100481776,
+    0.03771362563900232,
+    -0.1505782820594696,
+    -0.21145410301365494,
+    0.07449453112887143,
+    0.09541260410895619,
+    0.08313314305102268,
+    0.10103988981125772,
+    0.20404174643255177,
+    -0.045088104949326004,
+    -0.015260189788059281,
+    0.1089065234059397,
+    -0.08327955406668767,
+    -0.24254389224023434,
+    -0.04635045761348396,
+    0.008135206469609678
+   ],
+   "se": [
+    0.04435258069427249,
+    0.046716089252884736,
+    0.043441562401551975,
+    0.054232750801748206,
+    0.04882427781610728,
+    0.04287902969859727,
+    0.04641295476157071,
+    0.04681839321549616,
+    0.033583639198464854,
+    0.04133813071337403,
+    0.046867767873983654,
+    0.049789404775218704,
+    0.0655741339793791,
+    0.05099848463225605,
+    0.0625571555137239,
+    0.0509023387340652,
+    0.040070104346752754,
+    0.03706332046428173,
+    0.05817383692884575,
+    0.041443008066386705,
+    0.039613421897083036,
+    0.051856040262155643,
+    0.03859216581827631,
+    0.04196893746986419,
+    0.04614119470431599,
+    0.040630361365900466,
+    0.06327799918586073,
+    0.054207072061801066,
+    0.05552246265195981,
+    0.048707380662984384,
+    0.05283490485158383,
+    0.030447444434133438,
+    0.0070595675139176585,
+    0.03909070022752258,
+    0.07183167430402226,
+    0.034229521421940565,
+    0.05520513306700955,
+    0.07016271815600945,
+    0.040087589327051816,
+    0.08011779659746925,
+    0.05784345874429986,
+    0.048146683884826944,
+    0.06350328713039864,
+    0.05524517221923442,
+    0.07470947171737634,
+    0.0429267937971178,
+    0.047098309658093127,
+    0.047941485873509194,
+    0.044880042714242924,
+    0.0575463834265941,
+    0.047773797850963744,
+    0.04175291494150983,
+    0.03669384589203335,
+    0.05704708247296534,
+    0.04089391950437366,
+    0.06295004699161293,
+    0.07353089414446978,
+    0.05495141836341806,
+    0.04634298781545523,
+    0.03821968643907105,
+    0.049488867570654065,
+    0.060414056719109786,
+    0.05239074165081979,
+    0.0535900333139117,
+    0.05309156945261444,
+    0.04374092430941595,
+    0.03793499631756098,
+    0.05672814961639643,
+    0.06735402602630766,
+    0.06991266340978411,
+    0.04568700518927079,
+    0.054439898751881356,
+    0.03909716205862035,
+    0.0474514730393626,
+    0.04315889399092086,
+    0.03468567111508526,
+    0.020092208885264994,
+    0.03862723451337728,
+    0.04464870421776239,
+    0.03748687802543584,
+    0.03732101856780376,
+    0.04371811417863289,
+    0.047860848437665714,
+    0.042683981262109164,
+    0.0485064899036872,
+    0.047358278226189876,
+    0.05729131351269468,
+    0.03793499631756098,
+    0.053931822432978734,
+    0.053054006437449154,
+    0.05916522844306246,
+    0.037176324638642747,
+    0.03404429384213734,
+    0.0420071108429989,
+    0.04745936276360355,
+    0.061307395985617325,
+    0.06200898487694819,
+    0.03983381986751852,
+    0.039833249454266625,
+    0.045813584876900605,
+    0.04310599683589703,
+    0.05840395650019412,
+    0.03252912578694586,
+    0.05390677537114177,
+    0.03793499631756098,
+    0.05141159716237749,
+    0.05731024069668846,
+    0.036866330844550245,
+    0.07589034051337189
+   ]
+  }
+ },
+ "nash": {
+  "decileKits": 8,
+  "distinctDeliveries": 7,
+  "distinctEffects": 9,
+  "topDelivery": {
+   "id": "blink",
+   "share": 0.25
+  },
+  "topEffect": {
+   "id": "heal",
+   "share": 0.23684210526315788
+  },
+  "monoculture": false,
+  "top10": [
+   {
+    "label": "zone:damage | blink:cleanse+heal | lob:blind+wall",
+    "score": 1,
+    "games": 18,
+    "wins": 18,
+    "draws": 0,
+    "losses": 0,
+    "cost": 44
+   },
+   {
+    "label": "beam:damage | self:cleanse | self:heal+cleanse",
+    "score": 1,
+    "games": 18,
+    "wins": 18,
+    "draws": 0,
+    "losses": 0,
+    "cost": 32
+   },
+   {
+    "label": "self:shield+cleanse | zone:damage | self:heal",
+    "score": 1,
+    "games": 16,
+    "wins": 16,
+    "draws": 0,
+    "losses": 0,
+    "cost": 33
+   },
+   {
+    "label": "self:heal | beam:boost+burn/damage | jump:heal+wall",
+    "score": 0.9583333333333334,
+    "games": 24,
+    "wins": 23,
+    "draws": 0,
+    "losses": 1,
+    "cost": 48
+   },
+   {
+    "label": "blink:boost+shield/speed | jump:heal+wall | beam:burn",
+    "score": 0.95,
+    "games": 20,
+    "wins": 19,
+    "draws": 0,
+    "losses": 1,
+    "cost": 47
+   },
+   {
+    "label": "cone:damage | blink:boost+cleanse/cooldown | blink:heal",
+    "score": 0.9375,
+    "games": 16,
+    "wins": 15,
+    "draws": 0,
+    "losses": 1,
+    "cost": 39
+   },
+   {
+    "label": "cone:blind+knock | zone:heal+damage | self:wall+shield",
+    "score": 0.9090909090909091,
+    "games": 22,
+    "wins": 20,
+    "draws": 0,
+    "losses": 2,
+    "cost": 50
+   },
+   {
+    "label": "blink:wall+heal | zone:damage | blink:cleanse+wall",
+    "score": 0.9090909090909091,
+    "games": 22,
+    "wins": 20,
+    "draws": 0,
+    "losses": 2,
+    "cost": 45
+   },
+   {
+    "label": "dash:weaken+wall/range | zone:burn | bolt:stun+damage",
+    "score": 0.8333333333333334,
+    "games": 12,
+    "wins": 10,
+    "draws": 0,
+    "losses": 2,
+    "cost": 48
+   },
+   {
+    "label": "dash:burn+wall | jump:boost+shield/turn | blink:heal",
+    "score": 0.8333333333333334,
+    "games": 12,
+    "wins": 10,
+    "draws": 0,
+    "losses": 2,
+    "cost": 46
+   }
+  ]
+ },
+ "kits": [
+  {
+   "id": 0,
+   "label": "bolt:pull+burn | jump:boost+shield/turn | bolt:knock",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "pull",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost",
+      "shield"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "knock"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 42,
+   "score": 0.4375,
+   "pts": 14,
+   "games": 32,
+   "wins": 14,
+   "draws": 0,
+   "losses": 18,
+   "perPilot": {
+    "controller": {
+     "pts": 3,
+     "games": 10
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 6,
+     "games": 10
+    },
+    "stub": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 1,
+   "label": "bolt:blind+stun | jump:heal | cone:burn",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "blind",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 39,
+   "score": 0.45,
+   "pts": 9,
+   "games": 20,
+   "wins": 9,
+   "draws": 0,
+   "losses": 11,
+   "perPilot": {
+    "stub": {
+     "pts": 6,
+     "games": 12
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 2,
+   "label": "lob:weaken/cooldown | cone:shield | zone:damage+stun",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 39,
+   "score": 0.2857142857142857,
+   "pts": 4,
+   "games": 14,
+   "wins": 4,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "controller": {
+     "pts": 0,
+     "games": 4
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 3,
+   "label": "lob:stun+burn | cone:root+stun | bolt:knock+wall",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "stun",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "root",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "knock",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 52,
+   "score": 0.21428571428571427,
+   "pts": 6,
+   "games": 28,
+   "wins": 6,
+   "draws": 0,
+   "losses": 22,
+   "perPilot": {
+    "stub": {
+     "pts": 0,
+     "games": 6
+    },
+    "controller": {
+     "pts": 6,
+     "games": 12
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 4,
+   "label": "blink:wall | beam:heal+burn | bolt:pull",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "heal",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 37,
+   "score": 0.1111111111111111,
+   "pts": 2,
+   "games": 18,
+   "wins": 2,
+   "draws": 0,
+   "losses": 16,
+   "perPilot": {
+    "rusher": {
+     "pts": 2,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "controller": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 5,
+   "label": "lob:heal | zone:silence+damage | jump:wall",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "silence",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 40,
+   "score": 0.42857142857142855,
+   "pts": 6,
+   "games": 14,
+   "wins": 6,
+   "draws": 0,
+   "losses": 8,
+   "perPilot": {
+    "stub": {
+     "pts": 1,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 8
+    },
+    "controller": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 6,
+   "label": "self:cleanse | beam:root | lob:cleanse+burn",
+   "kit": [
+    {
+     "delivery": "self",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "root"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "cleanse",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 32,
+   "score": 0.35714285714285715,
+   "pts": 5,
+   "games": 14,
+   "wins": 5,
+   "draws": 0,
+   "losses": 9,
+   "perPilot": {
+    "controller": {
+     "pts": 2,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 4
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 7,
+   "label": "dash:burn | beam:silence+wall | jump:cleanse",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "silence",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 37,
+   "score": 0.17857142857142858,
+   "pts": 5,
+   "games": 28,
+   "wins": 5,
+   "draws": 0,
+   "losses": 23,
+   "perPilot": {
+    "rusher": {
+     "pts": 2,
+     "games": 6
+    },
+    "controller": {
+     "pts": 1,
+     "games": 8
+    },
+    "stub": {
+     "pts": 2,
+     "games": 12
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 8,
+   "label": "beam:pull+heal | self:boost/armor | zone:wall+damage",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "pull",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "armor"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "wall",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 45,
+   "score": 0.2857142857142857,
+   "pts": 4,
+   "games": 14,
+   "wins": 4,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "controller": {
+     "pts": 0,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 4
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 9,
+   "label": "zone:damage+pull | blink:wall | cone:pull",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "pull"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 34,
+   "score": 0.7727272727272727,
+   "pts": 17,
+   "games": 22,
+   "wins": 17,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 15,
+     "games": 16
+    },
+    "stub": {
+     "pts": 2,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 10,
+   "label": "zone:burn+root | lob:cleanse | dash:silence",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "root"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 36,
+   "score": 0.5,
+   "pts": 7,
+   "games": 14,
+   "wins": 5,
+   "draws": 4,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 5,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 4
+    },
+    "controller": {
+     "pts": 1,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 11,
+   "label": "lob:cleanse | zone:cleanse+damage | zone:damage+weaken/turn",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "cleanse",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    }
+   ],
+   "cost": 44,
+   "score": 0.75,
+   "pts": 15,
+   "games": 20,
+   "wins": 15,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 5,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 4,
+     "games": 4
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "controller": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 12,
+   "label": "cone:damage | self:shield+boost/range | jump:heal+wall",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "shield",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.6111111111111112,
+   "pts": 11,
+   "games": 18,
+   "wins": 11,
+   "draws": 0,
+   "losses": 7,
+   "perPilot": {
+    "kiter": {
+     "pts": 8,
+     "games": 12
+    },
+    "controller": {
+     "pts": 1,
+     "games": 4
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 13,
+   "label": "cone:blind+knock | zone:heal+damage | self:wall+shield",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "blind",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "wall",
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 50,
+   "score": 0.9090909090909091,
+   "pts": 20,
+   "games": 22,
+   "wins": 20,
+   "draws": 0,
+   "losses": 2,
+   "perPilot": {
+    "kiter": {
+     "pts": 6,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 6,
+     "games": 6
+    },
+    "stub": {
+     "pts": 6,
+     "games": 6
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 14,
+   "label": "dash:shield+heal | cone:damage | self:heal",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "shield",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 36,
+   "score": 0.8,
+   "pts": 16,
+   "games": 20,
+   "wins": 16,
+   "draws": 0,
+   "losses": 4,
+   "perPilot": {
+    "rusher": {
+     "pts": 8,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 4
+    },
+    "stub": {
+     "pts": 4,
+     "games": 8
+    }
+   }
+  },
+  {
+   "id": 15,
+   "label": "beam:stun+damage | zone:root | cone:blind+cleanse",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "stun",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "root"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "blind",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.36363636363636365,
+   "pts": 8,
+   "games": 22,
+   "wins": 8,
+   "draws": 0,
+   "losses": 14,
+   "perPilot": {
+    "stub": {
+     "pts": 4,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 2
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 10
+    },
+    "controller": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 16,
+   "label": "dash:silence | dash:burn+blind | dash:blind+stun",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn",
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "blind",
+      "stun"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 45,
+   "score": 0.05555555555555555,
+   "pts": 1,
+   "games": 18,
+   "wins": 1,
+   "draws": 0,
+   "losses": 17,
+   "perPilot": {
+    "rusher": {
+     "pts": 0,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "controller": {
+     "pts": 0,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 1,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 17,
+   "label": "cone:damage+wall | dash:blind | jump:boost/range",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    }
+   ],
+   "cost": 38,
+   "score": 0.125,
+   "pts": 2,
+   "games": 16,
+   "wins": 2,
+   "draws": 0,
+   "losses": 14,
+   "perPilot": {
+    "controller": {
+     "pts": 0,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 18,
+   "label": "blink:cleanse | dash:damage+burn | self:boost/armor",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "armor"
+    }
+   ],
+   "cost": 38,
+   "score": 0.5,
+   "pts": 8,
+   "games": 16,
+   "wins": 8,
+   "draws": 0,
+   "losses": 8,
+   "perPilot": {
+    "stub": {
+     "pts": 4,
+     "games": 8
+    },
+    "controller": {
+     "pts": 2,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 19,
+   "label": "self:heal+cleanse | cone:stun | lob:burn+boost/speed",
+   "kit": [
+    {
+     "delivery": "self",
+     "effects": [
+      "heal",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "speed"
+    }
+   ],
+   "cost": 43,
+   "score": 0.4,
+   "pts": 8,
+   "games": 20,
+   "wins": 8,
+   "draws": 0,
+   "losses": 12,
+   "perPilot": {
+    "kiter": {
+     "pts": 4,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 10
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 20,
+   "label": "blink:shield | cone:damage | zone:silence",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 31,
+   "score": 0.5625,
+   "pts": 9,
+   "games": 16,
+   "wins": 9,
+   "draws": 0,
+   "losses": 7,
+   "perPilot": {
+    "rusher": {
+     "pts": 6,
+     "games": 6
+    },
+    "controller": {
+     "pts": 3,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 21,
+   "label": "blink:shield | self:shield | cone:burn+shield",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn",
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 33,
+   "score": 0.5909090909090909,
+   "pts": 13,
+   "games": 22,
+   "wins": 13,
+   "draws": 0,
+   "losses": 9,
+   "perPilot": {
+    "stub": {
+     "pts": 2,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 4,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 1,
+     "games": 6
+    },
+    "controller": {
+     "pts": 6,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 22,
+   "label": "self:heal | beam:boost+burn/damage | jump:heal+wall",
+   "kit": [
+    {
+     "delivery": "self",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "boost",
+      "burn"
+     ],
+     "element": "kinetic",
+     "channel": "damage"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 48,
+   "score": 0.9583333333333334,
+   "pts": 23,
+   "games": 24,
+   "wins": 23,
+   "draws": 0,
+   "losses": 1,
+   "perPilot": {
+    "stub": {
+     "pts": 8,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 9,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 6,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 23,
+   "label": "lob:silence | self:heal+wall+cleanse | beam:burn",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "heal",
+      "wall",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.7916666666666666,
+   "pts": 19,
+   "games": 24,
+   "wins": 19,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 10,
+     "games": 12
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 4
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    },
+    "controller": {
+     "pts": 6,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 24,
+   "label": "blink:boost+shield/speed | jump:heal+wall | beam:burn",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "boost",
+      "shield"
+     ],
+     "element": "kinetic",
+     "channel": "speed"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 47,
+   "score": 0.95,
+   "pts": 19,
+   "games": 20,
+   "wins": 19,
+   "draws": 0,
+   "losses": 1,
+   "perPilot": {
+    "controller": {
+     "pts": 10,
+     "games": 10
+    },
+    "kiter": {
+     "pts": 5,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 25,
+   "label": "self:shield+cleanse | zone:damage | self:heal",
+   "kit": [
+    {
+     "delivery": "self",
+     "effects": [
+      "shield",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 33,
+   "score": 1,
+   "pts": 16,
+   "games": 16,
+   "wins": 16,
+   "draws": 0,
+   "losses": 0,
+   "perPilot": {
+    "controller": {
+     "pts": 2,
+     "games": 2
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 6,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 26,
+   "label": "dash:burn | bolt:weaken/range | blink:wall",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 31,
+   "score": 0.15,
+   "pts": 3,
+   "games": 20,
+   "wins": 3,
+   "draws": 0,
+   "losses": 17,
+   "perPilot": {
+    "kiter": {
+     "pts": 2,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "controller": {
+     "pts": 1,
+     "games": 10
+    }
+   }
+  },
+  {
+   "id": 27,
+   "label": "dash:burn | bolt:weaken+blind/armor | lob:weaken+shield/range",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "weaken",
+      "blind"
+     ],
+     "element": "kinetic",
+     "channel": "armor"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "weaken",
+      "shield"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    }
+   ],
+   "cost": 45,
+   "score": 0.325,
+   "pts": 6.5,
+   "games": 20,
+   "wins": 6,
+   "draws": 1,
+   "losses": 13,
+   "perPilot": {
+    "controller": {
+     "pts": 4,
+     "games": 10
+    },
+    "stub": {
+     "pts": 2,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 0.5,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 28,
+   "label": "blink:heal | beam:damage+heal | beam:root",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "root"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.8,
+   "pts": 16,
+   "games": 20,
+   "wins": 16,
+   "draws": 0,
+   "losses": 4,
+   "perPilot": {
+    "stub": {
+     "pts": 4,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 4
+    },
+    "controller": {
+     "pts": 6,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 29,
+   "label": "lob:damage+stun | bolt:burn+wall | self:boost+cleanse/speed",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "boost",
+      "cleanse"
+     ],
+     "element": "kinetic",
+     "channel": "speed"
+    }
+   ],
+   "cost": 51,
+   "score": 0.65,
+   "pts": 13,
+   "games": 20,
+   "wins": 13,
+   "draws": 0,
+   "losses": 7,
+   "perPilot": {
+    "kiter": {
+     "pts": 5,
+     "games": 8
+    },
+    "controller": {
+     "pts": 4,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 30,
+   "label": "bolt:damage | jump:cleanse | beam:heal",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 30,
+   "score": 0.7916666666666666,
+   "pts": 19,
+   "games": 24,
+   "wins": 19,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "stub": {
+     "pts": 10,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 4,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 6
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 31,
+   "label": "cone:cleanse | cone:damage+boost/vision | jump:boost/vision",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    }
+   ],
+   "cost": 41,
+   "score": 0.125,
+   "pts": 2.5,
+   "games": 20,
+   "wins": 2,
+   "draws": 1,
+   "losses": 17,
+   "perPilot": {
+    "rusher": {
+     "pts": 0,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 2.5,
+     "games": 10
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 32,
+   "label": "dash:weaken+wall/range | zone:burn | bolt:stun+damage",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "weaken",
+      "wall"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "stun",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 48,
+   "score": 0.8333333333333334,
+   "pts": 10,
+   "games": 12,
+   "wins": 10,
+   "draws": 0,
+   "losses": 2,
+   "perPilot": {
+    "stub": {
+     "pts": 2,
+     "games": 2
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 4
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 33,
+   "label": "cone:damage+cleanse | dash:heal+stun | bolt:burn+blind",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "heal",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn",
+      "blind"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 52,
+   "score": 0.5454545454545454,
+   "pts": 12,
+   "games": 22,
+   "wins": 12,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "controller": {
+     "pts": 6,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 6
+    },
+    "stub": {
+     "pts": 2,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 34,
+   "label": "lob:damage | jump:shield | lob:blind+weaken/cooldown",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    }
+   ],
+   "cost": 38,
+   "score": 0.4318181818181818,
+   "pts": 9.5,
+   "games": 22,
+   "wins": 9,
+   "draws": 1,
+   "losses": 12,
+   "perPilot": {
+    "controller": {
+     "pts": 3,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 1.5,
+     "games": 6
+    },
+    "stub": {
+     "pts": 5,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 35,
+   "label": "dash:burn+wall | jump:boost+shield/turn | blink:heal",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost",
+      "shield"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 46,
+   "score": 0.8333333333333334,
+   "pts": 10,
+   "games": 12,
+   "wins": 10,
+   "draws": 0,
+   "losses": 2,
+   "perPilot": {
+    "kiter": {
+     "pts": 5,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 3,
+     "games": 4
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 36,
+   "label": "dash:pull+silence | beam:cleanse | bolt:burn",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "pull",
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 34,
+   "score": 0.2777777777777778,
+   "pts": 5,
+   "games": 18,
+   "wins": 5,
+   "draws": 0,
+   "losses": 13,
+   "perPilot": {
+    "kiter": {
+     "pts": 3,
+     "games": 10
+    },
+    "controller": {
+     "pts": 2,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 37,
+   "label": "bolt:weaken+silence/vision | cone:burn | blink:wall",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "weaken",
+      "silence"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.2857142857142857,
+   "pts": 4,
+   "games": 14,
+   "wins": 4,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    },
+    "controller": {
+     "pts": 2,
+     "games": 8
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 38,
+   "label": "bolt:damage | beam:heal | dash:knock",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "knock"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 31,
+   "score": 0.5555555555555556,
+   "pts": 10,
+   "games": 18,
+   "wins": 10,
+   "draws": 0,
+   "losses": 8,
+   "perPilot": {
+    "kiter": {
+     "pts": 2,
+     "games": 6
+    },
+    "controller": {
+     "pts": 4,
+     "games": 6
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 39,
+   "label": "dash:root | cone:stun | zone:wall+burn",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "root"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "wall",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 38,
+   "score": 0.4375,
+   "pts": 7,
+   "games": 16,
+   "wins": 6,
+   "draws": 2,
+   "losses": 8,
+   "perPilot": {
+    "rusher": {
+     "pts": 1,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 40,
+   "label": "cone:shield+damage | dash:heal+burn | cone:burn+cleanse",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "shield",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "heal",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 52,
+   "score": 0.4423076923076923,
+   "pts": 11.5,
+   "games": 26,
+   "wins": 11,
+   "draws": 1,
+   "losses": 14,
+   "perPilot": {
+    "controller": {
+     "pts": 6,
+     "games": 10
+    },
+    "stub": {
+     "pts": 0,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 0.5,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 5,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 41,
+   "label": "lob:wall+damage | cone:burn | zone:burn",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "wall",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.7857142857142857,
+   "pts": 22,
+   "games": 28,
+   "wins": 21,
+   "draws": 2,
+   "losses": 5,
+   "perPilot": {
+    "rusher": {
+     "pts": 4,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 8,
+     "games": 10
+    },
+    "controller": {
+     "pts": 6,
+     "games": 8
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 42,
+   "label": "cone:burn | cone:wall | lob:cleanse",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 27,
+   "score": 0,
+   "pts": 0,
+   "games": 16,
+   "wins": 0,
+   "draws": 0,
+   "losses": 16,
+   "perPilot": {
+    "rusher": {
+     "pts": 0,
+     "games": 6
+    },
+    "controller": {
+     "pts": 0,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 43,
+   "label": "jump:wall | jump:wall+cleanse | dash:burn",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 36,
+   "score": 0.3125,
+   "pts": 5,
+   "games": 16,
+   "wins": 4,
+   "draws": 2,
+   "losses": 10,
+   "perPilot": {
+    "kiter": {
+     "pts": 2,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 2
+    },
+    "controller": {
+     "pts": 2,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 44,
+   "label": "bolt:damage | blink:cleanse+boost/armor | lob:pull",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "armor"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 35,
+   "score": 0.3333333333333333,
+   "pts": 8,
+   "games": 24,
+   "wins": 8,
+   "draws": 0,
+   "losses": 16,
+   "perPilot": {
+    "kiter": {
+     "pts": 0,
+     "games": 8
+    },
+    "controller": {
+     "pts": 4,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "stub": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 45,
+   "label": "self:cleanse | bolt:burn+cleanse | jump:wall",
+   "kit": [
+    {
+     "delivery": "self",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 32,
+   "score": 0.55,
+   "pts": 11,
+   "games": 20,
+   "wins": 11,
+   "draws": 0,
+   "losses": 9,
+   "perPilot": {
+    "kiter": {
+     "pts": 3,
+     "games": 6
+    },
+    "controller": {
+     "pts": 6,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 46,
+   "label": "bolt:weaken/turn | blink:cleanse+heal | zone:burn+cleanse",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 43,
+   "score": 0.8125,
+   "pts": 13,
+   "games": 16,
+   "wins": 13,
+   "draws": 0,
+   "losses": 3,
+   "perPilot": {
+    "rusher": {
+     "pts": 4,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 5,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    },
+    "controller": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 47,
+   "label": "dash:wall | jump:wall+boost/damage | dash:cleanse+damage",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "damage"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "cleanse",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.20833333333333334,
+   "pts": 5,
+   "games": 24,
+   "wins": 5,
+   "draws": 0,
+   "losses": 19,
+   "perPilot": {
+    "rusher": {
+     "pts": 3,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 4
+    },
+    "stub": {
+     "pts": 0,
+     "games": 8
+    },
+    "controller": {
+     "pts": 2,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 48,
+   "label": "zone:boost/armor | bolt:damage+weaken/vision | lob:cleanse",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "armor"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 40,
+   "score": 0.25,
+   "pts": 5,
+   "games": 20,
+   "wins": 4,
+   "draws": 2,
+   "losses": 14,
+   "perPilot": {
+    "kiter": {
+     "pts": 2,
+     "games": 8
+    },
+    "controller": {
+     "pts": 3,
+     "games": 4
+    },
+    "stub": {
+     "pts": 0,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 49,
+   "label": "zone:damage | jump:boost/range | beam:burn+wall",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "range"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 42,
+   "score": 0.6818181818181818,
+   "pts": 15,
+   "games": 22,
+   "wins": 15,
+   "draws": 0,
+   "losses": 7,
+   "perPilot": {
+    "kiter": {
+     "pts": 2,
+     "games": 4
+    },
+    "controller": {
+     "pts": 6,
+     "games": 8
+    },
+    "stub": {
+     "pts": 4,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 3,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 50,
+   "label": "cone:damage | blink:boost+cleanse/cooldown | blink:heal",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "boost",
+      "cleanse"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 39,
+   "score": 0.9375,
+   "pts": 15,
+   "games": 16,
+   "wins": 15,
+   "draws": 0,
+   "losses": 1,
+   "perPilot": {
+    "kiter": {
+     "pts": 8,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 4,
+     "games": 4
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    },
+    "controller": {
+     "pts": 1,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 51,
+   "label": "bolt:silence | cone:damage+root | lob:damage",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "root"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 39,
+   "score": 0.28846153846153844,
+   "pts": 7.5,
+   "games": 26,
+   "wins": 7,
+   "draws": 1,
+   "losses": 18,
+   "perPilot": {
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "stub": {
+     "pts": 4,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 1.5,
+     "games": 8
+    },
+    "controller": {
+     "pts": 0,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 52,
+   "label": "lob:blind | dash:damage | zone:shield",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 29,
+   "score": 0.4411764705882353,
+   "pts": 15,
+   "games": 34,
+   "wins": 14,
+   "draws": 2,
+   "losses": 18,
+   "perPilot": {
+    "kiter": {
+     "pts": 4,
+     "games": 12
+    },
+    "stub": {
+     "pts": 2,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 9,
+     "games": 10
+    },
+    "controller": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 53,
+   "label": "lob:stun | cone:burn | self:cleanse",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 27,
+   "score": 0.1111111111111111,
+   "pts": 2,
+   "games": 18,
+   "wins": 2,
+   "draws": 0,
+   "losses": 16,
+   "perPilot": {
+    "kiter": {
+     "pts": 0,
+     "games": 6
+    },
+    "controller": {
+     "pts": 2,
+     "games": 10
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 54,
+   "label": "lob:weaken/cooldown | blink:heal | lob:burn+cleanse",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 38,
+   "score": 0.55,
+   "pts": 11,
+   "games": 20,
+   "wins": 11,
+   "draws": 0,
+   "losses": 9,
+   "perPilot": {
+    "rusher": {
+     "pts": 5,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 6
+    },
+    "controller": {
+     "pts": 0,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 55,
+   "label": "dash:burn+boost/cooldown | jump:cleanse | lob:heal+stun",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "heal",
+      "stun"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 46,
+   "score": 0.5833333333333334,
+   "pts": 7,
+   "games": 12,
+   "wins": 7,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 0,
+     "games": 4
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "controller": {
+     "pts": 3,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 56,
+   "label": "cone:damage | jump:cleanse | beam:weaken+knock/cooldown",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "weaken",
+      "knock"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    }
+   ],
+   "cost": 38,
+   "score": 0.4,
+   "pts": 8,
+   "games": 20,
+   "wins": 7,
+   "draws": 2,
+   "losses": 11,
+   "perPilot": {
+    "controller": {
+     "pts": 2,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    },
+    "stub": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 57,
+   "label": "dash:weaken+boost/cooldown | zone:shield+burn | dash:burn",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "weaken",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "cooldown"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "shield",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 46,
+   "score": 0.38636363636363635,
+   "pts": 8.5,
+   "games": 22,
+   "wins": 8,
+   "draws": 1,
+   "losses": 13,
+   "perPilot": {
+    "controller": {
+     "pts": 2,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 2.5,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 58,
+   "label": "bolt:heal | dash:burn | bolt:pull",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 28,
+   "score": 0.18181818181818182,
+   "pts": 4,
+   "games": 22,
+   "wins": 4,
+   "draws": 0,
+   "losses": 18,
+   "perPilot": {
+    "stub": {
+     "pts": 0,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 8
+    },
+    "controller": {
+     "pts": 2,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 59,
+   "label": "zone:burn+pull | lob:burn+boost/turn | cone:pull",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "pull"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 43,
+   "score": 0.45,
+   "pts": 9,
+   "games": 20,
+   "wins": 9,
+   "draws": 0,
+   "losses": 11,
+   "perPilot": {
+    "controller": {
+     "pts": 5,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 6
+    },
+    "stub": {
+     "pts": 1,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 60,
+   "label": "zone:damage+burn | bolt:boost/speed | dash:heal+shield",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "speed"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "heal",
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 47,
+   "score": 0.7727272727272727,
+   "pts": 17,
+   "games": 22,
+   "wins": 17,
+   "draws": 0,
+   "losses": 5,
+   "perPilot": {
+    "kiter": {
+     "pts": 6,
+     "games": 10
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 3,
+     "games": 4
+    },
+    "controller": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 61,
+   "label": "zone:damage | blink:cleanse+heal | lob:blind+wall",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 1,
+   "pts": 18,
+   "games": 18,
+   "wins": 18,
+   "draws": 0,
+   "losses": 0,
+   "perPilot": {
+    "controller": {
+     "pts": 8,
+     "games": 8
+    },
+    "stub": {
+     "pts": 6,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 62,
+   "label": "jump:shield+heal | jump:cleanse | bolt:stun+burn",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "shield",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "stun",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.6666666666666666,
+   "pts": 12,
+   "games": 18,
+   "wins": 12,
+   "draws": 0,
+   "losses": 6,
+   "perPilot": {
+    "kiter": {
+     "pts": 6,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 63,
+   "label": "cone:knock+burn | zone:silence | bolt:weaken+root/turn",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "knock",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "weaken",
+      "root"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    }
+   ],
+   "cost": 46,
+   "score": 0.06818181818181818,
+   "pts": 1.5,
+   "games": 22,
+   "wins": 0,
+   "draws": 3,
+   "losses": 19,
+   "perPilot": {
+    "kiter": {
+     "pts": 1.5,
+     "games": 8
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 4
+    },
+    "controller": {
+     "pts": 0,
+     "games": 10
+    }
+   }
+  },
+  {
+   "id": 64,
+   "label": "zone:shield+blind | bolt:root+stun | bolt:root+damage",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "shield",
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "root",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "root",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 51,
+   "score": 0.1,
+   "pts": 2,
+   "games": 20,
+   "wins": 2,
+   "draws": 0,
+   "losses": 18,
+   "perPilot": {
+    "rusher": {
+     "pts": 0,
+     "games": 10
+    },
+    "stub": {
+     "pts": 2,
+     "games": 8
+    },
+    "controller": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 65,
+   "label": "lob:damage | beam:heal | beam:pull+root",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "pull",
+      "root"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 37,
+   "score": 0.6666666666666666,
+   "pts": 8,
+   "games": 12,
+   "wins": 8,
+   "draws": 0,
+   "losses": 4,
+   "perPilot": {
+    "controller": {
+     "pts": 5,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 66,
+   "label": "cone:damage+silence | bolt:burn | beam:silence",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.75,
+   "pts": 18,
+   "games": 24,
+   "wins": 18,
+   "draws": 0,
+   "losses": 6,
+   "perPilot": {
+    "controller": {
+     "pts": 1,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 6,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 9,
+     "games": 10
+    },
+    "stub": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 67,
+   "label": "lob:shield | dash:burn | zone:wall",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 29,
+   "score": 0.2857142857142857,
+   "pts": 8,
+   "games": 28,
+   "wins": 8,
+   "draws": 0,
+   "losses": 20,
+   "perPilot": {
+    "rusher": {
+     "pts": 2,
+     "games": 4
+    },
+    "controller": {
+     "pts": 4,
+     "games": 10
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 8
+    },
+    "stub": {
+     "pts": 0,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 68,
+   "label": "jump:heal | jump:wall | lob:damage",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 32,
+   "score": 0.5714285714285714,
+   "pts": 16,
+   "games": 28,
+   "wins": 16,
+   "draws": 0,
+   "losses": 12,
+   "perPilot": {
+    "kiter": {
+     "pts": 3,
+     "games": 10
+    },
+    "stub": {
+     "pts": 6,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 5,
+     "games": 8
+    },
+    "controller": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 69,
+   "label": "beam:stun | dash:burn | blink:heal",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 33,
+   "score": 0.6666666666666666,
+   "pts": 16,
+   "games": 24,
+   "wins": 16,
+   "draws": 0,
+   "losses": 8,
+   "perPilot": {
+    "rusher": {
+     "pts": 4,
+     "games": 4
+    },
+    "stub": {
+     "pts": 5,
+     "games": 8
+    },
+    "controller": {
+     "pts": 3,
+     "games": 4
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 8
+    }
+   }
+  },
+  {
+   "id": 70,
+   "label": "blink:cleanse | dash:damage+weaken/turn | blink:heal",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 38,
+   "score": 0.2857142857142857,
+   "pts": 4,
+   "games": 14,
+   "wins": 4,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "rusher": {
+     "pts": 4,
+     "games": 6
+    },
+    "stub": {
+     "pts": 0,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 71,
+   "label": "blink:wall+heal | zone:damage | blink:cleanse+wall",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 45,
+   "score": 0.9090909090909091,
+   "pts": 20,
+   "games": 22,
+   "wins": 20,
+   "draws": 0,
+   "losses": 2,
+   "perPilot": {
+    "controller": {
+     "pts": 8,
+     "games": 10
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    },
+    "kiter": {
+     "pts": 6,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 72,
+   "label": "beam:damage | self:cleanse | self:heal+cleanse",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "heal",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 32,
+   "score": 1,
+   "pts": 18,
+   "games": 18,
+   "wins": 18,
+   "draws": 0,
+   "losses": 0,
+   "perPilot": {
+    "kiter": {
+     "pts": 10,
+     "games": 10
+    },
+    "controller": {
+     "pts": 2,
+     "games": 2
+    },
+    "stub": {
+     "pts": 4,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 73,
+   "label": "bolt:burn | blink:boost/vision | bolt:wall",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 33,
+   "score": 0.29545454545454547,
+   "pts": 6.5,
+   "games": 22,
+   "wins": 6,
+   "draws": 1,
+   "losses": 15,
+   "perPilot": {
+    "stub": {
+     "pts": 2,
+     "games": 6
+    },
+    "controller": {
+     "pts": 2,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 1.5,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 74,
+   "label": "cone:pull | jump:wall+heal | dash:stun+damage",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "stun",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 44,
+   "score": 0.7142857142857143,
+   "pts": 10,
+   "games": 14,
+   "wins": 10,
+   "draws": 0,
+   "losses": 4,
+   "perPilot": {
+    "stub": {
+     "pts": 6,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 2,
+     "games": 4
+    },
+    "rusher": {
+     "pts": 2,
+     "games": 2
+    }
+   }
+  },
+  {
+   "id": 75,
+   "label": "beam:stun+knock | lob:burn | blink:wall",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "stun",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 39,
+   "score": 0.4583333333333333,
+   "pts": 11,
+   "games": 24,
+   "wins": 10,
+   "draws": 2,
+   "losses": 12,
+   "perPilot": {
+    "stub": {
+     "pts": 5,
+     "games": 10
+    },
+    "controller": {
+     "pts": 3,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 3,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 76,
+   "label": "blink:heal+shield | bolt:cleanse | bolt:wall+burn",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal",
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "wall",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 42,
+   "score": 0.625,
+   "pts": 10,
+   "games": 16,
+   "wins": 10,
+   "draws": 0,
+   "losses": 6,
+   "perPilot": {
+    "rusher": {
+     "pts": 4,
+     "games": 10
+    },
+    "controller": {
+     "pts": 6,
+     "games": 6
+    }
+   }
+  },
+  {
+   "id": 77,
+   "label": "bolt:wall | beam:shield+pull+cleanse | beam:damage",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "shield",
+      "pull",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.6666666666666666,
+   "pts": 12,
+   "games": 18,
+   "wins": 12,
+   "draws": 0,
+   "losses": 6,
+   "perPilot": {
+    "controller": {
+     "pts": 1,
+     "games": 6
+    },
+    "kiter": {
+     "pts": 4,
+     "games": 4
+    },
+    "stub": {
+     "pts": 7,
+     "games": 8
+    }
+   }
+  },
+  {
+   "id": 78,
+   "label": "beam:knock | beam:boost/damage | lob:burn",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "damage"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 33,
+   "score": 0.13636363636363635,
+   "pts": 3,
+   "games": 22,
+   "wins": 3,
+   "draws": 0,
+   "losses": 19,
+   "perPilot": {
+    "rusher": {
+     "pts": 1,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 0,
+     "games": 8
+    },
+    "controller": {
+     "pts": 0,
+     "games": 2
+    },
+    "stub": {
+     "pts": 2,
+     "games": 4
+    }
+   }
+  },
+  {
+   "id": 79,
+   "label": "beam:shield+burn | blink:cleanse | cone:wall+shield",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "shield",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "wall",
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   "cost": 41,
+   "score": 0.5454545454545454,
+   "pts": 12,
+   "games": 22,
+   "wins": 12,
+   "draws": 0,
+   "losses": 10,
+   "perPilot": {
+    "controller": {
+     "pts": 6,
+     "games": 6
+    },
+    "rusher": {
+     "pts": 1,
+     "games": 6
+    },
+    "stub": {
+     "pts": 4,
+     "games": 8
+    },
+    "kiter": {
+     "pts": 1,
+     "games": 2
+    }
+   }
+  }
+ ]
+}

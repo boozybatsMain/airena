@@ -937,6 +937,10 @@ export function buildRouter(ctx) {
       players: view.players,
       total: view.total,
       top100: view.me ? view.me.rank <= 100 : false,
+      /* Any creature, not only the viewer's own: a visitor who arrived from
+         the ladder can watch it live if it is in the broadcast right now,
+         and its last recorded fight otherwise (the page links `#/watch/`). */
+      fightingNow: fightingNow(loop, row.id),
       history: history(db, row.id, 20),
       /*
        * ОКНО ОТДАЁТ ТОЛЬКО ПРИНЯТЫЕ, а числа приходят отдельно.
@@ -1633,10 +1637,33 @@ export function beatsFrom(log, m) {
     const first = key === sideKey(m.a_slot);
     return { who: first ? m.a_name : m.b_name, whoId: first ? m.a_id : m.b_id, whoSide: key };
   };
-  const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused', 'death', 'chargeMiss', 'burned', 'landed']);
+  /*
+   * THE RULES THAT DECIDED THE FIGHT BELONG IN THE RETELLING TOO.
+   *
+   * Five types were dropped here — `immune`, `absorbed`, `shieldBroke`,
+   * `heal`, `wall` — and the spectator review of 07.09 found the cost of that
+   * twice over. In TOWER vs THUNDERSTRIKE the fight turned on three interrupts
+   * and one refused stun, and the retelling could show the interrupts and not
+   * the refusal. In BARROW vs GRAVEDIGGER the winner landed no targeted hit at
+   * all: it healed nine times and stood inside a field that was refused
+   * sixty-two times, and the panel had nothing to say about a 34-second fight.
+   * A retelling that keeps only the hits tells the story of a fight that did
+   * not happen.
+   */
+  const KEEP = new Set(['say', 'damage', 'miss', 'blink', 'evade', 'interrupt', 'refused',
+    'death', 'chargeMiss', 'burned', 'landed', 'immune', 'absorbed', 'shieldBroke',
+    'heal', 'wall']);
   for (const e of log) {
     if (!e || typeof e !== 'object' || !KEEP.has(e.type)) continue;
-    const base = { t: e.t, ...actor(e.who), type: e.type };
+    /*
+     * WHOSE LINE IS IT. Most records name the fighter that ACTED, and the
+     * sentence is about that fighter. Two do not: an absorbed hit is written
+     * by the attacker but is a fact about the shield that ate it, and it reads
+     * as one ("SALT BULL takes 12 on the shield"). The subject is normalised
+     * here so `beatText` never has to know which way round a type was written.
+     */
+    const subject = e.type === 'absorbed' && e.target ? e.target : e.who;
+    const base = { t: e.t, ...actor(subject), type: e.type };
     if (e.type === 'say') out.push({ ...base, text: e.text });
     else if (e.type === 'damage') out.push({ ...base, type: 'hit', skill: e.skill, amount: e.amount });
     /*
@@ -1654,7 +1681,18 @@ export function beatsFrom(log, m) {
         reason: e.reason ?? null,
       });
     }
-    else out.push({ ...base, skill: e.skill ?? null, reason: e.reason ?? null });
+    else {
+      out.push({
+        ...base,
+        skill: e.skill ?? null,
+        reason: e.reason ?? null,
+        /* The atom a refusal refused, and the number a heal or a shield moved:
+           without them the line is "is immune" and "heals", which is a category
+           and not a fact. */
+        ...(e.effect !== undefined ? { effect: e.effect } : {}),
+        ...(e.amount !== undefined ? { amount: e.amount } : {}),
+      });
+    }
   }
   /* Реплики держатся всегда: их мало, и они — то, ради чего экран есть.
      Подряд идущие одинаковые схлопываются: мозг, повторивший строку на двух
@@ -1662,6 +1700,23 @@ export function beatsFrom(log, m) {
      читаются как сбой показа. */
   const says = out.filter((b) => b.type === 'say')
     .filter((b, i, all) => !(i && all[i - 1].whoSide === b.whoSide && all[i - 1].text === b.text && b.t - all[i - 1].t < 3.2));
-  const others = out.filter((b) => b.type !== 'say');
+  /*
+   * A RULE THAT FIRES EVERY HALF SECOND IS ONE BEAT, NOT TWELVE.
+   *
+   * The retelling keeps forty lines, and a single field of burn writes a heal
+   * or a refusal on every tick a body stands in it — BARROW vs GRAVEDIGGER put
+   * sixty-two refusals into a 34-second fight. Unfolded, those forty lines are
+   * one mechanic repeating and the fight is not in them at all. Consecutive
+   * repeats of the same rule, by the same fighter, about the same thing, inside
+   * four seconds, collapse into the first — the same rule the feed applies
+   * live, for the same reason.
+   */
+  const NOISY = new Set(['immune', 'absorbed', 'heal', 'wall', 'refused']);
+  const others = out.filter((b) => b.type !== 'say').filter((b, i, all) => {
+    if (!NOISY.has(b.type)) return true;
+    const prev = all[i - 1];
+    return !(prev && prev.type === b.type && prev.whoSide === b.whoSide
+      && (prev.effect ?? null) === (b.effect ?? null) && b.t - prev.t < 4);
+  });
   return [...says, ...others.slice(0, 40)].sort((a, b) => a.t - b.t);
 }

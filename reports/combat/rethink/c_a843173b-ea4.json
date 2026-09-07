@@ -1,0 +1,186 @@
+{
+  "id": "c_a843173b-ea4",
+  "name": "MONOCYCLE CUTTER",
+  "rating": 1140,
+  "fights": 6592,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1633,
+    "tacticsCard": "This fighter is a close-range brawler that wants to live inside cone distance: it closes in with a slight zig-zag strafe, opens with the cone the moment it's in reach, fires the beam only at mid range (past six units) while the enemy is visible, and uses the dash to jump the gap when the target sits just outside cone range. Its main behavioural quirk is that after using the cone it backpedals while the cooldown ticks down, then charges back in — a lunge-and-retreat rhythm that keeps it from being melted at point blank but also wastes a lot of time travelling.",
+    "sourceSha": "ac0af5a890e0902deb973da14fba292e245e081dc7b65cf34b2bb7d86f0e7bc9",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_a843173b-ea4.before.ac0af5a8.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1550,
+    "tacticsCard": "This fighter always turns to face the enemy and fires whatever attack fits the current range, favoring its heaviest hit inside 4.7m, a mid attack out to 10.3, and a ranged poke out to 23m as long as it has line of sight. Once within 12m it stops closing and instead circles at a fixed 3m radius to stay glued in its close-range attack window, only walking straight at the enemy when the gap is bigger than that.",
+    "rating": 1288,
+    "fights": 6661,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "laser"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 41,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 12.3,
+      "faults": 0,
+      "thinks": 185,
+      "orders": 312,
+      "uses": 10,
+      "hits": 6,
+      "damageDealt": 155.76,
+      "stubDamageDealt": 240.48,
+      "aliveTicks": 368,
+      "idleInReachTicks": 82,
+      "stillTicks": 0,
+      "fuelSpent": 1666,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 10.67,
+      "faults": 0,
+      "thinks": 160,
+      "orders": 250,
+      "uses": 10,
+      "hits": 9,
+      "damageDealt": 240.48,
+      "stubDamageDealt": 178.79999999999998,
+      "aliveTicks": 319,
+      "idleInReachTicks": 27,
+      "stillTicks": 1,
+      "fuelSpent": 1425,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 11.07,
+      "faults": 0,
+      "thinks": 166,
+      "orders": 262,
+      "uses": 11,
+      "hits": 9,
+      "damageDealt": 240.48,
+      "stubDamageDealt": 207.35999999999999,
+      "aliveTicks": 331,
+      "idleInReachTicks": 32,
+      "stillTicks": 2,
+      "fuelSpent": 1469,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 10.07,
+      "faults": 0,
+      "thinks": 151,
+      "orders": 242,
+      "uses": 9,
+      "hits": 9,
+      "damageDealt": 240.48,
+      "stubDamageDealt": 154.79999999999998,
+      "aliveTicks": 301,
+      "idleInReachTicks": 50,
+      "stillTicks": 1,
+      "fuelSpent": 1360,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 122790,
+  "forgeMs": 116569,
+  "admitMs": 218,
+  "cardMs": 6002,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 116568,
+      "chars": 1550
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9690,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.16563700000000003,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1550,
+  "promptHash": "ddd37c4aace6c21e0887c35d2ad67f9842fd3c40617278159bd5d73e27f5f4df",
+  "generatedAt": "2026-09-07T11:02:22.707Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T03:58:29.648Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:04:39.395Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "3e4602e158cd00da73a09b1da582e162f7544113a29496a8405996924f41a41f",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.123,
+    "idleInReach": 0.145,
+    "still": 0.003,
+    "casts": 10
+  },
+  "card": "This fighter always turns to face the enemy and fires whatever attack fits the current range, favoring its heaviest hit inside 4.7m, a mid attack out to 10.3, and a ranged poke out to 23m as long as it has line of sight. Once within 12m it stops closing and instead circles at a fixed 3m radius to stay glued in its close-range attack window, only walking straight at the enemy when the gap is bigger than that."
+}

@@ -59,3 +59,10 @@ reports/arena/r1.jpg
 reports/arena/r2.jpg
 reports/arena/r3.jpg
 reports/arena/aaa/a3.jpg
+.omx/
+
+# 07.09 combat reports: captures and the two large match caches stay local;
+# the markdown and the pass JSONs are the evidence and travel.
+reports/combat/**/*.png
+reports/combat/gauntlet/pairs.json
+reports/combat/bakeoff/league.json

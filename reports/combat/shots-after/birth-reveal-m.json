@@ -1,0 +1,43 @@
+{
+  "state": "birth-reveal",
+  "group": "MAKING ONE",
+  "url": "http://localhost:8787/#/birth/demo?ui=birth-reveal",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "birth",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 41,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 11512
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 2530.9000000059605,
+      "rendererRequested": 2531,
+      "shellReady": 6943,
+      "screenReady": 6970,
+      "viewerStart": 10513,
+      "rendererUp": 10756,
+      "envBuilt": 10835,
+      "postBuilt": 10960
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

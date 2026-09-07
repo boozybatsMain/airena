@@ -1,0 +1,186 @@
+{
+  "id": "c_bbf95643-d91",
+  "name": "LASER CUTTER",
+  "rating": 749,
+  "fights": 6982,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2409,
+    "tacticsCard": "This fighter is a mid-range beam sniper: it circles at about thirteen units, strafing sideways while sliding in or out to hold that band, and it only shoots when it has clear line of sight both to the enemy and to a predicted lead point ahead of them. It fires its main damage beam whenever ready, falls back to the burn beam mostly when the target isn't already burning, and pops its speed boost only when the enemy has drifted out near the edge of its range — it never really commits to closing, so it takes almost no risk.",
+    "sourceSha": "9dffbb0eaa89f60ef987d0a8ec914c795bfc802a0816caf6aa44f166e2753be3",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_bbf95643-d91.before.9dffbb0e.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2114,
+    "tacticsCard": "This fighter constantly circles its enemy at a fixed 9-unit radius, always facing a lead-predicted point, never closing in or backing off deliberately — its only \"risk\" reaction is a sudden extra kick along its orbit direction when it sees the enemy winding up kick 1 or kick 2, hoping to dodge sideways. Offense is opportunistic rather than aggressive: it throws kicks whenever they're off cooldown and in range while circling, falls back to a generic k3 spam if the others aren't ready, and only reaches for other skills as a last resort, aiming point-based ones at the predicted enemy position.",
+    "rating": 875,
+    "fights": 7066,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "laser"
+    },
+    {
+      "delivery": "beam",
+      "effects": [
+        "burn"
+      ],
+      "element": "laser"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "range",
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 35,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": null,
+      "seconds": 17.7,
+      "faults": 0,
+      "thinks": 266,
+      "orders": 552,
+      "uses": 17,
+      "hits": 6,
+      "damageDealt": 258.4000000000027,
+      "stubDamageDealt": 258.4000000000027,
+      "aliveTicks": 530,
+      "idleInReachTicks": 50,
+      "stillTicks": 2,
+      "fuelSpent": 753,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": null,
+      "seconds": 38.97,
+      "faults": 0,
+      "thinks": 584,
+      "orders": 1191,
+      "uses": 18,
+      "hits": 2,
+      "damageDealt": 95.73333333333316,
+      "stubDamageDealt": 95.73333333333316,
+      "aliveTicks": 1168,
+      "idleInReachTicks": 815,
+      "stillTicks": 794,
+      "fuelSpent": 3456,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": null,
+      "seconds": 16.73,
+      "faults": 0,
+      "thinks": 251,
+      "orders": 522,
+      "uses": 17,
+      "hits": 6,
+      "damageDealt": 258.4000000000027,
+      "stubDamageDealt": 258.4000000000027,
+      "aliveTicks": 501,
+      "idleInReachTicks": 21,
+      "stillTicks": 2,
+      "fuelSpent": 633,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 21.67,
+      "faults": 0,
+      "thinks": 325,
+      "orders": 671,
+      "uses": 18,
+      "hits": 6,
+      "damageDealt": 258.4000000000027,
+      "stubDamageDealt": 258.4000000000027,
+      "aliveTicks": 649,
+      "idleInReachTicks": 151,
+      "stillTicks": 60,
+      "fuelSpent": 1137,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 213683,
+  "forgeMs": 205682,
+  "admitMs": 471,
+  "cardMs": 7523,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 205675,
+      "chars": 2114
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 17211,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.23872500000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2114,
+  "promptHash": "df8f454317b30720d69b3ce469483209087cccd656cf33652a46c7dba894445e",
+  "generatedAt": "2026-09-07T11:20:06.094Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:07:38.648Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:09:20.502Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "673adcb8503eb66d3b6eb8447e084476a127df6976890bdd52ef182c4bf38add",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 1,
+    "idleInReach": 0.364,
+    "still": 0.301,
+    "casts": 17.5
+  },
+  "card": "This fighter constantly circles its enemy at a fixed 9-unit radius, always facing a lead-predicted point, never closing in or backing off deliberately — its only \"risk\" reaction is a sudden extra kick along its orbit direction when it sees the enemy winding up kick 1 or kick 2, hoping to dodge sideways. Offense is opportunistic rather than aggressive: it throws kicks whenever they're off cooldown and in range while circling, falls back to a generic k3 spam if the others aren't ready, and only reaches for other skills as a last resort, aiming point-based ones at the predicted enemy position."
+}

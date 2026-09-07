@@ -1,0 +1,5900 @@
+{
+ "seeds": 8,
+ "verify": 20,
+ "pool": [
+  {
+   "id": "p3",
+   "src": "panel #3 98%",
+   "why": "",
+   "sig": "blink:heal+shield | zone:damage | lob:burn+pull+cleanse",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal",
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "pull",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p224",
+   "src": "panel #224 96%",
+   "why": "",
+   "sig": "jump:wall+cleanse+heal | beam:silence | zone:damage+burn",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "wall",
+      "cleanse",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p124",
+   "src": "panel #124 93%",
+   "why": "",
+   "sig": "lob:knock+damage | jump:boost/damage | zone:burn+wall",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "knock",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "damage"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "wall"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p122",
+   "src": "panel #122 93%",
+   "why": "",
+   "sig": "blink:cleanse+wall | bolt:damage+silence | zone:heal+damage",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage",
+      "silence"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "src": "panel #10 91%",
+   "why": "",
+   "sig": "beam:burn+damage | zone:silence+stun+burn | self:boost/damage",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "silence",
+      "stun",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "damage"
+    }
+   ]
+  },
+  {
+   "id": "p111",
+   "src": "panel #111 90%",
+   "why": "",
+   "sig": "blink:cleanse+heal | bolt:heal+damage | bolt:cleanse+weaken/turn",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "heal",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "cleanse",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    }
+   ]
+  },
+  {
+   "id": "p97",
+   "src": "panel #97 85%",
+   "why": "",
+   "sig": "zone:pull+damage | dash:damage+cleanse | zone:heal",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "pull",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p82",
+   "src": "panel #82 85%",
+   "why": "",
+   "sig": "zone:burn+knock | blink:heal | beam:boost/turn",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    }
+   ]
+  },
+  {
+   "id": "p175",
+   "src": "panel #175 85%",
+   "why": "",
+   "sig": "lob:weaken+damage/vision | dash:cleanse+wall+knock | beam:stun+silence+burn",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "weaken",
+      "damage"
+     ],
+     "element": "kinetic",
+     "channel": "vision"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "cleanse",
+      "wall",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "stun",
+      "silence",
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p38",
+   "src": "panel #38 83%",
+   "why": "",
+   "sig": "cone:silence+damage | dash:root+heal | bolt:damage",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "silence",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "root",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p171",
+   "src": "panel #171 82%",
+   "why": "",
+   "sig": "bolt:damage+blind | blink:shield | zone:pull",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage",
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "pull"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p231",
+   "src": "panel #231 82%",
+   "why": "",
+   "sig": "lob:blind | blink:cleanse+heal | zone:damage+blind",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse",
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "blind"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p30",
+   "src": "panel #30 81%",
+   "why": "",
+   "sig": "zone:silence+burn | cone:cleanse | jump:heal+cleanse",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "silence",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "heal",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p79",
+   "src": "panel #79 81%",
+   "why": "",
+   "sig": "beam:knock | zone:burn+stun | lob:damage+wall+knock",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "stun"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage",
+      "wall",
+      "knock"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p217",
+   "src": "panel #217 81%",
+   "why": "",
+   "sig": "jump:cleanse+wall | bolt:damage | bolt:burn",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "cleanse",
+      "wall"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "burn"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "p85",
+   "src": "panel #85 80%",
+   "why": "",
+   "sig": "zone:heal+shield | lob:burn+weaken/turn | jump:shield",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal",
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "weaken"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    },
+    {
+     "delivery": "jump",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "lancer",
+   "src": "hand",
+   "why": "beam kiter: beam and bolt damage, blink with a shield",
+   "sig": "beam:damage | bolt:damage | blink:shield",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield"
+     ],
+     "element": "frost"
+    }
+   ]
+  },
+  {
+   "id": "searer",
+   "src": "hand",
+   "why": "beam kiter: damage+burn beam, silencing bolt, cleansing blink",
+   "sig": "beam:damage+burn | bolt:silence | blink:cleanse",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "silence"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "cleanse"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "sniper",
+   "src": "hand",
+   "why": "beam kiter: damage bolt, damage+slowing beam, shield+cleanse aura",
+   "sig": "bolt:damage | beam:damage+weaken/speed | self:shield+cleanse",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "frost"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage",
+      "weaken"
+     ],
+     "channel": "speed",
+     "element": "frost"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "shield",
+      "cleanse"
+     ],
+     "element": "frost"
+    }
+   ]
+  },
+  {
+   "id": "brawler",
+   "src": "hand",
+   "why": "fan/lunge brawler: damage+burn fan, damage lunge, shield aura",
+   "sig": "cone:damage+burn | dash:damage | self:shield",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "shield"
+     ],
+     "element": "frost"
+    }
+   ]
+  },
+  {
+   "id": "duelist",
+   "src": "hand",
+   "why": "fan/lunge brawler: damage fan, damage bolt to close with, shield+heal blink",
+   "sig": "cone:damage | bolt:damage | blink:shield+heal",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield",
+      "heal"
+     ],
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "bombardier",
+   "src": "hand",
+   "why": "mortar/field zoner: damage mortar, damage+burn field, burn+pull mortar",
+   "sig": "lob:damage | zone:damage+burn | lob:burn+pull",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "pull"
+     ],
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "zoner",
+   "src": "hand",
+   "why": "mortar/field zoner: damage field, damage+knock mortar, burn+wall field",
+   "sig": "zone:damage | lob:damage+knock | zone:burn+wall",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "wall"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "stormcaller",
+   "src": "hand",
+   "why": "mortar/field zoner: damage+burn field, stunning mortar, healing blink",
+   "sig": "zone:damage+burn | lob:damage+stun | blink:heal",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "arc"
+    }
+   ]
+  },
+  {
+   "id": "medic",
+   "src": "hand",
+   "why": "sustain warden: heal+shield blink, damage field, damage bolt",
+   "sig": "blink:heal+shield | zone:damage | bolt:damage",
+   "kit": [
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal",
+      "shield"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    }
+   ]
+  },
+  {
+   "id": "controller",
+   "src": "hand",
+   "why": "controller: stun bolt, silence beam, one damage field",
+   "sig": "bolt:stun | beam:silence | zone:damage",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "stun"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "silence"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage"
+     ],
+     "element": "arc"
+    }
+   ]
+  },
+  {
+   "id": "jailer",
+   "src": "hand",
+   "why": "controller: silence+damage fan, damage+blind bolt, root+damage lunge",
+   "sig": "cone:silence+damage | bolt:damage+blind | dash:root+damage",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "silence",
+      "damage"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage",
+      "blind"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "root",
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "silencer",
+   "src": "hand",
+   "why": "controller: silence+damage beam, stunning bolt with damage, heal aura",
+   "sig": "beam:silence+damage | bolt:stun+damage | self:heal",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "silence",
+      "damage"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "stun",
+      "damage"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "self",
+     "effects": [
+      "heal"
+     ],
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "pyro",
+   "src": "hand",
+   "why": "burn specialist: burn beam, burn+knock field, burn+pull mortar",
+   "sig": "beam:burn | zone:burn+knock | lob:burn+pull",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "knock"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "pull"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "arsonist",
+   "src": "hand",
+   "why": "burn specialist: burn beam, damage+burn lunge, burn+knock field",
+   "sig": "beam:burn | dash:damage+burn | zone:burn+knock",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "knock"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "vaulter",
+   "src": "hand",
+   "why": "leaper: shield leap, damage fan, damage bolt",
+   "sig": "jump:shield | cone:damage | bolt:damage",
+   "kit": [
+    {
+     "delivery": "jump",
+     "effects": [
+      "shield"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "lad-ash",
+   "src": "ladder / review r1",
+   "why": "ladder #1 ASH (kit-stub): beam and bolt damage, a burning mortar",
+   "sig": "beam:damage | bolt:damage | lob:burn",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "lad-cutter",
+   "src": "ladder / review r1",
+   "why": "ladder #2 MONOCYCLE CUTTER: beam damage, lunge damage, a knocking fan",
+   "sig": "beam:damage | dash:damage | cone:damage+knock",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "knock"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "lad-golem",
+   "src": "ladder / review r1",
+   "why": "ladder #3 STONE GOLEM: knocking fan, lunge damage, a stunning lunge",
+   "sig": "cone:damage+knock | dash:damage | dash:damage+stun",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "lad-storm",
+   "src": "ladder / review r1",
+   "why": "ladder #4 STORM (kit-stub): three bare damage deliveries",
+   "sig": "beam:damage | bolt:damage | lob:damage",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "rev-control",
+   "src": "ladder / review r1",
+   "why": "review §3 E: control-heavy — a stunning rooting silencing fan, a blinding mortar, a damage bolt",
+   "sig": "cone:stun+root+silence | lob:blind+knock | bolt:damage",
+   "kit": [
+    {
+     "delivery": "cone",
+     "effects": [
+      "stun",
+      "root",
+      "silence"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind",
+      "knock"
+     ],
+     "element": "void"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  },
+  {
+   "id": "rev-ctrldmg",
+   "src": "ladder / review r1",
+   "why": "review §3 F: control+damage — a control riding every attack",
+   "sig": "bolt:damage+stun | zone:damage+root | lob:damage+blind",
+   "kit": [
+    {
+     "delivery": "bolt",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "damage",
+      "root"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage",
+      "blind"
+     ],
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "old-striker",
+   "src": "old five (30.08)",
+   "why": "",
+   "sig": "beam:cleanse+silence | blink:shield | lob:damage",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "cleanse",
+      "silence"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "shield"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "ember"
+    }
+   ]
+  },
+  {
+   "id": "old-warden",
+   "src": "old five (30.08)",
+   "why": "",
+   "sig": "beam:heal+wall | blink:wall | bolt:cleanse+pull+damage",
+   "kit": [
+    {
+     "delivery": "beam",
+     "effects": [
+      "heal",
+      "wall"
+     ],
+     "element": "frost"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "wall"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "bolt",
+     "effects": [
+      "cleanse",
+      "pull",
+      "damage"
+     ],
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "old-conjurer",
+   "src": "old five (30.08)",
+   "why": "",
+   "sig": "zone:boost/range | blink:boost/vision | zone:heal+damage",
+   "kit": [
+    {
+     "delivery": "zone",
+     "effects": [
+      "boost"
+     ],
+     "channel": "range",
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "boost"
+     ],
+     "channel": "vision",
+     "element": "void"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal",
+      "damage"
+     ],
+     "element": "arc"
+    }
+   ]
+  },
+  {
+   "id": "old-runner",
+   "src": "old five (30.08)",
+   "why": "",
+   "sig": "dash:burn+weaken/range | zone:boost/cooldown | dash:boost/range",
+   "kit": [
+    {
+     "delivery": "dash",
+     "effects": [
+      "burn",
+      "weaken"
+     ],
+     "channel": "range",
+     "element": "arc"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "boost"
+     ],
+     "channel": "cooldown",
+     "element": "arc"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "boost"
+     ],
+     "channel": "range",
+     "element": "void"
+    }
+   ]
+  },
+  {
+   "id": "old-lobber",
+   "src": "old five (30.08)",
+   "why": "",
+   "sig": "lob:blind+wall | lob:wall | lob:damage",
+   "kit": [
+    {
+     "delivery": "lob",
+     "effects": [
+      "blind",
+      "wall"
+     ],
+     "element": "arc"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "wall"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "damage"
+     ],
+     "element": "void"
+    }
+   ]
+  }
+ ],
+ "strength": [
+  {
+   "id": "rev-ctrldmg",
+   "mean": 0.9603658536585366,
+   "min": 0.4375,
+   "max": 1
+  },
+  {
+   "id": "silencer",
+   "mean": 0.8925304878048781,
+   "min": 0.3125,
+   "max": 1
+  },
+  {
+   "id": "lad-storm",
+   "mean": 0.875,
+   "min": 0.125,
+   "max": 1
+  },
+  {
+   "id": "p224",
+   "mean": 0.8475609756097561,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "lad-ash",
+   "mean": 0.8102134146341463,
+   "min": 0.125,
+   "max": 1
+  },
+  {
+   "id": "stormcaller",
+   "mean": 0.7949695121951219,
+   "min": 0.0625,
+   "max": 1
+  },
+  {
+   "id": "sniper",
+   "mean": 0.7736280487804879,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p10",
+   "mean": 0.7682926829268293,
+   "min": 0.0625,
+   "max": 1
+  },
+  {
+   "id": "zoner",
+   "mean": 0.7515243902439024,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p124",
+   "mean": 0.7240853658536586,
+   "min": 0.0625,
+   "max": 1
+  },
+  {
+   "id": "bombardier",
+   "mean": 0.7050304878048781,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p122",
+   "mean": 0.6951219512195121,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p79",
+   "mean": 0.6707317073170732,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "medic",
+   "mean": 0.6684451219512195,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "lancer",
+   "mean": 0.6676829268292683,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "searer",
+   "mean": 0.6219512195121951,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p217",
+   "mean": 0.6028963414634146,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "duelist",
+   "mean": 0.5762195121951219,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "vaulter",
+   "mean": 0.5701219512195121,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p3",
+   "mean": 0.5663109756097561,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p111",
+   "mean": 0.5487804878048781,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p175",
+   "mean": 0.49847560975609756,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "jailer",
+   "mean": 0.3948170731707317,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "arsonist",
+   "mean": 0.36890243902439024,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p97",
+   "mean": 0.3567073170731707,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p85",
+   "mean": 0.35289634146341464,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "old-lobber",
+   "mean": 0.3490853658536585,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p30",
+   "mean": 0.3467987804878049,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p171",
+   "mean": 0.34603658536585363,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "lad-golem",
+   "mean": 0.3445121951219512,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "pyro",
+   "mean": 0.3361280487804878,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "brawler",
+   "mean": 0.32240853658536583,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p38",
+   "mean": 0.29878048780487804,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "old-striker",
+   "mean": 0.2698170731707317,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "lad-cutter",
+   "mean": 0.2690548780487805,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "rev-control",
+   "mean": 0.23704268292682926,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "old-conjurer",
+   "mean": 0.20121951219512196,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "old-warden",
+   "mean": 0.19969512195121952,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p82",
+   "mean": 0.19207317073170732,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "controller",
+   "mean": 0.12804878048780488,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "p231",
+   "mean": 0.09603658536585366,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "id": "old-runner",
+   "mean": 0,
+   "min": 0,
+   "max": 0
+  }
+ ],
+ "enumerated": {
+  "total": 850668,
+  "passing": 55,
+  "why": {
+   "div": 542319,
+   "cyc": 645825,
+   "floor": 850553,
+   "spread": 8380,
+   "ceiling": 343143,
+   "presets": 27159
+  }
+ },
+ "finalists": [
+  {
+   "ids": [
+    "p97",
+    "p82",
+    "pyro",
+    "lad-cutter",
+    "lad-golem"
+   ],
+   "ok": true,
+   "score": 19.416666666666664,
+   "at8": {
+    "ix": [
+     6,
+     7,
+     28,
+     32,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.5625,
+      0.6875,
+      0.5625,
+      0.1875
+     ],
+     [
+      0.4375,
+      0.5,
+      0.1875,
+      0.5,
+      0.6875
+     ],
+     [
+      0.3125,
+      0.8125,
+      0.5,
+      0.1875,
+      0.3125
+     ],
+     [
+      0.4375,
+      0.5,
+      0.8125,
+      0.5,
+      0.5625
+     ],
+     [
+      0.8125,
+      0.3125,
+      0.6875,
+      0.4375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.1875,
+     0.1875,
+     0.4375,
+     0.3125
+    ],
+    "maxs": [
+     0.6875,
+     0.6875,
+     0.8125,
+     0.8125,
+     0.8125
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1110",
+      "0.0=1",
+      "01.00",
+      "0=1.1",
+      "1010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      4
+     ],
+     [
+      0,
+      3,
+      4
+     ],
+     [
+      1,
+      4,
+      2
+     ]
+    ],
+    "cycStrength": 0.1875,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 14.325
+   },
+   "at12": {
+    "ix": [
+     6,
+     7,
+     28,
+     32,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.5,
+      0.6666666666666666,
+      0.5416666666666666,
+      0.16666666666666666
+     ],
+     [
+      0.5,
+      0.5,
+      0.16666666666666666,
+      0.4166666666666667,
+      0.6666666666666666
+     ],
+     [
+      0.3333333333333333,
+      0.8333333333333334,
+      0.5,
+      0.3333333333333333,
+      0.4166666666666667
+     ],
+     [
+      0.4583333333333333,
+      0.5833333333333334,
+      0.6666666666666666,
+      0.5,
+      0.5
+     ],
+     [
+      0.8333333333333334,
+      0.3333333333333333,
+      0.5833333333333334,
+      0.5,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.16666666666666666,
+     0.16666666666666666,
+     0.3333333333333333,
+     0.4583333333333333,
+     0.3333333333333333
+    ],
+    "maxs": [
+     0.6666666666666666,
+     0.6666666666666666,
+     0.8333333333333334,
+     0.6666666666666666,
+     0.8333333333333334
+    ],
+    "bestMin": 0.4583333333333333,
+    "floor": 0.16666666666666666,
+    "spread": 0.29166666666666663,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".=110",
+      "=.001",
+      "01.00",
+      "011.=",
+      "101=."
+     ]
+    },
+    "cyc": [
+     [
+      1,
+      4,
+      2
+     ]
+    ],
+    "cycStrength": 0.08333333333333337,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 8.241666666666667
+   },
+   "at20": {
+    "ix": [
+     6,
+     7,
+     28,
+     32,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.45,
+      0.675,
+      0.475,
+      0.175
+     ],
+     [
+      0.55,
+      0.5,
+      0.15,
+      0.475,
+      0.65
+     ],
+     [
+      0.325,
+      0.85,
+      0.5,
+      0.375,
+      0.4
+     ],
+     [
+      0.525,
+      0.525,
+      0.625,
+      0.5,
+      0.5
+     ],
+     [
+      0.825,
+      0.35,
+      0.6,
+      0.5,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.175,
+     0.15,
+     0.325,
+     0.5,
+     0.35
+    ],
+    "maxs": [
+     0.675,
+     0.65,
+     0.85,
+     0.625,
+     0.825
+    ],
+    "bestMin": 0.5,
+    "floor": 0.15,
+    "spread": 0.35,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0100",
+      "1.001",
+      "01.00",
+      "111.=",
+      "101=."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      1
+     ],
+     [
+      1,
+      4,
+      2
+     ]
+    ],
+    "cycStrength": 0.09999999999999998,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 11.174999999999999
+   }
+  },
+  {
+   "ids": [
+    "p97",
+    "p38",
+    "p171",
+    "p30",
+    "pyro"
+   ],
+   "ok": false,
+   "score": 31.991666666666667,
+   "at8": {
+    "ix": [
+     6,
+     9,
+     10,
+     12,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.625,
+      0.1875,
+      0.375,
+      0.6875
+     ],
+     [
+      0.375,
+      0.5,
+      0.375,
+      0.625,
+      0.5625
+     ],
+     [
+      0.8125,
+      0.625,
+      0.5,
+      0.4375,
+      0.4375
+     ],
+     [
+      0.625,
+      0.375,
+      0.5625,
+      0.5,
+      0.625
+     ],
+     [
+      0.3125,
+      0.4375,
+      0.5625,
+      0.375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.375,
+     0.4375,
+     0.375,
+     0.3125
+    ],
+    "maxs": [
+     0.6875,
+     0.625,
+     0.8125,
+     0.625,
+     0.5625
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.011",
+      "11.00",
+      "101.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      1,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      2
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0.0625,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": true,
+    "score": 17.65
+   },
+   "at12": {
+    "ix": [
+     6,
+     9,
+     10,
+     12,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.5416666666666666,
+      0.125,
+      0.3333333333333333,
+      0.6666666666666666
+     ],
+     [
+      0.4583333333333333,
+      0.5,
+      0.4166666666666667,
+      0.75,
+      0.6666666666666666
+     ],
+     [
+      0.875,
+      0.5833333333333334,
+      0.5,
+      0.5416666666666666,
+      0.3333333333333333
+     ],
+     [
+      0.6666666666666666,
+      0.25,
+      0.4583333333333333,
+      0.5,
+      0.625
+     ],
+     [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.6666666666666666,
+      0.375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.125,
+     0.4166666666666667,
+     0.3333333333333333,
+     0.25,
+     0.3333333333333333
+    ],
+    "maxs": [
+     0.6666666666666666,
+     0.75,
+     0.875,
+     0.6666666666666666,
+     0.6666666666666666
+    ],
+    "bestMin": 0.4166666666666667,
+    "floor": 0.125,
+    "spread": 0.2916666666666667,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.011",
+      "11.10",
+      "100.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      1,
+      4,
+      2
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 17.191666666666666
+   },
+   "at20": {
+    "ix": [
+     6,
+     9,
+     10,
+     12,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.55,
+      0.1,
+      0.35,
+      0.675
+     ],
+     [
+      0.45,
+      0.5,
+      0.5125,
+      0.775,
+      0.725
+     ],
+     [
+      0.9,
+      0.4875,
+      0.5,
+      0.575,
+      0.3
+     ],
+     [
+      0.65,
+      0.225,
+      0.425,
+      0.5,
+      0.475
+     ],
+     [
+      0.325,
+      0.275,
+      0.7,
+      0.525,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1,
+     0.45,
+     0.3,
+     0.225,
+     0.275
+    ],
+    "maxs": [
+     0.675,
+     0.775,
+     0.9,
+     0.65,
+     0.7
+    ],
+    "bestMin": 0.45,
+    "floor": 0.1,
+    "spread": 0.35,
+    "div": {
+     "ok": false,
+     "unique": 3,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.111",
+      "10.10",
+      "100.0",
+      "0011."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      2
+     ],
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      0,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.17500000000000004,
+    "edgeMargin": 0.012499999999999956,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 14.8
+   }
+  },
+  {
+   "ids": [
+    "p97",
+    "p171",
+    "pyro",
+    "arsonist",
+    "old-conjurer"
+   ],
+   "ok": false,
+   "score": 30.866666666666667,
+   "at8": {
+    "ix": [
+     6,
+     10,
+     28,
+     29,
+     39
+    ],
+    "t": [
+     [
+      0.5,
+      0.1875,
+      0.6875,
+      0.65625,
+      0.1875
+     ],
+     [
+      0.8125,
+      0.5,
+      0.4375,
+      0.625,
+      0.8125
+     ],
+     [
+      0.3125,
+      0.5625,
+      0.5,
+      0.375,
+      0.625
+     ],
+     [
+      0.34375,
+      0.375,
+      0.625,
+      0.5,
+      0.6875
+     ],
+     [
+      0.8125,
+      0.1875,
+      0.375,
+      0.3125,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.4375,
+     0.3125,
+     0.34375,
+     0.1875
+    ],
+    "maxs": [
+     0.6875,
+     0.8125,
+     0.625,
+     0.6875,
+     0.8125
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0110",
+      "1.011",
+      "01.01",
+      "001.1",
+      "1000."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      1
+     ],
+     [
+      0,
+      2,
+      4
+     ],
+     [
+      0,
+      3,
+      4
+     ],
+     [
+      1,
+      3,
+      2
+     ]
+    ],
+    "cycStrength": 0.15625,
+    "edgeMargin": 0.0625,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": true,
+    "score": 17.65
+   },
+   "at12": {
+    "ix": [
+     6,
+     10,
+     28,
+     29,
+     39
+    ],
+    "t": [
+     [
+      0.5,
+      0.125,
+      0.6666666666666666,
+      0.6458333333333334,
+      0.25
+     ],
+     [
+      0.875,
+      0.5,
+      0.3333333333333333,
+      0.5833333333333334,
+      0.7916666666666666
+     ],
+     [
+      0.3333333333333333,
+      0.6666666666666666,
+      0.5,
+      0.4583333333333333,
+      0.6666666666666666
+     ],
+     [
+      0.3541666666666667,
+      0.4166666666666667,
+      0.5416666666666666,
+      0.5,
+      0.7083333333333334
+     ],
+     [
+      0.75,
+      0.20833333333333334,
+      0.3333333333333333,
+      0.2916666666666667,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.125,
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3541666666666667,
+     0.20833333333333334
+    ],
+    "maxs": [
+     0.6666666666666666,
+     0.875,
+     0.6666666666666666,
+     0.7083333333333334,
+     0.75
+    ],
+    "bestMin": 0.3541666666666667,
+    "floor": 0.125,
+    "spread": 0.22916666666666669,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0110",
+      "1.011",
+      "01.01",
+      "001.1",
+      "1000."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      1
+     ],
+     [
+      0,
+      2,
+      4
+     ],
+     [
+      0,
+      3,
+      4
+     ],
+     [
+      1,
+      3,
+      2
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 17.191666666666666
+   },
+   "at20": {
+    "ix": [
+     6,
+     10,
+     28,
+     29,
+     39
+    ],
+    "t": [
+     [
+      0.5,
+      0.1,
+      0.675,
+      0.6,
+      0.15
+     ],
+     [
+      0.9,
+      0.5,
+      0.3,
+      0.625,
+      0.775
+     ],
+     [
+      0.325,
+      0.7,
+      0.5,
+      0.5,
+      0.625
+     ],
+     [
+      0.4,
+      0.375,
+      0.5,
+      0.5,
+      0.775
+     ],
+     [
+      0.85,
+      0.225,
+      0.375,
+      0.225,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1,
+     0.3,
+     0.325,
+     0.375,
+     0.225
+    ],
+    "maxs": [
+     0.675,
+     0.9,
+     0.7,
+     0.775,
+     0.85
+    ],
+    "bestMin": 0.375,
+    "floor": 0.1,
+    "spread": 0.275,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0110",
+      "1.011",
+      "01.=1",
+      "00=.1",
+      "1000."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      1
+     ],
+     [
+      0,
+      2,
+      4
+     ],
+     [
+      0,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.17500000000000004,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 13.675
+   }
+  },
+  {
+   "ids": [
+    "p122",
+    "p10",
+    "p79",
+    "sniper",
+    "medic"
+   ],
+   "ok": false,
+   "score": 30.833333333333336,
+   "at8": {
+    "ix": [
+     3,
+     4,
+     13,
+     18,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.8125,
+      0.5625,
+      0.4375,
+      0.5
+     ],
+     [
+      0.1875,
+      0.5,
+      0.4375,
+      0.1875,
+      0.8125
+     ],
+     [
+      0.4375,
+      0.5625,
+      0.5,
+      0.625,
+      0.3125
+     ],
+     [
+      0.5625,
+      0.8125,
+      0.375,
+      0.5,
+      0.625
+     ],
+     [
+      0.5,
+      0.1875,
+      0.6875,
+      0.375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.4375,
+     0.1875,
+     0.3125,
+     0.375,
+     0.1875
+    ],
+    "maxs": [
+     0.8125,
+     0.8125,
+     0.625,
+     0.8125,
+     0.6875
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".110=",
+      "0.001",
+      "01.10",
+      "110.1",
+      "=010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      1,
+      4,
+      2
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.25
+    ],
+    "presetWorst": 0.25,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": true,
+    "score": 15.3625
+   },
+   "at12": {
+    "ix": [
+     3,
+     4,
+     13,
+     18,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.625,
+      0.5833333333333334,
+      0.3333333333333333,
+      0.5833333333333334
+     ],
+     [
+      0.375,
+      0.5,
+      0.375,
+      0.22916666666666666,
+      0.8333333333333334
+     ],
+     [
+      0.4166666666666667,
+      0.625,
+      0.5,
+      0.5416666666666666,
+      0.4166666666666667
+     ],
+     [
+      0.6666666666666666,
+      0.7708333333333334,
+      0.4583333333333333,
+      0.5,
+      0.75
+     ],
+     [
+      0.4166666666666667,
+      0.16666666666666666,
+      0.5833333333333334,
+      0.25,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.3333333333333333,
+     0.22916666666666666,
+     0.4166666666666667,
+     0.4583333333333333,
+     0.16666666666666666
+    ],
+    "maxs": [
+     0.625,
+     0.8333333333333334,
+     0.625,
+     0.7708333333333334,
+     0.5833333333333334
+    ],
+    "bestMin": 0.4583333333333333,
+    "floor": 0.16666666666666666,
+    "spread": 0.29166666666666663,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1101",
+      "0.001",
+      "01.10",
+      "110.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      1,
+      4,
+      2
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.08333333333333337,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0,
+     0,
+     0.25
+    ],
+    "presetWorst": 0.25,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": true,
+    "score": 15.633333333333333
+   },
+   "at20": {
+    "ix": [
+     3,
+     4,
+     13,
+     18,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.6,
+      0.625,
+      0.325,
+      0.475
+     ],
+     [
+      0.4,
+      0.5,
+      0.5,
+      0.2625,
+      0.8625
+     ],
+     [
+      0.375,
+      0.5,
+      0.5,
+      0.575,
+      0.425
+     ],
+     [
+      0.675,
+      0.7375,
+      0.425,
+      0.5,
+      0.75
+     ],
+     [
+      0.525,
+      0.1375,
+      0.575,
+      0.25,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.325,
+     0.2625,
+     0.375,
+     0.425,
+     0.1375
+    ],
+    "maxs": [
+     0.625,
+     0.8625,
+     0.575,
+     0.75,
+     0.575
+    ],
+    "bestMin": 0.425,
+    "floor": 0.1375,
+    "spread": 0.2875,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1100",
+      "0.=01",
+      "0=.10",
+      "110.1",
+      "1010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      4
+     ],
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.07499999999999996,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.25
+    ],
+    "presetWorst": 0.25,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": false,
+    "score": 15.200000000000001
+   }
+  },
+  {
+   "ids": [
+    "p124",
+    "searer",
+    "bombardier",
+    "zoner",
+    "medic"
+   ],
+   "ok": false,
+   "score": 30.566666666666663,
+   "at8": {
+    "ix": [
+     2,
+     17,
+     21,
+     22,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.3125,
+      0.4375,
+      0.5,
+      0.625
+     ],
+     [
+      0.6875,
+      0.5,
+      0.75,
+      0.5,
+      0.6875
+     ],
+     [
+      0.5625,
+      0.25,
+      0.5,
+      0.8125,
+      0.3125
+     ],
+     [
+      0.5,
+      0.5,
+      0.1875,
+      0.5,
+      0.6875
+     ],
+     [
+      0.375,
+      0.3125,
+      0.6875,
+      0.3125,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.3125,
+     0.5,
+     0.25,
+     0.1875,
+     0.3125
+    ],
+    "maxs": [
+     0.625,
+     0.75,
+     0.8125,
+     0.6875,
+     0.6875
+    ],
+    "bestMin": 0.5,
+    "floor": 0.1875,
+    "spread": 0.3125,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".00=1",
+      "1.1=1",
+      "10.10",
+      "==0.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.1875,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 12.075
+   },
+   "at12": {
+    "ix": [
+     2,
+     17,
+     21,
+     22,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.3333333333333333,
+      0.2916666666666667,
+      0.5,
+      0.5416666666666666
+     ],
+     [
+      0.6666666666666666,
+      0.5,
+      0.6666666666666666,
+      0.4166666666666667,
+      0.625
+     ],
+     [
+      0.7083333333333334,
+      0.3333333333333333,
+      0.5,
+      0.8333333333333334,
+      0.20833333333333334
+     ],
+     [
+      0.5,
+      0.5833333333333334,
+      0.16666666666666666,
+      0.5,
+      0.7916666666666666
+     ],
+     [
+      0.4583333333333333,
+      0.375,
+      0.7916666666666666,
+      0.20833333333333334,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.2916666666666667,
+     0.4166666666666667,
+     0.20833333333333334,
+     0.16666666666666666,
+     0.20833333333333334
+    ],
+    "maxs": [
+     0.5416666666666666,
+     0.6666666666666666,
+     0.8333333333333334,
+     0.7916666666666666,
+     0.7916666666666666
+    ],
+    "bestMin": 0.4166666666666667,
+    "floor": 0.16666666666666666,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".00=1",
+      "1.101",
+      "10.10",
+      "=10.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.29166666666666663,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 15.241666666666665
+   },
+   "at20": {
+    "ix": [
+     2,
+     17,
+     21,
+     22,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.25,
+      0.4,
+      0.5,
+      0.6
+     ],
+     [
+      0.75,
+      0.5,
+      0.7,
+      0.3,
+      0.575
+     ],
+     [
+      0.6,
+      0.3,
+      0.5,
+      0.9,
+      0.225
+     ],
+     [
+      0.5,
+      0.7,
+      0.1,
+      0.5,
+      0.875
+     ],
+     [
+      0.4,
+      0.425,
+      0.775,
+      0.125,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.25,
+     0.3,
+     0.225,
+     0.1,
+     0.125
+    ],
+    "maxs": [
+     0.6,
+     0.75,
+     0.9,
+     0.875,
+     0.775
+    ],
+    "bestMin": 0.3,
+    "floor": 0.1,
+    "spread": 0.19999999999999998,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".00=1",
+      "1.101",
+      "10.10",
+      "=10.1",
+      "0010."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.275,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": false,
+    "score": 15.325
+   }
+  },
+  {
+   "ids": [
+    "p97",
+    "p82",
+    "p171",
+    "pyro",
+    "lad-golem"
+   ],
+   "ok": false,
+   "score": 28.950000000000003,
+   "at8": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.5625,
+      0.1875,
+      0.6875,
+      0.1875
+     ],
+     [
+      0.4375,
+      0.5,
+      0.5625,
+      0.1875,
+      0.6875
+     ],
+     [
+      0.8125,
+      0.4375,
+      0.5,
+      0.4375,
+      0.75
+     ],
+     [
+      0.3125,
+      0.8125,
+      0.5625,
+      0.5,
+      0.3125
+     ],
+     [
+      0.8125,
+      0.3125,
+      0.25,
+      0.6875,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.1875,
+     0.4375,
+     0.3125,
+     0.25
+    ],
+    "maxs": [
+     0.6875,
+     0.6875,
+     0.8125,
+     0.8125,
+     0.8125
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1010",
+      "0.101",
+      "10.01",
+      "011.0",
+      "1001."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      2
+     ],
+     [
+      0,
+      1,
+      4
+     ],
+     [
+      0,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.1875,
+    "edgeMargin": 0.0625,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": true,
+    "score": 20.65
+   },
+   "at12": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.5,
+      0.125,
+      0.6666666666666666,
+      0.16666666666666666
+     ],
+     [
+      0.5,
+      0.5,
+      0.4166666666666667,
+      0.16666666666666666,
+      0.6666666666666666
+     ],
+     [
+      0.875,
+      0.5833333333333334,
+      0.5,
+      0.3333333333333333,
+      0.8333333333333334
+     ],
+     [
+      0.3333333333333333,
+      0.8333333333333334,
+      0.6666666666666666,
+      0.5,
+      0.4166666666666667
+     ],
+     [
+      0.8333333333333334,
+      0.3333333333333333,
+      0.16666666666666666,
+      0.5833333333333334,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.125,
+     0.16666666666666666,
+     0.3333333333333333,
+     0.3333333333333333,
+     0.16666666666666666
+    ],
+    "maxs": [
+     0.6666666666666666,
+     0.6666666666666666,
+     0.875,
+     0.8333333333333334,
+     0.8333333333333334
+    ],
+    "bestMin": 0.3333333333333333,
+    "floor": 0.125,
+    "spread": 0.20833333333333331,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".=010",
+      "=.001",
+      "11.01",
+      "011.0",
+      "1001."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 13.775
+   },
+   "at20": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     33
+    ],
+    "t": [
+     [
+      0.5,
+      0.45,
+      0.1,
+      0.675,
+      0.175
+     ],
+     [
+      0.55,
+      0.5,
+      0.3875,
+      0.15,
+      0.65
+     ],
+     [
+      0.9,
+      0.6125,
+      0.5,
+      0.3,
+      0.825
+     ],
+     [
+      0.325,
+      0.85,
+      0.7,
+      0.5,
+      0.4
+     ],
+     [
+      0.825,
+      0.35,
+      0.175,
+      0.6,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1,
+     0.15,
+     0.3,
+     0.325,
+     0.175
+    ],
+    "maxs": [
+     0.675,
+     0.65,
+     0.9,
+     0.85,
+     0.825
+    ],
+    "bestMin": 0.325,
+    "floor": 0.1,
+    "spread": 0.225,
+    "div": {
+     "ok": false,
+     "unique": 3,
+     "of": 5,
+     "patterns": [
+      ".0010",
+      "1.001",
+      "11.01",
+      "011.0",
+      "1001."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      3,
+      1
+     ],
+     [
+      0,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.17500000000000004,
+    "edgeMargin": 0.04999999999999999,
+    "presetMins": [
+     0.25,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 15.175
+   }
+  },
+  {
+   "ids": [
+    "p224",
+    "sniper",
+    "zoner",
+    "stormcaller",
+    "lad-ash"
+   ],
+   "ok": false,
+   "score": 28.416666666666664,
+   "at8": {
+    "ix": [
+     1,
+     18,
+     22,
+     23,
+     31
+    ],
+    "t": [
+     [
+      0.5,
+      0.6875,
+      0.375,
+      0.1875,
+      0.8125
+     ],
+     [
+      0.3125,
+      0.5,
+      0.6875,
+      0.5,
+      0.6875
+     ],
+     [
+      0.625,
+      0.3125,
+      0.5,
+      0.15625,
+      0.3125
+     ],
+     [
+      0.8125,
+      0.5,
+      0.84375,
+      0.5,
+      0.375
+     ],
+     [
+      0.1875,
+      0.3125,
+      0.6875,
+      0.625,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.3125,
+     0.15625,
+     0.375,
+     0.1875
+    ],
+    "maxs": [
+     0.8125,
+     0.6875,
+     0.625,
+     0.84375,
+     0.6875
+    ],
+    "bestMin": 0.375,
+    "floor": 0.15625,
+    "spread": 0.21875,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.1=1",
+      "10.00",
+      "1=1.0",
+      "0011."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      2
+     ],
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      0,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0
+    ],
+    "presetWorst": 0,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 15.325
+   },
+   "at12": {
+    "ix": [
+     1,
+     18,
+     22,
+     23,
+     31
+    ],
+    "t": [
+     [
+      0.5,
+      0.5833333333333334,
+      0.3333333333333333,
+      0.125,
+      0.875
+     ],
+     [
+      0.4166666666666667,
+      0.5,
+      0.5416666666666666,
+      0.4166666666666667,
+      0.75
+     ],
+     [
+      0.6666666666666666,
+      0.4583333333333333,
+      0.5,
+      0.22916666666666666,
+      0.375
+     ],
+     [
+      0.875,
+      0.5833333333333334,
+      0.7708333333333334,
+      0.5,
+      0.3333333333333333
+     ],
+     [
+      0.125,
+      0.25,
+      0.625,
+      0.6666666666666666,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.125,
+     0.4166666666666667,
+     0.22916666666666666,
+     0.3333333333333333,
+     0.125
+    ],
+    "maxs": [
+     0.875,
+     0.75,
+     0.6666666666666666,
+     0.875,
+     0.6666666666666666
+    ],
+    "bestMin": 0.4166666666666667,
+    "floor": 0.125,
+    "spread": 0.2916666666666667,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.101",
+      "10.00",
+      "111.0",
+      "0011."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      2
+     ],
+     [
+      0,
+      4,
+      2
+     ],
+     [
+      0,
+      4,
+      3
+     ],
+     [
+      1,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0,
+     0,
+     0
+    ],
+    "presetWorst": 0,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": false,
+    "score": 18.491666666666664
+   },
+   "at20": {
+    "ix": [
+     1,
+     18,
+     22,
+     23,
+     31
+    ],
+    "t": [
+     [
+      0.5,
+      0.5875,
+      0.275,
+      0.075,
+      0.875
+     ],
+     [
+      0.4125,
+      0.5,
+      0.425,
+      0.375,
+      0.6875
+     ],
+     [
+      0.725,
+      0.575,
+      0.5,
+      0.2125,
+      0.5
+     ],
+     [
+      0.925,
+      0.625,
+      0.7875,
+      0.5,
+      0.4
+     ],
+     [
+      0.125,
+      0.3125,
+      0.5,
+      0.6,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.075,
+     0.375,
+     0.2125,
+     0.4,
+     0.125
+    ],
+    "maxs": [
+     0.875,
+     0.6875,
+     0.725,
+     0.925,
+     0.6
+    ],
+    "bestMin": 0.4,
+    "floor": 0.075,
+    "spread": 0.325,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1001",
+      "0.001",
+      "11.0=",
+      "111.0",
+      "00=1."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      3
+     ],
+     [
+      1,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.09999999999999998,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0
+    ],
+    "presetWorst": 0,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": false,
+    "score": 9.924999999999999
+   }
+  },
+  {
+   "ids": [
+    "p38",
+    "p171",
+    "p30",
+    "p85",
+    "pyro"
+   ],
+   "ok": false,
+   "score": 27.941666666666663,
+   "at8": {
+    "ix": [
+     9,
+     10,
+     12,
+     15,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.375,
+      0.625,
+      0.3125,
+      0.5625
+     ],
+     [
+      0.625,
+      0.5,
+      0.4375,
+      0.375,
+      0.4375
+     ],
+     [
+      0.375,
+      0.5625,
+      0.5,
+      0.84375,
+      0.625
+     ],
+     [
+      0.6875,
+      0.625,
+      0.15625,
+      0.5,
+      0.5625
+     ],
+     [
+      0.4375,
+      0.5625,
+      0.375,
+      0.4375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.3125,
+     0.375,
+     0.375,
+     0.15625,
+     0.375
+    ],
+    "maxs": [
+     0.625,
+     0.625,
+     0.84375,
+     0.6875,
+     0.5625
+    ],
+    "bestMin": 0.375,
+    "floor": 0.15625,
+    "spread": 0.21875,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0101",
+      "1.000",
+      "01.11",
+      "110.1",
+      "0100."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      1
+     ],
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      0,
+      4,
+      1
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0.0625,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 2,
+    "shapes": 5,
+    "hard": true,
+    "score": 14.225
+   },
+   "at12": {
+    "ix": [
+     9,
+     10,
+     12,
+     15,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.4166666666666667,
+      0.75,
+      0.25,
+      0.6666666666666666
+     ],
+     [
+      0.5833333333333334,
+      0.5,
+      0.5416666666666666,
+      0.3333333333333333,
+      0.3333333333333333
+     ],
+     [
+      0.25,
+      0.4583333333333333,
+      0.5,
+      0.8958333333333334,
+      0.625
+     ],
+     [
+      0.75,
+      0.6666666666666666,
+      0.10416666666666667,
+      0.5,
+      0.5
+     ],
+     [
+      0.3333333333333333,
+      0.6666666666666666,
+      0.375,
+      0.5,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.25,
+     0.3333333333333333,
+     0.25,
+     0.10416666666666667,
+     0.3333333333333333
+    ],
+    "maxs": [
+     0.75,
+     0.5833333333333334,
+     0.8958333333333334,
+     0.75,
+     0.6666666666666666
+    ],
+    "bestMin": 0.3333333333333333,
+    "floor": 0.10416666666666667,
+    "spread": 0.22916666666666663,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".0101",
+      "1.100",
+      "00.11",
+      "110.=",
+      "010=."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      0,
+      4,
+      1
+     ],
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      1,
+      2,
+      4
+     ]
+    ],
+    "cycStrength": 0.25,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 2,
+    "shapes": 5,
+    "hard": false,
+    "score": 16.391666666666666
+   },
+   "at20": {
+    "ix": [
+     9,
+     10,
+     12,
+     15,
+     28
+    ],
+    "t": [
+     [
+      0.5,
+      0.5125,
+      0.775,
+      0.2,
+      0.725
+     ],
+     [
+      0.4875,
+      0.5,
+      0.575,
+      0.375,
+      0.3
+     ],
+     [
+      0.225,
+      0.425,
+      0.5,
+      0.8875,
+      0.475
+     ],
+     [
+      0.8,
+      0.625,
+      0.1125,
+      0.5,
+      0.625
+     ],
+     [
+      0.275,
+      0.7,
+      0.525,
+      0.375,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.2,
+     0.3,
+     0.225,
+     0.1125,
+     0.275
+    ],
+    "maxs": [
+     0.775,
+     0.575,
+     0.8875,
+     0.8,
+     0.7
+    ],
+    "bestMin": 0.3,
+    "floor": 0.1125,
+    "spread": 0.1875,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1101",
+      "0.100",
+      "00.10",
+      "110.1",
+      "0110."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.275,
+    "edgeMargin": 0.012499999999999956,
+    "presetMins": [
+     0.625,
+     0,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 2,
+    "shapes": 5,
+    "hard": false,
+    "score": 11.549999999999999
+   }
+  },
+  {
+   "ids": [
+    "p124",
+    "p122",
+    "lancer",
+    "bombardier",
+    "medic"
+   ],
+   "ok": false,
+   "score": 26.725,
+   "at8": {
+    "ix": [
+     2,
+     3,
+     16,
+     21,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.625,
+      0.5625,
+      0.4375,
+      0.625
+     ],
+     [
+      0.375,
+      0.5,
+      0.375,
+      0.1875,
+      0.5
+     ],
+     [
+      0.4375,
+      0.625,
+      0.5,
+      0.5625,
+      0.1875
+     ],
+     [
+      0.5625,
+      0.8125,
+      0.4375,
+      0.5,
+      0.3125
+     ],
+     [
+      0.375,
+      0.5,
+      0.8125,
+      0.6875,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.4375,
+     0.1875,
+     0.1875,
+     0.3125,
+     0.375
+    ],
+    "maxs": [
+     0.625,
+     0.5,
+     0.625,
+     0.8125,
+     0.8125
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1101",
+      "0.00=",
+      "01.10",
+      "110.0",
+      "0=11."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      2,
+      3
+     ],
+     [
+      0,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.0625,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": true,
+    "score": 12.3625
+   },
+   "at12": {
+    "ix": [
+     2,
+     3,
+     16,
+     21,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.7083333333333334,
+      0.625,
+      0.2916666666666667,
+      0.5416666666666666
+     ],
+     [
+      0.2916666666666667,
+      0.5,
+      0.3333333333333333,
+      0.2916666666666667,
+      0.5833333333333334
+     ],
+     [
+      0.375,
+      0.6666666666666666,
+      0.5,
+      0.4166666666666667,
+      0.4166666666666667
+     ],
+     [
+      0.7083333333333334,
+      0.7083333333333334,
+      0.5833333333333334,
+      0.5,
+      0.20833333333333334
+     ],
+     [
+      0.4583333333333333,
+      0.4166666666666667,
+      0.5833333333333334,
+      0.7916666666666666,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.2916666666666667,
+     0.2916666666666667,
+     0.375,
+     0.20833333333333334,
+     0.4166666666666667
+    ],
+    "maxs": [
+     0.7083333333333334,
+     0.5833333333333334,
+     0.6666666666666666,
+     0.7083333333333334,
+     0.7916666666666666
+    ],
+    "bestMin": 0.4166666666666667,
+    "floor": 0.20833333333333334,
+    "spread": 0.20833333333333334,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1101",
+      "0.001",
+      "01.00",
+      "111.0",
+      "0011."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      3
+     ],
+     [
+      1,
+      4,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.08333333333333337,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": true,
+    "score": 15.925
+   },
+   "at20": {
+    "ix": [
+     2,
+     3,
+     16,
+     21,
+     24
+    ],
+    "t": [
+     [
+      0.5,
+      0.6,
+      0.575,
+      0.4,
+      0.6
+     ],
+     [
+      0.4,
+      0.5,
+      0.35,
+      0.325,
+      0.475
+     ],
+     [
+      0.425,
+      0.65,
+      0.5,
+      0.475,
+      0.625
+     ],
+     [
+      0.6,
+      0.675,
+      0.525,
+      0.5,
+      0.225
+     ],
+     [
+      0.4,
+      0.525,
+      0.375,
+      0.775,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.4,
+     0.325,
+     0.425,
+     0.225,
+     0.375
+    ],
+    "maxs": [
+     0.6,
+     0.475,
+     0.65,
+     0.675,
+     0.775
+    ],
+    "bestMin": 0.425,
+    "floor": 0.225,
+    "spread": 0.19999999999999998,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1101",
+      "0.000",
+      "01.01",
+      "111.0",
+      "0101."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.09999999999999998,
+    "edgeMargin": 0.025000000000000022,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 5,
+    "shapes": 4,
+    "hard": false,
+    "score": 10.8
+   }
+  },
+  {
+   "ids": [
+    "p97",
+    "p82",
+    "p171",
+    "pyro",
+    "arsonist"
+   ],
+   "ok": false,
+   "score": 22.450000000000003,
+   "at8": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.5625,
+      0.1875,
+      0.6875,
+      0.65625
+     ],
+     [
+      0.4375,
+      0.5,
+      0.5625,
+      0.1875,
+      0.625
+     ],
+     [
+      0.8125,
+      0.4375,
+      0.5,
+      0.4375,
+      0.625
+     ],
+     [
+      0.3125,
+      0.8125,
+      0.5625,
+      0.5,
+      0.375
+     ],
+     [
+      0.34375,
+      0.375,
+      0.375,
+      0.625,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1875,
+     0.1875,
+     0.4375,
+     0.3125,
+     0.34375
+    ],
+    "maxs": [
+     0.6875,
+     0.625,
+     0.8125,
+     0.8125,
+     0.625
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1011",
+      "0.101",
+      "10.01",
+      "011.0",
+      "0001."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      2
+     ],
+     [
+      0,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0.0625,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": true,
+    "score": 17.65
+   },
+   "at12": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.5,
+      0.125,
+      0.6666666666666666,
+      0.6458333333333334
+     ],
+     [
+      0.5,
+      0.5,
+      0.4166666666666667,
+      0.16666666666666666,
+      0.5833333333333334
+     ],
+     [
+      0.875,
+      0.5833333333333334,
+      0.5,
+      0.3333333333333333,
+      0.5833333333333334
+     ],
+     [
+      0.3333333333333333,
+      0.8333333333333334,
+      0.6666666666666666,
+      0.5,
+      0.4583333333333333
+     ],
+     [
+      0.3541666666666667,
+      0.4166666666666667,
+      0.4166666666666667,
+      0.5416666666666666,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.125,
+     0.16666666666666666,
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3541666666666667
+    ],
+    "maxs": [
+     0.6666666666666666,
+     0.5833333333333334,
+     0.875,
+     0.8333333333333334,
+     0.5416666666666666
+    ],
+    "bestMin": 0.3541666666666667,
+    "floor": 0.125,
+    "spread": 0.22916666666666669,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".=011",
+      "=.001",
+      "11.01",
+      "011.0",
+      "0001."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      3,
+      2
+     ],
+     [
+      1,
+      4,
+      3
+     ],
+     [
+      2,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 13.775
+   },
+   "at20": {
+    "ix": [
+     6,
+     7,
+     10,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.45,
+      0.1,
+      0.675,
+      0.6
+     ],
+     [
+      0.55,
+      0.5,
+      0.3875,
+      0.15,
+      0.525
+     ],
+     [
+      0.9,
+      0.6125,
+      0.5,
+      0.3,
+      0.625
+     ],
+     [
+      0.325,
+      0.85,
+      0.7,
+      0.5,
+      0.5
+     ],
+     [
+      0.4,
+      0.475,
+      0.375,
+      0.5,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.1,
+     0.15,
+     0.3,
+     0.325,
+     0.375
+    ],
+    "maxs": [
+     0.675,
+     0.55,
+     0.9,
+     0.85,
+     0.5
+    ],
+    "bestMin": 0.375,
+    "floor": 0.1,
+    "spread": 0.275,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".0011",
+      "1.001",
+      "11.01",
+      "011.=",
+      "000=."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      3,
+      1
+     ],
+     [
+      0,
+      3,
+      2
+     ]
+    ],
+    "cycStrength": 0.17500000000000004,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0.125,
+     0.75
+    ],
+    "presetWorst": 0.75,
+    "twoDmg": 3,
+    "shapes": 5,
+    "hard": false,
+    "score": 8.675
+   }
+  },
+  {
+   "ids": [
+    "p124",
+    "p122",
+    "lancer",
+    "searer",
+    "bombardier"
+   ],
+   "ok": false,
+   "score": 21.016666666666666,
+   "at8": {
+    "ix": [
+     2,
+     3,
+     16,
+     17,
+     21
+    ],
+    "t": [
+     [
+      0.5,
+      0.625,
+      0.5625,
+      0.3125,
+      0.4375
+     ],
+     [
+      0.375,
+      0.5,
+      0.375,
+      0.625,
+      0.1875
+     ],
+     [
+      0.4375,
+      0.625,
+      0.5,
+      0.5,
+      0.5625
+     ],
+     [
+      0.6875,
+      0.375,
+      0.5,
+      0.5,
+      0.75
+     ],
+     [
+      0.5625,
+      0.8125,
+      0.4375,
+      0.25,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.3125,
+     0.1875,
+     0.4375,
+     0.375,
+     0.25
+    ],
+    "maxs": [
+     0.625,
+     0.625,
+     0.625,
+     0.75,
+     0.8125
+    ],
+    "bestMin": 0.4375,
+    "floor": 0.1875,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1100",
+      "0.010",
+      "01.=1",
+      "10=.1",
+      "1100."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      0,
+      2,
+      4
+     ],
+     [
+      1,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.125,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 4,
+    "hard": true,
+    "score": 15.0625
+   },
+   "at12": {
+    "ix": [
+     2,
+     3,
+     16,
+     17,
+     21
+    ],
+    "t": [
+     [
+      0.5,
+      0.7083333333333334,
+      0.625,
+      0.3333333333333333,
+      0.2916666666666667
+     ],
+     [
+      0.2916666666666667,
+      0.5,
+      0.3333333333333333,
+      0.6666666666666666,
+      0.2916666666666667
+     ],
+     [
+      0.375,
+      0.6666666666666666,
+      0.5,
+      0.5,
+      0.4166666666666667
+     ],
+     [
+      0.6666666666666666,
+      0.3333333333333333,
+      0.5,
+      0.5,
+      0.6666666666666666
+     ],
+     [
+      0.7083333333333334,
+      0.7083333333333334,
+      0.5833333333333334,
+      0.3333333333333333,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.2916666666666667,
+     0.2916666666666667,
+     0.375,
+     0.3333333333333333,
+     0.3333333333333333
+    ],
+    "maxs": [
+     0.7083333333333334,
+     0.6666666666666666,
+     0.6666666666666666,
+     0.6666666666666666,
+     0.7083333333333334
+    ],
+    "bestMin": 0.375,
+    "floor": 0.2916666666666667,
+    "spread": 0.08333333333333331,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1100",
+      "0.010",
+      "01.=0",
+      "10=.1",
+      "1110."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      1,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.16666666666666663,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 4,
+    "hard": false,
+    "score": 10.666666666666668
+   },
+   "at20": {
+    "ix": [
+     2,
+     3,
+     16,
+     17,
+     21
+    ],
+    "t": [
+     [
+      0.5,
+      0.6,
+      0.575,
+      0.25,
+      0.4
+     ],
+     [
+      0.4,
+      0.5,
+      0.35,
+      0.65,
+      0.325
+     ],
+     [
+      0.425,
+      0.65,
+      0.5,
+      0.5,
+      0.475
+     ],
+     [
+      0.75,
+      0.35,
+      0.5,
+      0.5,
+      0.7
+     ],
+     [
+      0.6,
+      0.675,
+      0.525,
+      0.3,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.25,
+     0.325,
+     0.425,
+     0.35,
+     0.3
+    ],
+    "maxs": [
+     0.6,
+     0.65,
+     0.65,
+     0.75,
+     0.675
+    ],
+    "bestMin": 0.425,
+    "floor": 0.25,
+    "spread": 0.175,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1100",
+      "0.010",
+      "01.=0",
+      "10=.1",
+      "1110."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      3
+     ],
+     [
+      1,
+      3,
+      4
+     ]
+    ],
+    "cycStrength": 0.15000000000000002,
+    "edgeMargin": 0,
+    "presetMins": [
+     0,
+     0,
+     0.125
+    ],
+    "presetWorst": 0.125,
+    "twoDmg": 4,
+    "shapes": 4,
+    "hard": false,
+    "score": 10.35
+   }
+  },
+  {
+   "ids": [
+    "p175",
+    "p171",
+    "jailer",
+    "pyro",
+    "arsonist"
+   ],
+   "ok": false,
+   "score": 18.370833333333334,
+   "at8": {
+    "ix": [
+     8,
+     10,
+     26,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.53125,
+      0.5,
+      0.75,
+      0.375
+     ],
+     [
+      0.46875,
+      0.5,
+      0.4375,
+      0.4375,
+      0.625
+     ],
+     [
+      0.5,
+      0.5625,
+      0.5,
+      0.75,
+      0.5
+     ],
+     [
+      0.25,
+      0.5625,
+      0.25,
+      0.5,
+      0.375
+     ],
+     [
+      0.625,
+      0.375,
+      0.5,
+      0.625,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.375,
+     0.4375,
+     0.5,
+     0.25,
+     0.375
+    ],
+    "maxs": [
+     0.75,
+     0.625,
+     0.75,
+     0.5625,
+     0.625
+    ],
+    "bestMin": 0.5,
+    "floor": 0.25,
+    "spread": 0.25,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1=10",
+      "0.001",
+      "=1.1=",
+      "010.0",
+      "10=1."
+     ]
+    },
+    "cyc": [
+     [
+      0,
+      1,
+      4
+     ],
+     [
+      1,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.0625,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0,
+     0.5
+    ],
+    "presetWorst": 0.625,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 11.95
+   },
+   "at12": {
+    "ix": [
+     8,
+     10,
+     26,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.5625,
+      0.6666666666666666,
+      0.8333333333333334,
+      0.5416666666666666
+     ],
+     [
+      0.4375,
+      0.5,
+      0.5416666666666666,
+      0.3333333333333333,
+      0.5833333333333334
+     ],
+     [
+      0.3333333333333333,
+      0.4583333333333333,
+      0.5,
+      0.7083333333333334,
+      0.5833333333333334
+     ],
+     [
+      0.16666666666666666,
+      0.6666666666666666,
+      0.2916666666666667,
+      0.5,
+      0.4583333333333333
+     ],
+     [
+      0.4583333333333333,
+      0.4166666666666667,
+      0.4166666666666667,
+      0.5416666666666666,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.5416666666666666,
+     0.3333333333333333,
+     0.3333333333333333,
+     0.16666666666666666,
+     0.4166666666666667
+    ],
+    "maxs": [
+     0.8333333333333334,
+     0.5833333333333334,
+     0.7083333333333334,
+     0.6666666666666666,
+     0.5416666666666666
+    ],
+    "bestMin": 0.5416666666666666,
+    "floor": 0.16666666666666666,
+    "spread": 0.375,
+    "div": {
+     "ok": true,
+     "unique": 4,
+     "of": 5,
+     "patterns": [
+      ".1111",
+      "0.101",
+      "00.11",
+      "010.0",
+      "0001."
+     ]
+    },
+    "cyc": [
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      1,
+      4,
+      3
+     ]
+    ],
+    "cycStrength": 0.04166666666666663,
+    "edgeMargin": 0.04166666666666663,
+    "presetMins": [
+     0.625,
+     0,
+     0.5
+    ],
+    "presetWorst": 0.625,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": true,
+    "score": 10.033333333333333
+   },
+   "at20": {
+    "ix": [
+     8,
+     10,
+     26,
+     28,
+     29
+    ],
+    "t": [
+     [
+      0.5,
+      0.6625,
+      0.7,
+      0.875,
+      0.725
+     ],
+     [
+      0.3375,
+      0.5,
+      0.575,
+      0.3,
+      0.625
+     ],
+     [
+      0.3,
+      0.425,
+      0.5,
+      0.65,
+      0.675
+     ],
+     [
+      0.125,
+      0.7,
+      0.35,
+      0.5,
+      0.5
+     ],
+     [
+      0.275,
+      0.375,
+      0.325,
+      0.5,
+      0.5
+     ]
+    ],
+    "mins": [
+     0.6625,
+     0.3,
+     0.3,
+     0.125,
+     0.275
+    ],
+    "maxs": [
+     0.875,
+     0.625,
+     0.675,
+     0.7,
+     0.5
+    ],
+    "bestMin": 0.6625,
+    "floor": 0.125,
+    "spread": 0.5375,
+    "div": {
+     "ok": true,
+     "unique": 5,
+     "of": 5,
+     "patterns": [
+      ".1111",
+      "0.101",
+      "00.11",
+      "010.=",
+      "000=."
+     ]
+    },
+    "cyc": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "cycStrength": 0.07499999999999996,
+    "edgeMargin": 0,
+    "presetMins": [
+     0.625,
+     0,
+     0.5
+    ],
+    "presetWorst": 0.625,
+    "twoDmg": 4,
+    "shapes": 5,
+    "hard": false,
+    "score": 8.3375
+   }
+  }
+ ],
+ "chosen": {
+  "ids": [
+   "p97",
+   "p82",
+   "pyro",
+   "lad-cutter",
+   "lad-golem"
+  ],
+  "kits": [
+   [
+    {
+     "delivery": "zone",
+     "effects": [
+      "pull",
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "cleanse"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   [
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "blink",
+     "effects": [
+      "heal"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "beam",
+     "effects": [
+      "boost"
+     ],
+     "element": "kinetic",
+     "channel": "turn"
+    }
+   ],
+   [
+    {
+     "delivery": "beam",
+     "effects": [
+      "burn"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "zone",
+     "effects": [
+      "burn",
+      "knock"
+     ],
+     "element": "ember"
+    },
+    {
+     "delivery": "lob",
+     "effects": [
+      "burn",
+      "pull"
+     ],
+     "element": "ember"
+    }
+   ],
+   [
+    {
+     "delivery": "beam",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "knock"
+     ],
+     "element": "kinetic"
+    }
+   ],
+   [
+    {
+     "delivery": "cone",
+     "effects": [
+      "damage",
+      "knock"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage"
+     ],
+     "element": "kinetic"
+    },
+    {
+     "delivery": "dash",
+     "effects": [
+      "damage",
+      "stun"
+     ],
+     "element": "kinetic"
+    }
+   ]
+  ],
+  "ok": true,
+  "at8": {
+   "ix": [
+    6,
+    7,
+    28,
+    32,
+    33
+   ],
+   "t": [
+    [
+     0.5,
+     0.5625,
+     0.6875,
+     0.5625,
+     0.1875
+    ],
+    [
+     0.4375,
+     0.5,
+     0.1875,
+     0.5,
+     0.6875
+    ],
+    [
+     0.3125,
+     0.8125,
+     0.5,
+     0.1875,
+     0.3125
+    ],
+    [
+     0.4375,
+     0.5,
+     0.8125,
+     0.5,
+     0.5625
+    ],
+    [
+     0.8125,
+     0.3125,
+     0.6875,
+     0.4375,
+     0.5
+    ]
+   ],
+   "mins": [
+    0.1875,
+    0.1875,
+    0.1875,
+    0.4375,
+    0.3125
+   ],
+   "maxs": [
+    0.6875,
+    0.6875,
+    0.8125,
+    0.8125,
+    0.8125
+   ],
+   "bestMin": 0.4375,
+   "floor": 0.1875,
+   "spread": 0.25,
+   "div": {
+    "ok": true,
+    "unique": 5,
+    "of": 5,
+    "patterns": [
+     ".1110",
+     "0.0=1",
+     "01.00",
+     "0=1.1",
+     "1010."
+    ]
+   },
+   "cyc": [
+    [
+     0,
+     1,
+     4
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     1,
+     4,
+     2
+    ]
+   ],
+   "cycStrength": 0.1875,
+   "edgeMargin": 0,
+   "presetMins": [
+    0.25,
+    0,
+    0.75
+   ],
+   "presetWorst": 0.75,
+   "twoDmg": 4,
+   "shapes": 5,
+   "hard": true,
+   "score": 14.325
+  },
+  "at12": {
+   "ix": [
+    6,
+    7,
+    28,
+    32,
+    33
+   ],
+   "t": [
+    [
+     0.5,
+     0.5,
+     0.6666666666666666,
+     0.5416666666666666,
+     0.16666666666666666
+    ],
+    [
+     0.5,
+     0.5,
+     0.16666666666666666,
+     0.4166666666666667,
+     0.6666666666666666
+    ],
+    [
+     0.3333333333333333,
+     0.8333333333333334,
+     0.5,
+     0.3333333333333333,
+     0.4166666666666667
+    ],
+    [
+     0.4583333333333333,
+     0.5833333333333334,
+     0.6666666666666666,
+     0.5,
+     0.5
+    ],
+    [
+     0.8333333333333334,
+     0.3333333333333333,
+     0.5833333333333334,
+     0.5,
+     0.5
+    ]
+   ],
+   "mins": [
+    0.16666666666666666,
+    0.16666666666666666,
+    0.3333333333333333,
+    0.4583333333333333,
+    0.3333333333333333
+   ],
+   "maxs": [
+    0.6666666666666666,
+    0.6666666666666666,
+    0.8333333333333334,
+    0.6666666666666666,
+    0.8333333333333334
+   ],
+   "bestMin": 0.4583333333333333,
+   "floor": 0.16666666666666666,
+   "spread": 0.29166666666666663,
+   "div": {
+    "ok": true,
+    "unique": 5,
+    "of": 5,
+    "patterns": [
+     ".=110",
+     "=.001",
+     "01.00",
+     "011.=",
+     "101=."
+    ]
+   },
+   "cyc": [
+    [
+     1,
+     4,
+     2
+    ]
+   ],
+   "cycStrength": 0.08333333333333337,
+   "edgeMargin": 0,
+   "presetMins": [
+    0.25,
+    0,
+    0.75
+   ],
+   "presetWorst": 0.75,
+   "twoDmg": 4,
+   "shapes": 5,
+   "hard": true,
+   "score": 8.241666666666667
+  },
+  "at20": {
+   "ix": [
+    6,
+    7,
+    28,
+    32,
+    33
+   ],
+   "t": [
+    [
+     0.5,
+     0.45,
+     0.675,
+     0.475,
+     0.175
+    ],
+    [
+     0.55,
+     0.5,
+     0.15,
+     0.475,
+     0.65
+    ],
+    [
+     0.325,
+     0.85,
+     0.5,
+     0.375,
+     0.4
+    ],
+    [
+     0.525,
+     0.525,
+     0.625,
+     0.5,
+     0.5
+    ],
+    [
+     0.825,
+     0.35,
+     0.6,
+     0.5,
+     0.5
+    ]
+   ],
+   "mins": [
+    0.175,
+    0.15,
+    0.325,
+    0.5,
+    0.35
+   ],
+   "maxs": [
+    0.675,
+    0.65,
+    0.85,
+    0.625,
+    0.825
+   ],
+   "bestMin": 0.5,
+   "floor": 0.15,
+   "spread": 0.35,
+   "div": {
+    "ok": true,
+    "unique": 5,
+    "of": 5,
+    "patterns": [
+     ".0100",
+     "1.001",
+     "01.00",
+     "111.=",
+     "101=."
+    ]
+   },
+   "cyc": [
+    [
+     0,
+     2,
+     1
+    ],
+    [
+     1,
+     4,
+     2
+    ]
+   ],
+   "cycStrength": 0.09999999999999998,
+   "edgeMargin": 0,
+   "presetMins": [
+    0.25,
+    0,
+    0.75
+   ],
+   "presetWorst": 0.75,
+   "twoDmg": 4,
+   "shapes": 5,
+   "hard": true,
+   "score": 11.174999999999999
+  },
+  "tables": {
+   "at12": [
+    "                    p97     p82    pyro lad-cut lad-gol     worst",
+    "  p97               ·       50%     67%     54%     17%      17%",
+    "  p82               50%     ·       17%     42%     67%      17%",
+    "  pyro              33%     83%     ·       33%     42%      33%",
+    "  lad-cutter        46%     58%     67%     ·       50%      46%",
+    "  lad-golem         83%     33%     58%     50%     ·        33%",
+    "  best worst 45.8%  floor 16.7%  spread 29 pp  styles 5/5  cycles 1  p82→lad-golem→pyro",
+    "  presets' worst (viability, 8 fights): keeper 25.0%, breaker 0.0%, saboteur 75.0%  → holds"
+   ],
+   "at20": [
+    "                    p97     p82    pyro lad-cut lad-gol     worst",
+    "  p97               ·       45%     68%     48%     18%      18%",
+    "  p82               55%     ·       15%     48%     65%      15%",
+    "  pyro              33%     85%     ·       38%     40%      33%",
+    "  lad-cutter        53%     53%     63%     ·       50%      50%",
+    "  lad-golem         83%     35%     60%     50%     ·        35%",
+    "  best worst 50.0%  floor 15.0%  spread 35 pp  styles 5/5  cycles 2  p97→pyro→p82, p82→lad-golem→pyro",
+    "  presets' worst (viability, 8 fights): keeper 25.0%, breaker 0.0%, saboteur 75.0%  → holds"
+   ]
+  },
+  "suggested": {
+   "bestMin": 0.75,
+   "medianMin": 0.325,
+   "ok": true
+  }
+ }
+}

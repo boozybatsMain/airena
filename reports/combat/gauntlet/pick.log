@@ -1,0 +1,165 @@
+
+  pool: 38 candidates (16 from the panel, 17 hand-designed, 5 old), 3 preset probes
+    p3            dmg 2  blink:heal+shield | zone:damage | lob:burn+pull+cleanse
+    p224          dmg 1  jump:wall+cleanse+heal | beam:silence | zone:damage+burn
+    p65           dmg 1  blink:heal | jump:heal+shield+wall | dash:burn+damage
+    p124          dmg 2  lob:knock+damage | jump:boost/damage | zone:burn+wall
+    p122          dmg 2  blink:cleanse+wall | bolt:damage+silence | zone:heal+damage
+    p10           dmg 2  beam:burn+damage | zone:silence+stun+burn | self:boost/damage
+    p111          dmg 1  blink:cleanse+heal | bolt:heal+damage | bolt:cleanse+weaken/turn
+    p109          dmg 1  bolt:silence+heal+stun | beam:damage+shield | lob:heal+shield
+    p97           dmg 2  zone:pull+damage | dash:damage+cleanse | zone:heal
+    p82           dmg 1  zone:burn+knock | blink:heal | beam:boost/turn
+    p175          dmg 2  lob:weaken+damage/vision | dash:cleanse+wall+knock | beam:stun+silence+burn
+    p38           dmg 2  cone:silence+damage | dash:root+heal | bolt:damage
+    p171          dmg 1  bolt:damage+blind | blink:shield | zone:pull
+    p231          dmg 1  lob:blind | blink:cleanse+heal | zone:damage+blind
+    p30           dmg 1  zone:silence+burn | cone:cleanse | jump:heal+cleanse
+    p79           dmg 2  beam:knock | zone:burn+stun | lob:damage+wall+knock
+    lancer        dmg 2  beam:damage | bolt:damage | blink:shield
+    searer        dmg 1  beam:damage+burn | bolt:silence | blink:cleanse
+    sniper        dmg 2  bolt:damage | beam:damage+weaken/speed | self:shield+cleanse
+    brawler       dmg 2  cone:damage+burn | dash:damage | self:shield
+    mauler        dmg 2  cone:damage+root | dash:damage+burn | self:shield+heal
+    duelist       dmg 2  cone:damage | bolt:damage | blink:shield+heal
+    bombardier    dmg 3  lob:damage | zone:damage+burn | lob:burn+pull
+    zoner         dmg 3  zone:damage | lob:damage+knock | zone:burn+wall
+    stormcaller   dmg 2  zone:damage+burn | lob:damage+stun | blink:heal
+    warden        dmg 2  self:shield+heal | beam:damage | bolt:damage+heal
+    medic         dmg 2  blink:heal+shield | zone:damage | bolt:damage
+    controller    dmg 1  bolt:stun | beam:silence | zone:damage
+    jailer        dmg 3  cone:silence+damage | bolt:damage+blind | dash:root+damage
+    silencer      dmg 2  beam:silence+damage | bolt:stun+damage | self:heal
+    pyro          dmg 3  beam:burn | zone:burn+knock | lob:burn+pull
+    arsonist      dmg 3  beam:burn | dash:damage+burn | zone:burn+knock
+    vaulter       dmg 2  jump:shield | cone:damage | bolt:damage
+    old-striker   dmg 1  beam:cleanse+silence | blink:shield | lob:damage
+    old-warden    dmg 1  beam:heal+wall | blink:wall | bolt:cleanse+pull+damage
+    old-conjurer  dmg 1  zone:boost/range | blink:boost/vision | zone:heal+damage
+    old-runner    dmg 1  dash:burn+weaken/range | zone:boost/cooldown | dash:boost/range
+    old-lobber    dmg 1  lob:blind+wall | lob:wall | lob:damage
+
+  817 pairs × 8 seeds × 2 sides
+  matrix @8: 13072 matches to play, 14 runs of ≤ 1000
+    25/13072       50/13072       75/13072       100/13072       125/13072       150/13072       175/13072       200/13072       225/13072       250/13072       275/13072       300/13072       325/13072       350/13072       375/13072       400/13072       425/13072       450/13072       475/13072       500/13072       525/13072       550/13072       575/13072       600/13072       625/13072       650/13072       675/13072       700/13072       725/13072       750/13072       775/13072       800/13072       825/13072       850/13072       875/13072       900/13072       925/13072       950/13072       975/13072       1000/13072       1000/13072  (24 s)   
+    1025/13072       1050/13072       1075/13072       1100/13072       1125/13072       1150/13072       1175/13072       1200/13072       1225/13072       1250/13072       1275/13072       1300/13072       1325/13072       1350/13072       1375/13072       1400/13072       1425/13072       1450/13072       1475/13072       1500/13072       1525/13072       1550/13072       1575/13072       1600/13072       1625/13072       1650/13072       1675/13072       1700/13072       1725/13072       1750/13072       1775/13072       1800/13072       1825/13072       1850/13072       1875/13072       1900/13072       1925/13072       1950/13072       1975/13072       2000/13072       2000/13072  (50 s)   
+    2025/13072       2050/13072       2075/13072       2100/13072       2125/13072       2150/13072       2175/13072       2200/13072       2225/13072       2250/13072       2275/13072       2300/13072       2325/13072       2350/13072       2375/13072       2400/13072       2425/13072       2450/13072       2475/13072       2500/13072       2525/13072       2550/13072       2575/13072       2600/13072       2625/13072       2650/13072       2675/13072       2700/13072       2725/13072       2750/13072       2775/13072       2800/13072       2825/13072       2850/13072       2875/13072       2900/13072       2925/13072       2950/13072       2975/13072       3000/13072       3000/13072  (69 s)   
+    3025/13072       3050/13072       3075/13072       3100/13072       3125/13072       3150/13072       3175/13072       3200/13072       3225/13072       3250/13072       3275/13072       3300/13072       3325/13072       3350/13072       3375/13072       3400/13072       3425/13072       3450/13072       3475/13072       3500/13072       3525/13072       3550/13072       3575/13072       3600/13072       3625/13072       3650/13072       3675/13072       3700/13072       3725/13072       3750/13072       3775/13072       3800/13072       3825/13072       3850/13072       3875/13072       3900/13072       3925/13072       3950/13072       3975/13072       4000/13072       4000/13072  (94 s)   
+    4025/13072       4050/13072       4075/13072       4100/13072       4125/13072       4150/13072       4175/13072       4200/13072       4225/13072       4250/13072       4275/13072       4300/13072       4325/13072       4350/13072       4375/13072       4400/13072       4425/13072       4450/13072       4475/13072       4500/13072       4525/13072       4550/13072       4575/13072       4600/13072       4625/13072       4650/13072       4675/13072       4700/13072       4725/13072       4750/13072       4775/13072       4800/13072       4825/13072       4850/13072       4875/13072       4900/13072       4925/13072       4950/13072       4975/13072       5000/13072       5000/13072  (121 s)   
+    5025/13072       5050/13072       5075/13072       5100/13072       5125/13072       5150/13072       5175/13072       5200/13072       5225/13072       5250/13072       5275/13072       5300/13072       5325/13072       5350/13072       5375/13072       5400/13072       5425/13072       5450/13072       5475/13072       5500/13072       5525/13072       5550/13072       5575/13072       5600/13072       5625/13072       5650/13072       5675/13072       5700/13072       5725/13072       5750/13072       5775/13072       5800/13072       5825/13072       5850/13072       5875/13072       5900/13072       5925/13072       5950/13072       5975/13072       6000/13072       6000/13072  (142 s)   
+    6025/13072       6050/13072       6075/13072       6100/13072       6125/13072       6150/13072       6175/13072       6200/13072       6225/13072       6250/13072       6275/13072       6300/13072       6325/13072       6350/13072       6375/13072       6400/13072       6425/13072       6450/13072       6475/13072       6500/13072       6525/13072       6550/13072       6575/13072       6600/13072       6625/13072       6650/13072       6675/13072       6700/13072       6725/13072       6750/13072       6775/13072       6800/13072       6825/13072       6850/13072       6875/13072       6900/13072       6925/13072       6950/13072       6975/13072       7000/13072       7000/13072  (167 s)   
+    7025/13072       7050/13072       7075/13072       7100/13072       7125/13072       7150/13072       7175/13072       7200/13072       7225/13072       7250/13072       7275/13072       7300/13072       7325/13072       7350/13072       7375/13072       7400/13072       7425/13072       7450/13072       7475/13072       7500/13072       7525/13072       7550/13072       7575/13072       7600/13072       7625/13072       7650/13072       7675/13072       7700/13072       7725/13072       7750/13072       7775/13072       7800/13072       7825/13072       7850/13072       7875/13072       7900/13072       7925/13072       7950/13072       7975/13072       8000/13072       8000/13072  (188 s)   
+    8025/13072       8050/13072       8075/13072       8100/13072       8125/13072       8150/13072       8175/13072       8200/13072       8225/13072       8250/13072       8275/13072       8300/13072       8325/13072       8350/13072       8375/13072       8400/13072       8425/13072       8450/13072       8475/13072       8500/13072       8525/13072       8550/13072       8575/13072       8600/13072       8625/13072       8650/13072       8675/13072       8700/13072       8725/13072       8750/13072       8775/13072       8800/13072       8825/13072       8850/13072       8875/13072       8900/13072       8925/13072       8950/13072       8975/13072       9000/13072       9000/13072  (206 s)   
+    9025/13072       9050/13072       9075/13072       9100/13072       9125/13072       9150/13072       9175/13072       9200/13072       9225/13072       9250/13072       9275/13072       9300/13072       9325/13072       9350/13072       9375/13072       9400/13072       9425/13072       9450/13072       9475/13072       9500/13072       9525/13072       9550/13072       9575/13072       9600/13072       9625/13072       9650/13072       9675/13072       9700/13072       9725/13072       9750/13072       9775/13072       9800/13072       9825/13072       9850/13072       9875/13072       9900/13072       9925/13072       9950/13072       9975/13072       10000/13072       10000/13072  (221 s)   
+    10025/13072       10050/13072       10075/13072       10100/13072       10125/13072       10150/13072       10175/13072       10200/13072       10225/13072       10250/13072       10275/13072       10300/13072       10325/13072       10350/13072       10375/13072       10400/13072       10425/13072       10450/13072       10475/13072       10500/13072       10525/13072       10550/13072       10575/13072       10600/13072       10625/13072       10650/13072       10675/13072       10700/13072       10725/13072       10750/13072       10775/13072       10800/13072       10825/13072       10850/13072       10875/13072       10900/13072       10925/13072       10950/13072       10975/13072       11000/13072       11000/13072  (240 s)   
+    11025/13072       11050/13072       11075/13072       11100/13072       11125/13072       11150/13072       11175/13072       11200/13072       11225/13072       11250/13072       11275/13072       11300/13072       11325/13072       11350/13072       11375/13072       11400/13072       11425/13072       11450/13072       11475/13072       11500/13072       11525/13072       11550/13072       11575/13072       11600/13072       11625/13072       11650/13072       11675/13072       11700/13072       11725/13072       11750/13072       11775/13072       11800/13072       11825/13072       11850/13072       11875/13072       11900/13072       11925/13072       11950/13072       11975/13072       12000/13072       12000/13072  (263 s)   
+    12025/13072       12050/13072       12075/13072       12100/13072       12125/13072       12150/13072       12175/13072       12200/13072       12225/13072       12250/13072       12275/13072       12300/13072       12325/13072       12350/13072       12375/13072       12400/13072       12425/13072       12450/13072       12475/13072       12500/13072       12525/13072       12550/13072       12575/13072       12600/13072       12625/13072       12650/13072       12675/13072       12700/13072       12725/13072       12750/13072       12775/13072       12800/13072       12825/13072       12850/13072       12875/13072       12900/13072       12925/13072       12950/13072       12975/13072       13000/13072       13000/13072  (281 s)   
+    13025/13072       13050/13072       13072/13072  (283 s)   
+
+  fives: 501942 enumerated, 109 meet every hard criterion at 8 seeds
+  failing (a five may fail several): styles 320655, no cycle 394721, punching bag 501710, spread 3366, ceiling 155530, presets 15840
+
+  candidates by mean winrate on the pool @8:
+    warden        mean  90%  worst  38%  best 100%
+    silencer      mean  88%  worst   6%  best 100%
+    p224          mean  85%  worst  19%  best 100%
+    stormcaller   mean  79%  worst  13%  best 100%
+    p10           mean  77%  worst   0%  best 100%
+    p109          mean  76%  worst   0%  best 100%
+    sniper        mean  75%  worst   0%  best 100%
+    zoner         mean  74%  worst  16%  best 100%
+    p122          mean  71%  worst   0%  best 100%
+    medic         mean  70%  worst   0%  best 100%
+    bombardier    mean  70%  worst   6%  best 100%
+    p124          mean  69%  worst   6%  best 100%
+    lancer        mean  66%  worst   0%  best 100%
+    searer        mean  63%  worst   0%  best 100%
+    p79           mean  61%  worst   0%  best 100%
+    duelist       mean  59%  worst   0%  best 100%
+    vaulter       mean  58%  worst   0%  best 100%
+    p3            mean  56%  worst   0%  best 100%
+    p111          mean  55%  worst   0%  best 100%
+    mauler        mean  53%  worst   0%  best 100%
+    p65           mean  49%  worst   0%  best 100%
+    p175          mean  45%  worst   0%  best 100%
+    jailer        mean  38%  worst   0%  best 100%
+    brawler       mean  36%  worst   0%  best 100%
+    p97           mean  36%  worst   0%  best 100%
+    p30           mean  36%  worst   0%  best 100%
+    arsonist      mean  35%  worst   0%  best 100%
+    p171          mean  33%  worst   0%  best 100%
+    pyro          mean  32%  worst   0%  best 100%
+    old-lobber    mean  31%  worst   0%  best 100%
+    p38           mean  31%  worst   0%  best 100%
+    old-conjurer  mean  23%  worst   0%  best 100%
+    old-striker   mean  22%  worst   0%  best 100%
+    p82           mean  19%  worst   0%  best 100%
+    controller    mean  15%  worst   0%  best 100%
+    old-warden    mean  13%  worst   0%  best 100%
+    p231          mean  10%  worst   0%  best 100%
+    old-runner    mean   0%  worst   0%  best   0%
+
+  finalists: 12
+    1. score 18.89  cycles 4 (str 6)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 4  p65, p124, lancer, mauler, bombardier
+    2. score 18.59  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 3  p65, p111, lancer, mauler, bombardier
+    3. score 18.56  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 5  p124, sniper, mauler, bombardier, medic
+    4. score 18.40  cycles 4 (str 6)  styles 5  floor 19%  best-worst 44%  presets 50%  2dmg 3  p3, p65, p111, p175, vaulter
+    5. score 17.65  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p82, p171, pyro, arsonist
+    6. score 17.65  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p38, p171, p30, pyro
+    7. score 17.65  cycles 4 (str 16)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p171, pyro, arsonist, old-conjurer
+    8. score 15.56  cycles 3 (str 25)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 5  p124, p97, mauler, bombardier, zoner
+    9. score 15.36  cycles 3 (str 13)  styles 5  floor 19%  best-worst 44%  presets 25%  2dmg 5  p122, p10, p79, sniper, medic
+   10. score 15.26  cycles 3 (str 13)  styles 5  floor 19%  best-worst 44%  presets 25%  2dmg 4  p10, p109, p79, sniper, medic
+   11. score 15.06  cycles 3 (str 13)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 4  p124, p122, lancer, searer, bombardier
+   12. score 15.03  cycles 3 (str 6)  styles 5  floor 19%  best-worst 44%  presets 63%  2dmg 3  p3, p65, p111, lancer, vaulter
+  finalists @20: 1920 matches to play, 2 runs of ≤ 1000
+    25/1920       50/1920       75/1920       100/1920       125/1920       150/1920       175/1920       200/1920       225/1920       250/1920       275/1920       300/1920       325/1920       350/1920       375/1920       400/1920       425/1920       450/1920       475/1920       500/1920       525/1920       550/1920       575/1920       600/1920       625/1920       650/1920       675/1920       700/1920       725/1920       750/1920       775/1920       800/1920       825/1920       850/1920       875/1920       900/1920       925/1920       950/1920       975/1920       1000/1920       1000/1920  (23 s)   
+    1025/1920       1050/1920       1075/1920       1100/1920       1125/1920       1150/1920       1175/1920       1200/1920       1225/1920       1250/1920       1275/1920       1300/1920       1325/1920       1350/1920       1375/1920       1400/1920       1425/1920       1450/1920       1475/1920       1500/1920       1525/1920       1550/1920       1575/1920       1600/1920       1625/1920       1650/1920       1675/1920       1700/1920       1725/1920       1750/1920       1775/1920       1800/1920       1825/1920       1850/1920       1875/1920       1900/1920       1920/1920  (41 s)   
+
+  verification (hard criteria must hold at 8, 12 and 20 seeds):
+    1. HOLDS  @12: cyc 4 sty 5 floor 17% best 46%   @20: cyc 4 sty 5 floor 18% best 48% presets 50%  p3, p65, p111, p175, vaulter
+    2. fails  @12: cyc 4 sty 5 floor 13% best 33%   @20: cyc 5 sty 5 floor 10% best 40% presets 13%  p124, sniper, mauler, bombardier, medic
+    3. fails  @12: cyc 4 sty 3 floor 13% best 29%   @20: cyc 4 sty 3 floor 10% best 40% presets 13%  p124, p97, mauler, bombardier, zoner
+    4. fails  @12: cyc 4 sty 3 floor 21% best 38%   @20: cyc 4 sty 3 floor 20% best 38% presets 13%  p65, p111, lancer, mauler, bombardier
+    5. fails  @12: cyc 4 sty 5 floor 13% best 42%   @20: cyc 4 sty 3 floor 10% best 45% presets 75%  p97, p38, p171, p30, pyro
+    6. fails  @12: cyc 4 sty 5 floor 13% best 35%   @20: cyc 3 sty 5 floor 10% best 38% presets 75%  p97, p171, pyro, arsonist, old-conjurer
+    7. fails  @12: cyc 3 sty 5 floor 17% best 46%   @20: cyc 3 sty 5 floor 14% best 43% presets 25%  p122, p10, p79, sniper, medic
+    8. fails  @12: cyc 4 sty 5 floor 17% best 46%   @20: cyc 2 sty 5 floor 14% best 40% presets 25%  p10, p109, p79, sniper, medic
+    9. fails  @12: cyc 3 sty 5 floor 13% best 38%   @20: cyc 3 sty 5 floor 10% best 40% presets 13%  p65, p124, lancer, mauler, bombardier
+   10. fails  @12: cyc 3 sty 5 floor 17% best 38%   @20: cyc 3 sty 5 floor 20% best 33% presets 63%  p3, p65, p111, lancer, vaulter
+   11. fails  @12: cyc 3 sty 5 floor 13% best 35%   @20: cyc 2 sty 4 floor 10% best 38% presets 75%  p97, p82, p171, pyro, arsonist
+   12. fails  @12: cyc 2 sty 4 floor 29% best 38%   @20: cyc 2 sty 4 floor 25% best 43% presets 13%  p124, p122, lancer, searer, bombardier
+
+  CHOSEN FIVE, in the order to install (styles at 8/12/20 seeds: 5/5/5):
+    p3            [panel #3 98%]  Blink: Heal + Shield · Kinetic  |  Field: Damage · Kinetic  |  Mortar: Burn + Pull + Cleanse · Kinetic
+    p65           [panel #65 96%]  Blink: Heal · Kinetic  |  Leap: Heal + Shield + Wall · Kinetic  |  Lunge: Burn + Damage · Kinetic
+    p111          [panel #111 90%]  Blink: Cleanse + Heal · Kinetic  |  Bolt: Heal + Damage · Kinetic  |  Bolt: Cleanse + Weaken through the Turning channel · Kinetic
+    p175          [panel #175 85%]  Mortar: Weaken + Damage through the Vision channel · Kinetic  |  Lunge: Cleanse + Wall + Knockback · Kinetic  |  Beam: Stun + Silence + Burn · Kinetic
+    vaulter       [hand]  Leap: Shield · Kinetic  |  Fan: Damage · Kinetic  |  Bolt: Damage · Kinetic
+
+  @12 seeds (gate resolution):
+                     p3     p65    p111    p175 vaulter     worst
+  p3                ·       79%     21%     83%     33%      21%
+  p65               21%     ·       58%     56%     38%      21%
+  p111              79%     42%     ·       63%     33%      33%
+  p175              17%     44%     38%     ·       54%      17%
+  vaulter           67%     63%     67%     46%     ·        46%
+  best worst 45.8%  floor 16.7%  spread 29 pp  styles 5/5  cycles 4  p3→p65→p111, p3→p175→vaulter, p65→p175→vaulter, p111→p175→vaulter
+  presets' worst (viability, 8 fights): keeper 0.0%, breaker 0.0%, saboteur 50.0%  → holds
+
+  @20 seeds (baseline resolution):
+                     p3     p65    p111    p175 vaulter     worst
+  p3                ·       75%     25%     83%     28%      25%
+  p65               25%     ·       55%     59%     43%      25%
+  p111              75%     45%     ·       63%     43%      43%
+  p175              18%     41%     38%     ·       53%      18%
+  vaulter           73%     57%     57%     48%     ·        48%
+  best worst 47.5%  floor 17.5%  spread 30 pp  styles 5/5  cycles 4  p3→p65→p111, p3→p175→vaulter, p65→p175→vaulter, p111→p175→vaulter
+  presets' worst (viability, 8 fights): keeper 0.0%, breaker 0.0%, saboteur 50.0%  → holds
+
+  suggested BASELINE: bestMin 0.55 (field top 47.5%, presets' worst 50.0%), medianMin 0.250
+
+  JSON:
+[[{"delivery":"blink","effects":["heal","shield"],"element":"kinetic"},{"delivery":"zone","effects":["damage"],"element":"kinetic"},{"delivery":"lob","effects":["burn","pull","cleanse"],"element":"kinetic"}],[{"delivery":"blink","effects":["heal"],"element":"kinetic"},{"delivery":"jump","effects":["heal","shield","wall"],"element":"kinetic"},{"delivery":"dash","effects":["burn","damage"],"element":"kinetic"}],[{"delivery":"blink","effects":["cleanse","heal"],"element":"kinetic"},{"delivery":"bolt","effects":["heal","damage"],"element":"kinetic"},{"delivery":"bolt","effects":["cleanse","weaken"],"element":"kinetic","channel":"turn"}],[{"delivery":"lob","effects":["weaken","damage"],"element":"kinetic","channel":"vision"},{"delivery":"dash","effects":["cleanse","wall","knock"],"element":"kinetic"},{"delivery":"beam","effects":["stun","silence","burn"],"element":"kinetic"}],[{"delivery":"jump","effects":["shield"],"element":"kinetic"},{"delivery":"cone","effects":["damage"],"element":"kinetic"},{"delivery":"bolt","effects":["damage"],"element":"kinetic"}]]
+
+EXIT 0

@@ -1,0 +1,180 @@
+{
+  "id": "c_877bf4e7-bf1",
+  "name": "VILE SHRIMP",
+  "rating": 683,
+  "fights": 9522,
+  "isLibrary": false,
+  "bundle": "sub:opus:plain",
+  "modelId": "sub:opus",
+  "effort": "low",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-d3c58948",
+    "sourceChars": 1852,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to sit around 13 units away, constantly strafing sideways and flipping its circling direction every 90 ticks, closing in only when it drifts too far and backing off when the enemy gets close. Whenever the enemy is visible it fires the beam on cooldown with a lead on the target's movement, dashes in only at short-to-mid range, and burns the speed boost as filler whenever no attack is queued — so the boost is essentially spammed rather than saved for an escape or a commit.",
+    "sourceSha": "9209227612673c28303a52ba9bf61dadaa1429dde769a30ed5a98af53741e6b2",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_877bf4e7-bf1.before.92092276.js"
+  },
+  "after": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2271,
+    "tacticsCard": "This fighter plays a mid-range kiter: it tries to sit around seven to fourteen units away, strafing sideways with a direction that flips every couple of seconds, backing off hard if you get inside seven and closing in if you drift past fourteen. It keeps its speed buff refreshed, fires the beam on cooldown at any visible target in range while aiming slightly ahead of your movement, uses the dash only as a short-range filler, and breaks into a strong perpendicular sidestep the moment it sees you telegraph a beam.",
+    "rating": 710,
+    "fights": 9541,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 34,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 20.3,
+      "faults": 0,
+      "thinks": 305,
+      "orders": 627,
+      "uses": 17,
+      "hits": 9,
+      "damageDealt": 230.39999999999998,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 608,
+      "idleInReachTicks": 84,
+      "stillTicks": 1,
+      "fuelSpent": 2091,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": null,
+      "seconds": 18.9,
+      "faults": 0,
+      "thinks": 283,
+      "orders": 582,
+      "uses": 16,
+      "hits": 10,
+      "damageDealt": 258,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 566,
+      "idleInReachTicks": 56,
+      "stillTicks": 7,
+      "fuelSpent": 1935,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 18.73,
+      "faults": 0,
+      "thinks": 281,
+      "orders": 578,
+      "uses": 16,
+      "hits": 8,
+      "damageDealt": 210,
+      "stubDamageDealt": 258,
+      "aliveTicks": 561,
+      "idleInReachTicks": 36,
+      "stillTicks": 3,
+      "fuelSpent": 1896,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 26.07,
+      "faults": 0,
+      "thinks": 391,
+      "orders": 802,
+      "uses": 20,
+      "hits": 9,
+      "damageDealt": 230.4,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 781,
+      "idleInReachTicks": 149,
+      "stillTicks": 8,
+      "fuelSpent": 2700,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 23419,
+  "forgeMs": 15137,
+  "admitMs": 308,
+  "cardMs": 7972,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 15136,
+      "chars": 2271
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 1147,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.175764,
+  "resolvedModel": "claude-opus-5",
+  "sourceChars": 2271,
+  "promptHash": "97b470863d67795a7dbfcbb6f1ea4c8647fdb9e67f2e72d50b6af681a3fe9820",
+  "generatedAt": "2026-09-07T10:09:43.623Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:05:11.224Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "7128a431f6e435bbe4f08550010a533bcefc74854c0cc88073b4b4307ce89c9c",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.91,
+    "idleInReach": 0.129,
+    "still": 0.008,
+    "casts": 17.25
+  },
+  "card": "This fighter plays a mid-range kiter: it tries to sit around seven to fourteen units away, strafing sideways with a direction that flips every couple of seconds, backing off hard if you get inside seven and closing in if you drift past fourteen. It keeps its speed buff refreshed, fires the beam on cooldown at any visible target in range while aiming slightly ahead of your movement, uses the dash only as a short-range filler, and breaks into a strong perpendicular sidestep the moment it sees you telegraph a beam."
+}

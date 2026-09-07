@@ -1,0 +1,195 @@
+{
+  "id": "c_04539cd5-46c",
+  "name": "FURNACE",
+  "rating": 1081,
+  "fights": 7851,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1226,
+    "tacticsCard": "This is a relentless pressure fighter: it charges in whenever the gap exceeds about five units, orbits at mid-range with a slight inward drift, and only backs off if the enemy is practically on top of it. Its priority is melee cone first inside close range (skipped if the target is airborne), then a disc throw with a small lead on the enemy's movement, then a dash used as a gap-closer — it never holds anything in reserve or waits for an opening, it fires the instant a cooldown is up.",
+    "sourceSha": "799cc1aa80fd923ec98e158b19a3c2ef360a411431562fa1f1e2a61e902697ba",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_04539cd5-46c.before.799cc1aa.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1711,
+    "tacticsCard": "This fighter has one real defensive trick: if it spots a telegraphed dash within close range, it sidesteps off the dash line — otherwise it just walks straight at the enemy to close distance, and once in melee it settles into a lazy side-to-side strafe instead of doing anything meaningful. Offense is very condition-gated: its hardest-hitting moves only fire when the enemy is airborne/low ('enemyLow'), so against an opponent who never dips into that state it will often just spam its ranged skill with a lead-prediction shot or stand there unable to act at all.",
+    "rating": 1091,
+    "fights": 7930,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "burn"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn",
+        "weaken"
+      ],
+      "channel": "armor",
+      "element": "ember"
+    }
+  ],
+  "kitCost": 55,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 12.97,
+      "faults": 0,
+      "thinks": 195,
+      "orders": 222,
+      "uses": 12,
+      "hits": 4,
+      "damageDealt": 218.97666277712844,
+      "stubDamageDealt": 256.11021703617155,
+      "aliveTicks": 388,
+      "idleInReachTicks": 16,
+      "stillTicks": 0,
+      "fuelSpent": 195,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 11.6,
+      "faults": 0,
+      "thinks": 174,
+      "orders": 200,
+      "uses": 11,
+      "hits": 4,
+      "damageDealt": 200.37888759237552,
+      "stubDamageDealt": 241.82466277712837,
+      "aliveTicks": 347,
+      "idleInReachTicks": 10,
+      "stillTicks": 35,
+      "fuelSpent": 174,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 11.6,
+      "faults": 0,
+      "thinks": 174,
+      "orders": 200,
+      "uses": 11,
+      "hits": 4,
+      "damageDealt": 204.8164418514187,
+      "stubDamageDealt": 246.59021703617154,
+      "aliveTicks": 347,
+      "idleInReachTicks": 12,
+      "stillTicks": 33,
+      "fuelSpent": 174,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 12.33,
+      "faults": 0,
+      "thinks": 185,
+      "orders": 212,
+      "uses": 12,
+      "hits": 4,
+      "damageDealt": 203.55222092570875,
+      "stubDamageDealt": 240.23244185141843,
+      "aliveTicks": 369,
+      "idleInReachTicks": 10,
+      "stillTicks": 1,
+      "fuelSpent": 185,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 139094,
+  "forgeMs": 55475,
+  "admitMs": 77040,
+  "cardMs": 6576,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 55473,
+      "chars": 2204
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 4965,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.123071,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1711,
+  "promptHash": "1bdbbc4f89f23e327091126f2e38b2c80589770a166068662dff021f4b7ebbd1",
+  "generatedAt": "2026-09-07T11:05:45.745Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:08:03.207Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:05:48.000Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "9461f0ade57f257dfe79e99dc3ff86d9a158e17aaf24ed0a353c6c6803b3f7cf",
+  "repair": {
+    "attempted": true,
+    "message": "Your mind just ran 4 trial fights against a scripted opponent holding your exact same kit. Measured: it idled — no action running, a ready ability already in reach of the enemy — 49% of the time it was alive;",
+    "costUsd": 0,
+    "admitted": true,
+    "problems": []
+  },
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.841,
+    "idleInReach": 0.033,
+    "still": 0.048,
+    "casts": 11.5
+  },
+  "card": "This fighter has one real defensive trick: if it spots a telegraphed dash within close range, it sidesteps off the dash line — otherwise it just walks straight at the enemy to close distance, and once in melee it settles into a lazy side-to-side strafe instead of doing anything meaningful. Offense is very condition-gated: its hardest-hitting moves only fire when the enemy is airborne/low ('enemyLow'), so against an opponent who never dips into that state it will often just spam its ranged skill with a lead-prediction shot or stand there unable to act at all."
+}

@@ -2344,7 +2344,21 @@ function paintFlash() {
  */
 const IR_DRAWS = false;
 
+/*
+ * ── THE FIVE RECORDS THAT CARRY NO ELEMENT ──────────────────────────────────
+ *
+ * A refusal, an interrupt, an absorbed hit, a shield breaking and a dodge are
+ * not things an ELEMENT did — they are the arena answering — so the simulation
+ * writes them without one, and the branch below (`if (e.element)`) would have
+ * dropped every single one on the floor. The spectator review of 07.09
+ * measured 2.7–4.1 refusals and 1.3–1.6 interrupts in an average fight and
+ * found none of them on screen or in the feed, in fights whose outcome they
+ * decided; this set is what makes them arrive.
+ */
+const RULE_FX = new Set(['immune', 'interrupt', 'absorbed', 'shieldBroke', 'evade']);
+
 function playFx(e) {
+  if (RULE_FX.has(e.kind)) { ruleFx(e); return; }
   if (e.element) {
     vfx.play(e, FX_CTX);
     /*
@@ -2399,6 +2413,19 @@ function playFx(e) {
         + ` · <span style="opacity:.65">${MISS_RU[e.miss] || 'missed'}</span>`,
       `${e.who}|${e.skill}|${e.miss}`);
     }
+    /*
+     * A HEAL AND A WALL ARE DECISIONS, AND BOTH WERE MUTE.
+     *
+     * GRAVEDIGGER healed nine times in one 34 s fight and raised nothing on
+     * screen but a ring of sparks (review §2b); a wall is the one thing in the
+     * arena that changes the geometry of the fight, and the feed never said it
+     * had been built. Both records already exist and already carry an element,
+     * so they only ever needed a line.
+     */
+    if (e.kind === 'status' && e.effect === 'heal') healFeed(e);
+    if (e.kind === 'wall') {
+      pushFeed(ruleLine(e.who, 'raises a wall'), `wall|${e.who}`, { window: 4, ev: true });
+    }
     if (e.kind === 'impact') hitFlashFromImpact(e);
     if (e.kind === 'impact' || (e.hit && (e.kind === 'beam' || e.kind === 'cone' || e.kind === 'dash'))) {
       /* `camState` объявлена ниже по файлу через `let`, а `playFx` может быть
@@ -2422,6 +2449,163 @@ function playFx(e) {
     const src = e.who === 'blue' ? 'orange' : 'blue';
     pushFeed(`<span style="color:#${COLOR[src].toString(16)}">${esc(sideName[src])}</span> · ${esc(skillRu(e.skill, src))} · <b>${Math.round(Number(e.amount) * 100) / 100}</b>`, `${src}|${e.skill}|${e.amount}`);
   }
+}
+
+/**
+ * One feed line about a RULE rather than about a hit.
+ *
+ * Same shape as every other line — the fighter's name in its own ink, a middot,
+ * then what happened — and the tail is set back at .65 alpha, exactly like the
+ * miss reasons, because these are annotations on a fight and not events of it.
+ *
+ * `data-ev` on the ROW — and not a wrapper around the tail — is a contract with
+ * the product shell: `screens/live.js` re-reads every feed line and rewrites it
+ * into a sentence built from the ability names it knows ("drives a KINETIC
+ * LUNGE"), which for these lines would produce "lands a stun refused —
+ * immune". The flag says: this line is already a sentence, leave it alone.
+ *
+ * THE TAIL IS A BARE TEXT NODE, AND THAT IS A LAYOUT DECISION. Wrapped in a
+ * span it was one, and the 1280 px capture came back with an overlap finding:
+ * a two-line inline element reports ONE bounding box across both lines, which
+ * intersects the name sitting on the first of them. A text node reports a
+ * rectangle per line, and the row's own div contains the name, so the probe
+ * skips the pair. The dimming that span carried moved to the row (`#feed
+ * div[data-ev]`), where it costs no box at all.
+ */
+function ruleLine(who, tail) {
+  const c = COLOR[who] ? COLOR[who].toString(16) : '999999';
+  return `<span style="color:#${c}">${esc(sideName[who] || who)}</span> · ${esc(tail)}`;
+}
+
+/**
+ * What a refused atom is called in a sentence.
+ *
+ * The ids are already English words, so the table only holds the three that
+ * are not the noun a player would say out loud. Anything unknown prints its own
+ * id: a new control atom should read as itself rather than disappear.
+ */
+const REFUSED_WORD = { knock: 'knockback', weaken: 'weakening', boost: 'boost' };
+
+/**
+ * The five records the simulation writes with no element.
+ *
+ * Each one is drawn (`vfx.play` → the rule marks in `vfx.js`), written into the
+ * feed with a collapse key, and — where a number or a word is the whole point —
+ * floated over the fighter it belongs to. `who` is the SUBJECT of the sentence
+ * in every one of them and `by` is the other side; that is the shape the
+ * simulation agreed to write, and it is the shape a spectator reads.
+ */
+function ruleFx(e) {
+  const who = e.who;
+  if (!who) return;
+  vfx.play(e, FX_CTX);
+
+  switch (e.kind) {
+    case 'immune': {
+      /*
+       * THE SINGLE MOST IMPORTANT LINE IN THIS FUNCTION.
+       *
+       * A beam connects, the body does not stagger, and until now the arena
+       * said nothing at all — the spectator saw an ability that "did nothing"
+       * (review §2a, 14.2 s). Naming the atom that was refused turns that into
+       * the rule it actually is, and the rule is learnable: the same fighter
+       * cannot be stunned twice inside three seconds.
+       */
+      const word = REFUSED_WORD[e.effect] || String(e.effect || 'control');
+      floatMark(who, 'IMMUNE', { rise: 1.1, life: 800 });
+      pushFeed(ruleLine(who, `${word} refused — immune`), `immune|${who}|${e.effect}`, { window: 6, ev: true });
+      return;
+    }
+    case 'interrupt': {
+      /* The cast that was cut is named where the viewer knows its name: the
+         skill belongs to the fighter that was interrupted, i.e. to `who`. */
+      const named = e.skill ? skillRu(e.skill, who) : '';
+      flashFrame(0.06);
+      pushFeed(ruleLine(who, named ? `${named} cut short` : 'cut short'),
+        `interrupt|${who}|${e.skill || ''}`, { window: 4, ev: true });
+      return;
+    }
+    case 'absorbed': {
+      const n = Number(e.amount);
+      const shown = Number.isFinite(n) ? String(Math.round(n * 10) / 10) : '';
+      if (shown) floatMark(who, `▣ ${shown}`, { rise: 1.2, life: 850 });
+      pushFeed(ruleLine(who, shown ? `shield took ${shown}` : 'shield holds'),
+        `absorbed|${who}`, { window: 4, ev: true });
+      return;
+    }
+    case 'shieldBroke': {
+      pushFeed(ruleLine(who, 'shield shatters'), `shieldbroke|${who}`, { window: 4, ev: true });
+      return;
+    }
+    case 'evade': {
+      /* A dodge is invisible by construction — the hit simply does not land —
+         so this line is the only evidence it happened at all. */
+      const named = e.skill ? skillRu(e.skill, e.by || (who === 'blue' ? 'orange' : 'blue')) : '';
+      pushFeed(ruleLine(who, named ? `dodged the ${named}` : 'dodged'),
+        `evade|${who}|${e.skill || ''}`, { window: 4, ev: true });
+      return;
+    }
+    default:
+  }
+}
+
+/**
+ * A heal, said out loud.
+ *
+ * The amount rides on the record when the simulation sends one (`amount`); with
+ * no number the line still says the fighter healed, because "GRAVEDIGGER heals"
+ * is true and useful and "nothing on screen" is neither.
+ */
+function healFeed(e) {
+  const n = Number(e.amount ?? e.mag);
+  const shown = Number.isFinite(n) && n > 0 ? String(Math.round(n * 10) / 10) : '';
+  if (shown) floatMark(e.who, `+${shown}`, { rise: 1.8, life: 950 });
+  pushFeed(ruleLine(e.who, shown ? `heals ${shown}` : 'heals'), `heal|${e.who}`, { window: 4, ev: true });
+}
+
+/**
+ * A WORD OR A NUMBER OVER A FIGHTER, in the mark the damage pill already uses.
+ *
+ * `.dmg` is the product's one body-anchored text style (`ui/hud.css`): side ink
+ * on a tight halo of the page ground, no surface, no plate — the stylesheet's
+ * own comment explains at length why it may not be a chip, and a second style
+ * here would be a second answer to a question already answered.
+ *
+ * `data-from` is deliberately NOT set: that attribute draws the dealer's caret
+ * on the pill's leading edge, and these marks have no dealer — they are about
+ * the fighter they stand on. The mark FOLLOWS the body rather than staying
+ * where the record was written, for the same reason the status gestures do: it
+ * says something about a fighter, not about a place.
+ */
+/* Starts ABOVE the say-bubble's line, not level with it. The bubble sits at
+   `height + 1.1` and the damage pill starts at `top + 0.5`; a word as wide as
+   IMMUNE launched from there lands across a quip — photographed on
+   `rules-marks/rule-01-immune.png`. The pill keeps its own start: it is two
+   glyphs and it has been read there since the beginning. */
+const MARK_FLOOR = 1.4;
+function floatMark(who, text, { life = 900, rise = 1.4 } = {}) {
+  if (!bodies[who] || !hud) return;
+  const d = document.createElement('div');
+  d.className = 'dmg';
+  d.textContent = text;
+  d.dataset.side = who;
+  d.dataset.rule = '1';
+  d.style.color = `#${COLOR[who].toString(16).padStart(6, '0')}`;
+  hud.appendChild(d);
+  const born = performance.now();
+  const tick = () => {
+    const u = (performance.now() - born) / life;
+    if (u >= 1 || !bodies[who]) { d.remove(); return; }
+    const b = bodies[who];
+    const p = b.root.position;
+    const top = Math.max(1.4, b.top ?? b.height ?? 2);
+    const v = project(p.x, top + MARK_FLOOR + u * rise, p.z);
+    d.style.left = `${v.x}px`; d.style.top = `${v.y}px`;
+    d.style.opacity = String(1 - u * u);
+    d.style.fontSize = `${16 - u * 3}px`;
+    requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 /** Fire every queued effect the render clock has now caught up with. */
@@ -3671,6 +3855,20 @@ function rebuildCds(id, kit) {
    * дописывается: `skillsOf` отдаёт его им на сервере, и HUD обязан
    * показывать то же, что видит мозг.
    */
+  /*
+   * D160: у существа с набором чипов РОВНО ТРИ. Раньше сюда дописывался
+   * четвёртый, «прыжок», — и он был правдой ровно до того дня, когда прыжок
+   * перестал доставаться всем даром. Чип умения, которого у бойца нет,
+   * обещает кнопку, которой не существует.
+   *
+   * Два захардкоженных эталона кита не имеют, и им прыжок по-прежнему
+   * дописывается: `skillsOf` отдаёт его им на сервере, и HUD обязан
+   * показывать то же, что видит мозг.
+   *
+   * D195 (07.09) держит то же правило против собственной правки: свободный
+   * четвёртый глагол был на день восстановлен и в тот же день снят, и чип для
+   * него снят вместе с ним. Ряд плиток равен набору, всегда.
+   */
   const names = kit ? Object.keys(kit) : cfg.fighters[id].skills.concat('jump');
   for (const name of names) {
     const el = document.createElement('div');
@@ -3699,9 +3897,31 @@ function setSay(id, textValue) {
   if (textValue && lastSaid[id] !== textValue) {
     lastSaid[id] = textValue;
     /* Имя стороны — наше, реплика — чужая: экранируется только она. */
-    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${esc(sideName[id])}</span> · <i style="font-style:normal;opacity:.9">\u201c${esc(textValue)}\u201d</i>`);
+    /*
+     * A QUIP IS THE ONE PROOF A MIND IS FIGHTING, AND IT WAS WALLPAPER.
+     *
+     * Measured on 361 stored quips (review §5, finding 8): 1.9 distinct lines
+     * per speaking fighter, repeated on every cast — "Charging up." twelve
+     * times in one fight. The line is worth keeping and worth keeping ONCE, so
+     * it carries a key of its own text and a ten-second window: a repeat inside
+     * that raises a counter on the row already there instead of pushing the
+     * rest of the fight off the bottom of a fourteen-line feed.
+     */
+    pushFeed(`<span style="color:#${COLOR[id].toString(16)}">${esc(sideName[id])}</span> · <i style="font-style:normal;opacity:.9">\u201c${esc(textValue)}\u201d</i>`,
+      `say|${id}|${textValue}`, { window: 10 });
   }
   if (!textValue) {
+    /*
+     * THE MEMORY IS CLEARED WITH THE BUBBLE.
+     *
+     * `lastSaid` was written and never reset, so it did not mean "the line
+     * showing now", it meant "the last line this fighter ever said" — and a
+     * mind that said one thing at 2 s and the same thing again at 24 s reached
+     * the feed once in a fight it spoke through twice. The guard stays for the
+     * bubble and goes with the bubble: repetition is now collapsed by
+     * `pushFeed` on a clock, not by a memory with no end.
+     */
+    lastSaid[id] = null;
     if (sayEls[id]) { sayEls[id].remove(); sayEls[id] = null; }
     return;
   }
@@ -3804,17 +4024,60 @@ const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-function pushFeed(line, key) {
-  const top = feed.firstChild;
-  const stamp = `<span class="ft">${renderClock.toFixed(1)}</span>`;
-  if (key && top && top.dataset.key === key) {
-    top.dataset.n = String((Number(top.dataset.n) || 1) + 1);
-    top.innerHTML = `${stamp}${line} <span style="opacity:.6">x${top.dataset.n}</span>`;
-    return;
+/*
+ * ── A REPEAT NO LONGER HAS TO BE THE LINE ABOVE ────────────────────────────
+ *
+ * Collapsing only against the TOP line answers "the same laser eight times in
+ * a row" and nothing else, and the fight does not oblige. Two things measured
+ * on 361 stored quips (review §5, finding 8) fall straight through it: a mind
+ * that alternates two lines — "Charging up." / "Closing in." — prints both on
+ * every cast forever, and a control field whose refusal fires between two
+ * damage lines prints a fresh row every half second.
+ *
+ * So a key may also collapse into a line further down, while that line is
+ * young: `window` seconds of fight time, 0 meaning the old top-only rule. The
+ * count goes up in PLACE and the row keeps its own first stamp — the column is
+ * read downward and a timestamp that walked forward would break the ordering
+ * that is the feed's only structure. The top line keeps the old behaviour and
+ * takes the newest stamp, because there is nothing above it to disorder.
+ */
+function pushFeed(line, key, { window: win = 0, ev = false } = {}) {
+  const paint = (el) => {
+    const n = Number(el.dataset.n) || 1;
+    el.innerHTML = `<span class="ft">${el.dataset.stamp}</span>${el.dataset.body}`
+      + (n > 1 ? ` <span style="opacity:.6">x${n}</span>` : '');
+  };
+  if (key) {
+    const top = feed.firstElementChild;
+    if (top && top.dataset.key === key) {
+      top.dataset.n = String((Number(top.dataset.n) || 1) + 1);
+      top.dataset.stamp = renderClock.toFixed(1);
+      top.dataset.body = line;
+      paint(top);
+      return;
+    }
+    if (win > 0) {
+      for (const el of feed.children) {
+        if (el.dataset.key !== key) continue;
+        const t0 = Number(el.dataset.t0);
+        /* The first match walking from the newest end IS the most recent one;
+           if that is already out of the window, so is everything behind it. */
+        if (!Number.isFinite(t0) || renderClock - t0 > win) break;
+        el.dataset.n = String((Number(el.dataset.n) || 1) + 1);
+        paint(el);
+        return;
+      }
+    }
   }
   const d = document.createElement('div');
-  d.innerHTML = `${stamp}${line}`;
+  d.dataset.stamp = renderClock.toFixed(1);
+  d.dataset.t0 = String(renderClock);
+  d.dataset.body = line;
   if (key) d.dataset.key = key;
+  /* "This line is already a sentence" — read by the product shell and by the
+     stylesheet that sets the row back. */
+  if (ev) d.dataset.ev = '1';
+  paint(d);
   feed.prepend(d);
   while (feed.children.length > 14) feed.lastChild.remove();
 }
@@ -6920,10 +7183,21 @@ function frame() {
         el.dataset.label = label;
         if (!v.alive) { el.className = 'cd cool'; el.textContent = label; el.dataset.cd = ''; continue; }
         const cd = v.cd ? v.cd[sk] : 0;
-        el.className = `cd ${cd > 0.001 ? 'cool' : 'ready'}`;
-        el.textContent = cd > 0.001 ? `${label} ${cd.toFixed(1)}` : label;
+        /*
+         * "0.0" IS NOT A COOLDOWN, IT IS A ROUNDING ARTEFACT.
+         *
+         * The threshold was 0.001 and the print is `toFixed(1)`, so every
+         * value in [0.001, 0.049] — one to one and a half ticks, which every
+         * ability passes through on its way back — rendered as a chip reading
+         * `0.0`: a number that says "wait" about an ability that is ready on
+         * the next frame. Round first, then decide: what cannot be printed as
+         * a wait is not one.
+         */
+        const wait = Math.round((v.cd ? cd : 0) * 10) / 10;
+        el.className = `cd ${wait > 0 ? 'cool' : 'ready'}`;
+        el.textContent = wait > 0 ? `${label} ${wait.toFixed(1)}` : label;
         /* The product HUD draws the chip as an icon tile and reads the seconds from here. */
-        el.dataset.cd = cd > 0.001 ? cd.toFixed(1) : '';
+        el.dataset.cd = wait > 0 ? wait.toFixed(1) : '';
       }
       updateTelegraph(id, v, view);
       updatePlate(id, v, body.height || 2);

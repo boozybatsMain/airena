@@ -1,0 +1,188 @@
+{
+  "id": "c_303e3387-581",
+  "name": "STONE GOLEM",
+  "rating": 1429,
+  "fights": 9773,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1626,
+    "tacticsCard": "This fighter plays a hit-and-run melee game: it pops its shield/heal the moment it drops below 85 percent health or the enemy gets within close range, swings its melee cone whenever the target is inside about four and a half units and grounded, and otherwise throws its root disc at anything within medium range, aiming slightly ahead of the enemy's movement.",
+    "sourceSha": "f513d1a4eb0a615d5bf57f8f798a4d1b02bdcede6f98939cb41a2ed4865cfbe7",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_303e3387-581.before.f513d1a4.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1830,
+    "tacticsCard": "This fighter always keeps facing the enemy and stays aggressive up close, spamming k1 within 4.9m and k2 out to 16m with predictive leading on both. It panics into its shield ability (k3) either below 50% HP or when the enemy is telegraphing a dangerous k1/k2 while its own shield is thin, which is a sound defensive reflex. The one dumb spot: when both k1 and k2 are on meaningful cooldown while in melee range, it retreats only 3 units and then just sits there waiting for cooldowns instead of continuing to disengage or reposition, making it briefly predictable and stationary at close range.",
+    "rating": 1410,
+    "fights": 9797,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "root"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield",
+        "heal"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 54,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 26.83,
+      "faults": 0,
+      "thinks": 403,
+      "orders": 736,
+      "uses": 22,
+      "hits": 37,
+      "damageDealt": 308.28000000000003,
+      "stubDamageDealt": 273.36000000000007,
+      "aliveTicks": 804,
+      "idleInReachTicks": 12,
+      "stillTicks": 194,
+      "fuelSpent": 403,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 25.93,
+      "faults": 0,
+      "thinks": 389,
+      "orders": 665,
+      "uses": 23,
+      "hits": 34,
+      "damageDealt": 313.44000000000005,
+      "stubDamageDealt": 214.44,
+      "aliveTicks": 777,
+      "idleInReachTicks": 18,
+      "stillTicks": 160,
+      "fuelSpent": 389,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 30.93,
+      "faults": 0,
+      "thinks": 464,
+      "orders": 844,
+      "uses": 26,
+      "hits": 38,
+      "damageDealt": 330.12000000000006,
+      "stubDamageDealt": 271.32000000000005,
+      "aliveTicks": 927,
+      "idleInReachTicks": 21,
+      "stillTicks": 187,
+      "fuelSpent": 464,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 22,
+      "faults": 0,
+      "thinks": 330,
+      "orders": 615,
+      "uses": 20,
+      "hits": 16,
+      "damageDealt": 152.64,
+      "stubDamageDealt": 300.0000000000001,
+      "aliveTicks": 659,
+      "idleInReachTicks": 13,
+      "stillTicks": 124,
+      "fuelSpent": 330,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 99247,
+  "forgeMs": 92670,
+  "admitMs": 688,
+  "cardMs": 5884,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 92668,
+      "chars": 1830
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8064,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.15074800000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1830,
+  "promptHash": "122a0edbc6afe799c2fd507e994969831682af8868d2a15b93615686e96d6b86",
+  "generatedAt": "2026-09-07T10:34:59.857Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:00:52.414Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:57:35.085Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "1ab31f4b30189ed606666384fcbffbf3dea28f21875bc7868d5e098602a46be0",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.043,
+    "idleInReach": 0.02,
+    "still": 0.21,
+    "casts": 22.75
+  },
+  "card": "This fighter always keeps facing the enemy and stays aggressive up close, spamming k1 within 4.9m and k2 out to 16m with predictive leading on both. It panics into its shield ability (k3) either below 50% HP or when the enemy is telegraphing a dangerous k1/k2 while its own shield is thin, which is a sound defensive reflex. The one dumb spot: when both k1 and k2 are on meaningful cooldown while in melee range, it retreats only 3 units and then just sits there waiting for cooldowns instead of continuing to disengage or reposition, making it briefly predictable and stationary at close range."
+}

@@ -1,0 +1,197 @@
+{
+  "id": "c_b7a28147-337",
+  "name": "BILGE CRAB",
+  "rating": 1180,
+  "fights": 8540,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2404,
+    "tacticsCard": "This fighter is a brawler at heart: when its health is level with the enemy's — or once the match passes the half-minute mark — it closes to roughly melee range and hammers with its cone attack, only backing off to mid distance when it's clearly behind on health. At range it lobs mortars with a lead prediction on the enemy's movement, shields or heals when it drops below about 62 percent health or when the enemy starts a telegraphed cast nearby, and it sidesteps away from any incoming projectile predicted to land close to it.",
+    "sourceSha": "c9806ecfc91df0b1775e55feb902d53a6c14eef2b767ed3e73b64468f481755e",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_b7a28147-337.before.c9806ecf.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1465,
+    "tacticsCard": "This fighter sticks close, always walking straight at the enemy and swinging its melee cone whenever it's within 4.7 range, so it's built for constant pressure at short distance. It plays it safe on defense, popping its shield both when its own HP drops below 55% and preemptively when it senses a telegraphed heavy attack coming in close — smart risk management there.",
+    "rating": 1180,
+    "fights": 8582,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "lob",
+      "effects": [
+        "wall"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "heal",
+        "shield"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 37,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 41.33,
+      "faults": 0,
+      "thinks": 620,
+      "orders": 1271,
+      "uses": 16,
+      "hits": 1,
+      "damageDealt": 23.400000000000002,
+      "stubDamageDealt": 33.6,
+      "aliveTicks": 1239,
+      "idleInReachTicks": 410,
+      "stillTicks": 210,
+      "fuelSpent": 639,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 37.7,
+      "faults": 0,
+      "thinks": 565,
+      "orders": 1168,
+      "uses": 24,
+      "hits": 8,
+      "damageDealt": 217.8,
+      "stubDamageDealt": 214.8,
+      "aliveTicks": 1130,
+      "idleInReachTicks": 350,
+      "stillTicks": 78,
+      "fuelSpent": 602,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 35.27,
+      "faults": 0,
+      "thinks": 529,
+      "orders": 1095,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 274.8,
+      "stubDamageDealt": 261.6,
+      "aliveTicks": 1057,
+      "idleInReachTicks": 396,
+      "stillTicks": 93,
+      "fuelSpent": 558,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 36.07,
+      "faults": 0,
+      "thinks": 541,
+      "orders": 1115,
+      "uses": 19,
+      "hits": 7,
+      "damageDealt": 194.4,
+      "stubDamageDealt": 214.8,
+      "aliveTicks": 1081,
+      "idleInReachTicks": 328,
+      "stillTicks": 46,
+      "fuelSpent": 583,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 86740,
+  "forgeMs": 80299,
+  "admitMs": 647,
+  "cardMs": 5788,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 80298,
+      "chars": 1465
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6944,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.139635,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1465,
+  "promptHash": "2b5a67e93a2dfb87d242ae9a58a0efb03d22ad226b9683e436a489e180650eb9",
+  "generatedAt": "2026-09-07T10:57:28.612Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:07:21.667Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:45:44.996Z",
+      "admitted": false,
+      "stage": "probe",
+      "problems": [
+        {
+          "code": "behaviour",
+          "message": "мозг простоял с готовым умением в досягаемости врага 57% живого времени"
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-09-07T10:03:58.936Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "243a1b71a9e57b9515440eadac09030f23b263bfd7c5751c2aac894755621dbf",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.98,
+    "idleInReach": 0.329,
+    "still": 0.095,
+    "casts": 20.5
+  },
+  "card": "This fighter sticks close, always walking straight at the enemy and swinging its melee cone whenever it's within 4.7 range, so it's built for constant pressure at short distance. It plays it safe on defense, popping its shield both when its own HP drops below 55% and preemptively when it senses a telegraphed heavy attack coming in close — smart risk management there."
+}

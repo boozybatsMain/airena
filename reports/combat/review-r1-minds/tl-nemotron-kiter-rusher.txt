@@ -1,0 +1,90 @@
+
+===== TIMELINE nvidia-nemotron-3-super-120b-a12b-free-plain/kiter vs pilot:rusher seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 132 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 132 act -
+  0.07  pilot says "coming through"
+  0.07  pilot casts k2 (blink)
+  1.07  pilot casts k3 (beam)
+  1.70  pilot k3 MISSED: aim
+  2.00  MIND casts k3 (beam)
+  2.00  -- t=2 dist 23.3 | MIND (9.9,17) v6.5 hp 132 act k3/windup cd k1:0 k2:0 k3:3 | pilot (8.8,-6.3) v7.5 hp 132 act -
+  2.33  pilot casts k1 (bolt)
+  2.63  MIND k3 hits for 20.4 → pilot hp 111.6
+  2.63  MIND INTERRUPTS pilot's k1
+  2.87  MIND casts k1 (bolt)
+  3.20    MIND bolt released heading -3 — -6.4° off the direct bearing, enemy moving 7.5 m/s
+  4.00  MIND k1 MISSED: aim
+  4.00  -- t=4 dist 7.8 | MIND (17.7,11.9) v7.5 hp 132 act - cd k1:1.1 k2:0 k3:1 | pilot (11.5,7) v7.5 hp 111.6 act -
+  4.47  MIND casts k2 (blink)
+  4.47  pilot casts k3 (beam)
+  5.10  pilot k3 hits for 10.2 → MIND hp 121.8
+  5.27  pilot casts k1 (bolt)
+  5.60  pilot k1 hits for 20.4 → MIND hp 101.4
+  5.60    pilot bolt released heading -2.4 — -5.4° off the direct bearing, enemy moving 0 m/s
+  5.80  pilot says "coming through"
+  5.80  pilot casts k2 (blink)
+  6.00  -- t=6 dist 3.2 | MIND (14.3,6.9) v0.3 hp 101.4 act - cd k1:0 k2:1.5 k3:0 | pilot (11.5,5.3) v2.3 hp 111.6 act -
+  7.47  pilot casts k1 (bolt)
+  7.80    pilot bolt released heading -0.2 — 28.2° off the direct bearing, enemy moving 7.5 m/s
+  7.83  pilot k1 hits for 20.4 → MIND hp 81
+  7.83  pilot k1: root shrugged off (immune)
+  8.00  pilot casts k3 (beam)
+  8.00  -- t=8 dist 4.4 | MIND (14.6,11.4) v7.4 hp 81 act - cd k1:0 k2:0 k3:0 | pilot (14.8,7) v6.1 hp 111.6 act k3/windup
+  8.47  MIND casts k2 (blink)
+  8.63  pilot k3: silence shrugged off (immune)
+  8.80  pilot casts k2 (blink)
+  9.60  MIND casts k3 (beam)
+  9.67  pilot casts k1 (bolt)
+ 10.00  pilot k1 hits for 10.2 → MIND hp 70.8
+ 10.00  pilot k1: root shrugged off (immune)
+ 10.00    pilot bolt released heading 1 — 19.9° off the direct bearing, enemy moving 2.6 m/s
+ 10.00  -- t=10 dist 3.8 | MIND (18.1,10.8) v2.6 hp 70.8 act k3/windup cd k1:0 k2:1.5 k3:2.6 | pilot (15.8,7.7) v4.5 hp 111.6 act k1/recover
+ 10.23  MIND k3 MISSED: aim
+ 11.00  pilot casts k3 (beam)
+ 11.47  MIND casts k2 (blink)
+ 11.80  pilot says "coming through"
+ 11.80  pilot casts k2 (blink)
+ 12.00  pilot casts k1 (bolt)
+ 12.00  -- t=12 dist 3.6 | MIND (17.8,5.7) v4.5 hp 70.8 act - cd k1:0 k2:2.5 k3:0.6 | pilot (18.2,9.3) v1 hp 111.6 act k1/windup
+ 12.33  pilot k1 hits for 10.2 → MIND hp 60.6
+ 12.33    pilot bolt released heading 4.2 — 1.6° off the direct bearing, enemy moving 7.7 m/s
+ 14.00  pilot casts k3 (beam)
+ 14.00  -- t=14 dist 3.8 | MIND (15.2,6.3) v5.5 hp 60.6 act - cd k1:0 k2:0.5 k3:0 | pilot (11.5,7) v6.5 hp 111.6 act k3/windup
+ 14.60  MIND casts k3 (beam)
+ 14.63  pilot k3 hits for 20.4 → MIND hp 40.2
+ 14.63  pilot INTERRUPTS MIND's k3
+ 14.80  pilot casts k1 (bolt)
+ 15.13  pilot k1 hits for 20.4 → MIND hp 19.8
+ 15.13  pilot k1: root shrugged off (immune)
+ 15.13    pilot bolt released heading -3 — -0.3° off the direct bearing, enemy moving 0 m/s
+ 15.33  pilot casts k2 (blink)
+ 16.00  MIND says "Dance of steel and storm."
+ 16.00  -- t=16 dist 3.5 | MIND (12.5,1.8) v0 hp 19.8 act - cd k1:0 k2:0 k3:1.6 | pilot (15.5,-0.1) v7.5 hp 111.6 act -
+ 16.07  MIND says "Dance of steel and storm."
+ 16.47  MIND casts k2 (blink)
+ 17.00  pilot casts k1 (bolt)
+ 17.33    pilot bolt released heading -1.9 — -37.1° off the direct bearing, enemy moving 7.5 m/s
+ 17.53  pilot casts k3 (beam)
+ 17.80  MIND casts k3 (beam)
+ 18.00  -- t=18 dist 5.3 | MIND (7.7,-2.7) v3.6 hp 19.8 act k3/windup cd k1:0 k2:1.5 k3:2.8 | pilot (12.8,-4.1) v3.6 hp 111.6 act k3/windup
+ 18.13  pilot k1 MISSED: aim
+ 18.17  pilot k3 hits for 10.2 → MIND hp 9.6
+ 18.17  pilot k3: silence shrugged off (immune)
+ 18.33  pilot says "coming through"
+ 18.33  pilot casts k2 (blink)
+ 18.43  MIND k3 MISSED: cover
+ 19.20  pilot casts k1 (bolt)
+ 19.40  MIND casts k1 (bolt)
+ 19.53    pilot bolt released heading 2.2 — -3.9° off the direct bearing, enemy moving 5.4 m/s
+ 19.73    MIND bolt released heading 4.9 — -18.4° off the direct bearing, enemy moving 7.5 m/s
+ 19.80  pilot k1 hits for 20.4 → MIND hp 0
+ 19.80  MIND dies
+ 19.80  END {"winner":"orange","reason":"kill"}
+
+
+## nvidia-nemotron-3-super-120b-a12b-free-plain/kiter
+  vs pilot:rusher: W-D-L 0-0-1 | len 19.8s | sudden death 0/1 | mean dist 7.6 m | reasons kill
+    MIND  casts/10s 5.1 cdUtil 42% hit 25% (1/4) dmg/game 20.4 still 25% noAct 81% idle+ready 79% idle+inReach 68% allCd 3%
+          uses k3 4, k1 2, k2 4 | dead slots 0/3 | miss k1:aim 1, k3:aim 1, k3:cover 1 | refused —
+          immune — (on damage-carrying casts 0, on pure controls 0; already immune when ordered 0) | dodges 0 | interrupts made 1 taken 1 | say 2 | faults 0
+          telegraph resp 79% (11/14) | lead usage 100% (2/2) mean off-bearing 12.4° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.1 hit 85% dmg/game 142.8 still 2% idle+inReach 4% immune root 3, silence 2 dodges 0 interrupts made 1

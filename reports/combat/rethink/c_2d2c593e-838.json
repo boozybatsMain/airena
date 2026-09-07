@@ -1,0 +1,172 @@
+{
+  "id": "c_2d2c593e-838",
+  "name": "BOULDER-42",
+  "rating": 1183,
+  "fights": 12544,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 6734,
+    "tacticsCard": null,
+    "sourceSha": "934837a86ffda7c6808dbb8626d65ce9a10e768297fe4b499e9b195eee940858"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2956,
+    "tacticsCard": "This fighter stays glued to your face at all times and strikes with its melee attack the instant you're within 4.85 range, treating that as an interrupt-priority punish. It reads your telegraphs well — sidestepping off a dash's travel line or backpedaling out of a cone before it lands, and throwing up a shield reactively when threatened or proactively when hurt or brawling close.",
+    "rating": 1183,
+    "fights": 12567,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 38,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 25.77,
+      "faults": 0,
+      "thinks": 387,
+      "orders": 597,
+      "uses": 25,
+      "hits": 11,
+      "damageDealt": 248.39999999999998,
+      "stubDamageDealt": 168.24,
+      "aliveTicks": 772,
+      "idleInReachTicks": 39,
+      "stillTicks": 2,
+      "fuelSpent": 756,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 15.9,
+      "faults": 0,
+      "thinks": 238,
+      "orders": 356,
+      "uses": 15,
+      "hits": 11,
+      "damageDealt": 249.35999999999999,
+      "stubDamageDealt": 74.4,
+      "aliveTicks": 476,
+      "idleInReachTicks": 26,
+      "stillTicks": 9,
+      "fuelSpent": 457,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 15.87,
+      "faults": 0,
+      "thinks": 238,
+      "orders": 356,
+      "uses": 15,
+      "hits": 11,
+      "damageDealt": 249.35999999999999,
+      "stubDamageDealt": 74.4,
+      "aliveTicks": 475,
+      "idleInReachTicks": 26,
+      "stillTicks": 9,
+      "fuelSpent": 462,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 20.07,
+      "faults": 0,
+      "thinks": 301,
+      "orders": 467,
+      "uses": 19,
+      "hits": 10,
+      "damageDealt": 243.83999999999997,
+      "stubDamageDealt": 192.24,
+      "aliveTicks": 601,
+      "idleInReachTicks": 28,
+      "stillTicks": 5,
+      "fuelSpent": 578,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 86092,
+  "forgeMs": 78958,
+  "admitMs": 756,
+  "cardMs": 6373,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 78956,
+      "chars": 2956
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6531,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.07948720000000001,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2956,
+  "promptHash": "a06bf78e045ed0b95f84c6ce6730579c43be7e89c514bd370d4bcb52aca127a9",
+  "generatedAt": "2026-09-07T10:42:37.073Z",
+  "previous": [],
+  "candidateSha": "6c5f8b2e27fc1f590a9b5f0fde6710ddacf95b31eafc0b7854b812f572d209b6",
+  "behaviour": {
+    "wins": 4,
+    "damageShare": 1.946,
+    "idleInReach": 0.051,
+    "still": 0.011,
+    "casts": 18.5
+  },
+  "card": "This fighter stays glued to your face at all times and strikes with its melee attack the instant you're within 4.85 range, treating that as an interrupt-priority punish. It reads your telegraphs well — sidestepping off a dash's travel line or backpedaling out of a cone before it lands, and throwing up a shield reactively when threatened or proactively when hurt or brawling close."
+}

@@ -1,0 +1,131 @@
+{
+  "model": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "mode": "high",
+  "channel": "sub",
+  "label": "Claude Sonnet",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "high",
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-07T00:02:37.879Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 17.53,
+      "faults": 0,
+      "thinks": 263,
+      "orders": 538,
+      "uses": 12,
+      "hits": 9,
+      "damageDealt": 108,
+      "fuelSpent": 322,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 15.4,
+      "faults": 0,
+      "thinks": 231,
+      "orders": 473,
+      "uses": 12,
+      "hits": 8,
+      "damageDealt": 96,
+      "fuelSpent": 272,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 14.73,
+      "faults": 0,
+      "thinks": 221,
+      "orders": 452,
+      "uses": 10,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 260,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 15.27,
+      "faults": 0,
+      "thinks": 229,
+      "orders": 466,
+      "uses": 9,
+      "hits": 6,
+      "damageDealt": 72,
+      "fuelSpent": 268,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.137035,
+  "elapsedMs": 92708,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 92707,
+      "chars": 2582
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 7944,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-sonnet-5",
+  "provider": "claude-cli",
+  "sourceChars": 2582,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

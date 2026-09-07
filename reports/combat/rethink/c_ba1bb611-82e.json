@@ -1,0 +1,194 @@
+{
+  "id": "c_ba1bb611-82e",
+  "name": "ICE MAGE",
+  "rating": 1446,
+  "fights": 10060,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 3436,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to sit right around nine to ten meters, strafing sideways in slow alternating arcs, backing off if you close inside seven and closing back in if you drift past eleven or lose line of sight. Its main tempo is the bolt with proper lead prediction, but inside fourteen meters it prefers to drop the ground zone under your predicted path, and it saves the bolt for moments when you're rooted or locked in an animation — that's when it punishes hardest.",
+    "sourceSha": "fe5844fedcd8c5cff883c27594101af4b0adfa2a0b1a2fd11b4e55cada32f26f",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_ba1bb611-82e.before.fe5844fe.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2292,
+    "tacticsCard": "This fighter tries to hover around 11 range, circling sideways with a randomly-flipping orbit direction rather than committing to advance or retreat, and only backs off when it's too close and not near a wall. It watches specifically for the enemy's telegraphed 'k1' cast and dashes perpendicular to dodge it, picking a fresh dodge side each time that skill starts — but it completely ignores telegraphs from any other enemy skill, so it's blind to everything except that one attack.",
+    "rating": 1508,
+    "fights": 10079,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "root"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "wall"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "root",
+        "damage"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 37,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 24.67,
+      "faults": 0,
+      "thinks": 370,
+      "orders": 717,
+      "uses": 23,
+      "hits": 23,
+      "damageDealt": 189.12,
+      "stubDamageDealt": 245.75999999999996,
+      "aliveTicks": 739,
+      "idleInReachTicks": 125,
+      "stillTicks": 138,
+      "fuelSpent": 398,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 27.6,
+      "faults": 0,
+      "thinks": 414,
+      "orders": 802,
+      "uses": 23,
+      "hits": 13,
+      "damageDealt": 173.76,
+      "stubDamageDealt": 260.15999999999997,
+      "aliveTicks": 827,
+      "idleInReachTicks": 337,
+      "stillTicks": 121,
+      "fuelSpent": 446,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 24.23,
+      "faults": 0,
+      "thinks": 363,
+      "orders": 731,
+      "uses": 23,
+      "hits": 19,
+      "damageDealt": 162.23999999999998,
+      "stubDamageDealt": 245.75999999999996,
+      "aliveTicks": 726,
+      "idleInReachTicks": 126,
+      "stillTicks": 85,
+      "fuelSpent": 391,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 21.07,
+      "faults": 0,
+      "thinks": 316,
+      "orders": 605,
+      "uses": 21,
+      "hits": 26,
+      "damageDealt": 209.27999999999997,
+      "stubDamageDealt": 242.88,
+      "aliveTicks": 631,
+      "idleInReachTicks": 56,
+      "stillTicks": 51,
+      "fuelSpent": 340,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 177961,
+  "forgeMs": 116750,
+  "admitMs": 55065,
+  "cardMs": 6143,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 116749,
+      "chars": 2412
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 10090,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.176621,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2292,
+  "promptHash": "7782a6f25c9b2f60f78c1c2ad83a004c2a8220ac49ae00376c0f5740b89ba935",
+  "generatedAt": "2026-09-07T10:32:01.895Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:10:44.322Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:59:32.768Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "d710fc77da89fd3a6803ef006b513aef6e9084f992f9523f15b18d684a600aa9",
+  "repair": {
+    "attempted": true,
+    "message": "Your mind just ran 4 trial fights against a scripted opponent holding your exact same kit. Measured: it idled — no action running, a ready ability already in reach of the enemy — 60% of the time it was alive;",
+    "costUsd": 0,
+    "admitted": true,
+    "problems": []
+  },
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.738,
+    "idleInReach": 0.22,
+    "still": 0.135,
+    "casts": 22.5
+  },
+  "card": "This fighter tries to hover around 11 range, circling sideways with a randomly-flipping orbit direction rather than committing to advance or retreat, and only backs off when it's too close and not near a wall. It watches specifically for the enemy's telegraphed 'k1' cast and dashes perpendicular to dodge it, picking a fresh dodge side each time that skill starts — but it completely ignores telegraphs from any other enemy skill, so it's blind to everything except that one attack."
+}

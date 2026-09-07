@@ -22,10 +22,10 @@
 
 import {
   AIRBORNE_DODGE_MIN,
-  ARENA_HALF, BEAM_RADIUS, BRAKE_ACCEL, DT, FAULT_LIMIT,
+  ARENA_HALF, BEAM_MUZZLE, BEAM_RADIUS, BRAKE_ACCEL, DT, EVENTS_MAX, FAULT_LIMIT,
   KNOCKBACK_DRAG, KNOCKBACK_MIN, MATCH_SECONDS, MAX_ORDERS_PER_THINK,
   MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, MEM_MAX_VALUE_BYTES, OBSTACLES,
-  SAY_MAX_CHARS, SAY_SECONDS, SIDES, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
+  SAY_EVERY, SAY_MAX_CHARS, SAY_SECONDS, SIDES, SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT,
   SUDDEN_DEATH_RAMP, THINK_EVERY, DEFAULT_BUILD, referenceTagOf, skillsOf,
   statsOf,
 } from './config.js';
@@ -35,7 +35,7 @@ import {
 } from './geom.js';
 import { createNav } from './nav.js';
 import {
-  BLIND_LAG_TICKS, absorb, applyEffect, channelMul, ensureStatus, tickStatus, tickWalls,
+  BLIND_LAG_TICKS, absorb, applyAtoms, applyEffect, channelMul, ensureStatus, tickStatus, tickWalls,
 } from './effects.js';
 import { resolveDelivery, tickProjectiles, tickZones } from './deliver.js';
 import { streamFrom } from './rng.js';
@@ -96,6 +96,17 @@ function phasesOfDef(def) {
   /* Умение из грамматики: замах, удар в конце замаха, восстановление.
      Мгновенная доставка (blink) бьёт сразу — иначе телеграф был бы длиннее
      самого умения. */
+  /*
+   * A LUNGE TRAVELS. It used to be a teleport: the whole 8 m of travel and
+   * the hit happened on the strike tick, which no jump could dodge and no
+   * spectator could read. It now has a dash phase like the reference charge —
+   * heading locked at the end of the wind-up, `dashSpeed` metres a second,
+   * contact tested every tick along the swept segment, stopped by a solid,
+   * passing under a body that is in the air (`dashStep`).
+   */
+  if (def.kind === 'dash') {
+    return [['windup', def.windup, false], ['dash', def.distance / def.dashSpeed, false], ['recover', def.recover, false]];
+  }
   if (def.windup > 0) return [['windup', def.windup, true], ['recover', def.recover, false]];
   return [['strike', 0, true], ['recover', def.recover, false]];
 }
@@ -238,7 +249,7 @@ function makeFighter(id, sp, seed, build = null, kitNames = null) {
  *   киты грамматики §8. Без них мир собирается на четырёх захардкоженных
  *   умениях, и это по-прежнему тот мир, в котором измерены §1 и §16.
  */
-export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds = null } = {}) {
+export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds = null, referenceTag = null } = {}) {
   const spawns = spawnPair(seed, builds);
   const world = {
     seed,
@@ -276,6 +287,8 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
      стену из одного матча в следующий. */
   world.obstacles = [...OBSTACLES];
   world.solids = [...SOLIDS];
+  /* Which tick of every THINK_EVERY the two minds are asked on — see `step`. */
+  world.thinkPhase = Math.floor(streamFrom(seed, 'think')() * THINK_EVERY) % THINK_EVERY;
 
   if (kits) {
     for (const side of SIDES) {
@@ -295,6 +308,30 @@ export function createWorld(seed = 1, { curtainSeconds = 0, kits = null, builds 
        */
       world.fighters[side].cooldowns = {};
       for (const name of Object.keys(kits[side])) world.fighters[side].cooldowns[name] = 0;
+    }
+  }
+
+  /*
+   * ФИКСТУРА ВЫДАЁТСЯ ПО БОЙЦУ, А НЕ ПО ЦВЕТУ.
+   *
+   * `referenceTagOf(side)` — мост, и он раздавал `laser/blink/jump` синему,
+   * `smash/charge/jump` оранжевому. Мозг же написан против ОДНОГО из двух
+   * наборов, а сторону раздаёт чётность сида: на «чужом» цвете он звал
+   * `api.ready('laser')`, всегда получал false и ходил весь бой. Замерено на
+   * живой лестнице: 335 из 2400 сторон не применили ни одного умения, и все
+   * зрелищные двойные КО без единого события — это две такие стороны разом.
+   *
+   * Тег приезжает вместе с бойцом и молчаливо игнорируется у того, у кого
+   * есть свой кит: его умения приехали с ним, фикстура ему не нужна.
+   */
+  if (referenceTag) {
+    for (const side of SIDES) {
+      const tag = referenceTag[side];
+      const f = world.fighters[side];
+      if (!tag || f.kit || !skillsOf(tag).length) continue;
+      f.refTag = tag;
+      f.cooldowns = {};
+      for (const name of skillsOf(tag)) f.cooldowns[name] = 0;
     }
   }
 
@@ -367,7 +404,10 @@ const round3 = (v) => Math.round(v * 1000) / 1000;
  * нельзя ни в одну сторону.
  */
 function namesOf(f) {
-  return f.kit ? Object.keys(f.kit) : skillsOf(referenceTagOf(f.id));
+  /* `f.refTag` — тег, приехавший ВМЕСТЕ С БОЙЦОМ (`createWorld({referenceTag})`).
+     Он старше стороны по той же причине, по которой старше кит и телосложение:
+     мозг написан против конкретных имён, и цвет о них не знает ничего. */
+  return f.kit ? Object.keys(f.kit) : skillsOf(f.refTag || referenceTagOf(f.id));
 }
 
 /**
@@ -378,7 +418,55 @@ function namesOf(f) {
  * мозг не пишет ни во что, что пришло снаружи, и копия делает нарушение
  * безвредным даже если бы он попробовал.
  */
+/**
+ * THE REFERENCE FIXTURE PRESENTS A KIT TOO (07.09).
+ *
+ * `p.enemy.kit` used to be null whenever the other body held the hardcoded
+ * fixture (laser/blink/jump or smash/charge/jump) — the admission fights, and
+ * every ladder fight against a library creature born before the grammar. The
+ * prompt promises a kitted mind "the same shape, for their three", and a mind
+ * that trusted it faulted on every thought (`Cannot read properties of null`,
+ * a Fable mind rejected at admission for the world's lie, not its own). So a
+ * fixture fighter's skills are presented in the grammar's shape, keyed by the
+ * names `p.enemy.skills` lists: laser → beam, smash → cone, charge → dash,
+ * blink and jump as themselves. Only what a mind reads to plan — kind, timing,
+ * reach, damage — and nothing that is not true of the fixture skill.
+ */
+const FIXTURE_KIND = { laser: 'beam', blink: 'blink', smash: 'cone', charge: 'dash', jump: 'jump' };
+function fixtureKitView(f) {
+  const out = {};
+  for (const name of namesOf(f)) {
+    const s = SKILLS[name];
+    if (!s) continue;
+    const kind = FIXTURE_KIND[name] || name;
+    const effects = s.damage ? ['damage'] : [];
+    if (name === 'charge') effects.push('knock', 'stun');
+    if (name === 'smash') effects.push('knock');
+    out[name] = {
+      kind, element: 'kinetic', effects, channel: null,
+      windup: round3(s.windup || 0), recover: round3(s.recover || 0), cooldown: round3(s.cooldown),
+      ...(s.range !== undefined ? { range: round3(s.range) } : {}),
+      ...(s.halfAngle !== undefined ? { halfAngle: round3(s.halfAngle) } : {}),
+      ...(s.distance !== undefined ? { distance: round3(s.distance) } : {}),
+      ...(s.dashSpeed !== undefined ? { dashSpeed: s.dashSpeed, distance: round3(s.dashSpeed * s.dashSeconds) } : {}),
+      ...(s.iframes !== undefined ? { iframes: round3(s.iframes) } : {}),
+      ...(s.airborne !== undefined ? { airborne: round3(s.airborne) } : {}),
+      ...(s.damage !== undefined ? { damage: s.damage } : {}),
+      aim: (kind === 'blink') ? 'point' : (kind === 'jump' ? 'none' : 'facing'),
+      magnitudes: {
+        ...(s.damage !== undefined ? { damage: { mag: s.damage } } : {}),
+        ...(s.knockback !== undefined ? { knock: { mag: s.knockback } } : {}),
+        ...(s.stun !== undefined ? { stun: { duration: round3(s.stun) } } : {}),
+      },
+      fixture: true,
+    };
+  }
+  return out;
+}
+
 function kitView(f) {
+  /* A fixture fighter's OWN view stays null: the six reference minds were
+     written against a perception without it, and §1 is measured on them. */
   if (!f.kit) return null;
   const out = {};
   for (const [name, d] of Object.entries(f.kit)) {
@@ -417,6 +505,20 @@ function kitView(f) {
       ...(d.airborne !== undefined ? { airborne: round3(d.airborne) } : {}),
       /* Длительность зоны на полу — та же логика: у зоны это её механика. */
       ...(d.duration !== undefined ? { duration: round3(d.duration) } : {}),
+      /* The lunge's travel speed, so a mind can time a leap over it. */
+      ...(d.dashSpeed !== undefined ? { dashSpeed: d.dashSpeed } : {}),
+      /* The blink's invulnerability, the one number a blink is bought for. */
+      ...(d.iframes !== undefined ? { iframes: round3(d.iframes) } : {}),
+      /* How it is aimed: 'point' | 'facing' | 'none' (compile.js). */
+      aim: d.aim,
+      /* Every effect's magnitude and duration, live — a heal without its cap
+         or a shield without its amount is a card a mind cannot count on. */
+      magnitudes: Object.fromEntries(d.effects.map((e) => [e.id, {
+        ...(e.mag !== null && e.mag !== undefined ? { mag: round3(e.mag) } : {}),
+        ...(e.duration !== null && e.duration !== undefined ? { duration: round3(e.duration) } : {}),
+        ...(e.immune ? { immune: e.immune } : {}),
+        ...(e.channel ? { channel: e.channel } : {}),
+      }])),
     };
   }
   return out;
@@ -492,6 +594,37 @@ function rememberEnemy(world, id, view) {
   return past || me.enemyLog[0] || view;
 }
 
+/**
+ * The control classes a body is immune to at `t`, for perception.
+ *
+ * They are `act` (starting a cast — stun, silence), `move` (moving — stun,
+ * root) and `sense` (the truth of perception — blind); `IMMUNE_CATEGORY` in
+ * effects.js is the table. This comment used to name two classes that have not
+ * existed since the window became per-class, 'hard' and 'mind', which is a
+ * reader looking for two strings the array can never contain.
+ */
+function immuneList(f, t) {
+  const im = f.status && f.status.immune;
+  if (!im) return [];
+  const out = [];
+  for (const k of Object.keys(im)) if (im[k] > t) out.push(k);
+  return out;
+}
+
+/**
+ * Seconds left of each immunity class, for perception — the number
+ * `immuneList` throws away. A mind reading only the list cannot tell a class
+ * that just armed for a stun's full window from one about to lapse, and
+ * `review-r1-minds.md` found that gap: 45–79 of ~100 immune lines per six
+ * games were ordered while the class was already listed, because nothing
+ * said how much longer it would hold. 0 when the class is not armed.
+ */
+function immuneLeftOf(f, t) {
+  const im = f.status && f.status.immune;
+  const left = (k) => round3(im && im[k] > t ? im[k] - t : 0);
+  return { act: left('act'), move: left('move'), sense: left('sense') };
+}
+
 export function perceive(world, id) {
   const me = world.fighters[id];
   const you = world.fighters[other(id)];
@@ -516,7 +649,9 @@ export function perceive(world, id) {
       heading: round3(me.heading),
       hp: round3(me.hp), maxHp: me.def.hp,
       radius: me.def.radius,
-      maxSpeed: me.def.maxSpeed,
+      /* Live, like `turnRate` below: a speed boost or weaken shows in the
+         number the mind plans distances with, not only in its feet. */
+      maxSpeed: round3(me.def.maxSpeed * channelMul(me, 'speed', world.t)),
       /* Живое значение, а не паспортное: по F10 мозг видит то, что у него
          действительно есть, и усиление поворота обязано быть в нём видно. */
       turnRate: round3(me.def.turnRate * channelMul(me, 'turn', world.t)),
@@ -543,6 +678,10 @@ export function perceive(world, id) {
       blinded: !!(me.status && me.status.blind > world.t),
       silenced: !!(me.status && me.status.silence > world.t),
       rooted: !!(me.status && me.status.root > world.t),
+      /* Which controls cannot land on this body right now — the immunity
+         window a stun, root, silence or blind leaves behind (effects.js). */
+      immune: immuneList(me, world.t),
+      immuneLeft: immuneLeftOf(me, world.t),
       shield: round3(me.status ? me.status.shield : 0),
       burning: !!(me.status && me.status.burn && me.status.burn.until > world.t),
     },
@@ -554,7 +693,7 @@ export function perceive(world, id) {
       heading: round3(you.heading),
       hp: round3(you.hp), maxHp: you.def.hp,
       radius: you.def.radius,
-      maxSpeed: you.def.maxSpeed,
+      maxSpeed: round3(you.def.maxSpeed * channelMul(you, 'speed', world.t)),
       dist: round3(dist),
       alive: you.alive,
       airborne: you.y > 0.01,
@@ -563,16 +702,28 @@ export function perceive(world, id) {
       busy: you.act !== null,
       casting: castView(you),
       skills: namesOf(you),
-      kit: kitView(you),
+      /* The opponent always presents a kit: its own when it holds one, the
+         fixture's skills in the grammar's shape when it does not. */
+      kit: kitView(you) || fixtureKitView(you),
       shield: round3(you.status ? you.status.shield : 0),
       rooted: !!(you.status && you.status.root > world.t),
       burning: !!(you.status && you.status.burn && you.status.burn.until > world.t),
-      /** Line of sight, centre to centre. What the beam actually tests. */
+      immune: immuneList(you, world.t),
+      immuneLeft: immuneLeftOf(you, world.t),
+      /* Line of sight, centre to centre, right now — NOT what a beam or a
+         bolt tests: those test a line from radius + muzzle ahead of the
+         caster along its facing, at the strike, not this instant and not
+         from either centre. See prompt.js's fact beside `.visible`. */
       visible: segBoxes(me.x, me.z, you.x, you.z, world.solids) === null,
     }),
     arena: {
       half: ARENA_HALF,
-      obstacles: world.obstacles.map((o) => ({ x: o.x, z: o.z, hx: o.hx, hz: o.hz })),
+      /* A temporary wall says so, and for how long: a mind could not tell a
+         wall from a block, and planned a path round something about to
+         vanish. `until` is seconds left, `by` the side that raised it. */
+      obstacles: world.obstacles.map((o) => (o.temporary
+        ? { x: o.x, z: o.z, hx: o.hx, hz: o.hz, until: round3(Math.max(0, o.until - world.t)), by: o.by }
+        : { x: o.x, z: o.z, hx: o.hx, hz: o.hz })),
       /*
        * Зоны и снаряды — В ПЕРЦЕПЦИИ, а не только в мире.
        *
@@ -686,14 +837,40 @@ export function makeApi(world, id) {
         world.log.push({ t: round3(world.t), type: 'refused', who: id, skill: name, reason: 'unknown' });
         return false;
       }
-      q.use = { name, a: fin(a) ? a : null, b: fin(b) ? b : null };
+      /*
+       * THE AIM POINT — api.use(name, { x, z }).
+       *
+       * Measured on the brains in the database before this form existed: the
+       * minds that wanted to aim a mortar or a field at a PLACE passed the
+       * place as a pair, `api.use('k2', a.x, a.z)`, and the pair meant a
+       * direction (blink) or nothing at all (every other delivery) — so a
+       * mortar "aimed" with a lead computed by V.lead landed at the enemy's
+       * distance along the caster's facing, and the lead was thrown away. An
+       * object with x and z is unambiguous: it is a point on the ground, and
+       * the delivery decides what to do with it (deliver.js). The point is
+       * read here, once, defensively — a brain-realm getter that throws is a
+       * fault of that thought, not of the engine.
+       */
+      let at = null;
+      if (a !== null && typeof a === 'object') {
+        const px = Number(a.x), pz = Number(a.z);
+        if (fin(px) && fin(pz)) at = { x: px, z: pz };
+        a = null; b = null;
+      }
+      q.use = { name, a: fin(a) ? a : null, b: fin(b) ? b : null, at };
       return true;
     },
     ready(name) {
       ask();
       if (typeof name !== 'string') return false;
       if (!namesOf(me).includes(name)) return false;
-      return me.cooldowns[name] <= 0 && me.act === null && me.stun <= 0 && me.alive;
+      /* The same refusals `startSkill` makes, in the same order — a `ready`
+         that said yes to a silenced or airborne body was a lie followed by
+         a `refused` event, and a mind cannot plan on a yes that means no. */
+      if (!me.alive || me.cooldowns[name] > 0 || me.act !== null || me.stun > 0) return false;
+      if (me.y > 0.01) return false;
+      if (me.status && me.status.silence > world.t && !cleanseWhileSilenced(me, name)) return false;
+      return true;
     },
     cooldown(name) {
       ask();
@@ -817,7 +994,10 @@ export function applyOrders(world, id, q) {
       me.moveTarget = { x: q.move.x, z: q.move.z };
     }
   }
-  if (q.face !== null && q.face !== undefined) me.wantHeading = q.face;
+  /* A facing order given during an aimed cast's wind-up does not replace the
+     aim point — see `aimLock` in `startSkill`. */
+  const locked = me.act && me.act.aimLock && !me.act.spent;
+  if (q.face !== null && q.face !== undefined && !locked) me.wantHeading = q.face;
   /*
    * The line goes into the log as well as onto the body.
    *
@@ -828,19 +1008,43 @@ export function applyOrders(world, id, q) {
    * evidence left is a number. So it is logged, and the log is what the
    * after-fight card is assembled from.
    */
-  if (q.say) {
+  /*
+   * ── ONE QUIP EVERY SAY_EVERY SECONDS ──────────────────────────────────────
+   *
+   * `api.say` was accepted on every thought — fifteen a second. Measured over
+   * 361 stored ladder quips: 9.8 lines a match and 1.9 DISTINCT lines per
+   * speaking fighter, i.e. the same sentence pushed onto the ticker again and
+   * again. The proof that a mind is fighting turned into a stuck screen, and
+   * the feed the after-fight card is built from filled with duplicates.
+   *
+   * A line inside the window is DROPPED SILENTLY: no fault, no event, no
+   * budget charged. A refusal would teach a mind to spend a thought retrying
+   * the line, which is the opposite of the point. The window is a shade longer
+   * than a line's time on the ticker (config.js), so a fighter never talks
+   * over itself.
+   */
+  if (q.say && world.t >= (me.sayNext ?? 0)) {
     me.say = { text: q.say, until: world.t + SAY_SECONDS };
+    me.sayNext = world.t + SAY_EVERY;
     me.stats.saidLines++;
     world.log.push({ t: round3(world.t), type: 'say', who: id, text: q.say });
   }
-  if (q.use) startSkill(world, id, q.use.name, q.use.a, q.use.b);
+  if (q.use) startSkill(world, id, q.use.name, q.use.a, q.use.b, q.use.at || null);
 }
 
 // ---------------------------------------------------------------------------
 // skills
 // ---------------------------------------------------------------------------
 
-function startSkill(world, id, name, a, b) {
+/** A self-class ability carrying a cleanse may be started through a silence. */
+function cleanseWhileSilenced(me, name) {
+  const s = defOf(me, name);
+  if (!s || !s.generic) return false;
+  return (s.kind === 'self' || s.kind === 'blink' || s.kind === 'jump')
+    && s.effects.some((e) => e.id === 'cleanse');
+}
+
+function startSkill(world, id, name, a, b, at = null) {
   const me = world.fighters[id];
   const s = defOf(me, name);
   /*
@@ -860,7 +1064,11 @@ function startSkill(world, id, name, a, b) {
   /* `silence` — один из трёх атомов, бьющих по слою принятия решений (§8).
      Отказ с причиной, а не молчание: мозг обязан узнать, что его заткнули,
      иначе он будет жать на кнопку до конца боя. */
-  if (me.status && me.status.silence > world.t) return refuse('silenced');
+  /* Silence stops casting — except an aura that carries a cleanse, or the
+     prompt's line "cleanse removes silence" would describe a thing that
+     could never happen: the one ability that answers silence is refused by
+     it. The exception is narrow: a self-class delivery carrying cleanse. */
+  if (me.status && me.status.silence > world.t && !cleanseWhileSilenced(me, name)) return refuse('silenced');
   if (me.y > 0.01) return refuse('airborne');
   if (me.stun > 0) return refuse('stunned');
   if (me.act !== null) return refuse('busy');
@@ -910,7 +1118,55 @@ function startSkill(world, id, name, a, b) {
    * ломает (их с одним числом ноль), а заказанный рычаг остаётся ровно
    * таким, как назван: «первый аргумент — запрошенная дальность в метрах».
    */
-  const reach = (s.kind === 'lob' && Number.isFinite(a) && b === null) ? a : null;
+  let reach = (s.kind === 'lob' && Number.isFinite(a) && b === null) ? a : null;
+  /* Set below when the order named a point and the shape can be aimed at one. */
+  let aimLock = null;
+  /*
+   * THE AIM POINT, when the order carried one (`api.use(name, {x, z})`).
+   *
+   * Two things happen at once and both are deliberate. The body TURNS toward
+   * the point — the same standing order api.faceAt gives, so a beam, a bolt, a
+   * cone or a lunge ordered at a point goes where the point is once the turn
+   * is done; the turn is not instant, and a cast whose wind-up ends before the
+   * turn does fires where the body is pointing then, exactly as it always has.
+   * And the point itself is REMEMBERED on the act: a mortar and a field land
+   * ON the point (clamped to their range), a blink goes toward it, whatever
+   * the facing is at the strike — the aim is the mind's, and the mind named a
+   * place, not an angle. deliver.js reads `act.at`.
+   */
+  /*
+   * ── AN AIM POINT ON AN AIM-LESS SHAPE TURNS NOTHING ───────────────────────
+   *
+   * `api.use('k2', {x, z})` on an aura or a leap used to swing the body toward
+   * the point — measured: an aura ordered at a point 90 degrees off sent the
+   * heading to 90 degrees — while the card says the ability's aim is 'none'.
+   * A point is meaningless to a shape that touches nobody, and a body that
+   * turns for no reason is a body facing the wrong way when its next shot
+   * lands.
+   */
+  const aimMode = s.aim || (s.kind === 'blink' || s.kind === 'teleport' ? 'point'
+    : (s.kind === 'jump' || s.kind === 'hop' ? 'none' : 'facing'));
+  if (at && aimMode !== 'none') {
+    const adx = at.x - me.x, adz = at.z - me.z;
+    if (Math.abs(adx) + Math.abs(adz) > 1e-9) {
+      me.wantHeading = headingOf(adx, adz);
+      const [ux, uz] = norm2(adx, adz);
+      dx = ux; dz = uz;
+      aimLock = { x: at.x, z: at.z };
+    }
+  }
+  /*
+   * THE MORTAR'S DISTANCE IS NO LONGER STORED HERE.
+   *
+   * `reach = hypot(adx, adz)` used to be measured at the ORDER and read half a
+   * second later at the strike, while the DIRECTION was read at the strike —
+   * two halves of one aim from two different moments, so the shot missed by
+   * exactly how far the caster walked during the wind-up (1.70 m at walking
+   * pace, against a splash of 1.8 m). `lobLanding` now reads both from
+   * `act.at` at the strike, the way the field always has. The single-number
+   * form — `api.use(name, metres)` — still travels on `reach`: it names a
+   * distance, not a place, and there is nothing about it to re-read.
+   */
 
   me.cooldowns[name] = s.cooldown;
   const script = s.generic ? phasesOfDef(s) : phasesOf(name);
@@ -926,6 +1182,26 @@ function startSkill(world, id, name, a, b) {
     /* Дальность навеса, как её назвал мозг. `null` — «не называл»: тогда
        `deliver.js` берёт расстояние до врага, а не предел умения. */
     reach,
+    /* The aim point, when the mind named one. Null means "along my facing". */
+    at: at ? { x: at.x, z: at.z } : null,
+    /*
+     * ── THE AIM POINT HOLDS THROUGH THE WIND-UP ───────────────────────────
+     *
+     * The point used to be a one-off facing order, so the NEXT thought's
+     * `api.faceAt` replaced it and the shot went there instead. Measured: a
+     * bolt ordered at a point 45 degrees off, followed by `faceAt(enemy)` on
+     * the following thoughts, left at 0 degrees — the lead silently thrown
+     * away. And the shape a model writes most often is exactly that: face the
+     * enemy every thought, then use an ability with a computed lead.
+     *
+     * So the point is a LOCK, not an order: while the cast is winding up the
+     * body keeps turning toward the point at its own turn rate (`moveStep`
+     * re-derives the heading every tick, so a caster that is moving still
+     * tracks it), and `q.face` / `api.faceAt` are ignored until the strike.
+     * The mind can still change its mind — a new `use` replaces the act — it
+     * just cannot do it by accident.
+     */
+    aimLock,
     /*
      * `spent` means "no effect can land any more", which is not the same as
      * "an effect landed" — `casting.telegraph` is derived from it and the
@@ -981,7 +1257,7 @@ function startSkill(world, id, name, a, b) {
 /** Push an event onto a fighter's feed. */
 function emit(world, id, ev) {
   const f = world.fighters[id];
-  if (f.events.length < 32) f.events.push(ev);
+  if (f.events.length < EVENTS_MAX) f.events.push(ev);
 }
 
 /**
@@ -1024,9 +1300,22 @@ function interruptCast(world, byId, bySkill) {
   const you = world.fighters[other(byId)];
   const act = you.act;
   if (!act || act.spent) return false;
-  const s = SKILLS[act.id];
+  /*
+   * `defOf`, not `SKILLS[...]`. The lookup went to the hardcoded table only,
+   * so a grammar ability (`k1..k3`) was never found and never interrupted —
+   * `compile.js` marked every wind-up over 0.2 s `interruptible: true` and
+   * the sim ignored the flag for every creature a player owns. With
+   * cooldowns at three seconds the interrupt is the whole point of a stun or
+   * a knock landing on a wind-up, so the rule now reaches the grammar.
+   */
+  const s = defOf(you, act.id);
   if (!s || !s.interruptible) return false;
   world.log.push({ t: round3(world.t), type: 'interrupt', who: byId, target: you.id, skill: act.id });
+  /* An interrupt decides fights — 1.3 to 1.6 a match — and nothing was drawn
+     for it: the cast bar simply vanished and the crowd saw a fighter change
+     its mind. The record names the victim, the cast that was cut and who cut
+     it, so the viewer can snap the bar and say why. */
+  world.fx.push({ kind: 'interrupt', who: you.id, t: round3(world.t), skill: act.id, by: byId });
   emit(world, you.id, { type: 'interrupted', skill: act.id, by: bySkill });
   emit(world, byId, { type: 'interruptedEnemy', skill: act.id });
   you.act = null;
@@ -1055,7 +1344,10 @@ function resolveStrike(world, id) {
 
   if (act.id === 'laser') {
     const [ux, uz] = dirOf(me.heading);
-    const ox = me.x + ux * (me.def.radius + 0.2), oz = me.z + uz * (me.def.radius + 0.2);
+    /* `BEAM_MUZZLE`, not a literal: the grammar beam reads the same constant
+       (deliver.js) and the prompt quotes it, so the fixture laser and the
+       grammar beam cannot drift apart under a tuning pass. */
+    const ox = me.x + ux * (me.def.radius + BEAM_MUZZLE), oz = me.z + uz * (me.def.radius + BEAM_MUZZLE);
     const ex = ox + ux * s.range, ez = oz + uz * s.range;
     const solid = segBoxes(ox, oz, ex, ez, world.solids);
     const tSolid = solid ? solid.t : 1;
@@ -1233,12 +1525,29 @@ function damage(world, fromId, toId, amount, skill) {
     emit(world, fromId, { type: 'missed', skill, reason: 'invulnerable' });
     emit(world, toId, { type: 'evaded', skill, by: fromId });
     world.log.push({ t: round3(world.t), type: 'evade', who: toId, skill });
+    /* The same record the grammar path pushes (effects.js): a dodge is the one
+       thing in a fight a spectator reads as a decision, and it was invisible. */
+    world.fx.push({ kind: 'evade', who: toId, t: round3(world.t), skill, by: fromId });
     return;
   }
   /* Каналы и щит — только для урона от умений. Горение арены идёт мимо:
      это правило мира, а не удар, и щит от правил мира не спасает.
      Порядок обязателен и не переставляется: канал `damage` у бьющего,
      канал `armor` у цели, потом щит. */
+  /*
+   * WHAT THE HIT WAS WORTH BEFORE THE SHIELD TOUCHED IT.
+   *
+   * Declared HERE, outside the block below, and that is the whole of a live
+   * defect: `const struck` used to be declared inside `if (skill !== 'arena')`,
+   * while the line that reads it — the `absorbed` field on `dealt`/`damaged` —
+   * sits outside. `typeof struck === 'number'` on an unreachable binding is
+   * `'undefined'`, not an error, so the field was NEVER attached to a hit that
+   * got THROUGH a shield: a 24 bolt into a 12 shield reported `{amount: 12}`
+   * and nothing else, while the prompt promised both sides "absorbed — what a
+   * shield took". The fully-absorbed branch had its own copy of the value and
+   * was the only one the gate covered.
+   */
+  let struck = amount;
   if (skill !== 'arena') {
     /* Горение уже уменьшено при наложении, и каналы к нему не применяются
        второй раз — иначе усиление урона усиливало бы и то, что оно уже
@@ -1248,14 +1557,46 @@ function damage(world, fromId, toId, amount, skill) {
       amount /= Math.max(0.25, channelMul(dst, 'armor', world.t));
     }
     const had = dst.status ? dst.status.shield : 0;
+    /* After the channels, before the shield: that is what "absorbed" means. */
+    struck = amount;
     amount = absorb(dst, amount);
     /* Строка пишется, когда щит КОНЧИЛСЯ, а не на каждый погашенный удар:
        щит из 40 единиц против горения ловил бы по строке тридцать раз в
        секунду, и лента боя переставала бы читаться. */
     if (had > 0 && dst.status.shield <= 0) {
       world.log.push({ t: round3(world.t), type: 'shieldBroke', who: toId });
+      world.fx.push({ kind: 'shieldBroke', who: toId, t: round3(world.t) });
     }
-    if (amount <= 1e-6) return;
+    /*
+     * A SHIELD DOING ITS JOB IS NOW ON SCREEN.
+     *
+     * The shell was drawn when the shield went up and nothing was drawn when it
+     * ate a hit, so the most legible thing a defensive ability ever does — a
+     * 24-damage bolt arriving and 12 of it vanishing — looked identical to a
+     * hit that simply did less. One record per absorbing hit, carrying what the
+     * shield took, plus one when it finally breaks.
+     */
+    if (had > 0 && struck - amount > 1e-6) {
+      world.fx.push({
+        kind: 'absorbed', who: toId, t: round3(world.t),
+        amount: Math.round((struck - amount) * 100) / 100, by: fromId,
+      });
+    }
+    if (amount <= 1e-6) {
+      /*
+       * A HIT THE SHIELD ATE WHOLE IS STILL A HIT, and both sides are told.
+       * The hitter used to get neither `dealt` nor `missed` — the one outcome
+       * with no event — so a mind saw its beam connect and nothing happen,
+       * and the balance instrument under-counted every hit on a shield. The
+       * `dealt` carries `absorbed` so the mind can read the shield working.
+       */
+      const shown = Math.round(struck * 100) / 100;
+      src.stats.hits[skill] = (src.stats.hits[skill] || 0) + 1;
+      emit(world, fromId, { type: 'dealt', skill, amount: 0, absorbed: shown, enemyHp: round3(dst.hp) });
+      emit(world, toId, { type: 'damaged', skill, amount: 0, absorbed: shown, hp: round3(dst.hp), from: { x: round3(src.x), z: round3(src.z) } });
+      world.log.push({ t: round3(world.t), type: 'absorbed', who: fromId, target: toId, skill, amount: shown });
+      return;
+    }
   }
   dst.hp = Math.max(0, dst.hp - amount);
   src.stats.damageDealt += amount;
@@ -1279,9 +1620,12 @@ function damage(world, fromId, toId, amount, skill) {
    * платит вниманием.
    */
   const shown = Math.round(amount * 100) / 100;
-  emit(world, fromId, { type: 'dealt', skill, amount: shown, enemyHp: round3(dst.hp) });
+  /* What the shield took off a hit that still got through, when it did. */
+  const ate = (skill !== 'arena' && typeof struck === 'number' && struck - amount > 1e-6)
+    ? { absorbed: Math.round((struck - amount) * 100) / 100 } : {};
+  emit(world, fromId, { type: 'dealt', skill, amount: shown, ...ate, enemyHp: round3(dst.hp) });
   emit(world, toId, {
-    type: 'damaged', skill, amount: shown, hp: round3(dst.hp),
+    type: 'damaged', skill, amount: shown, ...ate, hp: round3(dst.hp),
     from: { x: round3(src.x), z: round3(src.z) },
   });
   world.fx.push({ kind: 'hit', who: toId, t: world.t, x: dst.x, z: dst.z, amount: shown, skill });
@@ -1376,11 +1720,18 @@ function stepAct(world, id) {
 
   if (act.tPhase >= dur - 1e-9) {
     if (strikeAtEnd) resolveStrike(world, id);
-    if (act.id === 'charge' && name === 'windup') {
-      // Heading locks here, at the end of the telegraph, not when ordered.
+    const next = act.script[act.step + 1];
+    if (name === 'windup' && next && next[0] === 'dash') {
+      // Heading locks here, at the end of the telegraph, not when ordered —
+      // for the reference charge and for every grammar lunge alike.
       const [ux, uz] = dirOf(me.heading);
       act.dx = ux; act.dz = uz;
-      emit(world, other(id), { type: 'enemyCommitted', skill: 'charge' });
+      act.from = { x: me.x, z: me.z };
+      /* The impulse the body already carried into the dash. `dashStepGeneric`
+         compares against it to notice a knock that lands mid-travel; knockback
+         only ever decays, so any rise is a new impact. */
+      act.kSeen = len2(me.kx, me.kz);
+      emit(world, other(id), { type: 'enemyCommitted', skill: act.id });
     }
     /*
      * A dash that ran its full 0.8 s without touching anybody is over, and
@@ -1396,7 +1747,7 @@ function stepAct(world, id) {
      */
     if (name === 'dash') {
       act.spent = true;
-      chargeMissed(world, id, 'range');
+      dashOver(world, id, act.overhead ? 'airborne' : 'range');
     }
     /*
      * `landed` — НА КОНЦЕ ВОЗДУШНОЙ ФАЗЫ, а не в конце всего умения.
@@ -1494,12 +1845,61 @@ function chargeMissed(world, id, reason) {
   world.log.push({ t: round3(world.t), type: 'chargeMiss', who: id, reason });
 }
 
-/** One tick of a charge's travel: move at dash speed, stop on contact. */
+/**
+ * A dash that ended without touching the enemy — the reference charge writes
+ * its own line (`chargeMissed`); a grammar lunge writes a `miss` with the same
+ * vocabulary every other delivery uses, applies its WORLD atoms (a wall grows
+ * whether or not the lunge connected), and draws its ribbon.
+ */
+function dashOver(world, id, reason) {
+  const me = world.fighters[id];
+  const act = me.act;
+  if (!act) return;
+  if (act.id === 'charge') { chargeMissed(world, id, reason); return; }
+  if (world.over) return;
+  const def = defOf(me, act.id);
+  if (!def || !def.generic || act.dashDone) return;
+  act.dashDone = true;
+  /* The vocabulary a mind is given is closed (aim/cover/range/airborne/
+     invulnerable/immune), so a lunge stopped by a stun or a shove reports the
+     one that is true of it: it did not reach. The log line carries the real
+     reason for the replay. */
+  const why = reason === 'wall' || reason === 'push' ? 'cover' : (reason === 'airborne' ? 'airborne' : 'aim');
+  me.stats.misses[act.id] = (me.stats.misses[act.id] || 0) + 1;
+  if (why === 'cover') me.stats.blocked[act.id] = (me.stats.blocked[act.id] || 0) + 1;
+  emit(world, id, { type: 'missed', skill: act.id, reason: why });
+  world.log.push({ t: round3(world.t), type: 'miss', who: id, skill: act.id, reason: why });
+  applyAtoms(world, id, other(id), def.effects, def, RESOLVE_DEPS, { skip: (a) => a.klass !== 'world' });
+  const from = act.from || { x: me.x, z: me.z };
+  world.fx.push({ kind: 'dash', who: id, t: round3(world.t), skill: act.id, element: def.element,
+    x0: from.x, z0: from.z, x1: me.x, z1: me.z, hit: false, miss: why });
+}
+
+/** A grammar lunge that reached the enemy: every atom lands, the ribbon is drawn. */
+function dashLanded(world, id) {
+  const me = world.fighters[id];
+  const act = me.act;
+  const def = defOf(me, act.id);
+  act.dashDone = true;
+  applyAtoms(world, id, other(id), def.effects, def, RESOLVE_DEPS);
+  const you = world.fighters[other(id)];
+  const mine = def.effects.filter((a) => a.klass === 'self').map((a) => a.id);
+  const theirs = def.effects.filter((a) => a.klass !== 'self' && a.klass !== 'world').map((a) => a.id);
+  const t = round3(world.t);
+  if (theirs.length) world.fx.push({ kind: 'impact', who: id, t, skill: act.id, element: def.element, x: round3(you.x), z: round3(you.z), effects: theirs });
+  if (mine.length) world.fx.push({ kind: 'impact', who: id, t, skill: act.id, element: def.element, x: round3(me.x), z: round3(me.z), effects: mine });
+  const from = act.from || { x: me.x, z: me.z };
+  world.fx.push({ kind: 'dash', who: id, t, skill: act.id, element: def.element,
+    x0: from.x, z0: from.z, x1: me.x, z1: me.z, hit: true, miss: null });
+}
+
+/** One tick of a lunge's travel: move at dash speed, stop on contact. */
 function dashStep(world, id) {
   const me = world.fighters[id];
   const you = world.fighters[other(id)];
-  const s = SKILLS.charge;
   const act = me.act;
+  if (act.id !== 'charge') { dashStepGeneric(world, id); return; }
+  const s = SKILLS.charge;
   me.vx = 0; me.vz = 0;
   const step = s.dashSpeed * DT;
   const nx = me.x + act.dx * step, nz = me.z + act.dz * step;
@@ -1553,6 +1953,84 @@ function dashStep(world, id) {
   }
   me.x = nx; me.z = nz;
   me.stats.distanceTravelled += step;
+}
+
+/**
+ * One tick of a grammar lunge. The same shape as the charge's tick — a swept
+ * contact test so a half-metre step cannot straddle a body, a stop on any
+ * solid — with two grammar rules on top: the lunge passes UNDER a body that is
+ * in the air (`AIRBORNE_DODGE_MIN`, the ground-delivery rule), and it carries
+ * whatever atoms its ability holds instead of one fixed damage number.
+ */
+function dashStepGeneric(world, id) {
+  const me = world.fighters[id];
+  const you = world.fighters[other(id)];
+  const act = me.act;
+  const def = defOf(me, act.id);
+  /*
+   * ── A STUNNED OR SHOVED LUNGE STOPS ─────────────────────────────────────
+   *
+   * The prompt says "Stunned: no movement", and a lunge kept travelling
+   * through one: measured 0.67 m of further travel after a stun landed
+   * mid-dash, arriving and hitting as if nothing had happened. The knock was
+   * worse than useless — `moveStep` skips the position integration for the
+   * whole dash phase, so an impulse that landed on a dashing body decayed
+   * where it stood and moved it nowhere at all. A stun that does not stop and
+   * a shove that does not shove are the two counterplays to a lunge, both
+   * silently absent.
+   *
+   * Both end the travel now. The dash goes straight to its recovery
+   * (`endDash`), reports the miss like any other lunge that touched nobody,
+   * and — because the body is no longer dashing — the very next `moveStep`
+   * carries the impulse normally.
+   *
+   * Knockback only decays, so a rise above what the body carried into the dash
+   * (`act.kSeen`, taken when the heading locked) is a new impact and nothing
+   * else. Contact with the enemy is tested first: a lunge that arrives and a
+   * stun that lands on the same tick is a hit, not a stop.
+   */
+  const shoved = len2(me.kx, me.kz) > (act.kSeen ?? 0) + 1e-6;
+  if (me.stun > 0 || shoved) {
+    act.spent = true;
+    dashOver(world, id, act.overhead ? 'airborne' : 'stopped');
+    endDash(me);
+    return;
+  }
+  me.vx = 0; me.vz = 0;
+  const step = def.dashSpeed * DT;
+  const nx = me.x + act.dx * step, nz = me.z + act.dz * step;
+
+  if (you.alive && !act.spent) {
+    const t = segCircle(me.x, me.z, nx, nz, you.x, you.z, you.def.radius + me.def.radius);
+    if (t >= 0) {
+      const overhead = (you.yTick ?? you.y) > AIRBORNE_DODGE_MIN;
+      if (!overhead) {
+        act.spent = true;
+        me.x += act.dx * step * t; me.z += act.dz * step * t;
+        dashLanded(world, id);
+        endDash(me);
+        return;
+      }
+      /* Passed under a body in the air: the travel goes on, the hit is gone.
+         Remembered so the miss is reported as `airborne`, not `aim`. */
+      act.overhead = true;
+    }
+  }
+
+  let blocked = false;
+  for (const o of world.solids) {
+    const [px, pz] = pushOutOfBox(nx, nz, me.def.radius, o);
+    if (px !== 0 || pz !== 0) { blocked = true; break; }
+  }
+  if (blocked) {
+    act.spent = true;
+    dashOver(world, id, act.overhead ? 'airborne' : 'wall');
+    endDash(me);
+    return;
+  }
+  me.x = nx; me.z = nz;
+  me.stats.distanceTravelled += step;
+  act.kSeen = len2(me.kx, me.kz);
 }
 
 function endDash(me) {
@@ -1630,6 +2108,13 @@ function moveStep(world, id) {
     me.heading = headingOf(me.act.dx, me.act.dz);
     me.wantHeading = me.heading;
   } else if (me.alive && me.stun <= 0) {
+    /* An aimed cast tracks its point for the whole wind-up: the caster may be
+       walking, and a heading frozen at the order would miss by however far it
+       walked. The lock ends at the strike (`act.spent`). */
+    if (me.act && me.act.aimLock && !me.act.spent) {
+      const adx = me.act.aimLock.x - me.x, adz = me.act.aimLock.z - me.z;
+      if (Math.abs(adx) + Math.abs(adz) > 1e-9) me.wantHeading = headingOf(adx, adz);
+    }
     const scale = s ? (s.turnScale === undefined ? 1 : s.turnScale) : 1;
     me.heading = turnToward(me.heading, me.wantHeading, me.def.turnRate * scale * turnMul(world, me) * DT);
   }
@@ -1819,7 +2304,7 @@ function collide(world) {
            * reason, not merged into `wall`, so the day it does appear it is
            * legible as the new thing it is.
            */
-          if (f.act && f.act.phase === 'dash') { chargeMissed(world, f.id, 'push'); endDash(f); }
+          if (f.act && f.act.phase === 'dash') { f.act.spent = true; dashOver(world, f.id, 'push'); endDash(f); }
           // Told, not inferred: a brain steering with raw `move` has no other
           // way to learn that the direction it chose ends in a wall.
           if (!told && len2(px, pz) > 0.02) {
@@ -1911,9 +2396,18 @@ export function step(world, think) {
        так усиление действует на то, что ещё впереди, и не даёт мгновенного
        второго каста в момент наложения. */
     const cdRate = DT * channelMul(f, 'cooldown', world.t);
-    for (const k of Object.keys(f.cooldowns)) if (f.cooldowns[k] > 0) f.cooldowns[k] = Math.max(0, f.cooldowns[k] - cdRate);
-    if (f.stun > 0) f.stun = Math.max(0, f.stun - DT);
-    if (f.iframes > 0) f.iframes = Math.max(0, f.iframes - DT);
+    for (const k of Object.keys(f.cooldowns)) {
+      if (f.cooldowns[k] <= 0) continue;
+      /* A residue smaller than a microsecond is zero: 3.0 − 90 × (1/30) leaves
+         1e-15 in floating point, and that used to cost a whole extra tick —
+         the prompt then had to promise 3.033 s for a cooldown written as 3. */
+      const left = f.cooldowns[k] - cdRate;
+      f.cooldowns[k] = left < 1e-6 ? 0 : left;
+    }
+    /* The same microsecond floor as the cooldowns, for the same reason: a
+       0.4 s stun is 12 ticks, not 13, and the prompt promises 0.4. */
+    if (f.stun > 0) { f.stun -= DT; if (f.stun < 1e-6) f.stun = 0; }
+    if (f.iframes > 0) { f.iframes -= DT; if (f.iframes < 1e-6) f.iframes = 0; }
     if (f.say && world.t > f.say.until) f.say = null;
     /*
      * ВЫСОТА НА НАЧАЛО ТИКА — ОДИН СНИМОК НА ВСЕ НАЗЕМНЫЕ ПРОВЕРКИ.
@@ -1931,7 +2425,28 @@ export function step(world, think) {
     f.yTick = f.y;
   }
 
-  if (!world.over && world.tick % THINK_EVERY === 0 && think) {
+  /*
+   * ── THREE SEEDS ARE THREE FIGHTS ────────────────────────────────────────
+   *
+   * The spawn angle has always come from the seed (`spawnPair`), and it was
+   * not enough: the arena is symmetric under a half turn, so rotating the pair
+   * hands both fighters the same relative world, and the same pair of minds
+   * played out to within a fifth of a second across three seeds (STONE GOLEM
+   * vs ARRESTER: 9.8 / 9.4 / 9.5 s, and 8.6 / 8.3 / 8.4 s against another).
+   * A rematch that looks like a replay is a rematch nobody watches.
+   *
+   * What was left identical is the CLOCK. Both minds think on the same ticks,
+   * that grid always started at the same place, and every reaction in the
+   * fight is quantised to it — so the two bodies met at the same phase of
+   * every wind-up in every seed. The phase is now drawn from the seed too, on
+   * its own named stream so that it cannot shift the spawn draw. It moves the
+   * whole fight by a tick, which is a third of a wind-up's granularity and
+   * enough to break the lock-step.
+   *
+   * Determinism is untouched: the phase is a pure function of the seed, so the
+   * same seed is the same fight, bit for bit, in and across processes.
+   */
+  if (!world.over && world.tick % THINK_EVERY === world.thinkPhase && think) {
     const snap = {};
     for (const id of world.order) snap[id] = world.fighters[id].alive ? perceive(world, id) : null;
     const queued = {};
@@ -2015,6 +2530,14 @@ export function step(world, think) {
    */
   if (!world.over) {
     tickWalls(world);
+    /* A wall rose or fell this tick: the navigators learn the new floor, or
+       `moveTo` walks a body into a box that is there and round one that is
+       not. Two small visibility graphs, rebuilt only on the ticks a wall
+       changes — a few times a fight at most. */
+    if (world.navDirty) {
+      for (const side of SIDES) world.nav[side] = createNav(world.solids, ARENA_HALF, world.fighters[side].def.radius);
+      world.navDirty = false;
+    }
     for (const id of world.order) tickStatus(world, id, DT, RESOLVE_DEPS);
   }
   for (const id of world.order) stepAct(world, id);
@@ -2164,4 +2687,7 @@ const RESOLVE_DEPS = {
   other, dirOf, segBoxes, segCircle, dist2, clamp, hasLos, round3,
   emit, damage, applyEffect, channelMul, blinkDestination,
   kill: killFighter,
+  /* A stun or a knock landing on a cancellable wind-up cancels it: the
+     grammar's own interrupt, through the same door the smash uses. */
+  interrupt: interruptCast,
 };

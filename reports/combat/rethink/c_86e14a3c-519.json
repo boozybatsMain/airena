@@ -1,0 +1,185 @@
+{
+  "id": "c_86e14a3c-519",
+  "name": "HEAVY REACTOR",
+  "rating": 727,
+  "fights": 7870,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2282,
+    "tacticsCard": "This fighter is a mid-range controller: it tries to sit around seven units away, strafing back and forth every couple of seconds, and it steps out of any enemy zone before anything else. It leads its shots slightly ahead of the enemy's movement, opens with the root whenever the target is in range and not immune to movement effects, then follows with the damage skill — aiming dead-on if the target is already rooted, otherwise predicting.",
+    "sourceSha": "d23549b013506d0f41cce8ec82a2c464c8b108f82a48ea5f3f29610f4b69ff3a",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_86e14a3c-519.before.d23549b0.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2648,
+    "tacticsCard": "This fighter tries to stay locked at roughly medium range (~2.7), closing in when the enemy strays too far and backpedaling if it gets too close, orbiting side to side when the distance feels right. It leads with predictive long-range strikes (K1, then K3) as soon as they're off cooldown and the enemy is within 12 range, predicting the enemy's future position — only falling back on its close-range attack K2 if the others are on cooldown.",
+    "rating": 769,
+    "fights": 7960,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "root"
+      ],
+      "element": "gravity"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "burn"
+      ],
+      "element": "radiation"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage"
+      ],
+      "element": "radiation"
+    }
+  ],
+  "kitCost": 30,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 16.13,
+      "faults": 0,
+      "thinks": 242,
+      "orders": 486,
+      "uses": 12,
+      "hits": 12,
+      "damageDealt": 176.58666666666704,
+      "stubDamageDealt": 244.5333333333337,
+      "aliveTicks": 483,
+      "idleInReachTicks": 102,
+      "stillTicks": 78,
+      "fuelSpent": 559,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 15.83,
+      "faults": 0,
+      "thinks": 237,
+      "orders": 476,
+      "uses": 12,
+      "hits": 13,
+      "damageDealt": 163.14666666666696,
+      "stubDamageDealt": 240.0533333333337,
+      "aliveTicks": 474,
+      "idleInReachTicks": 102,
+      "stillTicks": 86,
+      "fuelSpent": 539,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 15.77,
+      "faults": 0,
+      "thinks": 236,
+      "orders": 474,
+      "uses": 12,
+      "hits": 13,
+      "damageDealt": 162.4000000000003,
+      "stubDamageDealt": 240.0533333333337,
+      "aliveTicks": 472,
+      "idleInReachTicks": 114,
+      "stillTicks": 83,
+      "fuelSpent": 552,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 16.3,
+      "faults": 0,
+      "thinks": 244,
+      "orders": 490,
+      "uses": 12,
+      "hits": 12,
+      "damageDealt": 186.29333333333375,
+      "stubDamageDealt": 240.0533333333337,
+      "aliveTicks": 488,
+      "idleInReachTicks": 139,
+      "stillTicks": 104,
+      "fuelSpent": 482,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 120119,
+  "forgeMs": 113048,
+  "admitMs": 541,
+  "cardMs": 6526,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 113047,
+      "chars": 2648
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9773,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.17006900000000003,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2648,
+  "promptHash": "5137fdc9d534e19a37f4a7b8dfc2a90cd1513f1cc6859b7adc92e8c0d9c24773",
+  "generatedAt": "2026-09-07T11:23:39.778Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:10:22.252Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:08:58.358Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "02be1fce88a7d5bcfec88e3018a85673a78bd6fcd0d320f3f9a7965dc5397fa2",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.714,
+    "idleInReach": 0.238,
+    "still": 0.183,
+    "casts": 12
+  },
+  "card": "This fighter tries to stay locked at roughly medium range (~2.7), closing in when the enemy strays too far and backpedaling if it gets too close, orbiting side to side when the distance feels right. It leads with predictive long-range strikes (K1, then K3) as soon as they're off cooldown and the enemy is within 12 range, predicting the enemy's future position — only falling back on its close-range attack K2 if the others are on cooldown."
+}

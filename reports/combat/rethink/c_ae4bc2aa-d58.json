@@ -1,0 +1,171 @@
+{
+  "id": "c_ae4bc2aa-d58",
+  "name": "LENS-00",
+  "rating": 850,
+  "fights": 3919,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "haiku",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 1327,
+    "tacticsCard": null,
+    "sourceSha": "889163c8170e9c82066938f154a0e0152e625ff615aeddf4890d06f3ce61e99d"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2561,
+    "tacticsCard": "This fighter kites in a slow circle around 18.5m, reversing its orbit direction whenever a swing gets blocked or every couple of seconds at random, and it only closes to melee (k2) if the enemy blunders inside 4m. Its main answer to pressure is a sideways dash the moment it sees the enemy start a cast, but that dash is tied to its normal orbit side rather than actually reading which way to juke, so it's really a coin-flip dodge rather than a reactive one.",
+    "rating": 850,
+    "fights": 3954,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 18.93,
+      "faults": 0,
+      "thinks": 284,
+      "orders": 484,
+      "uses": 15,
+      "hits": 5,
+      "damageDealt": 240.21333333333382,
+      "stubDamageDealt": 164.21333333333365,
+      "aliveTicks": 567,
+      "idleInReachTicks": 138,
+      "stillTicks": 0,
+      "fuelSpent": 328,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 19.87,
+      "faults": 0,
+      "thinks": 298,
+      "orders": 498,
+      "uses": 18,
+      "hits": 5,
+      "damageDealt": 250.6666666666672,
+      "stubDamageDealt": 188.58666666666704,
+      "aliveTicks": 595,
+      "idleInReachTicks": 49,
+      "stillTicks": 15,
+      "fuelSpent": 346,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 16.7,
+      "faults": 0,
+      "thinks": 250,
+      "orders": 420,
+      "uses": 15,
+      "hits": 6,
+      "damageDealt": 240.3200000000004,
+      "stubDamageDealt": 226.88000000000034,
+      "aliveTicks": 500,
+      "idleInReachTicks": 73,
+      "stillTicks": 10,
+      "fuelSpent": 293,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 23.73,
+      "faults": 0,
+      "thinks": 356,
+      "orders": 615,
+      "uses": 18,
+      "hits": 6,
+      "damageDealt": 242.18666666666698,
+      "stubDamageDealt": 245.54666666666702,
+      "aliveTicks": 711,
+      "idleInReachTicks": 169,
+      "stillTicks": 1,
+      "fuelSpent": 409,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 150834,
+  "forgeMs": 143326,
+  "admitMs": 849,
+  "cardMs": 6650,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 143325,
+      "chars": 2561
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 12684,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.1414748,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2561,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:52:50.897Z",
+  "previous": [],
+  "candidateSha": "f8589f4dc64c45f47eb598c81e8fbbf6e261cb9241bfbf344d7d8546f15794c7",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.18,
+    "idleInReach": 0.181,
+    "still": 0.011,
+    "casts": 16.5
+  },
+  "card": "This fighter kites in a slow circle around 18.5m, reversing its orbit direction whenever a swing gets blocked or every couple of seconds at random, and it only closes to melee (k2) if the enemy blunders inside 4m. Its main answer to pressure is a sideways dash the moment it sees the enemy start a cast, but that dash is tied to its normal orbit side rather than actually reading which way to juke, so it's really a coin-flip dodge rather than a reactive one."
+}

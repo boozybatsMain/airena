@@ -1,0 +1,32 @@
+[
+  {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      { "delivery": "lob",  "effects": ["damage", "blind"], "element": "radiation" },
+      { "delivery": "zone", "effects": ["burn", "root"],    "element": "frost" },
+      { "delivery": "self", "effects": ["shield", "heal"],  "element": "frost" }
+    ],
+    "build": { "hp": 156, "maxSpeed": 6.36, "accel": 24, "turnRate": 8.5, "radius": 1.44, "jumpHeight": 1.28 }
+  },
+  {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      { "delivery": "dash", "effects": ["damage", "root"],   "element": "kinetic" },
+      { "delivery": "cone", "effects": ["damage", "stun"],   "element": "ember" },
+      { "delivery": "self", "effects": ["shield", "heal"],   "element": "frost" }
+    ],
+    "build": { "hp": 228, "maxSpeed": 6.92, "accel": 26.4, "turnRate": 8.5, "radius": 1.68, "jumpHeight": 0.8 }
+  },
+  {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      { "delivery": "bolt",  "effects": ["damage", "root"],     "element": "frost" },
+      { "delivery": "blink", "effects": ["cleanse", "shield"],  "element": "void" },
+      { "delivery": "beam",  "effects": ["damage", "silence"],  "element": "laser" }
+    ],
+    "build": { "hp": 132, "maxSpeed": 7.48, "accel": 28.8, "turnRate": 9.5, "radius": 1.59, "jumpHeight": 0.8 }
+  }
+]

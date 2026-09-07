@@ -1,0 +1,61 @@
+{
+  "state": "live-vs",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=vs",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "vs",
+    "opacity": 1,
+    "classes": "screen under-vs has-card",
+    "mounted": 1,
+    "nodes": 57,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 27,
+      "since": 10871
+    },
+    "drawn": {
+      "n": 28,
+      "firstAt": 10873,
+      "firstMs": 27,
+      "lastMs": 12,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 16.538888889882305,
+    "marks": {
+      "t0": 81.90000000596046,
+      "rendererRequested": 82,
+      "shellReady": 2222,
+      "screenReady": 2239,
+      "viewerStart": 3313,
+      "rendererUp": 3317,
+      "envBuilt": 3371,
+      "postBuilt": 3388,
+      "precompiled": 7817,
+      "postWarm": 10865,
+      "rendererReady": 10866,
+      "firstDraw": 10900
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 25,
+      "ok": true,
+      "ms": 441,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

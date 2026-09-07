@@ -1,0 +1,55 @@
+{
+  "state": "creature-empty",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/creature?ui=empty",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "creature",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 15,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 15524
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 84.7000000178814,
+      "rendererRequested": 85,
+      "shellReady": 5112,
+      "screenReady": 5119,
+      "viewerStart": 6362,
+      "rendererUp": 6374,
+      "envBuilt": 6452,
+      "postBuilt": 6466,
+      "precompiled": 11735,
+      "postWarm": 15521,
+      "rendererReady": 15522,
+      "firstDraw": 15529
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

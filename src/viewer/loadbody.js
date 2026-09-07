@@ -171,9 +171,15 @@ export const THREE_ALLOWED = [
  * к оригиналу через собственные ловушки и усложняет ровно то, что должно быть
  * очевидным. Здесь всё видно списком.
  */
-export function makeThree(THREE) {
+export function makeThree(THREE, TSL = null) {
   const out = {};
   for (const k of THREE_ALLOWED) if (k in THREE) out[k] = THREE[k];
+  /* `THREE.TSL` is the namespace's own name for the shader language it
+     already receives as the second argument of `build`; a body written
+     `THREE.TSL.abs(n)` (TOWER, 07.09) crashed the render loop with "reading
+     'abs' of undefined" because the facade had no such key. Same object,
+     second door. */
+  if (TSL) out.TSL = TSL;
   return Object.freeze(out);
 }
 
@@ -307,7 +313,7 @@ export function buildBody(THREE, TSL, source, { trusted = false } = {}) {
   const root = make(
     ...SHADOWED.map(() => undefined),
     ...typedNames.map((k) => typed[k]),
-    makeSafeObject(), makeThree(THREE), TSL, __fuel, makeIdx(),
+    makeSafeObject(), makeThree(THREE, TSL), TSL, __fuel, makeIdx(),
   );
   if (!root || !root.isObject3D) throw new Error('build() вернул не объект сцены');
 

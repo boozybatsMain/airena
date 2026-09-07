@@ -22,7 +22,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { runIsolated } from './sandbox/index.js';
-import { buildOf, kitOf } from './arena-loop.js';
+import { buildOf, inferReferenceTag, kitOf, refTagOf } from './arena-loop.js';
 
 /** Сколько боёв на сторону в проверке. 100 × 70 мс ≈ 7 с — по цене ноль. */
 export const DUEL_ROUNDS = 100;
@@ -44,16 +44,44 @@ export const MARGIN = 4;
  * это почти всегда индексы и флаги, а не пороги; крутить их значит ломать
  * программу, а не настраивать её.
  */
+/*
+ * ONLY THRESHOLDS — a number beside a comparison, outside a `for` header.
+ *
+ * Every numeric literal used to be a knob. Measured on the corpus (07.09,
+ * `reports/combat/brain-corpus-audit.md` F2): the tuner had rewritten arena
+ * clamps (`±17` → `29.768`), a `tick % 74.42` loop period, a `V.lead` speed,
+ * and loop bounds — structural constants a fight cannot improve by nudging,
+ * so the accepted "improvement" was noise from a hundred-match sample. A
+ * threshold the mind compares a perception against (`dist < 6.36`,
+ * `hpFrac <= 0.4`) is the kind of number ten more matches can teach; a
+ * coordinate is not. The literal must sit directly beside `<`, `>`, `<=` or
+ * `>=` (either side), and `for (…)` headers are skipped whole.
+ */
 export function findKnobs(source) {
   const stripped = stripNonCode(source);
   const out = [];
   const re = /(?<![\w.$])(\d+(?:\.\d+)?)(?![\w.])/g;
+  const cmpBefore = /(?:<=|>=|<|>)\s*$/;
+  const cmpAfter = /^\s*(?:<=|>=|<|>)(?!=)/;
   let m;
   while ((m = re.exec(stripped)) !== null) {
     const v = Number(m[1]);
     if (!Number.isFinite(v)) continue;
     if (v === 0 || v === 1 || v === 2) continue;
     if (Number.isInteger(v) && v > 100000) continue;
+    const before = stripped.slice(Math.max(0, m.index - 12), m.index);
+    const after = stripped.slice(m.index + m[1].length, m.index + m[1].length + 12);
+    /* `<` and `>` beside the literal; `x < 5` reads `<` before, `5 < x` reads
+       `<` after. `=>` and `<<` are not comparisons: the arrow is excluded by
+       the character class, the shift by the `!=` look-ahead being absent. */
+    if (!cmpBefore.test(before) && !cmpAfter.test(after)) continue;
+    /* Not inside a for header: the nearest unmatched `for (` before it. */
+    const head = stripped.lastIndexOf('for (', m.index);
+    if (head >= 0) {
+      const close = stripped.indexOf(')', head);
+      const open = stripped.indexOf('{', head);
+      if (close > m.index || (open > m.index && close > m.index)) continue;
+    }
     out.push({ at: m.index, len: m[1].length, value: v });
   }
   return out;
@@ -157,7 +185,7 @@ export function panel(db, creature, size = 6) {
  * `blue` взята не потому, что она чем-то лучше: сторона — это цвет, и обе
  * дают ровно одно и то же. Важно единственное — чтобы она не менялась.
  */
-export async function score(source, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null) {
+export async function score(source, opponents, rounds = DUEL_ROUNDS, kits = null, builds = null, refTags = null) {
   if (!opponents.length) return { wins: 0, rounds: 0, rate: null };
   const mySlot = 'blue';
   const oppSlot = 'orange';
@@ -180,8 +208,20 @@ export async function score(source, opponents, rounds = DUEL_ROUNDS, kits = null
           [oppSlot]: typeof builds[oppSlot] === 'function' ? builds[oppSlot](o) : builds[oppSlot],
         }
         : null;
+      /* Эталонный набор бойца без кита — по той же причине и той же формой,
+         что набор и тело: своё значением, соперника функцией от его строки.
+         Без него отбор мозга идёт по боям, в которых существо получало
+         фикстуру по ЦВЕТУ, то есть половину прогонов не видело своих
+         глаголов вовсе — тот же брак, что описан выше про наборы. */
+      const tags = refTags
+        ? {
+          [mySlot]: typeof refTags[mySlot] === 'function' ? refTags[mySlot](o) : refTags[mySlot],
+          [oppSlot]: typeof refTags[oppSlot] === 'function' ? refTags[oppSlot](o) : refTags[oppSlot],
+        }
+        : null;
       out = await runIsolated({ [mySlot]: source, [oppSlot]: o.brain_source },
-        { seeds, ...(pair ? { kits: pair } : {}), ...(bld ? { builds: bld } : {}) });
+        { seeds, ...(pair ? { kits: pair } : {}), ...(bld ? { builds: bld } : {}),
+          ...(tags ? { referenceTag: tags } : {}) });
     } catch (e) {
       /* Кандидат, который не запускается, — не «ноль побед», а брак: вернуть
          ноль значило бы сравнить его с действующим по силе, а сравнивать
@@ -231,8 +271,11 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   /* Телосложение — по той же причине, что и набор, и той же формой: своё
      тело объектом, тело соперника функцией от его строки. */
   const builds = { [mySlot]: buildOf(c), [oppSlot]: (o) => buildOf(o) };
+  /* И эталонный набор — той же формой. Существо без кита иначе отбирает мозг
+     по боям, где половину прогонов дралось чужой фикстурой. */
+  const refTags = { [mySlot]: refTagOf(c), [oppSlot]: (o) => refTagOf(o) };
 
-  const base = await score(c.brain_source, opponents, rounds, kits, builds);
+  const base = await score(c.brain_source, opponents, rounds, kits, builds, refTags);
   if (base.broken) return null;
 
   /* Три кандидата за заход: один порог, три множителя. Больше — дороже по CPU
@@ -244,7 +287,7 @@ export async function adaptOnce(db, creatureId, { rng = Math.random, now = Date.
   for (const f of factors) {
     const cand = twist(c.brain_source, knob, f);
     if (!cand) continue;
-    const s = await score(cand, opponents, rounds, kits, builds);
+    const s = await score(cand, opponents, rounds, kits, builds, refTags);
     if (s.broken) continue;
     if (!best || s.wins > best.s.wins) best = { source: cand, s, f };
   }
@@ -317,8 +360,8 @@ const readBack = (src, knob) => src.slice(knob.at).match(/^\d+(?:\.\d+)?/)?.[0] 
 
 /** A/B двух мозгов на одной панели — используется рефактором (D4). */
 export async function duelBrains(db, candidateSource, incumbentSource, { rounds = DUEL_ROUNDS, kit = null, build = null } = {}) {
-  const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, build_json FROM creature
-    WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
+  const any = db.prepare(`SELECT id, brain_source, rating, kit_json, kit_active, build_json, reference_tag
+    FROM creature WHERE state='active' AND brain_source IS NOT NULL ORDER BY rating DESC LIMIT 6`).all();
   const opponents = any.filter((r) => r.brain_source);
   /* Дуэль идёт теми же наборами, что настоящий бой: иначе рефактор
      сравнивает два мозга в игре, в которую ни один из них не играет. */
@@ -328,9 +371,14 @@ export async function duelBrains(db, candidateSource, incumbentSource, { rounds 
   /* `null` здесь честнее единицы: тела нет — значит боец выйдет в
      `DEFAULT_BUILD`, ровно как его выпустит симуляция. */
   const builds = { [mySlot]: build, [oppSlot]: (o) => buildOf(o) };
+  /* Тег считается ПО КАЖДОМУ ИСХОДНИКУ отдельно: рефактор сравнивает два
+     РАЗНЫХ мозга, и вполне возможно, что модель переписала существо с
+     `laser` на `smash`. Общий тег на обоих сделал бы один из двух немым и
+     объявил бы это разницей в силе. Существу с китом фикстура не нужна. */
+  const tagsFor = (src) => ({ [mySlot]: kit ? null : inferReferenceTag(src), [oppSlot]: (o) => refTagOf(o) });
   const [a, b] = await Promise.all([
-    score(candidateSource, opponents, rounds, kits, builds),
-    score(incumbentSource, opponents, rounds, kits, builds),
+    score(candidateSource, opponents, rounds, kits, builds, tagsFor(candidateSource)),
+    score(incumbentSource, opponents, rounds, kits, builds, tagsFor(incumbentSource)),
   ]);
   return { candidate: a.wins, incumbent: b.wins, rounds: Math.min(a.rounds, b.rounds) || rounds };
 }

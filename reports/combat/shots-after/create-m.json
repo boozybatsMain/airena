@@ -1,0 +1,43 @@
+{
+  "state": "create",
+  "group": "MAKING ONE",
+  "url": "http://localhost:8787/#/create?ui=create",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "create",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 97,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 8116
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 83.40000000596046,
+      "rendererRequested": 84,
+      "shellReady": 5350,
+      "screenReady": 5371,
+      "viewerStart": 7608,
+      "rendererUp": 7622,
+      "envBuilt": 7719,
+      "postBuilt": 7733
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

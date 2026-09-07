@@ -24,7 +24,42 @@ import { parentPort, workerData } from 'node:worker_threads';
 
 import { PRELUDE } from '../../brain/prelude.js';
 import { runMatch } from '../../core/match.js';
+import {
+  BEAM_MUZZLE, BEAM_RADIUS, DEFAULT_BUILD, DT, PROJECTILE_MUZZLE, PROJECTILE_TOUCH, statsOf,
+} from '../../core/config.js';
 import { FUEL_PER_LOAD, FUEL_PER_THINK, OUT_OF_FUEL, safeObject } from './instrument.js';
+
+/*
+ * ── BEHAVIOUR, MEASURED INSIDE THE WALL (D191 §1) ───────────────────────────
+ *
+ * `admit()` needs to know, per side, how much of a fighter's alive time went
+ * by with no act running and a READY ability already in reach of the enemy,
+ * and how much of it the body stood still — the numbers `review-r1-minds.md`
+ * asked admission to gate on. Both need a per-tick look at the match, and a
+ * trial fight runs inside this worker, behind the wall; nothing but the final
+ * `result` crosses back out. So the counting happens HERE, via `runMatch`'s
+ * own `onFrame`, and only the three small numbers per side leave the thread.
+ *
+ * `reachOf` is `reports/combat/spectate.mjs`'s function of the same name,
+ * copied rather than imported (that file opens the live DB at import time,
+ * which has no business happening inside a sandboxed worker): the true
+ * centre-to-centre reach of a compiled ability, both radii included.
+ */
+const boltFlight = (def) => (def.speed
+  ? Math.ceil((def.range / def.speed) / DT - 1e-9) * def.speed * DT : def.range);
+const reachOf = (def, me, you) => {
+  switch (def.kind) {
+    case 'beam': return me.radius + BEAM_MUZZLE + def.range + you.radius + BEAM_RADIUS;
+    case 'cone': return def.range + you.radius;
+    case 'bolt': return me.radius + PROJECTILE_MUZZLE + boltFlight(def) + you.radius + PROJECTILE_TOUCH;
+    case 'lob': return def.range + def.splash + you.radius;
+    case 'zone': return def.range + def.radius + you.radius;
+    case 'dash': return def.distance + me.radius + you.radius;
+    default: return null;
+  }
+};
+const STILL_MPS = 0.3;
+const otherSide = (side) => (side === 'blue' ? 'orange' : 'blue');
 
 /**
  * Векторная прелюдия — ИЗ ЕДИНОГО ИСТОЧНИКА, а не переписанная от руки.
@@ -157,7 +192,7 @@ function sealRandom() {
 }
 
 async function main() {
-  const { seed, seeds, brains, kits, builds, curtainSeconds, record } = workerData;
+  const { seed, seeds, brains, kits, builds, referenceTag, curtainSeconds, record } = workerData;
   sealRandom();
   const V = await buildPrelude();
   const fuels = {};
@@ -209,10 +244,50 @@ async function main() {
   const list = Array.isArray(seeds) && seeds.length ? seeds : [seed];
   const results = [];
   let out = null;
+  /* Radii for `reachOf` — from the same builds the match itself runs on, the
+     arena's default body on whichever side (or both) admission never passes
+     one for. */
+  const radiusOf = {
+    blue: statsOf(builds?.blue || DEFAULT_BUILD).radius,
+    orange: statsOf(builds?.orange || DEFAULT_BUILD).radius,
+  };
   try {
     for (const s of list) {
       for (const w of Object.values(wrapped)) w.reset();
-      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0, kits, builds });
+      /* Reset per seed, not per worker: `seeds` can carry a batch, and each
+         seed's fight gets its own numbers. */
+      const behaviour = {
+        blue: { aliveTicks: 0, idleInReachTicks: 0, stillTicks: 0 },
+        orange: { aliveTicks: 0, idleInReachTicks: 0, stillTicks: 0 },
+      };
+      /* Only worth watching when at least one side carries a real kit — a
+         fixture-only fight has no `reachOf` to check against. */
+      const onFrame = kits ? (snap) => {
+        if (snap.over) return;
+        for (const side of ['blue', 'orange']) {
+          const f = snap[side];
+          if (!f.alive) continue;
+          const acc = behaviour[side];
+          acc.aliveTicks++;
+          if (f.act !== null) continue;
+          const kit = kits[side];
+          if (kit) {
+            const you = snap[otherSide(side)];
+            const dist = Math.hypot(f.x - you.x, f.z - you.z);
+            const inReach = Object.entries(f.cd).some(([k, c]) => {
+              if (c > 0) return false;
+              const def = kit[k];
+              if (!def) return false;
+              const reach = reachOf(def, { radius: radiusOf[side] }, { radius: radiusOf[otherSide(side)] });
+              return reach !== null && dist <= reach;
+            });
+            if (inReach) acc.idleInReachTicks++;
+          }
+          if (Math.hypot(f.vx, f.vz) < STILL_MPS) acc.stillTicks++;
+        }
+      } : null;
+      out = runMatch(wrapped, { seed: s, record: !!record, curtainSeconds: curtainSeconds || 0, kits, builds, referenceTag, onFrame });
+      if (kits) { out.result.blue.behavior = behaviour.blue; out.result.orange.behavior = behaviour.orange; }
       results.push(out.result);
     }
   } catch (e) {

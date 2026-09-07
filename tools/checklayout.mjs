@@ -102,12 +102,38 @@ export const PROBE = `(() => {
     for (let x = el; x && x.nodeType === 1; x = x.parentElement) o *= Number(getComputedStyle(x).opacity);
     return o;
   };
+  /*
+   * A ROW SCROLLED OUT OF ITS OWN BOX IS NOT ON SCREEN.
+   *
+   * getBoundingClientRect answers where a node WOULD be, not where it is
+   * painted: inside an overflow:auto list, the rows past the fold report
+   * rectangles below the box, on top of whatever the box is standing above.
+   * Measured on history-detail-w: the fight's last two beats -- clipped by
+   * .beats { overflow-y: auto } and invisible in the picture -- were reported
+   * as text lying on the "Show all 16" button under them, three findings on a
+   * capture with nothing wrong in it. A gate that fails on a correct screen is
+   * a gate people learn to ignore, so the clip is honoured: a box that scrolls
+   * only owns the part of a row inside it.
+   */
+  const clipped = (e, r) => {
+    for (let p = e.parentElement; p && p.nodeType === 1; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (!/auto|scroll|hidden|clip/.test(cs.overflowY + cs.overflowX)) continue;
+      const b = p.getBoundingClientRect();
+      const w = Math.min(r.right, b.right) - Math.max(r.left, b.left);
+      const h = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+      /* Less than half the row inside its own clip: what the reader sees is a
+         sliver or nothing, and it is not evidence of a collision. */
+      if (!(w > 0 && h > 0) || w * h < r.width * r.height * 0.5) return true;
+    }
+    return false;
+  };
   const walk = (n, out = []) => {
     for (const c of (n ? n.childNodes : [])) {
       if (c.nodeType === 3 && c.textContent.trim()) {
         const e = c.parentElement;
         const r = e.getBoundingClientRect();
-        if (r.width > 4 && r.height > 4 && e.offsetParent !== null && getComputedStyle(e).visibility !== 'hidden' && carried(e) > 0.05 && e.closest('[hidden], #devsockets') === null) out.push({ s: c.textContent.trim().slice(0, 16), r, e });
+        if (r.width > 4 && r.height > 4 && e.offsetParent !== null && getComputedStyle(e).visibility !== 'hidden' && carried(e) > 0.05 && e.closest('[hidden], #devsockets') === null && !clipped(e, r)) out.push({ s: c.textContent.trim().slice(0, 16), r, e });
       } else if (c.nodeType === 1) walk(c, out);
     }
     return out;

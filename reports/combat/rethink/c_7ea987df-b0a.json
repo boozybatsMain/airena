@@ -1,0 +1,189 @@
+{
+  "id": "c_7ea987df-b0a",
+  "name": "COLDSNAP",
+  "rating": 1542,
+  "fights": 7834,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2028,
+    "tacticsCard": "This fighter is an aggressive brawler that constantly closes distance, trying to sit around three to five meters away, strafing there in a lazy two-second left-right rhythm, and it fires everything the moment cooldowns allow: the close cone under about four meters, the long-range shot out to nineteen, the mid-range one under twelve, always with a lead on enemy movement. It reacts to incoming projectiles by sidestepping perpendicular to their path and backs out of enemy zones, which are its only real defensive behaviours.",
+    "sourceSha": "f52ce5393257f44db3eb543882c6932ee7e96b667f563d2b4d3b1b3a57d9ec3c",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_7ea987df-b0a.before.f52ce539.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1611,
+    "tacticsCard": "This fighter charges straight in and only breaks that pattern when it sees your bolt telegraph, at which point it locks in a random strafe direction and commits to dodging sideways rather than reacting dynamically. Once in range it always prefers the melee cone if it has line of sight, otherwise leans on the bolt (even leading your movement) as ranged chip damage, and falls back to the zone skill only when both other cooldowns are down.",
+    "rating": 1528,
+    "fights": 7852,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "weaken"
+      ],
+      "channel": "speed",
+      "element": "frost"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "root",
+        "weaken"
+      ],
+      "channel": "armor",
+      "element": "frost"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 40,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 12.87,
+      "faults": 0,
+      "thinks": 193,
+      "orders": 207,
+      "uses": 11,
+      "hits": 10,
+      "damageDealt": 206.136,
+      "stubDamageDealt": 246.12,
+      "aliveTicks": 385,
+      "idleInReachTicks": 37,
+      "stillTicks": 69,
+      "fuelSpent": 290,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 10.3,
+      "faults": 0,
+      "thinks": 154,
+      "orders": 164,
+      "uses": 8,
+      "hits": 10,
+      "damageDealt": 212.51999999999998,
+      "stubDamageDealt": 241.08,
+      "aliveTicks": 308,
+      "idleInReachTicks": 33,
+      "stillTicks": 48,
+      "fuelSpent": 229,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": null,
+      "seconds": 11.67,
+      "faults": 0,
+      "thinks": 175,
+      "orders": 186,
+      "uses": 9,
+      "hits": 13,
+      "damageDealt": 255.35999999999999,
+      "stubDamageDealt": 269.64,
+      "aliveTicks": 349,
+      "idleInReachTicks": 31,
+      "stillTicks": 62,
+      "fuelSpent": 254,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 8.8,
+      "faults": 0,
+      "thinks": 132,
+      "orders": 141,
+      "uses": 7,
+      "hits": 6,
+      "damageDealt": 225.12,
+      "stubDamageDealt": 310.79999999999995,
+      "aliveTicks": 263,
+      "idleInReachTicks": 88,
+      "stillTicks": 49,
+      "fuelSpent": 190,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 54904,
+  "forgeMs": 46695,
+  "admitMs": 621,
+  "cardMs": 7581,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 46694,
+      "chars": 1611
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 3930,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.110743,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1611,
+  "promptHash": "51f0ad954366d3e53d5a93516eb8189a9617aa13af397073b59350f9050b1771",
+  "generatedAt": "2026-09-07T10:29:18.802Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:04:03.184Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:58:24.607Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "0a6cdf6e240154150174905d2b9ce57d6c2faba6d406c130ca995d94eacd8c28",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.842,
+    "idleInReach": 0.145,
+    "still": 0.175,
+    "casts": 8.75
+  },
+  "card": "This fighter charges straight in and only breaks that pattern when it sees your bolt telegraph, at which point it locks in a random strafe direction and commits to dodging sideways rather than reacting dynamically. Once in range it always prefers the melee cone if it has line of sight, otherwise leans on the bolt (even leading your movement) as ranged chip damage, and falls back to the zone skill only when both other cooldowns are down."
+}

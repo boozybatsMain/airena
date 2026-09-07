@@ -1,0 +1,62 @@
+{
+  "state": "ladder-minds",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder/minds",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 214,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 8925
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 84.5,
+      "rendererRequested": 85,
+      "shellReady": 801,
+      "screenReady": 1291,
+      "viewerStart": 1725,
+      "rendererUp": 1733,
+      "envBuilt": 1804,
+      "postBuilt": 1823,
+      "precompiled": 5953,
+      "postWarm": 8924,
+      "rendererReady": 8925,
+      "firstDraw": 8926
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": [
+    "“Claude Opus” under div.rail at left+centre+right",
+    "“quick” under div.rail at left+centre+right",
+    "“8 creatures ·” under div.rail at left+centre+right",
+    "“63,431 fights” under div.rail at left+centre+right",
+    "“48%” under div.rail at left+centre+right",
+    "“974” under div.rail at left+centre+right"
+  ]
+}

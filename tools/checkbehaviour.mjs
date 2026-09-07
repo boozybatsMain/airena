@@ -39,6 +39,22 @@
  * would be the same mistake in a second file. The claims it measures against
  * are the ones the prompt actually emitted, taken from the tagged emitter, so
  * deleting a disclosure fails here as loudly as breaking one.
+ *
+ * ── and the half every player's creature reads ──────────────────────────────
+ *
+ * The five hardcoded skills are a measuring stand. Player creatures fight with
+ * a compiled grammar kit, and until review r1 (F7) this file measured exactly
+ * twelve numbers of that half — the reaches — and no timing, no schedule, no
+ * window at all. It now also measures, per compiled ability: the served wind-up
+ * and the order-to-recovered total, the cooldown, the mortar's splash by
+ * binary search, the disc's tick count, period and whole-disc totals for damage
+ * and for fire, the blink's i-frames and distance, how far a knock and a pull
+ * actually move a body, how long an immunity window keeps a class in
+ * `p.enemy.immune`, the heal's floor, cap and share each where it alone
+ * decides, and the leap's three phases. Kit claims arrive by
+ * the same route as the fixture's — `q(label, value)` from the emitter, under
+ * `kit.<side>.<slot>.<field>` — so a card that stops printing one fails here
+ * as "the prompt never states it" rather than passing unnoticed.
  */
 
 import { SKILLS, TICK_HZ } from '../src/core/config.js';
@@ -219,14 +235,14 @@ const ROUND = 0.0005;
  *   against is a sum of rounded numbers); a distance passes the width of its
  *   binary search.
  */
-function agree(what, label, measured, tol, unit) {
+function agreeWith(map, what, label, measured, tol, unit) {
   checked++;
-  if (!said.has(label)) {
+  if (!map.has(label)) {
     console.error(`  ${what}: the prompt never states ${label} — measured ${measured.toFixed(3)} ${unit}`);
     bad++;
     return;
   }
-  const want = said.get(label);
+  const want = map.get(label);
   const off = Math.abs(measured - want);
   const line = `  ${what.padEnd(34)} measured ${measured.toFixed(3).padStart(7)} ${unit.padEnd(3)} prompt says ${String(want).padStart(6)}`;
   if (off <= tol) console.log(`${line}   ok`);
@@ -242,17 +258,35 @@ function agree(what, label, measured, tol, unit) {
  * until the act is gone", and that is measurable to the tick. Each term is
  * separately rounded, so the tolerance is ROUND per term.
  */
-function agreeSum(what, labels, measured, unit) {
+function agreeSumWith(map, what, labels, measured, unit) {
   checked++;
-  const missing = labels.filter((l) => !said.has(l));
+  const missing = labels.filter((l) => !map.has(l));
   if (missing.length) {
     console.error(`  ${what}: the prompt never states ${missing.join(', ')}`);
     bad++;
     return;
   }
-  const want = labels.reduce((a, l) => a + said.get(l), 0);
+  const want = labels.reduce((a, l) => a + map.get(l), 0);
   const off = Math.abs(measured - want);
   const tol = ROUND * labels.length;
+  const line = `  ${what.padEnd(34)} measured ${measured.toFixed(3).padStart(7)} ${unit.padEnd(3)} prompt says ${want.toFixed(3).padStart(6)}`;
+  if (off <= tol) console.log(`${line}   ok`);
+  else { console.error(`${line}   OFF BY ${off.toFixed(3)} (tolerance ${tol})`); bad++; }
+}
+
+/*
+ * Обёртки над двумя утверждениями выше: у эталона §1 обещания читаются из
+ * одной трассы на весь файл, у набора — из трассы ЭТОГО набора, потому что
+ * метка `kit.own.<ячейка>.<поле>` описывает конкретное скомпилированное
+ * умение, а наборов в этом файле несколько.
+ */
+const agree = (what, label, measured, tol, unit) => agreeWith(said, what, label, measured, tol, unit);
+const agreeSum = (what, labels, measured, unit) => agreeSumWith(said, what, labels, measured, unit);
+
+/** То же сравнение, но против величины, СЧИТАННОЙ здесь, а не названной меткой. */
+function agreeNumber(what, want, measured, tol, unit) {
+  checked++;
+  const off = Math.abs(measured - want);
   const line = `  ${what.padEnd(34)} measured ${measured.toFixed(3).padStart(7)} ${unit.padEnd(3)} prompt says ${want.toFixed(3).padStart(6)}`;
   if (off <= tol) console.log(`${line}   ok`);
   else { console.error(`${line}   OFF BY ${off.toFixed(3)} (tolerance ${tol})`); bad++; }
@@ -358,15 +392,15 @@ const touching = BLUE.radius + ORANGE.radius;
 
 // ── jump ───────────────────────────────────────────────────────────────────
 {
-  const hop = fire({
+  const j = fire({
     shooter: 'blue', skill: 'jump', hold: false,
     from: { x: -10, z: 0 }, heading: EAST, target: { x: 10, z: 10 },
   });
-  agree('jump wind-up', 'skills.jump.windup', windupOf(hop), ROUND, 's');
-  agree('jump airborne', 'skills.jump.airborne', hop.airTicks * TICK, ROUND, 's');
+  agree('jump wind-up', 'skills.jump.windup', windupOf(j), ROUND, 's');
+  agree('jump airborne', 'skills.jump.airborne', j.airTicks * TICK, ROUND, 's');
   agreeSum('jump, crouch to landed',
-    ['skills.jump.windup', 'skills.jump.airborne', 'skills.jump.recover'], totalOf(hop), 's');
-  agree('jump cooldown', 'skills.jump.cooldown', hop.readyT - hop.startT, ROUND, 's');
+    ['skills.jump.windup', 'skills.jump.airborne', 'skills.jump.recover'], totalOf(j), 's');
+  agree('jump cooldown', 'skills.jump.cooldown', j.readyT - j.startT, ROUND, 's');
 }
 
 
@@ -569,6 +603,378 @@ const touching = BLUE.radius + ORANGE.radius;
     bad++;
   } else {
     console.log('  a fighter without a kit                        p.self.kit null, and the prompt is silent   ok');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ── КАРТОЧКИ НАБОРА: ТАЙМИНГИ, ИМПУЛЬСЫ, ОКНА И РАСПИСАНИЯ ─────────────────
+// ---------------------------------------------------------------------------
+/*
+ * Всё выше меряет ГЕОМЕТРИЮ набора — двенадцать досягаемостей — и ни одного
+ * его тайминга. Это ровно та дыра, которую нашёл обзор r1 (F7): карточка
+ * грамматики печатает замах, откат, кулдаун, неуязвимость, расписание диска,
+ * дальность толчка, окно иммунитета и три числа лечения, и ни одно из них не
+ * сверялось с миром. Числа при этом стали трассируемыми (`q()` с меткой
+ * `kit.<сторона>.<ячейка>.<поле>`), поэтому здесь они читаются ПО МЕТКЕ, как
+ * и у эталона §1, а не выкусываются регуляркой из прозы.
+ *
+ * Каждый набор ставится обеим сторонам, чтобы метка `kit.own.*` описывала то
+ * самое тело, по которому идёт замер.
+ */
+{
+  const { compileKit } = await import('../src/skills/compile.js');
+
+  /** Что промпт обещает про ЭТОТ набор, по меткам. */
+  function kitSaid(defs) {
+    const m = new Map();
+    for (const { label, text } of tracePrompt('blue', { own: defs, enemy: defs }).records) {
+      m.set(label, Number(text));
+    }
+    return m;
+  }
+
+  /** Арена без блоков, с этим набором у обоих. */
+  function kitStage(defs) {
+    const w = createWorld(1, { kits: { blue: defs, orange: defs } });
+    w.solids = w.solids.filter((s) => s.wall);
+    w.obstacles = [];
+    return w;
+  }
+
+  const put = (f, x, z, h) => {
+    f.x = x; f.z = z; f.px = x; f.pz = z;
+    f.heading = h; f.wantHeading = h;
+    f.vx = 0; f.vz = 0; f.kx = 0; f.kz = 0; f.y = 0;
+  };
+
+  /**
+   * Один каст умения набора, тик за тиком.
+   *
+   * `hold` пришпиливает оба тела в начале каждого тика — та же причина, что и
+   * у `fire` выше: иначе замер сходится к сносу кастера. Отключается там, где
+   * движение и ЕСТЬ измеряемое (рывок, прыжок, мигание, толчок).
+   */
+  function cast(defs, name, { at = null, dist = 6, hold = true, ticks = 260, holdFoe = false, foeAt = null } = {}) {
+    const w = kitStage(defs);
+    const me = w.fighters.blue, you = w.fighters.orange;
+    const home = { x: 0, z: -9 };
+    const foe = foeAt || { x: 0, z: -9 + dist };
+    const pin = () => { put(me, home.x, home.z, 0); put(you, foe.x, foe.z, Math.PI); };
+    pin();
+    const hp0 = you.hp;
+    const o = {
+      startT: null, windupEndT: null, endT: null, readyT: null,
+      airTicks: 0, iframeTicks: 0, damage: 0, hits: [], moved: 0, foeMoved: 0,
+      events: [], foeEvents: [],
+    };
+    let ordered = false;
+    const think = (id, p, api) => {
+      if (id === 'blue') {
+        for (const e of p.events) o.events.push({ t: w.t, ...e });
+        if (!ordered) { if (at) api.use(name, at); else api.use(name); ordered = true; }
+      } else for (const e of p.events) o.foeEvents.push({ t: w.t, ...e });
+    };
+    let hpWas = you.hp;
+    for (let k = 0; k < ticks; k++) {
+      if (!ordered || hold) pin();
+      else if (holdFoe) put(you, foe.x, foe.z, Math.PI);
+      step(w, think);
+      if (!ordered) continue;
+      if (o.startT === null) o.startT = w.t;
+      const act = me.act;
+      if (act && act.phase === 'air') o.airTicks++;
+      if (me.iframes > 0) o.iframeTicks++;
+      if (act && o.windupEndT === null && act.phase !== 'windup') o.windupEndT = w.t;
+      if (!act && o.windupEndT === null) o.windupEndT = w.t;
+      if (!act && o.endT === null) o.endT = w.t;
+      if (o.readyT === null && me.cooldowns[name] <= 0) o.readyT = w.t;
+      if (you.hp < hpWas - 1e-9) { o.hits.push({ t: w.t, amount: hpWas - you.hp }); hpWas = you.hp; }
+      o.moved = Math.max(o.moved, Math.hypot(me.x - home.x, me.z - home.z));
+      o.foeMoved = Math.max(o.foeMoved, Math.hypot(you.x - foe.x, you.z - foe.z));
+    }
+    o.damage = hp0 - you.hp;
+    return o;
+  }
+
+  const windupOfKit = (o) => (o.windupEndT - o.startT) + TICK;
+  const totalOfKit = (o) => (o.endT - o.startT) + TICK;
+
+  /**
+   * Каждый набор здесь существует ради одного-двух замеров, и в нём ровно те
+   * доставки, которые эти замеры трогают. Три ячейки — потолок, поэтому
+   * наборов несколько; лишние ячейки заполняются аурой и миганием, у которых
+   * своей геометрии нет.
+   */
+  const SETS = {
+    /* Замах/откат/кулдаун трёх разных форм, включая купленный прыжок. */
+    timings: [{ delivery: 'beam', effects: ['damage'], element: 'arc' },
+      { delivery: 'lob', effects: ['damage'], element: 'ember' },
+      { delivery: 'jump', effects: ['shield'], element: 'frost' }],
+    /* Диск: расписание тиков и сумма по всему диску. */
+    field: [{ delivery: 'zone', effects: ['damage'], element: 'acid' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' }],
+    /* Мигание: неуязвимость и откат. */
+    blink: [{ delivery: 'blink', effects: ['cleanse'], element: 'void' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' },
+      { delivery: 'beam', effects: ['damage'], element: 'arc' }],
+    /* Толчок и рывок: дальность импульса. */
+    impulse: [{ delivery: 'cone', effects: ['knock'], element: 'kinetic' },
+      { delivery: 'bolt', effects: ['pull'], element: 'void' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' }],
+    /* Диск с огнём: обновление вместо продления и итог по всему диску. */
+    burnfield: [{ delivery: 'zone', effects: ['burn'], element: 'ember' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' }],
+    /* Оглушение: длина окна иммунитета. */
+    control: [{ delivery: 'bolt', effects: ['stun'], element: 'void' },
+      { delivery: 'self', effects: ['heal'], element: 'frost' },
+      { delivery: 'blink', effects: ['cleanse'], element: 'void' }],
+  };
+  const built = {};
+  for (const [k, grammar] of Object.entries(SETS)) {
+    const b = compileKit(grammar);
+    if (b.problems.length) { console.error(`  kit set ${k} does not compile: ${JSON.stringify(b.problems)}`); bad++; checked++; }
+    built[k] = b.defs;
+  }
+  const slotOf = (defs, kind) => Object.keys(defs).find((k2) => defs[k2].kind === kind);
+
+  // ── замах, откат, кулдаун ────────────────────────────────────────────────
+  {
+    const defs = built.timings;
+    for (const kind of ['beam', 'lob', 'jump']) {
+      const name = slotOf(defs, kind);
+      const said2 = kitSaid(defs);
+      const o = cast(defs, name, { hold: kind !== 'jump', dist: 5 });
+      const L = (f) => `kit.own.${name}.${f}`;
+      agreeWith(said2, `kit ${kind} wind-up`, L('windup'), windupOfKit(o), ROUND, 's');
+      agreeSumWith(said2, `kit ${kind}, order to recovered`,
+        kind === 'jump' ? [L('windup'), L('airborne'), L('recover')] : [L('windup'), L('recover')],
+        totalOfKit(o), 's');
+      agreeWith(said2, `kit ${kind} cooldown`, L('cooldown'), o.readyT - o.startT, ROUND, 's');
+      if (kind === 'jump') agreeWith(said2, 'kit leap airborne', L('airborne'), o.airTicks * TICK, ROUND, 's');
+    }
+  }
+
+  // ── диск: сколько тиков, когда, и сколько всего ──────────────────────────
+  {
+    const defs = built.field;
+    const name = slotOf(defs, 'zone');
+    const said2 = kitSaid(defs);
+    const o = cast(defs, name, { dist: 1.6, ticks: 300 });
+    agreeWith(said2, 'field ticks', `kit.own.${name}.zoneTicks`, o.hits.length, 1e-9, '');
+    agreeWith(said2, 'field, whole disc', `kit.own.${name}.wholeDisc`, o.damage, 0.01, 'hp');
+    /* Период: расстояние между первым и последним тиком, делённое на число
+       промежутков. Меряется как расписание, а не как одно число, потому что
+       обещание карточки — «на шаге приземления и каждые полсекунды после». */
+    checked++;
+    const span = o.hits.length > 1 ? (o.hits[o.hits.length - 1].t - o.hits[0].t) / (o.hits.length - 1) : NaN;
+    const wantPeriod = said2.get('zone.period');
+    if (Math.abs(span - wantPeriod) <= TICK + ROUND) {
+      console.log(`  field tick period                  measured ${span.toFixed(3).padStart(7)} s   prompt says ${String(wantPeriod).padStart(6)}   ok`);
+    } else {
+      console.error(`  field tick period                  measured ${span.toFixed(3)} s   prompt says ${wantPeriod}   OFF`);
+      bad++;
+    }
+  }
+
+  // ── навес: круг поражения в точке падения ────────────────────────────────
+  /*
+   * `splash` — единственное слагаемое досягаемости навеса, которое сама
+   * досягаемость не проверяет: 15 + 1.8 + 1.5 даёт те же 18.3, если ошибиться
+   * в двух числах в разные стороны. Меряется отдельно и по своей геометрии:
+   * снаряд кладётся в НАЗВАННУЮ точку, а цель отодвигается вбок, пока не
+   * перестанет получать урон. Граница — `splash` плюс радиус цели, ровно как
+   * обещает карточка.
+   */
+  {
+    const defs = built.timings;
+    const name = slotOf(defs, 'lob');
+    const said2 = kitSaid(defs);
+    const foeR = kitStage(defs).fighters.orange.def.radius;
+    const caught = (off) => cast(defs, name, {
+      at: { x: 0, z: 0 }, foeAt: { x: off, z: 0 }, ticks: 140,
+    }).damage > 0;
+    const edge = edgeOf(caught, 0.1, 8, 1e-3);
+    agreeNumber('lob splash, to their surface', said2.get(`kit.own.${name}.splash`) + foeR, edge, 2e-3, 'm');
+  }
+
+  // ── диск с огнём: сколько всего горит и сколько это стоит ────────────────
+  /*
+   * Тики диска ОБНОВЛЯЮТ пожар, а не удлиняют его, поэтому «весь диск» здесь —
+   * это не rate × ticks, а rate × (от первого тика до последнего + одна
+   * длительность огня). Карточка печатает обе половины, и обе меряются.
+   */
+  {
+    const defs = built.burnfield;
+    const name = slotOf(defs, 'zone');
+    const said2 = kitSaid(defs);
+    const o = cast(defs, name, { dist: 1.6, ticks: 400 });
+    agreeWith(said2, 'burn field, whole disc', `kit.own.${name}.wholeDiscBurn`, o.damage, 0.4, 'hp');
+    const first = o.hits[0].t, last = o.hits[o.hits.length - 1].t;
+    agreeWith(said2, 'burn field, seconds alight', `kit.own.${name}.burnSeconds`, (last - first) + TICK, 2 * TICK, 's');
+  }
+
+  // ── мигание: неуязвимость ────────────────────────────────────────────────
+  {
+    const defs = built.blink;
+    const name = slotOf(defs, 'blink');
+    const said2 = kitSaid(defs);
+    const o = cast(defs, name, { hold: false, dist: 14 });
+    agreeWith(said2, 'kit blink i-frames', `kit.own.${name}.iframes`, o.iframeTicks * TICK, ROUND, 's');
+    agreeWith(said2, 'kit blink distance', `kit.own.${name}.distance`, o.moved, 0.05, 'm');
+  }
+
+  // ── импульсы: дальность толчка и притяжения ──────────────────────────────
+  /*
+   * Карточка обещает ПОТОЛОК — «a shade under v²/2a» — и называет причину:
+   * импульс обнуляется, как только падает ниже `KNOCKBACK_MIN`, а мир двигает
+   * тело целыми шагами. Значит и проверять надо неравенство, а не равенство:
+   * пройденное обязано быть НЕ БОЛЬШЕ обещанного и не сильно меньше. Нижняя
+   * граница взята с запасом от измеренного (обе формы дают ~94% потолка) —
+   * она ловит обещание, разошедшееся с миром вдвое, и не ловит тик округления.
+   */
+  {
+    const defs = built.impulse;
+    const said2 = kitSaid(defs);
+    for (const kind of ['cone', 'bolt']) {
+      const name = slotOf(defs, kind);
+      /* Толчок меряется вплотную — конус иначе не достаёт, — а притяжение с
+         десяти метров: цель тянет К кастеру, и с трёх метров она упирается в
+         его тело раньше, чем импульс иссякнет, то есть замер упёрся бы в
+         коллизию, а не в дальность. */
+      const o = cast(defs, name, { hold: false, dist: kind === 'cone' ? 3.2 : 10, ticks: 160 });
+      const want = said2.get(`kit.own.${name}.effect.${kind === 'cone' ? 'knock' : 'pull'}.travel`);
+      checked++;
+      const tag = `${kind === 'cone' ? 'knock' : 'pull'} travel`;
+      const line = `  kit ${tag}`.padEnd(36) + ` measured ${o.foeMoved.toFixed(3).padStart(7)} m   prompt says ${String(want).padStart(6)}`;
+      if (o.foeMoved <= want + 1e-6 && o.foeMoved >= want * 0.85) console.log(`${line}   ok`);
+      else { console.error(`${line}   OUTSIDE "a shade under"`); bad++; }
+    }
+  }
+
+  // ── окно иммунитета: пока p.enemy.immune называет класс ─────────────────
+  /*
+   * Обещание карточки и раздела «Nothing stacks» — «arms 'act' and 'move'
+   * immunity FROM THE MOMENT IT LANDS until duration + immune later», и что
+   * `p.self.immune`/`p.enemy.immune` перечисляют классы ВСЁ окно, а не после
+   * контроля. Это и меряется: от тика, на котором в перцепции появился класс
+   * 'act', до первого тика, на котором его там больше нет.
+   *
+   * Не повторным кастом. Повторный каст меряет кулдаун болта (2.2 с) вместе с
+   * его полётом, а не окно: второе попадание ложится на сетку кулдауна и
+   * выдаёт 4.4 с там, где окно равно 4.0.
+   */
+  {
+    const { perceive } = await import('../src/core/sim.js');
+    const defs = built.control;
+    const name = slotOf(defs, 'bolt');
+    const said2 = kitSaid(defs);
+    const w = kitStage(defs);
+    const me = w.fighters.blue, you = w.fighters.orange;
+    let ordered = false;
+    const think = (id, p, api) => { if (id === 'blue' && !ordered) { api.use(name); ordered = true; } };
+    let armedT = null, clearT = null;
+    for (let k = 0; k < 400 && clearT === null; k++) {
+      put(me, 0, -9, 0); put(you, 0, -3, Math.PI);
+      step(w, think);
+      const has = perceive(w, 'blue').enemy.immune.includes('act');
+      if (has && armedT === null) armedT = w.t;
+      if (!has && armedT !== null) clearT = w.t;
+    }
+    checked++;
+    const want = said2.get(`kit.own.${name}.effect.stun.window`);
+    const got = (clearT !== null && armedT !== null) ? clearT - armedT : NaN;
+    const line = "  kit stun 'act' immunity window".padEnd(36) + ` measured ${got.toFixed(3).padStart(7)} s   prompt says ${String(want).padStart(6)}`;
+    /* Окно ставится на `t + duration + immune` и проверяется как `> t`, так
+       что сниматься оно вправе на своём тике или на следующем — один шаг мира
+       и ни секунды больше. */
+    if (got >= want - ROUND && got <= want + TICK + ROUND) console.log(`${line}   ok`);
+    else { console.error(`${line}   OFF`); bad++; }
+  }
+
+  // ── immuneLeft: seconds remaining, not just the class name (D191 §3) ─────
+  /*
+   * `.immune` names the class; it never said how much longer it holds, and
+   * `review-r1-minds.md` measured 45–79 of ~100 immune lines per six games
+   * ordered while the class was ALREADY listed — a mind reading only the
+   * name cannot tell "just armed" from "about to drop out". Same scenario as
+   * the window check above (a stun-carrying bolt on the same target), read
+   * three times: at the tick 'act' first appears, `immuneLeft.act` is
+   * claimed to equal duration + immune (elapsed ≈ 0); at the window's
+   * half-way point it has counted down by exactly that much elapsed time;
+   * on the tick the class drops out of `.immune`, it reads 0.
+   */
+  {
+    const { perceive } = await import('../src/core/sim.js');
+    const defs = built.control;
+    const name = slotOf(defs, 'bolt');
+    const said2 = kitSaid(defs);
+    const w = kitStage(defs);
+    const me = w.fighters.blue, you = w.fighters.orange;
+    let ordered = false;
+    const think = (id, p, api) => { if (id === 'blue' && !ordered) { api.use(name); ordered = true; } };
+    const want = said2.get(`kit.own.${name}.effect.stun.window`);
+    let armedT = null, armedLeft = null, midT = null, midLeft = null, clearLeft = null;
+    for (let k = 0; k < 400 && clearLeft === null; k++) {
+      put(me, 0, -9, 0); put(you, 0, -3, Math.PI);
+      step(w, think);
+      const enemy = perceive(w, 'blue').enemy;
+      const has = enemy.immune.includes('act');
+      if (has && armedT === null) { armedT = w.t; armedLeft = enemy.immuneLeft.act; }
+      if (has && armedT !== null && midT === null && w.t - armedT >= want / 2) { midT = w.t; midLeft = enemy.immuneLeft.act; }
+      if (!has && armedT !== null) clearLeft = enemy.immuneLeft.act;
+    }
+    checked++;
+    const line1 = "  kit stun immuneLeft.act, at arming".padEnd(36) + ` measured ${armedLeft.toFixed(3).padStart(7)} s   prompt says ${String(want).padStart(6)}`;
+    /* Замер снят на тике, когда класс УЖЕ появился, — то есть elapsed от нуля
+       до одного тика, и допуск в его сторону тот же, что у окна выше. */
+    if (armedLeft <= want + ROUND && armedLeft >= want - TICK - ROUND) console.log(`${line1}   ok`);
+    else { console.error(`${line1}   OFF`); bad++; }
+    checked++;
+    const gotDrop = (midLeft !== null) ? (armedLeft - midLeft) : NaN;
+    const wantDrop = (midT !== null) ? (midT - armedT) : NaN;
+    const line2 = "  kit stun immuneLeft.act, half-way".padEnd(36) + ` counted down ${gotDrop.toFixed(3).padStart(7)} s   elapsed ${wantDrop.toFixed(3)} s`;
+    if (midLeft !== null && Math.abs(gotDrop - wantDrop) <= ROUND + TICK) console.log(`${line2}   ok`);
+    else { console.error(`${line2}   OFF`); bad++; }
+    checked++;
+    const line3 = "  kit stun immuneLeft.act, once cleared".padEnd(36) + ` measured ${(clearLeft ?? NaN).toFixed(3).padStart(7)} s   prompt says      0`;
+    if (clearLeft === 0) console.log(`${line3}   ok`);
+    else { console.error(`${line3}   OFF`); bad++; }
+  }
+
+  // ── лечение: доля, пол и потолок ─────────────────────────────────────────
+  /*
+   * Три числа на одной строке карточки, и каждое властвует в своей области:
+   * доля — посередине, пол — у полного здоровья, потолок — у почти мёртвого.
+   * Одним замером не отличить их друг от друга, поэтому замеров три.
+   */
+  {
+    const defs = built.field;
+    const name = slotOf(defs, 'self');
+    const said2 = kitSaid(defs);
+    const share = said2.get(`kit.own.${name}.effect.heal.sharePct`) / 100;
+    const floor = said2.get(`kit.own.${name}.effect.heal.floor`);
+    const cap = said2.get(`kit.own.${name}.effect.heal.mag`);
+    const healFrom = (hp) => {
+      const w = kitStage(defs);
+      const me = w.fighters.blue;
+      put(me, 0, -9, 0);
+      me.hp = hp;
+      let ordered = false;
+      const think = (id, p, api) => { if (id === 'blue' && !ordered) { api.use(name); ordered = true; } };
+      for (let k = 0; k < 40; k++) { const h = me.hp; step(w, think); if (me.hp > h + 1e-9) return me.hp - h; }
+      return 0;
+    };
+    const max = createWorld(1, { kits: { blue: defs, orange: defs } }).fighters.blue.def.hp;
+    /* Не «в одном hp от максимума»: пол лечения там больше недостающего, и
+       `min(maxHp, hp + amount)` возвращает недостачу, а не пол. Замер берётся
+       там, где недостаёт вдвое больше пола: доля от такой недостачи всё ещё
+       меньше пола, а пол уже помещается под потолком здоровья. */
+    agreeNumber('heal floor, barely hurt', floor, healFrom(max - floor * 2), 1e-6, 'hp');
+    agreeNumber('heal cap, at one hp', cap, healFrom(1), 1e-6, 'hp');
+    const mid = max / 2;
+    agreeNumber('heal share, at half hp', Math.min(cap, Math.max(floor, (max - mid) * share)), healFrom(mid), 0.01, 'hp');
   }
 }
 

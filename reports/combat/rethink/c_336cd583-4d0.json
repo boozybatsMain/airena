@@ -1,0 +1,191 @@
+{
+  "id": "c_336cd583-4d0",
+  "name": "LINE-17",
+  "rating": 983,
+  "fights": 6139,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2481,
+    "tacticsCard": "This is an aggressive brawler that wants to sit right on top of you, holding about two and a half meters, and it opens the fight with its close-range cone attack the moment you're inside its reach and not airborne. At mid-range it lobs a silence at you — especially the instant it sees you start a cast — and otherwise chips away with a lead-aimed bolt while walking straight in; it does sidestep incoming projectiles, which is the one bit of real caution it shows.",
+    "sourceSha": "9c92f3b0a37b1a28059b998c5e965ee9bba2c787cf90e28a4396cf0dc317b94d",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_336cd583-4d0.before.9c92f3b0.js"
+  },
+  "after": null,
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "blind"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "silence"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 22,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": false,
+  "applied": false,
+  "stage": "probe",
+  "problems": [
+    {
+      "code": "behaviour",
+      "message": "мозг простоял с готовым умением в досягаемости врага 40% живого времени"
+    }
+  ],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 30.03,
+      "faults": 0,
+      "thinks": 451,
+      "orders": 925,
+      "uses": 22,
+      "hits": 4,
+      "damageDealt": 134.4,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 900,
+      "idleInReachTicks": 372,
+      "stillTicks": 66,
+      "fuelSpent": 645,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": null,
+      "seconds": 30.87,
+      "faults": 0,
+      "thinks": 463,
+      "orders": 948,
+      "uses": 21,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 925,
+      "idleInReachTicks": 458,
+      "stillTicks": 368,
+      "fuelSpent": 666,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 25.93,
+      "faults": 0,
+      "thinks": 389,
+      "orders": 798,
+      "uses": 19,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 201.6,
+      "aliveTicks": 777,
+      "idleInReachTicks": 369,
+      "stillTicks": 296,
+      "fuelSpent": 561,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 35.87,
+      "faults": 0,
+      "thinks": 538,
+      "orders": 1105,
+      "uses": 28,
+      "hits": 4,
+      "damageDealt": 134.4,
+      "stubDamageDealt": 201.6,
+      "aliveTicks": 1075,
+      "idleInReachTicks": 273,
+      "stillTicks": 3,
+      "fuelSpent": 801,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 214836,
+  "forgeMs": 75709,
+  "admitMs": 139123,
+  "cardMs": null,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 75709,
+      "chars": 1389
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6836,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.08337700000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1389,
+  "promptHash": "9ffa0098d27b2faaa1f7184a2c23b1beaf06ca317de797f092e7b701bbca48ef",
+  "generatedAt": "2026-09-07T11:11:44.104Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T06:56:08.049Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:07:10.013Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "83e37afd0229d4435abd1df701fbac08e66306ee8930c5f08d06bebf0c4e70ba",
+  "repair": {
+    "attempted": true,
+    "message": "Your mind just ran 4 trial fights against a scripted opponent holding your exact same kit. Measured:",
+    "costUsd": 0,
+    "admitted": false,
+    "problems": [
+      {
+        "code": "behaviour",
+        "message": "мозг простоял с готовым умением в досягаемости врага 43% живого времени"
+      }
+    ]
+  },
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.857,
+    "idleInReach": 0.4,
+    "still": 0.199,
+    "casts": 22.5
+  }
+}

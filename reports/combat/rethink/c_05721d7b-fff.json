@@ -1,0 +1,171 @@
+{
+  "id": "c_05721d7b-fff",
+  "name": "MARK-92",
+  "rating": 1583,
+  "fights": 8627,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 6545,
+    "tacticsCard": null,
+    "sourceSha": "60ad4177bdd0cdb6433ea35fa0ca17b40c0b6a1c606a42c689c4a648d7d76fdd"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1914,
+    "tacticsCard": "This fighter is a kiter: it constantly repositions to hold a steady ~19-unit ring around the enemy, chipping away with a lead-aimed beam whenever it's in range and dropping a burn disc if the enemy strays inside 15.5. Its blink is reactive rather than aggressive — it's saved for dodging a telegraphed strike at close range, bailing out when low on health, or closing distance if the enemy runs too far away, so it never spends the escape purely to burst damage.",
+    "rating": 1583,
+    "fights": 8628,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 20.8,
+      "faults": 0,
+      "thinks": 312,
+      "orders": 947,
+      "uses": 11,
+      "hits": 5,
+      "damageDealt": 240.21333333333376,
+      "stubDamageDealt": 130.8266666666667,
+      "aliveTicks": 623,
+      "idleInReachTicks": 194,
+      "stillTicks": 231,
+      "fuelSpent": 312,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 19.47,
+      "faults": 0,
+      "thinks": 292,
+      "orders": 888,
+      "uses": 12,
+      "hits": 6,
+      "damageDealt": 258.6133333333338,
+      "stubDamageDealt": 233.9733333333337,
+      "aliveTicks": 583,
+      "idleInReachTicks": 105,
+      "stillTicks": 220,
+      "fuelSpent": 292,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 20.77,
+      "faults": 0,
+      "thinks": 311,
+      "orders": 946,
+      "uses": 13,
+      "hits": 5,
+      "damageDealt": 234.98666666666713,
+      "stubDamageDealt": 240.3200000000004,
+      "aliveTicks": 622,
+      "idleInReachTicks": 66,
+      "stillTicks": 234,
+      "fuelSpent": 311,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 20,
+      "faults": 0,
+      "thinks": 300,
+      "orders": 912,
+      "uses": 12,
+      "hits": 6,
+      "damageDealt": 250.77333333333377,
+      "stubDamageDealt": 219.78666666666697,
+      "aliveTicks": 599,
+      "idleInReachTicks": 113,
+      "stillTicks": 188,
+      "fuelSpent": 300,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 96829,
+  "forgeMs": 89474,
+  "admitMs": 619,
+  "cardMs": 6722,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 89468,
+      "chars": 1914
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 7484,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.143968,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1914,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:27:32.059Z",
+  "previous": [],
+  "candidateSha": "d028a19b4aeef5b3ef219e07ae788b811d1f2f670410c23512ce51390e2bc82b",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.194,
+    "idleInReach": 0.197,
+    "still": 0.36,
+    "casts": 12
+  },
+  "card": "This fighter is a kiter: it constantly repositions to hold a steady ~19-unit ring around the enemy, chipping away with a lead-aimed beam whenever it's in range and dropping a burn disc if the enemy strays inside 15.5. Its blink is reactive rather than aggressive — it's saved for dodging a telegraphed strike at close range, bailing out when low on health, or closing distance if the enemy runs too far away, so it never spends the escape purely to burst damage."
+}

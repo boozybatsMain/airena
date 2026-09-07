@@ -1,0 +1,55 @@
+{
+  "state": "ladder-minds",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder/minds",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 214,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 8526
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 69.5,
+      "rendererRequested": 70,
+      "shellReady": 493,
+      "screenReady": 1027,
+      "viewerStart": 1109,
+      "rendererUp": 1119,
+      "envBuilt": 1193,
+      "postBuilt": 1206,
+      "precompiled": 5550,
+      "postWarm": 8524,
+      "rendererReady": 8525,
+      "firstDraw": 8527
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

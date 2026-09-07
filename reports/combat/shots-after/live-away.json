@@ -1,0 +1,69 @@
+{
+  "state": "live-away",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=away",
+  "size": "1440x900",
+  "session": "loop: ticked 0 of 24 frames in 6772 ms (page hidden) — the arena did not draw for the capture",
+  "signals": {
+    "screen": "live",
+    "phase": "searching",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 8,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 10091
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 2509.199999988079,
+      "rendererRequested": 2510,
+      "shellReady": 7138,
+      "screenReady": 7158,
+      "viewerStart": 8443,
+      "rendererUp": 8464,
+      "envBuilt": 8647,
+      "postBuilt": 8674,
+      "precompiled": 18252,
+      "postWarm": 20857,
+      "rendererReady": 20858,
+      "firstMatch": 23948,
+      "firstFrame": 23953
+    },
+    "forced": 1,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 0,
+      "ok": false,
+      "ms": 6772,
+      "vis": "hidden"
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "loop: ticked 0 of 24 frames in 6772 ms (page hidden) — the arena did not draw for the capture"
+  ],
+  "overlaps": [],
+  "covered": []
+}

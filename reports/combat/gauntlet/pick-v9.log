@@ -1,0 +1,171 @@
+  skipped p65: ["budget","kit_budget"]
+  skipped p109: ["kit_budget"]
+  skipped p215: ["kit_budget"]
+  skipped mauler: ["kit_budget"]
+  skipped warden: ["kit_budget"]
+  skipped rev-harmmax: ["kit_budget"]
+  skipped rev-sustain: ["kit_budget"]
+
+  pool: 42 candidates (16 from atombalance-panel-v5.json, 17 hand-designed, 8 ladder/review, 5 old), 3 preset probes
+    p3            dmg 2  blink:heal+shield | zone:damage | lob:burn+pull+cleanse
+    p224          dmg 1  jump:wall+cleanse+heal | beam:silence | zone:damage+burn
+    p124          dmg 2  lob:knock+damage | jump:boost/damage | zone:burn+wall
+    p122          dmg 2  blink:cleanse+wall | bolt:damage+silence | zone:heal+damage
+    p10           dmg 2  beam:burn+damage | zone:silence+stun+burn | self:boost/damage
+    p111          dmg 1  blink:cleanse+heal | bolt:heal+damage | bolt:cleanse+weaken/turn
+    p97           dmg 2  zone:pull+damage | dash:damage+cleanse | zone:heal
+    p82           dmg 1  zone:burn+knock | blink:heal | beam:boost/turn
+    p175          dmg 2  lob:weaken+damage/vision | dash:cleanse+wall+knock | beam:stun+silence+burn
+    p38           dmg 2  cone:silence+damage | dash:root+heal | bolt:damage
+    p171          dmg 1  bolt:damage+blind | blink:shield | zone:pull
+    p231          dmg 1  lob:blind | blink:cleanse+heal | zone:damage+blind
+    p30           dmg 1  zone:silence+burn | cone:cleanse | jump:heal+cleanse
+    p79           dmg 2  beam:knock | zone:burn+stun | lob:damage+wall+knock
+    p217          dmg 2  jump:cleanse+wall | bolt:damage | bolt:burn
+    p85           dmg 1  zone:heal+shield | lob:burn+weaken/turn | jump:shield
+    lancer        dmg 2  beam:damage | bolt:damage | blink:shield
+    searer        dmg 1  beam:damage+burn | bolt:silence | blink:cleanse
+    sniper        dmg 2  bolt:damage | beam:damage+weaken/speed | self:shield+cleanse
+    brawler       dmg 2  cone:damage+burn | dash:damage | self:shield
+    duelist       dmg 2  cone:damage | bolt:damage | blink:shield+heal
+    bombardier    dmg 3  lob:damage | zone:damage+burn | lob:burn+pull
+    zoner         dmg 3  zone:damage | lob:damage+knock | zone:burn+wall
+    stormcaller   dmg 2  zone:damage+burn | lob:damage+stun | blink:heal
+    medic         dmg 2  blink:heal+shield | zone:damage | bolt:damage
+    controller    dmg 1  bolt:stun | beam:silence | zone:damage
+    jailer        dmg 3  cone:silence+damage | bolt:damage+blind | dash:root+damage
+    silencer      dmg 2  beam:silence+damage | bolt:stun+damage | self:heal
+    pyro          dmg 3  beam:burn | zone:burn+knock | lob:burn+pull
+    arsonist      dmg 3  beam:burn | dash:damage+burn | zone:burn+knock
+    vaulter       dmg 2  jump:shield | cone:damage | bolt:damage
+    lad-ash       dmg 3  beam:damage | bolt:damage | lob:burn
+    lad-cutter    dmg 3  beam:damage | dash:damage | cone:damage+knock
+    lad-golem     dmg 3  cone:damage+knock | dash:damage | dash:damage+stun
+    lad-storm     dmg 3  beam:damage | bolt:damage | lob:damage
+    rev-control   dmg 1  cone:stun+root+silence | lob:blind+knock | bolt:damage
+    rev-ctrldmg   dmg 3  bolt:damage+stun | zone:damage+root | lob:damage+blind
+    old-striker   dmg 1  beam:cleanse+silence | blink:shield | lob:damage
+    old-warden    dmg 1  beam:heal+wall | blink:wall | bolt:cleanse+pull+damage
+    old-conjurer  dmg 1  zone:boost/range | blink:boost/vision | zone:heal+damage
+    old-runner    dmg 1  dash:burn+weaken/range | zone:boost/cooldown | dash:boost/range
+    old-lobber    dmg 1  lob:blind+wall | lob:wall | lob:damage
+
+  987 pairs × 8 seeds × 2 sides
+  matrix @8: 5184 matches to play, 6 runs of ≤ 1000
+    25/5184       50/5184       75/5184       100/5184       125/5184       150/5184       175/5184       200/5184       225/5184       250/5184       275/5184       300/5184       325/5184       350/5184       375/5184       400/5184       425/5184       450/5184       475/5184       500/5184       525/5184       550/5184       575/5184       600/5184       625/5184       650/5184       675/5184       700/5184       725/5184       750/5184       775/5184       800/5184       825/5184       850/5184       875/5184       900/5184       925/5184       950/5184       975/5184       1000/5184       1000/5184  (39 s)   
+    1025/5184       1050/5184       1075/5184       1100/5184       1125/5184       1150/5184       1175/5184       1200/5184       1225/5184       1250/5184       1275/5184       1300/5184       1325/5184       1350/5184       1375/5184       1400/5184       1425/5184       1450/5184       1475/5184       1500/5184       1525/5184       1550/5184       1575/5184       1600/5184       1625/5184       1650/5184       1675/5184       1700/5184       1725/5184       1750/5184       1775/5184       1800/5184       1825/5184       1850/5184       1875/5184       1900/5184       1925/5184       1950/5184       1975/5184       2000/5184       2000/5184  (76 s)   
+    2025/5184       2050/5184       2075/5184       2100/5184       2125/5184       2150/5184       2175/5184       2200/5184       2225/5184       2250/5184       2275/5184       2300/5184       2325/5184       2350/5184       2375/5184       2400/5184       2425/5184       2450/5184       2475/5184       2500/5184       2525/5184       2550/5184       2575/5184       2600/5184       2625/5184       2650/5184       2675/5184       2700/5184       2725/5184       2750/5184       2775/5184       2800/5184       2825/5184       2850/5184       2875/5184       2900/5184       2925/5184       2950/5184       2975/5184       3000/5184       3000/5184  (114 s)   
+    3025/5184       3050/5184       3075/5184       3100/5184       3125/5184       3150/5184       3175/5184       3200/5184       3225/5184       3250/5184       3275/5184       3300/5184       3325/5184       3350/5184       3375/5184       3400/5184       3425/5184       3450/5184       3475/5184       3500/5184       3525/5184       3550/5184       3575/5184       3600/5184       3625/5184       3650/5184       3675/5184       3700/5184       3725/5184       3750/5184       3775/5184       3800/5184       3825/5184       3850/5184       3875/5184       3900/5184       3925/5184       3950/5184       3975/5184       4000/5184       4000/5184  (145 s)   
+    4025/5184       4050/5184       4075/5184       4100/5184       4125/5184       4150/5184       4175/5184       4200/5184       4225/5184       4250/5184       4275/5184       4300/5184       4325/5184       4350/5184       4375/5184       4400/5184       4425/5184       4450/5184       4475/5184       4500/5184       4525/5184       4550/5184       4575/5184       4600/5184       4625/5184       4650/5184       4675/5184       4700/5184       4725/5184       4750/5184       4775/5184       4800/5184       4825/5184       4850/5184       4875/5184       4900/5184       4925/5184       4950/5184       4975/5184       5000/5184       5000/5184  (180 s)   
+    5025/5184       5050/5184       5075/5184       5100/5184       5125/5184       5150/5184       5175/5184       5184/5184  (186 s)   
+
+  fives: 850668 enumerated, 55 meet every hard criterion at 8 seeds
+  failing (a five may fail several): styles 542319, no cycle 645825, punching bag 850553, spread 8380, ceiling 343143, presets 27159
+
+  candidates by mean winrate on the pool @8:
+    rev-ctrldmg   mean  96%  worst  44%  best 100%
+    silencer      mean  89%  worst  31%  best 100%
+    lad-storm     mean  88%  worst  13%  best 100%
+    p224          mean  85%  worst   0%  best 100%
+    lad-ash       mean  81%  worst  13%  best 100%
+    stormcaller   mean  79%  worst   6%  best 100%
+    sniper        mean  77%  worst   0%  best 100%
+    p10           mean  77%  worst   6%  best 100%
+    zoner         mean  75%  worst   0%  best 100%
+    p124          mean  72%  worst   6%  best 100%
+    bombardier    mean  71%  worst   0%  best 100%
+    p122          mean  70%  worst   0%  best 100%
+    p79           mean  67%  worst   0%  best 100%
+    medic         mean  67%  worst   0%  best 100%
+    lancer        mean  67%  worst   0%  best 100%
+    searer        mean  62%  worst   0%  best 100%
+    p217          mean  60%  worst   0%  best 100%
+    duelist       mean  58%  worst   0%  best 100%
+    vaulter       mean  57%  worst   0%  best 100%
+    p3            mean  57%  worst   0%  best 100%
+    p111          mean  55%  worst   0%  best 100%
+    p175          mean  50%  worst   0%  best 100%
+    jailer        mean  39%  worst   0%  best 100%
+    arsonist      mean  37%  worst   0%  best 100%
+    p97           mean  36%  worst   0%  best 100%
+    p85           mean  35%  worst   0%  best 100%
+    old-lobber    mean  35%  worst   0%  best 100%
+    p30           mean  35%  worst   0%  best 100%
+    p171          mean  35%  worst   0%  best 100%
+    lad-golem     mean  34%  worst   0%  best 100%
+    pyro          mean  34%  worst   0%  best 100%
+    brawler       mean  32%  worst   0%  best 100%
+    p38           mean  30%  worst   0%  best 100%
+    old-striker   mean  27%  worst   0%  best 100%
+    lad-cutter    mean  27%  worst   0%  best 100%
+    rev-control   mean  24%  worst   0%  best 100%
+    old-conjurer  mean  20%  worst   0%  best 100%
+    old-warden    mean  20%  worst   0%  best 100%
+    p82           mean  19%  worst   0%  best 100%
+    controller    mean  13%  worst   0%  best 100%
+    p231          mean  10%  worst   0%  best 100%
+    old-runner    mean   0%  worst   0%  best   0%
+
+  finalists: 12
+    1. score 20.65  cycles 5 (str 19)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p82, p171, pyro, lad-golem
+    2. score 17.65  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p82, p171, pyro, arsonist
+    3. score 17.65  cycles 4 (str 13)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p38, p171, p30, pyro
+    4. score 17.65  cycles 4 (str 16)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 3  p97, p171, pyro, arsonist, old-conjurer
+    5. score 15.36  cycles 3 (str 13)  styles 5  floor 19%  best-worst 44%  presets 25%  2dmg 5  p122, p10, p79, sniper, medic
+    6. score 15.32  cycles 3 (str 13)  styles 5  floor 16%  best-worst 38%  presets 0%  2dmg 4  p224, sniper, zoner, stormcaller, lad-ash
+    7. score 15.06  cycles 3 (str 13)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 4  p124, p122, lancer, searer, bombardier
+    8. score 14.32  cycles 3 (str 19)  styles 5  floor 19%  best-worst 44%  presets 75%  2dmg 4  p97, p82, pyro, lad-cutter, lad-golem
+    9. score 14.22  cycles 3 (str 13)  styles 5  floor 16%  best-worst 38%  presets 75%  2dmg 2  p38, p171, p30, p85, pyro
+   10. score 12.36  cycles 2 (str 6)  styles 5  floor 19%  best-worst 44%  presets 13%  2dmg 5  p124, p122, lancer, bombardier, medic
+   11. score 12.07  cycles 2 (str 19)  styles 5  floor 19%  best-worst 50%  presets 13%  2dmg 4  p124, searer, bombardier, zoner, medic
+   12. score 11.95  cycles 2 (str 6)  styles 5  floor 25%  best-worst 50%  presets 63%  2dmg 4  p175, p171, jailer, pyro, arsonist
+  finalists @20: 792 matches to play, 1 runs of ≤ 1000
+    25/792       50/792       75/792       100/792       125/792       150/792       175/792       200/792       225/792       250/792       275/792       300/792       325/792       350/792       375/792       400/792       425/792       450/792       475/792       500/792       525/792       550/792       575/792       600/792       625/792       650/792       675/792       700/792       725/792       750/792       775/792       792/792  (33 s)   
+
+  verification (hard criteria must hold at 8, 12 and 20 seeds):
+    1. HOLDS  @12: cyc 1 sty 5 floor 17% best 46%   @20: cyc 2 sty 5 floor 15% best 50% presets 75%  p97, p82, pyro, lad-cutter, lad-golem
+    2. fails  @12: cyc 4 sty 5 floor 13% best 42%   @20: cyc 4 sty 3 floor 10% best 45% presets 75%  p97, p38, p171, p30, pyro
+    3. fails  @12: cyc 4 sty 5 floor 13% best 35%   @20: cyc 3 sty 5 floor 10% best 38% presets 75%  p97, p171, pyro, arsonist, old-conjurer
+    4. fails  @12: cyc 3 sty 5 floor 17% best 46%   @20: cyc 3 sty 5 floor 14% best 43% presets 25%  p122, p10, p79, sniper, medic
+    5. fails  @12: cyc 3 sty 5 floor 17% best 42%   @20: cyc 3 sty 5 floor 10% best 30% presets 13%  p124, searer, bombardier, zoner, medic
+    6. fails  @12: cyc 3 sty 5 floor 13% best 33%   @20: cyc 4 sty 3 floor 10% best 33% presets 75%  p97, p82, p171, pyro, lad-golem
+    7. fails  @12: cyc 4 sty 5 floor 13% best 42%   @20: cyc 2 sty 4 floor 8% best 40% presets 0%  p224, sniper, zoner, stormcaller, lad-ash
+    8. fails  @12: cyc 4 sty 5 floor 10% best 33%   @20: cyc 3 sty 4 floor 11% best 30% presets 75%  p38, p171, p30, p85, pyro
+    9. fails  @12: cyc 3 sty 5 floor 21% best 42%   @20: cyc 2 sty 4 floor 23% best 43% presets 13%  p124, p122, lancer, bombardier, medic
+   10. fails  @12: cyc 3 sty 5 floor 13% best 35%   @20: cyc 2 sty 4 floor 10% best 38% presets 75%  p97, p82, p171, pyro, arsonist
+   11. fails  @12: cyc 2 sty 4 floor 29% best 38%   @20: cyc 2 sty 4 floor 25% best 43% presets 13%  p124, p122, lancer, searer, bombardier
+   12. fails  @12: cyc 2 sty 4 floor 17% best 54%   @20: cyc 1 sty 5 floor 13% best 66% presets 63%  p175, p171, jailer, pyro, arsonist
+
+  CHOSEN FIVE, in the order to install (styles at 8/12/20 seeds: 5/5/5):
+    p97           [panel #97 85%]  Field: Pull + Damage · Kinetic  |  Lunge: Damage + Cleanse · Kinetic  |  Field: Heal · Kinetic
+    p82           [panel #82 85%]  Field: Burn + Knockback · Kinetic  |  Blink: Heal · Kinetic  |  Beam: Boost through the Turning channel · Kinetic
+    pyro          [hand]  Beam: Burn · Ember  |  Field: Burn + Knockback · Ember  |  Mortar: Burn + Pull · Ember
+    lad-cutter    [ladder / review r1]  Beam: Damage · Kinetic  |  Lunge: Damage · Kinetic  |  Fan: Damage + Knockback · Kinetic
+    lad-golem     [ladder / review r1]  Fan: Damage + Knockback · Kinetic  |  Lunge: Damage · Kinetic  |  Lunge: Damage + Stun · Kinetic
+
+  @12 seeds (gate resolution):
+                    p97     p82    pyro lad-cut lad-gol     worst
+  p97               ·       50%     67%     54%     17%      17%
+  p82               50%     ·       17%     42%     67%      17%
+  pyro              33%     83%     ·       33%     42%      33%
+  lad-cutter        46%     58%     67%     ·       50%      46%
+  lad-golem         83%     33%     58%     50%     ·        33%
+  best worst 45.8%  floor 16.7%  spread 29 pp  styles 5/5  cycles 1  p82→lad-golem→pyro
+  presets' worst (viability, 8 fights): keeper 25.0%, breaker 0.0%, saboteur 75.0%  → holds
+
+  @20 seeds (baseline resolution):
+                    p97     p82    pyro lad-cut lad-gol     worst
+  p97               ·       45%     68%     48%     18%      18%
+  p82               55%     ·       15%     48%     65%      15%
+  pyro              33%     85%     ·       38%     40%      33%
+  lad-cutter        53%     53%     63%     ·       50%      50%
+  lad-golem         83%     35%     60%     50%     ·        35%
+  best worst 50.0%  floor 15.0%  spread 35 pp  styles 5/5  cycles 2  p97→pyro→p82, p82→lad-golem→pyro
+  presets' worst (viability, 8 fights): keeper 25.0%, breaker 0.0%, saboteur 75.0%  → holds
+
+  suggested BASELINE: bestMin 0.75 (field top 50.0%, presets' worst 75.0%), medianMin 0.325
+
+  JSON:
+[[{"delivery":"zone","effects":["pull","damage"],"element":"kinetic"},{"delivery":"dash","effects":["damage","cleanse"],"element":"kinetic"},{"delivery":"zone","effects":["heal"],"element":"kinetic"}],[{"delivery":"zone","effects":["burn","knock"],"element":"kinetic"},{"delivery":"blink","effects":["heal"],"element":"kinetic"},{"delivery":"beam","effects":["boost"],"element":"kinetic","channel":"turn"}],[{"delivery":"beam","effects":["burn"],"element":"ember"},{"delivery":"zone","effects":["burn","knock"],"element":"ember"},{"delivery":"lob","effects":["burn","pull"],"element":"ember"}],[{"delivery":"beam","effects":["damage"],"element":"kinetic"},{"delivery":"dash","effects":["damage"],"element":"kinetic"},{"delivery":"cone","effects":["damage","knock"],"element":"kinetic"}],[{"delivery":"cone","effects":["damage","knock"],"element":"kinetic"},{"delivery":"dash","effects":["damage"],"element":"kinetic"},{"delivery":"dash","effects":["damage","stun"],"element":"kinetic"}]]
+
+PICK EXIT 0

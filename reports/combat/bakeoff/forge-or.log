@@ -1,0 +1,202 @@
+  ! brawler: body over 25 points, squeezed by 0.71
+  ! minimax/minimax-m3:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+  ! nvidia/nemotron-3-super-120b-a12b:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+  ! google/gemma-4-31b-it:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+  ! thinkingmachines/inkling:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+  ! poolside/laguna-s-2.1:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+  ! nvidia/nemotron-3-ultra-550b-a55b:free:plain: a routing variant of a model, not an author of its own — kept, but read its rows as the base model's
+
+  bakeoff forge
+  live OpenRouter prices, 430 models; request ceiling 3.2 USD per call; run budget 6 USD (OpenRouter only)
+  out: /Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff
+
+  creatures
+    caster     kit 52/52  body 23.57/25  Mortar: Damage + Blind · Radiation | Field: Burn + Root · Frost | Aura: Shield + Heal · Frost
+    brawler    kit 52/52  body 23.55/25  Lunge: Damage + Root · Kinetic | Fan: Damage + Stun · Ember | Aura: Shield + Heal · Frost
+    kiter      kit 52/52  body 22.86/25  Bolt: Damage + Root · Frost | Blink: Cleanse + Shield · Void | Beam: Damage + Silence · Laser
+
+  models
+    z-ai/glm-5.3-flash:plain             Z.ai: GLM 5.3 Flash          maxTokens 40000, think 0       ≈ $0.0070 per mind (measured)
+    deepseek/deepseek-v4-flash:think     DeepSeek: DeepSeek V4 Flash 0423 maxTokens 40000, think 8000    ≈ $0.0018 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    minimax/minimax-m3:free:plain        MiniMax: MiniMax M3 (free)   maxTokens 40000, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    nvidia/nemotron-3-super-120b-a12b:free:plain NVIDIA: Nemotron 3 Super (free) maxTokens 40000, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    google/gemma-4-31b-it:free:plain     Google: Gemma 4 31B (free)   maxTokens 32768, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    thinkingmachines/inkling:free:plain  Thinking Machines: Inkling (free) maxTokens 40000, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    poolside/laguna-s-2.1:free:plain     Poolside: Laguna S 2.1 (free) maxTokens 32768, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+    nvidia/nemotron-3-ultra-550b-a55b:free:plain NVIDIA: Nemotron 3 Ultra (free) maxTokens 40000, think 0       ≈ $0.0000 per mind (est.: 26% of the creature profile 12000/26000 tokens)
+
+  plan: 8 models × 3 creatures = 24 pairs, 24 to forge (0 already on disk, --force)
+  estimated OpenRouter spend ≈ $0.0264; the run stops opening OpenRouter pairs past $6.0000
+  note: one call is capped at 3.2 USD by its token ceiling and a pair may take two attempts, so a single pair can overshoot the estimate
+    forge  z-ai/glm-5.3-flash:plain             caster     $0.0070
+    forge  z-ai/glm-5.3-flash:plain             brawler    $0.0070
+    forge  z-ai/glm-5.3-flash:plain             kiter      $0.0070
+    forge  deepseek/deepseek-v4-flash:think     caster     $0.0018
+    forge  deepseek/deepseek-v4-flash:think     brawler    $0.0018
+    forge  deepseek/deepseek-v4-flash:think     kiter      $0.0018
+    forge  minimax/minimax-m3:free:plain        caster     $0.0000
+    forge  minimax/minimax-m3:free:plain        brawler    $0.0000
+    forge  minimax/minimax-m3:free:plain        kiter      $0.0000
+    forge  nvidia/nemotron-3-super-120b-a12b:free:plain caster     $0.0000
+    forge  nvidia/nemotron-3-super-120b-a12b:free:plain brawler    $0.0000
+    forge  nvidia/nemotron-3-super-120b-a12b:free:plain kiter      $0.0000
+    forge  google/gemma-4-31b-it:free:plain     caster     $0.0000
+    forge  google/gemma-4-31b-it:free:plain     brawler    $0.0000
+    forge  google/gemma-4-31b-it:free:plain     kiter      $0.0000
+    forge  thinkingmachines/inkling:free:plain  caster     $0.0000
+    forge  thinkingmachines/inkling:free:plain  brawler    $0.0000
+    forge  thinkingmachines/inkling:free:plain  kiter      $0.0000
+    forge  poolside/laguna-s-2.1:free:plain     caster     $0.0000
+    forge  poolside/laguna-s-2.1:free:plain     brawler    $0.0000
+    forge  poolside/laguna-s-2.1:free:plain     kiter      $0.0000
+    forge  nvidia/nemotron-3-ultra-550b-a55b:free:plain caster     $0.0000
+    forge  nvidia/nemotron-3-ultra-550b-a55b:free:plain brawler    $0.0000
+    forge  nvidia/nemotron-3-ultra-550b-a55b:free:plain kiter      $0.0000
+
+
+  z-ai/glm-5.3-flash:plain  ×  caster
+    attempt 1: accepted, 3349 chars, $0.0010, 16 s, think 0
+    source 3349 chars in 16 s, $0.0010 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 9, faults 0
+    OpenRouter spend this run: $0.0010 of $6.0000
+
+  z-ai/glm-5.3-flash:plain  ×  brawler
+    attempt 1: accepted, 1660 chars, $0.0007, 7 s, think 0
+    source 1660 chars in 7 s, $0.0007 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 16, faults 100
+    OpenRouter spend this run: $0.0018 of $6.0000
+
+  z-ai/glm-5.3-flash:plain  ×  kiter
+    attempt 1: accepted, 4423 chars, $0.0020, 16 s, think 0
+    source 4423 chars in 16 s, $0.0020 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 28, faults 96
+    OpenRouter spend this run: $0.0038 of $6.0000
+
+  deepseek/deepseek-v4-flash:think  ×  caster
+    attempt 1: accepted, 2984 chars, $0.0031, 48 s, think 8000
+    source 2984 chars in 48 s, $0.0031 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 14, faults 0
+    OpenRouter spend this run: $0.0069 of $6.0000
+
+  deepseek/deepseek-v4-flash:think  ×  brawler
+    attempt 1: accepted, 2931 chars, $0.0026, 71 s, think 8000
+    source 2931 chars in 71 s, $0.0026 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 23, faults 0
+    OpenRouter spend this run: $0.0095 of $6.0000
+
+  deepseek/deepseek-v4-flash:think  ×  kiter
+    attempt 1: accepted, 2722 chars, $0.0060, 131 s, think 8000
+    source 2722 chars in 131 s, $0.0060 — admitting…
+    REJECTED at analyse: unknown_global: неизвестное имя «window» — доступны только api, p, mem и стандартная математика
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  minimax/minimax-m3:free:plain  ×  caster
+    attempt 1: accepted, 6667 chars, $0.0000, 23 s, think 0
+    source 6667 chars in 23 s, $0.0000 — admitting…
+    REJECTED at probe: never_hits: мозг применил умения 16 раз и ни разу не попал за оба пробных боя
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  minimax/minimax-m3:free:plain  ×  brawler
+    attempt 1: accepted, 6650 chars, $0.0000, 20 s, think 0
+    source 6650 chars in 20 s, $0.0000 — admitting…
+    REJECTED at probe: load: blue: мозг не загрузился — Identifier 'V' has already been declared
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  minimax/minimax-m3:free:plain  ×  kiter
+    attempt 1: accepted, 3373 chars, $0.0000, 15 s, think 0
+    source 3373 chars in 15 s, $0.0000 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 31, faults 0
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-super-120b-a12b:free:plain  ×  caster
+    attempt 1: accepted, 1142 chars, $0.0000, 4 s, think 0
+    source 1142 chars in 4 s, $0.0000 — admitting…
+    REJECTED at probe: never_hits: мозг применил умения 4 раз и ни разу не попал за оба пробных боя
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-super-120b-a12b:free:plain  ×  brawler
+    attempt 1: accepted, 2102 chars, $0.0000, 5 s, think 0
+    source 2102 chars in 5 s, $0.0000 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 22, faults 0
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-super-120b-a12b:free:plain  ×  kiter
+    attempt 1: accepted, 2957 chars, $0.0000, 12 s, think 0
+    source 2957 chars in 12 s, $0.0000 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 7, faults 0
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  google/gemma-4-31b-it:free:plain  ×  caster
+    attempt 1: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations","provider_name":"Google 
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  google/gemma-4-31b-it:free:plain  ×  brawler
+    attempt 1: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations","provider_name":"Google 
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  google/gemma-4-31b-it:free:plain  ×  kiter
+    attempt 1: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations","provider_name":"Google 
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  thinkingmachines/inkling:free:plain  ×  caster
+    attempt 1: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 403: {"error":{"message":"thinkingmachines/inkling:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps","code":403,"metadata":{"routing_funnel":[{"step":"Initial Endpoints","endpoint_count":1}],"failed_r
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  thinkingmachines/inkling:free:plain  ×  brawler
+    attempt 1: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 403: {"error":{"message":"thinkingmachines/inkling:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps","code":403,"metadata":{"routing_funnel":[{"step":"Initial Endpoints","endpoint_count":1}],"failed_r
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  thinkingmachines/inkling:free:plain  ×  kiter
+    attempt 1: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    attempt 2: rejected (http), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 403: {"error":{"message":"thinkingmachines/inkling:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps","code":403,"metadata":{"routing_funnel":[{"step":"Initial Endpoints","endpoint_count":1}],"failed_r
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  poolside/laguna-s-2.1:free:plain  ×  caster
+    attempt 1: accepted, 3821 chars, $0.0000, 21 s, think 0
+    source 3803 chars in 21 s, $0.0000 — admitting…
+    REJECTED at analyse: unknown_global: неизвестное имя «api» — доступны только api, p, mem и стандартная математика; unknown_global: неизвестное имя «api» — доступны только api, p, mem и стандартная математика; unknown_glob
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  poolside/laguna-s-2.1:free:plain  ×  brawler
+    attempt 1: accepted, 1209 chars, $0.0000, 8 s, think 0
+    source 1209 chars in 8 s, $0.0000 — admitting…
+    REJECTED at analyse: syntax: не разбирается: Unexpected token (28:0)
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  poolside/laguna-s-2.1:free:plain  ×  kiter
+    attempt 1: rejected, 51 chars, $0.0000, 2 s, think 0
+    attempt 2: rejected (rate), 0 chars, $0.0000, 0 s, think 0
+    FAILED: rejected — the mind returned nothing usable — cause: openrouter 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"poolside/laguna-s-2.1:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations","provider_name":"Poolsid
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-ultra-550b-a55b:free:plain  ×  caster
+    attempt 1: accepted, 4432 chars, $0.0000, 26 s, think 0
+    source 4432 chars in 26 s, $0.0000 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 0, faults 0
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-ultra-550b-a55b:free:plain  ×  brawler
+    attempt 1: accepted, 2445 chars, $0.0000, 21 s, think 0
+    source 2445 chars in 21 s, $0.0000 — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 22, faults 100
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  nvidia/nemotron-3-ultra-550b-a55b:free:plain  ×  kiter
+    attempt 1: accepted, 3757 chars, $0.0000, 25 s, think 0
+    source 3757 chars in 25 s, $0.0000 — admitting…
+    REJECTED at probe: never_hits: мозг применил умения 16 раз и ни разу не попал за оба пробных боя
+    OpenRouter spend this run: $0.0155 of $6.0000
+
+  done in 7.9 min; OpenRouter spend $0.0155. Next: node tools/bakeoff.mjs league --out=/Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff
+

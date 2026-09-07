@@ -1,0 +1,43 @@
+{
+  "state": "fatal-norender",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/live?ui=fatal-norender",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 11,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 20069
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 7222.399999976158,
+      "rendererRequested": 7223,
+      "shellReady": 11754,
+      "screenReady": 11763,
+      "viewerStart": 19641,
+      "rendererUp": 19666,
+      "envBuilt": 19756,
+      "postBuilt": 19771
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

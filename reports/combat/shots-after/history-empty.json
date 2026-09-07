@@ -1,0 +1,43 @@
+{
+  "state": "history-empty",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/history?ui=empty",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "history",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen history",
+    "mounted": 1,
+    "nodes": 23,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 8818
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 253.19999998807907,
+      "rendererRequested": 263,
+      "shellReady": 5743,
+      "screenReady": 5760,
+      "viewerStart": 8300,
+      "rendererUp": 8327,
+      "envBuilt": 8430,
+      "postBuilt": 8444
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

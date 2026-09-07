@@ -1,0 +1,68 @@
+{
+  "state": "live-replay",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/watch/m_c3493e0e-81d?ui=replay",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen has-card",
+    "mounted": 1,
+    "nodes": 7,
+    "waiting": 0,
+    "fps": {
+      "last": 3,
+      "min": 3,
+      "ticks": 25,
+      "since": 16994
+    },
+    "drawn": {
+      "n": 65,
+      "firstAt": 10907,
+      "firstMs": 25,
+      "lastMs": 14,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low",
+      "sides": {
+        "blue": "slot",
+        "orange": "slot",
+        "mine": null
+      }
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": 26.28333333300219,
+    "marks": {
+      "t0": 163.40000000596046,
+      "rendererRequested": 164,
+      "shellReady": 2452,
+      "screenReady": 2465,
+      "viewerStart": 3513,
+      "rendererUp": 3527,
+      "envBuilt": 3645,
+      "postBuilt": 3659,
+      "precompiled": 9951,
+      "postWarm": 10902,
+      "rendererReady": 10902,
+      "firstDraw": 10932,
+      "firstMatch": 11485,
+      "firstFrame": 11520
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 444,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

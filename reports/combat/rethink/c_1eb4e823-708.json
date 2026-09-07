@@ -1,0 +1,189 @@
+{
+  "id": "c_1eb4e823-708",
+  "name": "ETCHER",
+  "rating": 1313,
+  "fights": 7825,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2577,
+    "tacticsCard": "This is an aggressive close-range brawler: it locks to about three meters from the enemy, strafing sideways at that ring and reversing its strafe direction every second or so, and it charges in whenever it loses sight of the target. Its attack priority is strictly cone first inside roughly four meters, then a lead-aimed zone, then a lead-aimed bolt, so at knife range it will hold the bolt back even when the cone is on cooldown and no zone is available.",
+    "sourceSha": "3d62a205668717932356605be56a4fad07353619c04dc778964f1e7017154155",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_1eb4e823-708.before.3d62a205.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 3038,
+    "tacticsCard": "This fighter tries to hover in a comfortable 4.5–8.5 range band, orbiting sideways and flipping strafe direction every second or so to avoid being predictable, backing off diagonally if the enemy gets too close, and chasing straight in if the enemy strays out of range or out of sight. It reads incoming telegraphed bolt/cone attacks and sidesteps them, otherwise it fires its ranged skill with lead prediction whenever off cooldown and in range, saves its melee finisher for point-blank, and even uses the ranged attack as filler when the melee hit is on cooldown but it's already in melee range —…",
+    "rating": 1349,
+    "fights": 7851,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "burn",
+        "weaken"
+      ],
+      "channel": "armor",
+      "element": "acid"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn",
+        "weaken"
+      ],
+      "channel": "armor",
+      "element": "acid"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "acid"
+    }
+  ],
+  "kitCost": 50,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 22.27,
+      "faults": 0,
+      "thinks": 334,
+      "orders": 557,
+      "uses": 16,
+      "hits": 1,
+      "damageDealt": 240.24876190475965,
+      "stubDamageDealt": 213.3318677557348,
+      "aliveTicks": 667,
+      "idleInReachTicks": 59,
+      "stillTicks": 65,
+      "fuelSpent": 553,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 13.4,
+      "faults": 0,
+      "thinks": 201,
+      "orders": 322,
+      "uses": 12,
+      "hits": 2,
+      "damageDealt": 239.00685714285623,
+      "stubDamageDealt": 240.23085714285617,
+      "aliveTicks": 401,
+      "idleInReachTicks": 41,
+      "stillTicks": 1,
+      "fuelSpent": 318,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 23.67,
+      "faults": 0,
+      "thinks": 355,
+      "orders": 580,
+      "uses": 18,
+      "hits": 1,
+      "damageDealt": 233.38399999999828,
+      "stubDamageDealt": 240.2598677557353,
+      "aliveTicks": 709,
+      "idleInReachTicks": 33,
+      "stillTicks": 3,
+      "fuelSpent": 576,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 20.87,
+      "faults": 0,
+      "thinks": 313,
+      "orders": 511,
+      "uses": 16,
+      "hits": 1,
+      "damageDealt": 237.9367619047589,
+      "stubDamageDealt": 240.06742857142547,
+      "aliveTicks": 625,
+      "idleInReachTicks": 41,
+      "stillTicks": 9,
+      "fuelSpent": 507,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 66428,
+  "forgeMs": 58675,
+  "admitMs": 678,
+  "cardMs": 7069,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 58673,
+      "chars": 3038
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 5212,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.125383,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 3038,
+  "promptHash": "6f359c7feef0872fe744110f882c4e070d59a51068d4996e9cf4e716be3d894f",
+  "generatedAt": "2026-09-07T10:37:59.596Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:03:16.705Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:02:23.341Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "6dff4200ce73a925dc6d4253d7cc6941ab3b90eab5055051a52cf4e3bbb7e1a4",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 1.018,
+    "idleInReach": 0.072,
+    "still": 0.032,
+    "casts": 15.5
+  },
+  "card": "This fighter tries to hover in a comfortable 4.5–8.5 range band, orbiting sideways and flipping strafe direction every second or so to avoid being predictable, backing off diagonally if the enemy gets too close, and chasing straight in if the enemy strays out of range or out of sight. It reads incoming telegraphed bolt/cone attacks and sidesteps them, otherwise it fires its ranged skill with lead prediction whenever off cooldown and in range, saves its melee finisher for point-blank, and even uses the ranged attack as filler when the melee hit is on cooldown but it's already in melee range —…"
+}

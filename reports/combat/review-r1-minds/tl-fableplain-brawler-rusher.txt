@@ -1,0 +1,92 @@
+
+===== TIMELINE sub-fable-plain/brawler vs pilot:rusher seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 225 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 225 act -
+  0.07  MIND says "Heavy feet, heavier hands. Come closer."
+  0.07  pilot says "coming around"
+  2.00  -- t=2 dist 10.8 | MIND (-3.5,4.2) v6.8 hp 225 act - cd k1:0 k2:0 k3:0 | pilot (3.5,-4.2) v6.8 hp 225 act -
+  2.07  MIND casts k1 (dash)
+  2.07  pilot casts k1 (dash)
+  2.33  pilot k1 hits for 23.5 → MIND hp 201.5
+  2.37  MIND k1 hits for 23.5 → pilot hp 201.5
+  2.67  MIND casts k2 (cone)
+  2.67  pilot casts k2 (cone)
+  2.93  MIND k2 hits for 28.6 → pilot hp 173
+  2.93  MIND k2: stun shrugged off (immune)
+  2.93  pilot k2 hits for 28.6 → MIND hp 173
+  2.93  pilot k2: stun shrugged off (immune)
+  3.27  MIND casts k3 (self)
+  3.27  pilot casts k3 (self)
+  4.00  -- t=4 dist 3.4 | MIND (-0.8,0.9) v2.9 hp 179.2 act - cd k1:1.1 k2:0.7 k3:2.3 | pilot (1,-1.9) v5.2 hp 179.2 act -
+  4.67  MIND casts k2 (cone)
+  4.67  pilot casts k2 (cone)
+  4.93  MIND k2 hits for 18.4 → pilot hp 160.9
+  4.93  MIND k2: stun shrugged off (immune)
+  4.93  pilot k2 hits for 18.4 → MIND hp 160.9
+  4.93  pilot k2: stun shrugged off (immune)
+  5.27  pilot says "coming through"
+  5.27  pilot casts k1 (dash)
+  5.43  pilot k1 hits for 23.5 → MIND hp 137.4
+  5.43  pilot k1: root shrugged off (immune)
+  6.00  -- t=6 dist 3.4 | MIND (-3.3,-3) v3.8 hp 137.4 act - cd k1:0 k2:0.7 k3:0.3 | pilot (-0.2,-1.8) v7.7 hp 160.9 act -
+  6.27  pilot casts k3 (self)
+  6.60  MIND casts k3 (self)
+  6.80  pilot casts k2 (cone)
+  7.07  pilot k2 hits for 18.4 → MIND hp 129.6
+  8.00  -- t=8 dist 3.7 | MIND (0.5,-4) v0 hp 129.6 act - cd k1:0 k2:0 k3:1.6 | pilot (-2.8,-2.2) v6.8 hp 168.6 act -
+  8.07  MIND casts k2 (cone)
+  8.27  pilot casts k1 (dash)
+  8.33  MIND k2 MISSED: aim
+  8.43  pilot k1 hits for 23.5 → MIND hp 106.1
+  8.43  pilot k1: root shrugged off (immune)
+  8.80  pilot casts k2 (cone)
+  9.07  pilot k2 hits for 28.6 → MIND hp 77.5
+  9.07  pilot k2: stun shrugged off (immune)
+  9.40  pilot casts k3 (self)
+  9.60  MIND casts k3 (self)
+ 10.00  -- t=10 dist 3.4 | MIND (-0.8,-3.2) v2.7 hp 91.1 act k3/recover cd k1:0 k2:0.1 k3:2.6 | pilot (-4.1,-2.5) v7.5 hp 175.3 act -
+ 10.13  MIND casts k2 (cone)
+ 10.40  MIND k2 hits for 18.4 → pilot hp 157
+ 11.40  pilot says "stay right there"
+ 11.40  pilot casts k2 (cone)
+ 11.67  pilot k2 hits for 18.4 → MIND hp 72.8
+ 12.00  pilot casts k1 (dash)
+ 12.00  -- t=12 dist 3.6 | MIND (-2.9,-0.1) v0 hp 72.8 act - cd k1:0 k2:0.1 k3:0.6 | pilot (0.7,0.3) v6.1 hp 157 act k1/windup
+ 12.17  pilot k1 hits for 23.5 → MIND hp 49.3
+ 12.17  pilot k1: root shrugged off (immune)
+ 12.47  pilot casts k3 (self)
+ 12.67  MIND casts k3 (self)
+ 13.40  pilot casts k2 (cone)
+ 13.67  pilot k2 hits for 18.4 → MIND hp 44.6
+ 13.67  pilot k2: stun shrugged off (immune)
+ 14.00  -- t=14 dist 3.4 | MIND (-0.8,-3.4) v3.6 hp 44.6 act - cd k1:0 k2:0 k3:1.7 | pilot (0.3,-6.6) v7.7 hp 165.1 act -
+ 14.40  MIND casts k2 (cone)
+ 14.67  MIND k2 hits for 18.4 → pilot hp 146.8
+ 15.67  MIND casts k3 (self)
+ 15.67  pilot casts k1 (dash)
+ 15.83  pilot k1 hits for 23.5 → MIND hp 21.1
+ 16.00  -- t=16 dist 3.6 | MIND (3.3,-6.5) v0 hp 34.7 act k3/recover cd k1:0 k2:0.4 k3:2.7 | pilot (5.7,-9.2) v5.2 hp 146.8 act k1/recover
+ 16.13  pilot casts k2 (cone)
+ 16.40  pilot k2 MISSED: range
+ 16.47  MIND casts k1 (dash)
+ 16.63  MIND k1 MISSED: cover
+ 16.73  pilot casts k3 (self)
+ 18.00  -- t=18 dist 3.4 | MIND (5,-7.7) v3.8 hp 34.7 act - cd k1:1.5 k2:0 k3:0.7 | pilot (8.2,-8.7) v7.9 hp 156.2 act -
+ 18.13  pilot says "stay right there"
+ 18.13  pilot casts k2 (cone)
+ 18.40  pilot k2 hits for 18.4 → MIND hp 16.3
+ 18.40  pilot k2: stun shrugged off (immune)
+ 18.67  MIND casts k2 (cone)
+ 18.73  pilot casts k1 (dash)
+ 18.90  pilot k1 hits for 23.5 → MIND hp 0
+ 18.90  pilot k1: root shrugged off (immune)
+ 18.90  MIND dies
+ 18.90  END {"winner":"orange","reason":"kill"}
+
+
+## sub-fable-plain/brawler
+  vs pilot:rusher: W-D-L 0-0-1 | len 18.9s | sudden death 0/1 | mean dist 5.6 m | reasons kill
+    MIND  casts/10s 6.9 cdUtil 54% hit 71% (5/7) dmg/game 107.1 still 16% noAct 67% idle+ready 62% idle+inReach 51% allCd 10%
+          uses k1 2, k2 6, k3 5 | dead slots 0/3 | miss k2:aim 1, k1:cover 1 | refused —
+          immune stun 2 (on damage-carrying casts 2, on pure controls 0; already immune when ordered 1) | dodges 0 | interrupts made 0 taken 0 | say 1 | faults 0
+          telegraph resp 42% (8/19) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.1 hit 93% dmg/game 289.7 still 8% idle+inReach 9% immune stun 5, root 4 dodges 0 interrupts made 0

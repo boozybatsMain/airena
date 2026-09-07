@@ -1,0 +1,85 @@
+
+===== TIMELINE z-ai-glm-5.3-flash-plain/kiter vs pilot:kiter seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 132 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 132 act -
+  0.07  pilot says "not today"
+  0.07  pilot casts k2 (blink)
+  0.80  pilot casts k3 (beam)
+  1.43  pilot k3 hits for 20.4 → MIND hp 111.6
+  1.60  pilot casts k1 (bolt)
+  1.93    pilot bolt released heading -0.4 — 1.5° off the direct bearing, enemy moving 7.5 m/s
+  1.97  pilot k1 MISSED: cover
+  2.00  -- t=2 dist 18.4 | MIND (-2.5,3.1) v7.5 hp 111.6 act - cd k1:0 k2:0 k3:0 | pilot (4.4,-14) v4.4 hp 132 act k1/recover
+  3.07  pilot casts k2 (blink)
+  3.93  MIND casts k1 (bolt)
+  3.93  pilot casts k1 (bolt)
+  4.00  -- t=4 dist 9.3 | MIND (5.7,-8.6) v5.9 hp 111.6 act k1/windup cd k1:2.1 k2:0 k3:0 | pilot (0.7,-16.4) v0.9 hp 132 act k1/windup
+  4.27    MIND bolt released heading -2.7 — -21.3° off the direct bearing, enemy moving 5.4 m/s
+  4.27    pilot bolt released heading 1 — 10.8° off the direct bearing, enemy moving 4.9 m/s
+  4.47  pilot casts k3 (beam)
+  4.47  pilot k1 hits for 20.4 → MIND hp 91.2
+  4.53  MIND says "gone."
+  4.53  MIND casts k2 (blink)
+  4.70  MIND k1 MISSED: cover
+  4.73  MIND says "quiet."
+  4.73  MIND casts k3 (beam)
+  5.10  pilot k3 hits for 10.2 → MIND hp 81
+  5.10  pilot k3: silence shrugged off (immune)
+  5.37  MIND k3 hits for 10.2 → pilot hp 121.8
+  6.00  -- t=6 dist 3.9 | MIND (-5.4,-13) v7.5 hp 81 act - cd k1:0.1 k2:1.5 k3:1.7 | pilot (-8.6,-10.8) v7.5 hp 121.8 act -
+  6.07  pilot casts k2 (blink)
+  6.13  MIND casts k1 (bolt)
+  6.20  pilot says "seen it"
+  6.27  pilot casts k1 (bolt)
+  6.47    MIND bolt released heading -0.6 — -18.6° off the direct bearing, enemy moving 5.4 m/s
+  6.60    pilot bolt released heading 3.1 — 10.1° off the direct bearing, enemy moving 6.4 m/s
+  6.90  pilot k1 hits for 20.4 → MIND hp 60.6
+  6.90  pilot k1: root shrugged off (immune)
+  7.27  MIND k1 MISSED: aim
+  7.47  pilot casts k3 (beam)
+  8.00  -- t=8 dist 17.4 | MIND (-7.7,-13) v4.5 hp 60.6 act - cd k1:0.3 k2:0 k3:0 | pilot (-11.3,4.1) v3.6 hp 121.8 act k3/windup
+  8.10  pilot k3 MISSED: cover
+  8.33  MIND casts k1 (bolt)
+  8.47  pilot casts k1 (bolt)
+  8.67    MIND bolt released heading 0 — 8.6° off the direct bearing, enemy moving 5.4 m/s
+  8.80    pilot bolt released heading 3.1 — 7.2° off the direct bearing, enemy moving 6.4 m/s
+  9.07  pilot casts k2 (blink)
+  9.33  pilot k1 hits for 20.4 → MIND hp 40.2
+  9.47  MIND k1 MISSED: aim
+ 10.00  -- t=10 dist 17.1 | MIND (-13.4,-9.6) v0 hp 40.2 act - cd k1:0.5 k2:0 k3:0 | pilot (-14,7.5) v4.8 hp 121.8 act -
+ 10.47  pilot casts k3 (beam)
+ 10.53  MIND says "gone."
+ 10.53  MIND casts k2 (blink)
+ 10.73  MIND casts k1 (bolt)
+ 11.07    MIND bolt released heading -0.1 — -12.9° off the direct bearing, enemy moving 3.6 m/s
+ 11.10  pilot k3 MISSED: cover
+ 11.27  pilot casts k1 (bolt)
+ 11.60    pilot bolt released heading -2.2 — 14.1° off the direct bearing, enemy moving 7.5 m/s
+ 11.80  pilot k1 hits for 10.2 → MIND hp 30
+ 11.80  pilot k1: root shrugged off (immune)
+ 11.87  MIND k1 MISSED: aim
+ 12.00  -- t=12 dist 10 | MIND (-18,3.4) v7.5 hp 30 act - cd k1:0.9 k2:1.5 k3:0 | pilot (-8.9,7.5) v6.8 hp 121.8 act -
+ 12.07  pilot casts k2 (blink)
+ 12.93  MIND casts k1 (bolt)
+ 13.00  pilot says "seen it"
+ 13.27    MIND bolt released heading 2.1 — 9.8° off the direct bearing, enemy moving 5.1 m/s
+ 13.47  pilot casts k1 (bolt)
+ 13.80    pilot bolt released heading -1.2 — 0.9° off the direct bearing, enemy moving 7.5 m/s
+ 14.00  pilot casts k3 (beam)
+ 14.00  -- t=14 dist 13.8 | MIND (-9.7,5.3) v6.8 hp 30 act - cd k1:1.1 k2:0 k3:0 | pilot (3.4,0.7) v2.2 hp 121.8 act k3/windup
+ 14.07  MIND says "quiet."
+ 14.07  MIND casts k3 (beam)
+ 14.07  MIND k1 MISSED: aim
+ 14.20  pilot k1 hits for 20.4 → MIND hp 9.6
+ 14.63  pilot k3 hits for 20.4 → MIND hp 0
+ 14.63  pilot INTERRUPTS MIND's k3
+ 14.63  MIND dies
+ 14.63  END {"winner":"orange","reason":"kill"}
+
+
+## z-ai-glm-5.3-flash-plain/kiter
+  vs pilot:kiter: W-D-L 0-0-1 | len 14.6s | sudden death 0/1 | mean dist 14.7 m | reasons kill
+    MIND  casts/10s 6.2 cdUtil 53% hit 17% (1/6) dmg/game 10.2 still 10% noAct 73% idle+ready 62% idle+inReach 55% allCd 19%
+          uses k1 5, k2 2, k3 2 | dead slots 0/3 | miss k1:cover 1, k1:aim 4 | refused —
+          immune — (on damage-carrying casts 0, on pure controls 0; already immune when ordered 0) | dodges 0 | interrupts made 0 taken 1 | say 4 | faults 0
+          telegraph resp 55% (6/11) | lead usage 100% (5/5) mean off-bearing 14.2° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.9 hit 73% dmg/game 142.8 still 2% idle+inReach 3% immune silence 1, root 2 dodges 0 interrupts made 1

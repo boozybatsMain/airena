@@ -1,0 +1,131 @@
+{
+  "model": "z-ai/glm-5.3-flash:plain",
+  "modelId": "z-ai/glm-5.3-flash",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Z.ai: GLM 5.3 Flash",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:47:37.689Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 12.4,
+      "faults": 24,
+      "thinks": 186,
+      "orders": 283,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 414,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 11.27,
+      "faults": 24,
+      "thinks": 169,
+      "orders": 249,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 396,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 11.27,
+      "faults": 24,
+      "thinks": 169,
+      "orders": 249,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 396,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 13,
+      "faults": 24,
+      "thinks": 195,
+      "orders": 301,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 424,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0.002,
+  "referenceUsd": null,
+  "elapsedMs": 16301,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0.002034549,
+      "elapsedMs": 16300,
+      "chars": 4423
+    }
+  ],
+  "usage": {
+    "in": 8164,
+    "out": 1661,
+    "reasoning": 89,
+    "reasoningShare": 0.05358217940999398
+  },
+  "resolvedModel": null,
+  "provider": "StreamLake",
+  "sourceChars": 4423,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

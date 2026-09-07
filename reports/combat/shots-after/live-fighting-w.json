@@ -1,0 +1,92 @@
+{
+  "state": "live-fighting",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 7,
+    "waiting": 0,
+    "fps": {
+      "last": 15,
+      "min": 1,
+      "ticks": 10,
+      "since": 28170
+    },
+    "drawn": {
+      "n": 228,
+      "firstAt": 12984,
+      "firstMs": 30,
+      "lastMs": 18,
+      "direct": 5,
+      "blank": 3,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      },
+      "beat": {
+        "sid": "orange",
+        "tall": 1.415,
+        "want": 0.583,
+        "lapped": false,
+        "dist": 12,
+        "box": [
+          -0.46,
+          0.46,
+          -1.16,
+          0.25
+        ],
+        "card": [
+          -0.69,
+          0.69,
+          0.83,
+          0.31
+        ],
+        "pair": true,
+        "stand": 1
+      }
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 22.71666641247767,
+    "marks": {
+      "t0": 131.7999999821186,
+      "rendererRequested": 132,
+      "shellReady": 4140,
+      "screenReady": 4150,
+      "viewerStart": 5421,
+      "rendererUp": 5434,
+      "envBuilt": 5515,
+      "postBuilt": 5533,
+      "precompiled": 9904,
+      "postWarm": 12981,
+      "rendererReady": 12982,
+      "firstDraw": 13014,
+      "firstMatch": 13034,
+      "firstFrame": 13070
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 1237,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "render: Cannot read properties of undefined (reading 'abs') @ eval (eval at buildBody (/viewer/loadbody.js:302:16), <anonymous>:36:66) <- Ni.call (/vendor/three.webgpu.min.js?v=mtqvpt2u:6:32450) <- Ni",
+    "TypeError: Cannot read properties of undefined (reading 'abs')"
+  ],
+  "overlaps": [],
+  "covered": []
+}

@@ -1,0 +1,85 @@
+{
+  "model": "deepseek/deepseek-v4-flash:think",
+  "modelId": "deepseek/deepseek-v4-flash",
+  "mode": "think",
+  "channel": "openrouter",
+  "label": "DeepSeek: DeepSeek V4 Flash 0423",
+  "thinkBudget": 8000,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:49:53.032Z",
+  "admitted": false,
+  "stage": "analyse",
+  "problems": [
+    {
+      "code": "unknown_global",
+      "message": "неизвестное имя «window» — доступны только api, p, mem и стандартная математика",
+      "at": "2:42"
+    }
+  ],
+  "probe": null,
+  "costUsd": 0.006,
+  "referenceUsd": null,
+  "elapsedMs": 131231,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 8000,
+      "ok": true,
+      "error": null,
+      "costUsd": 0.0059745609,
+      "elapsedMs": 131230,
+      "chars": 2722
+    }
+  ],
+  "usage": {
+    "in": 8279,
+    "out": 7672,
+    "reasoning": 6429,
+    "reasoningShare": 0.8379822732012513
+  },
+  "resolvedModel": null,
+  "provider": "Azure",
+  "sourceChars": 2722,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406,
+  "readmittedAt": "2026-09-07T00:22:58.725Z"
+}

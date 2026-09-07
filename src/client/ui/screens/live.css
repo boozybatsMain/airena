@@ -36,6 +36,29 @@
   width: min(860px, calc(100% - 2 * var(--chrome-pad)));
   display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
 }
+/*
+ * THE WORD SHARES THE TOP OF THE SCREEN WITH THE FEED; IT DOES NOT STAND IN IT.
+ *
+ * `.live-top` centres on the whole viewport and `#feedwrap` is a fixed
+ * 244 px corner panel on the right (`ui/hud.css`) whenever it is a corner and
+ * not the phone's own full-width ticker — between the width where the panel
+ * folds to that ticker (900 px) and where the arena has room to spare either
+ * side of both. In between, an untracked word is short enough to clear the
+ * panel, but the block's own type is set in caps with a quarter-em of
+ * tracking (`--track-state`), and REPLAY is the one phase that shows the
+ * panel beside a word long enough to reach it: `WATCHING REPLAY` on a
+ * 1280×720 capture ran its last few pixels under `FIGHT LOG`. The box is
+ * capped at the panel's edge, with a gutter, so the word narrows instead.
+ *
+ * `#hud` gets the `replay` class (`screens/live.js`), but `.live-top` is not
+ * inside it — the two are siblings under the screen, not nested — so the
+ * flag has to be read from a shared ancestor. `body` is the nearest one.
+ */
+@media (min-width: 901px) {
+  body:has(#hud.replay) .live-top {
+    max-width: calc(100% - 2 * (244px + var(--chrome-pad) + 28px));
+  }
+}
 /* an `h1`, so heading navigation lands somewhere on the default route (§27,
    §29); the UA's own size and margin are neutralised, `.t-state` carries the
    type */

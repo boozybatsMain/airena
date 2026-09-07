@@ -1,0 +1,125 @@
+
+  bakeoff league — /Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff
+    not loaded: deepseek-deepseek-v4-flash-think/kiter.json — not admitted (analyse: unknown_global)
+    not loaded: deepseek-deepseek-v4-pro-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: deepseek-deepseek-v4-pro-plain/caster.json — not admitted (forge: rejected)
+    not loaded: deepseek-deepseek-v4-pro-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.7-flash-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.7-flash-plain/caster.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.7-flash-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-plain/caster.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-think/brawler.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-think/caster.json — not admitted (forge: rejected)
+    not loaded: google-gemini-3.8-flash-think/kiter.json — not admitted (forge: rejected)
+    not loaded: google-gemma-4-31b-it-free-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: google-gemma-4-31b-it-free-plain/caster.json — not admitted (forge: rejected)
+    not loaded: google-gemma-4-31b-it-free-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: minimax-minimax-m3-free-plain/brawler.json — not admitted (probe: load)
+    not loaded: minimax-minimax-m3-free-plain/caster.json — not admitted (probe: never_hits)
+    not loaded: moonshotai-kimi-k2.7-code-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: moonshotai-kimi-k2.7-code-plain/caster.json — not admitted (forge: rejected)
+    not loaded: moonshotai-kimi-k2.7-code-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: moonshotai-kimi-k3-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: moonshotai-kimi-k3-plain/caster.json — not admitted (forge: rejected)
+    not loaded: moonshotai-kimi-k3-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: nvidia-nemotron-3-super-120b-a12b-free-plain/caster.json — not admitted (probe: never_hits)
+    not loaded: nvidia-nemotron-3-ultra-550b-a55b-free-plain/kiter.json — not admitted (probe: never_hits)
+    not loaded: poolside-laguna-s-2.1-free-plain/brawler.json — not admitted (analyse: syntax)
+    not loaded: poolside-laguna-s-2.1-free-plain/caster.json — not admitted (analyse: unknown_global,unknown_global,unknown_global,unknown_global,unknown_global,unknown_global,unknown_global,unknown_global)
+    not loaded: poolside-laguna-s-2.1-free-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-flash-think/brawler.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-flash-think/caster.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-flash-think/kiter.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-max-0902-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-max-0902-plain/caster.json — not admitted (forge: rejected)
+    not loaded: qwen-qwen3.8-max-0902-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: thinkingmachines-inkling-free-plain/brawler.json — not admitted (forge: rejected)
+    not loaded: thinkingmachines-inkling-free-plain/caster.json — not admitted (forge: rejected)
+    not loaded: thinkingmachines-inkling-free-plain/kiter.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-flash-think/brawler.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-flash-think/caster.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-flash-think/kiter.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-think/brawler.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-think/caster.json — not admitted (forge: rejected)
+    not loaded: z-ai-glm-5.3-think/kiter.json — not admitted (forge: rejected)
+  28 admitted mind(s) from 11 model(s) on 3 creature(s); pilots stub, kiter, rusher, controller; seeds 1,2,3,4
+    deepseek-deepseek-v4-flash-think/brawler     deepseek/deepseek-v4-flash:think
+    deepseek-deepseek-v4-flash-think/caster      deepseek/deepseek-v4-flash:think
+    minimax-minimax-m3-free-plain/kiter          minimax/minimax-m3:free:plain
+    nvidia-nemotron-3-super-120b-a12b-free-plain/brawler nvidia/nemotron-3-super-120b-a12b:free:plain
+    nvidia-nemotron-3-super-120b-a12b-free-plain/kiter nvidia/nemotron-3-super-120b-a12b:free:plain
+    nvidia-nemotron-3-ultra-550b-a55b-free-plain/brawler nvidia/nemotron-3-ultra-550b-a55b:free:plain
+    nvidia-nemotron-3-ultra-550b-a55b-free-plain/caster nvidia/nemotron-3-ultra-550b-a55b:free:plain
+    sub-fable-high/brawler                       sub:fable:high
+    sub-fable-high/caster                        sub:fable:high
+    sub-fable-high/kiter                         sub:fable:high
+    sub-fable-plain/brawler                      sub:fable:plain
+    sub-fable-plain/caster                       sub:fable:plain
+    sub-fable-plain/kiter                        sub:fable:plain
+    sub-opus-high/brawler                        sub:opus:high
+    sub-opus-high/caster                         sub:opus:high
+    sub-opus-high/kiter                          sub:opus:high
+    sub-opus-plain/brawler                       sub:opus:plain
+    sub-opus-plain/caster                        sub:opus:plain
+    sub-opus-plain/kiter                         sub:opus:plain
+    sub-sonnet-high/brawler                      sub:sonnet:high
+    sub-sonnet-high/caster                       sub:sonnet:high
+    sub-sonnet-high/kiter                        sub:sonnet:high
+    sub-sonnet-plain/brawler                     sub:sonnet:plain
+    sub-sonnet-plain/caster                      sub:sonnet:plain
+    sub-sonnet-plain/kiter                       sub:sonnet:plain
+    z-ai-glm-5.3-flash-plain/brawler             z-ai/glm-5.3-flash:plain
+    z-ai-glm-5.3-flash-plain/caster              z-ai/glm-5.3-flash:plain
+    z-ai-glm-5.3-flash-plain/kiter               z-ai/glm-5.3-flash:plain
+  3920 matches: 2088 cross, 936 mirror, 896 vs pilots
+  25/3920 matches, 3 s     50/3920 matches, 6 s     75/3920 matches, 9 s     100/3920 matches, 11 s     125/3920 matches, 14 s     150/3920 matches, 16 s     175/3920 matches, 19 s     200/3920 matches, 21 s     225/3920 matches, 23 s     250/3920 matches, 26 s     275/3920 matches, 30 s     300/3920 matches, 32 s     325/3920 matches, 36 s     350/3920 matches, 38 s     375/3920 matches, 41 s     400/3920 matches, 44 s     425/3920 matches, 46 s     450/3920 matches, 49 s     475/3920 matches, 52 s     500/3920 matches, 55 s     525/3920 matches, 58 s     550/3920 matches, 60 s     575/3920 matches, 62 s     600/3920 matches, 65 s     625/3920 matches, 67 s     650/3920 matches, 69 s     675/3920 matches, 72 s     700/3920 matches, 74 s     725/3920 matches, 76 s     750/3920 matches, 78 s     775/3920 matches, 80 s     800/3920 matches, 82 s     825/3920 matches, 85 s     850/3920 matches, 88 s     875/3920 matches, 91 s     900/3920 matches, 94 s     925/3920 matches, 96 s     950/3920 matches, 98 s     975/3920 matches, 100 s     1000/3920 matches, 102 s     1025/3920 matches, 105 s     1050/3920 matches, 108 s     1075/3920 matches, 111 s     1100/3920 matches, 114 s     1125/3920 matches, 117 s     1150/3920 matches, 119 s     1175/3920 matches, 121 s     1200/3920 matches, 124 s     1225/3920 matches, 126 s     1250/3920 matches, 129 s     1275/3920 matches, 131 s     1300/3920 matches, 133 s     1325/3920 matches, 135 s     1350/3920 matches, 138 s     1375/3920 matches, 141 s     1400/3920 matches, 144 s     1425/3920 matches, 148 s     1450/3920 matches, 151 s     1475/3920 matches, 154 s     1500/3920 matches, 156 s     1525/3920 matches, 159 s     1550/3920 matches, 162 s     1575/3920 matches, 166 s     1600/3920 matches, 170 s     1625/3920 matches, 173 s     1650/3920 matches, 175 s     1675/3920 matches, 178 s     1700/3920 matches, 180 s     1725/3920 matches, 182 s     1750/3920 matches, 184 s     1775/3920 matches, 186 s     1800/3920 matches, 188 s     1825/3920 matches, 190 s     1850/3920 matches, 193 s     1875/3920 matches, 196 s     1900/3920 matches, 198 s     1925/3920 matches, 201 s     1950/3920 matches, 203 s     1975/3920 matches, 207 s     2000/3920 matches, 209 s     2025/3920 matches, 212 s     2050/3920 matches, 215 s     2075/3920 matches, 217 s     2100/3920 matches, 220 s     2125/3920 matches, 221 s     2150/3920 matches, 223 s     2175/3920 matches, 225 s     2200/3920 matches, 227 s     2225/3920 matches, 230 s     2250/3920 matches, 233 s     2275/3920 matches, 235 s     2300/3920 matches, 237 s     2325/3920 matches, 240 s     2350/3920 matches, 243 s     2375/3920 matches, 246 s     2400/3920 matches, 248 s     2425/3920 matches, 251 s     2450/3920 matches, 254 s     2475/3920 matches, 256 s     2500/3920 matches, 258 s     2525/3920 matches, 260 s     2550/3920 matches, 262 s     2575/3920 matches, 264 s     2600/3920 matches, 265 s     2625/3920 matches, 267 s     2650/3920 matches, 269 s     2675/3920 matches, 271 s     2700/3920 matches, 272 s     2725/3920 matches, 274 s     2750/3920 matches, 275 s     2775/3920 matches, 276 s     2800/3920 matches, 277 s     2825/3920 matches, 280 s     2850/3920 matches, 281 s     2875/3920 matches, 282 s     2900/3920 matches, 284 s     2925/3920 matches, 285 s     2950/3920 matches, 286 s     2975/3920 matches, 288 s     3000/3920 matches, 289 s     3025/3920 matches, 290 s     3050/3920 matches, 293 s     3075/3920 matches, 296 s     3100/3920 matches, 297 s     3125/3920 matches, 300 s     3150/3920 matches, 302 s     3175/3920 matches, 303 s     3200/3920 matches, 306 s     3225/3920 matches, 308 s     3250/3920 matches, 310 s     3275/3920 matches, 312 s     3300/3920 matches, 316 s     3325/3920 matches, 319 s     3350/3920 matches, 321 s     3375/3920 matches, 323 s     3400/3920 matches, 325 s     3425/3920 matches, 328 s     3450/3920 matches, 330 s     3475/3920 matches, 332 s     3500/3920 matches, 335 s     3525/3920 matches, 337 s     3550/3920 matches, 339 s     3575/3920 matches, 341 s     3600/3920 matches, 343 s     3625/3920 matches, 345 s     3650/3920 matches, 347 s     3675/3920 matches, 349 s     3700/3920 matches, 351 s     3725/3920 matches, 353 s     3750/3920 matches, 354 s     3775/3920 matches, 356 s     3800/3920 matches, 357 s     3825/3920 matches, 359 s     3850/3920 matches, 360 s     3875/3920 matches, 362 s     3900/3920 matches, 363 s     3920/3920 matches, 364 s   
+
+  3920 matches in 364.0 s
+
+  model                                minds  vsPil vsMind   win   hit cst/10 cdUtil idleRng  dead dodge  tele  lead  flt/g  dist   SD   len
+  sub:fable:high                           3    74%    64%   65%   73%   7.78    66%     18%    7%  0.00   60%   60%   0.00   9.8  44%  26.5
+  sub:opus:high                            3    40%    63%   60%   68%   7.87    67%     22%    1%  0.00   58%   69%   0.00   9.8  42%  27.3
+  sub:sonnet:high                          3    40%    64%   61%   75%   8.46    72%     13%    1%  0.00   59%   35%   0.00  10.2  31%  24.2
+  sub:fable:plain                          3    40%    52%   50%   72%   7.43    64%     22%    4%  0.00   58%   67%   0.00   9.8  39%  26.5
+  minimax/minimax-m3:free:plain            1    28%    39%   38%   73%   7.69    65%     26%    0%  0.00   74%   13%   0.00  12.4  38%  26.3
+  sub:opus:plain                           3    25%    61%   56%   72%   8.48    73%     19%    0%  0.00   65%   44%   0.00   9.2  34%  25.8
+  sub:sonnet:plain                         3    24%    48%   44%   74%   8.07    68%     15%    2%  0.00   58%   45%   0.00   8.5  21%  22.0
+  deepseek/deepseek-v4-flash:think         2    23%    50%   47%   68%   7.88    68%     11%    3%  0.00   54%   70%   0.00  10.4  52%  28.4
+  nvidia/nemotron-3-ultra-550b-a55b:fr     2    16%    30%   28%   64%   5.99    51%     36%    2%  0.00   60%   67%   0.00   8.8  45%  26.7
+  z-ai/glm-5.3-flash:plain                 3    14%    36%   33%   77%   7.55    63%     26%    3%  0.00   59%   66%   0.00   8.1   8%  19.1
+  nvidia/nemotron-3-super-120b-a12b:fr     2     0%    17%   15%   42%   6.16    51%     32%    3%  0.00   52%   72%   0.00  10.2  29%  24.5
+
+  mind                                         games     W-D-L  vsPil vsMind   hit  tele  lead  flt
+  sub-fable-high/kiter                           248 122-0-126   100%    42%   78%   67%   54%    0
+  sub-fable-plain/kiter                          248 141-4-103    66%    56%   76%   59%   55%    0
+  sub-fable-high/caster                          248  178-1-69    66%    73%   67%   60%   66%    0
+  sub-fable-high/brawler                         248  185-2-61    56%    77%   73%   52%     —    0
+  sub-opus-high/caster                           248  176-0-72    56%    73%   67%   60%   68%    0
+  sub-opus-plain/kiter                           248 146-0-102    56%    59%   73%   72%   17%    0
+  sub-fable-plain/caster                         248  164-0-84    50%    69%   63%   64%   78%    0
+  sub-opus-high/kiter                            248 112-4-132    47%    45%   54%   60%   70%    0
+  sub-sonnet-high/kiter                          248  99-1-148    44%    39%   74%   56%    8%    0
+  sub-sonnet-high/brawler                        248  199-0-49    41%    86%   85%   61%     —    0
+  z-ai-glm-5.3-flash-plain/brawler               248  171-3-74    41%    73%   86%   49%     —    0
+  sub-sonnet-plain/brawler                       248  157-0-91    41%    67%   75%   69%     —    0
+  sub-sonnet-high/caster                         248  157-0-91    34%    68%   67%   61%   62%    0
+  nvidia-nemotron-3-ultra-550b-a55b-free-plain   248 121-1-126    31%    51%   61%   71%     —    0
+  minimax-minimax-m3-free-plain/kiter            248  94-3-151    28%    39%   73%   74%   13%    0
+  deepseek-deepseek-v4-flash-think/caster        248 124-0-124    28%    53%   64%   56%   70%    0
+  sub-sonnet-plain/kiter                         248  64-1-183    25%    26%   80%   47%   24%    0
+  sub-opus-plain/caster                          248 117-1-130    19%    51%   65%   64%   71%    0
+  deepseek-deepseek-v4-flash-think/brawler       248 109-0-139    19%    48%   71%   51%     —    0
+  sub-opus-high/brawler                          248  156-1-91    16%    70%   84%   52%     —    0
+  sub-sonnet-plain/caster                        248 110-0-138     6%    50%   67%   58%   65%    0
+  sub-fable-plain/brawler                        248  69-0-179     3%    31%   78%   51%     —    0
+  sub-opus-plain/brawler                         248  154-0-94     0%    71%   79%   59%     —    0
+  nvidia-nemotron-3-super-120b-a12b-free-plain   248  73-0-175     0%    34%   48%   62%     —    0
+  z-ai-glm-5.3-flash-plain/caster                248  52-0-196     0%    24%   68%   71%   73%    0
+  z-ai-glm-5.3-flash-plain/kiter                 248  26-0-222     0%    12%   78%   58%   59%    0
+  nvidia-nemotron-3-ultra-550b-a55b-free-plain   248  18-1-229     0%     8%   68%   50%   67%    0
+  nvidia-nemotron-3-super-120b-a12b-free-plain   248   0-0-248     0%     0%   35%   42%   72%    0
+
+  wrote /Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff/league.md and /Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff/league.json
+

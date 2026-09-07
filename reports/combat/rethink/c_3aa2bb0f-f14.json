@@ -1,0 +1,185 @@
+{
+  "id": "c_3aa2bb0f-f14",
+  "name": "SLEDGEHAMMER",
+  "rating": 853,
+  "fights": 7184,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1390,
+    "tacticsCard": "This is a pure aggressor with no sense of distance — it walks straight at the enemy at all times and never backs off, circles, or waits out anything. In contact it throws its damage strike first, falls back on the stun only if damage isn't up, skips both if the enemy is airborne or has action immunity, and uses the dash purely to close a gap when the target is out of reach but within dash range, aiming slightly ahead of the enemy's movement.",
+    "sourceSha": "86866063ec300306e2fb593d12a1c7ae2e06a2a41d57008f5233af43e00d6bc2",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_3aa2bb0f-f14.before.86866063.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2270,
+    "tacticsCard": "This fighter is a relentless brawler with no real concept of holding distance — it always faces and walks straight at the enemy, and even loses no time when blind, just marching toward their last known spot. Up close it leans on its cone attack first, switches to the backup strike if the target is locked or the main move is on cooldown, and will even burn its dash just to close a small gap when nothing else is ready — a wasteful, aggressive habit.",
+    "rating": 882,
+    "fights": 7268,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "stun"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 19,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 19.7,
+      "faults": 0,
+      "thinks": 296,
+      "orders": 560,
+      "uses": 17,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 235.2,
+      "aliveTicks": 590,
+      "idleInReachTicks": 188,
+      "stillTicks": 50,
+      "fuelSpent": 1186,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 20.33,
+      "faults": 0,
+      "thinks": 305,
+      "orders": 607,
+      "uses": 18,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 235.2,
+      "aliveTicks": 609,
+      "idleInReachTicks": 146,
+      "stillTicks": 76,
+      "fuelSpent": 1222,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 23.67,
+      "faults": 0,
+      "thinks": 355,
+      "orders": 707,
+      "uses": 20,
+      "hits": 7,
+      "damageDealt": 235.2,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 709,
+      "idleInReachTicks": 247,
+      "stillTicks": 59,
+      "fuelSpent": 1422,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 34.63,
+      "faults": 0,
+      "thinks": 519,
+      "orders": 1029,
+      "uses": 32,
+      "hits": 6,
+      "damageDealt": 201.6,
+      "stubDamageDealt": 201.6,
+      "aliveTicks": 1038,
+      "idleInReachTicks": 118,
+      "stillTicks": 38,
+      "fuelSpent": 2078,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 130661,
+  "forgeMs": 119143,
+  "admitMs": 1545,
+  "cardMs": 9966,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 119140,
+      "chars": 2270
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9888,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.168039,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2270,
+  "promptHash": "bc756b7c4351aeda6afeb41d6422c17f6a86c7cc4fbafaa8aa5584c2dcf63666",
+  "generatedAt": "2026-09-07T11:17:55.430Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:09:59.042Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:07:55.066Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "113e0dc2cb59207e85ebd4d5bca5fe075bc6d5044d1b8011cbc918bb3b072617",
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 1.036,
+    "idleInReach": 0.237,
+    "still": 0.076,
+    "casts": 21.75
+  },
+  "card": "This fighter is a relentless brawler with no real concept of holding distance — it always faces and walks straight at the enemy, and even loses no time when blind, just marching toward their last known spot. Up close it leans on its cone attack first, switches to the backup strike if the target is locked or the main move is on cooldown, and will even burn its dash just to close a small gap when nothing else is ready — a wasteful, aggressive habit."
+}

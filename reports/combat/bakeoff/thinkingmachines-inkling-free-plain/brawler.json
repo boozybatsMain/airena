@@ -1,0 +1,83 @@
+{
+  "model": "thinkingmachines/inkling:free:plain",
+  "modelId": "thinkingmachines/inkling:free",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Thinking Machines: Inkling (free)",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:53:24.840Z",
+  "admitted": false,
+  "stage": "forge",
+  "costUsd": 0,
+  "elapsedMs": 63,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    },
+    {
+      "attempt": 1,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    }
+  ],
+  "usage": null,
+  "problems": [
+    {
+      "code": "rejected",
+      "message": "the mind returned nothing usable",
+      "cause": "openrouter 403: {\"error\":{\"message\":\"thinkingmachines/inkling:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps\",\"code\":403,\"metadata\":{\"routing_funnel\":[{\"step\":\"Initial Endpoints\",\"endpoint_count\":1}],\"failed_routing_step\":\"Ga"
+    }
+  ],
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834
+}

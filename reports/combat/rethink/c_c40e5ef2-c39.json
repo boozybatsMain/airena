@@ -1,0 +1,171 @@
+{
+  "id": "c_c40e5ef2-c39",
+  "name": "DECK-75",
+  "rating": 1450,
+  "fights": 12367,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 7863,
+    "tacticsCard": null,
+    "sourceSha": "e9ea5ec56049af6c1f79165ad29b67438ba7efbe7389d0459741166c5f84ab4e"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2401,
+    "tacticsCard": "This fighter keeps its distance at range 10, circling with a lazy strafing pattern while always facing the enemy, and it favors its beam attack whenever it's off cooldown and the target is visible within 23 range. It watches specifically for the enemy's own beam telegraph and dodges sideways, and it panics into a defensive dash when burning or dropping below 28% HP up close — but the dodge logic is shaky: the emergency escape and the beam-dodge both push the fighter along the same perpendicular axis, so it can end up dashing sideways into a spot that's still inside the beam's path rather than…",
+    "rating": 1450,
+    "fights": 12375,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 20.43,
+      "faults": 0,
+      "thinks": 307,
+      "orders": 634,
+      "uses": 19,
+      "hits": 5,
+      "damageDealt": 251.04000000000045,
+      "stubDamageDealt": 221.65333333333362,
+      "aliveTicks": 612,
+      "idleInReachTicks": 112,
+      "stillTicks": 0,
+      "fuelSpent": 349,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 17.03,
+      "faults": 0,
+      "thinks": 255,
+      "orders": 528,
+      "uses": 17,
+      "hits": 6,
+      "damageDealt": 239.57333333333372,
+      "stubDamageDealt": 240.3200000000004,
+      "aliveTicks": 510,
+      "idleInReachTicks": 39,
+      "stillTicks": 1,
+      "fuelSpent": 297,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 19.23,
+      "faults": 0,
+      "thinks": 288,
+      "orders": 596,
+      "uses": 19,
+      "hits": 5,
+      "damageDealt": 240.21333333333382,
+      "stubDamageDealt": 215.57333333333372,
+      "aliveTicks": 576,
+      "idleInReachTicks": 40,
+      "stillTicks": 1,
+      "fuelSpent": 330,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 21.97,
+      "faults": 0,
+      "thinks": 329,
+      "orders": 679,
+      "uses": 20,
+      "hits": 4,
+      "damageDealt": 240.10666666666725,
+      "stubDamageDealt": 197.33333333333394,
+      "aliveTicks": 658,
+      "idleInReachTicks": 131,
+      "stillTicks": 1,
+      "fuelSpent": 373,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 113779,
+  "forgeMs": 106558,
+  "admitMs": 603,
+  "cardMs": 6614,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 106556,
+      "chars": 2401
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9041,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.10504480000000001,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2401,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:29:08.890Z",
+  "previous": [],
+  "candidateSha": "d254768d45f4ec27b95da5944f3920c40f4d2649f5887c008403bfeed843c61c",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.11,
+    "idleInReach": 0.137,
+    "still": 0.001,
+    "casts": 18.75
+  },
+  "card": "This fighter keeps its distance at range 10, circling with a lazy strafing pattern while always facing the enemy, and it favors its beam attack whenever it's off cooldown and the target is visible within 23 range. It watches specifically for the enemy's own beam telegraph and dodges sideways, and it panics into a defensive dash when burning or dropping below 28% HP up close — but the dodge logic is shaky: the emergency escape and the beam-dodge both push the fighter along the same perpendicular axis, so it can end up dashing sideways into a spot that's still inside the beam's path rather than…"
+}

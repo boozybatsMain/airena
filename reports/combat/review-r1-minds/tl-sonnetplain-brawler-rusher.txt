@@ -1,0 +1,113 @@
+
+===== TIMELINE sub-sonnet-plain/brawler vs pilot:rusher seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 225 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 225 act -
+  0.07  pilot says "coming around"
+  2.00  -- t=2 dist 10.8 | MIND (-3.5,4.2) v6.8 hp 225 act - cd k1:0 k2:0 k3:0 | pilot (3.5,-4.2) v6.8 hp 225 act -
+  2.07  MIND says "Charge!"
+  2.07  MIND casts k1 (dash)
+  2.07  pilot casts k1 (dash)
+  2.33  pilot k1 hits for 23.5 → MIND hp 201.5
+  2.37  MIND k1 hits for 23.5 → pilot hp 201.5
+  2.40  MIND says "Feel that?"
+  2.67  MIND says "Gotcha!"
+  2.67  MIND casts k2 (cone)
+  2.67  pilot casts k2 (cone)
+  2.93  MIND k2 hits for 28.6 → pilot hp 173
+  2.93  MIND k2: stun shrugged off (immune)
+  2.93  pilot k2 hits for 28.6 → MIND hp 173
+  2.93  pilot k2: stun shrugged off (immune)
+  3.00  MIND says "Feel that?"
+  3.27  pilot casts k3 (self)
+  4.00  -- t=4 dist 3.4 | MIND (-1.1,1.3) v0 hp 173 act - cd k1:1.1 k2:0.7 k3:0 | pilot (0.7,-1.6) v4.3 hp 179.2 act -
+  4.67  MIND says "Gotcha!"
+  4.67  MIND casts k2 (cone)
+  4.67  pilot casts k2 (cone)
+  4.93  MIND k2 hits for 18.4 → pilot hp 160.9
+  4.93  MIND k2: stun shrugged off (immune)
+  4.93  pilot k2 hits for 28.6 → MIND hp 144.4
+  4.93  pilot k2: stun shrugged off (immune)
+  5.00  MIND says "Feel that?"
+  5.27  MIND says "Take this!"
+  5.27  MIND casts k1 (dash)
+  5.27  pilot says "coming through"
+  5.27  pilot casts k1 (dash)
+  5.43  pilot k1 hits for 23.5 → MIND hp 121
+  5.43  pilot k1: root shrugged off (immune)
+  5.43  MIND k1 hits for 23.5 → pilot hp 137.4
+  5.43  MIND k1: root shrugged off (immune)
+  5.47  MIND says "Feel that?"
+  6.00  -- t=6 dist 3.6 | MIND (-0.4,1.6) v0 hp 121 act - cd k1:2.3 k2:0.7 k3:0 | pilot (-2,4.9) v6.8 hp 137.4 act -
+  6.27  pilot casts k3 (self)
+  6.67  MIND says "Gotcha!"
+  6.67  MIND casts k2 (cone)
+  6.80  pilot casts k2 (cone)
+  6.93  MIND k2 hits for 18.4 → pilot hp 129.6
+  6.93  MIND INTERRUPTS pilot's k2
+  7.00  MIND says "Feel that?"
+  8.00  -- t=8 dist 3.7 | MIND (-0.4,1.6) v0 hp 121 act - cd k1:0.3 k2:0.7 k3:0 | pilot (2.9,3.4) v2.6 hp 129.6 act -
+  8.27  MIND says "Take this!"
+  8.27  MIND casts k1 (dash)
+  8.27  pilot casts k1 (dash)
+  8.43  pilot k1 hits for 23.5 → MIND hp 97.5
+  8.43  MIND k1 hits for 23.5 → pilot hp 106.1
+  8.43  MIND k1: root shrugged off (immune)
+  8.47  MIND says "Feel that?"
+  8.73  MIND says "Gotcha!"
+  8.73  MIND casts k2 (cone)
+  8.80  pilot casts k2 (cone)
+  9.00  MIND k2 hits for 28.6 → pilot hp 77.5
+  9.00  MIND k2: stun shrugged off (immune)
+  9.07  MIND says "Feel that?"
+  9.07  pilot k2 hits for 28.6 → MIND hp 68.9
+  9.07  pilot k2: stun shrugged off (immune)
+  9.33  MIND says "Patching up."
+  9.33  MIND casts k3 (self)
+  9.40  pilot casts k3 (self)
+ 10.00  -- t=10 dist 3.8 | MIND (-0.5,1.5) v0 hp 82.5 act - cd k1:1.3 k2:0.7 k3:2.3 | pilot (0,5.3) v6.8 hp 91.1 act -
+ 10.73  MIND says "Gotcha!"
+ 10.73  MIND casts k2 (cone)
+ 10.80  pilot casts k2 (cone)
+ 11.00  MIND k2 hits for 18.4 → pilot hp 72.8
+ 11.00  MIND INTERRUPTS pilot's k2
+ 11.07  MIND says "Feel that?"
+ 11.33  MIND says "Take this!"
+ 11.33  MIND casts k1 (dash)
+ 11.50  MIND k1 hits for 23.5 → pilot hp 49.3
+ 11.50  MIND k1: root shrugged off (immune)
+ 11.53  MIND says "Feel that?"
+ 12.00  pilot says "coming through"
+ 12.00  pilot casts k1 (dash)
+ 12.00  -- t=12 dist 3.4 | MIND (-0.1,1.4) v0 hp 82.5 act - cd k1:2.3 k2:0.7 k3:0.3 | pilot (3,0.2) v0.9 hp 49.3 act k1/windup
+ 12.17  pilot k1 hits for 23.5 → MIND hp 59.1
+ 12.17  pilot k1: root shrugged off (immune)
+ 12.33  MIND says "Patching up."
+ 12.33  MIND casts k3 (self)
+ 12.47  pilot casts k3 (self)
+ 12.87  MIND says "Gotcha!"
+ 12.87  MIND casts k2 (cone)
+ 13.00  pilot casts k2 (cone)
+ 13.13  MIND k2 hits for 18.4 → pilot hp 44.6
+ 13.13  MIND k2: stun shrugged off (immune)
+ 13.20  MIND says "Feel that?"
+ 13.27  pilot k2 hits for 18.4 → MIND hp 54.3
+ 14.00  -- t=14 dist 3.7 | MIND (-0.6,1.3) v0 hp 54.3 act - cd k1:0.3 k2:0.9 k3:1.3 | pilot (2.5,-0.7) v6.8 hp 44.6 act -
+ 14.33  MIND says "Take this!"
+ 14.33  MIND casts k1 (dash)
+ 14.50  MIND k1 hits for 23.5 → pilot hp 21.1
+ 14.50  MIND k1: root shrugged off (immune)
+ 14.53  MIND says "Feel that?"
+ 14.87  MIND says "Gotcha!"
+ 14.87  MIND casts k2 (cone)
+ 15.00  pilot casts k1 (dash)
+ 15.13  MIND k2 hits for 28.6 → pilot hp 0
+ 15.13  pilot dies
+ 15.13  END {"winner":"blue","reason":"kill"}
+
+
+## sub-sonnet-plain/brawler
+  vs pilot:rusher: W-D-L 1-0-0 | len 15.1s | sudden death 0/1 | mean dist 6.2 m | reasons kill
+    MIND  casts/10s 9.3 cdUtil 70% hit 100% (12/12) dmg/game 276.4 still 70% noAct 56% idle+ready 39% idle+inReach 2% allCd 37%
+          uses k1 5, k2 7, k3 2 | dead slots 0/3 | miss — | refused —
+          immune stun 4, root 4 (on damage-carrying casts 8, on pure controls 0; already immune when ordered 6) | dodges 0 | interrupts made 2 taken 0 | say 25 | faults 0
+          telegraph resp 47% (7/15) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.9 hit 100% dmg/game 197.9 still 11% idle+inReach 7% immune stun 3, root 2 dodges 0 interrupts made 0

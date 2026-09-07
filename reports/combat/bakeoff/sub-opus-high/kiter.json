@@ -1,0 +1,131 @@
+{
+  "model": "sub:opus:high",
+  "modelId": "sub:opus",
+  "mode": "high",
+  "channel": "sub",
+  "label": "Claude Opus",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "high",
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:54:54.325Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 17.13,
+      "faults": 0,
+      "thinks": 257,
+      "orders": 433,
+      "uses": 13,
+      "hits": 8,
+      "damageDealt": 96,
+      "fuelSpent": 12245,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 13.17,
+      "faults": 0,
+      "thinks": 197,
+      "orders": 324,
+      "uses": 11,
+      "hits": 7,
+      "damageDealt": 84,
+      "fuelSpent": 9360,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 10.73,
+      "faults": 0,
+      "thinks": 161,
+      "orders": 272,
+      "uses": 8,
+      "hits": 6,
+      "damageDealt": 72,
+      "fuelSpent": 7717,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 18.8,
+      "faults": 0,
+      "thinks": 282,
+      "orders": 457,
+      "uses": 14,
+      "hits": 11,
+      "damageDealt": 132,
+      "fuelSpent": 13227,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.6713870000000001,
+  "elapsedMs": 273489,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 273489,
+      "chars": 13081
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 21714,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-opus-5",
+  "provider": "claude-cli",
+  "sourceChars": 13063,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

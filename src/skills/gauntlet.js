@@ -79,55 +79,67 @@
  */
 
 /** Пятеро соперников, найденных замером. Порядок фиксирован: он входит в сиды. */
+/*
+ * ── RE-PICKED 07.09 FOR THE THREE-SECOND WORLD ────────────────────────────
+ *
+ * The 30.08 five was measured under cost-derived cooldowns (7–16 s) and read
+ * as a ladder the moment every cooldown dropped to ≤ 3 s: `checkgauntlet` fell
+ * on "no cycle" and the starter preset `saboteur` beat all five. The five
+ * below was searched (`reports/combat/gauntlet/pick.mjs`, pool of the panel's
+ * top kits plus hand-made archetypes, product field, 8 seeds, verified at 20)
+ * for the shape the docstring above asks for: 5 styles of 5, FOUR 3-cycles
+ * (p3→p65→p111, p3→p175→vaulter, p65→p175→vaulter, p111→p175→vaulter), no
+ * member under 17.5%, best "worst" 47.5%. `reports/combat/gauntlet/REPORT.md`.
+ */
 export const GAUNTLET = [
-  {
-    id: 'striker',
-    ru: 'striker',
-    why: 'the beam silences and cleanses, the blink carries a shield, the mortar finishes; presses at mid range',
-    kit: [
-      { delivery: 'beam', effects: ['cleanse', 'silence'], element: 'ember' },
-      { delivery: 'blink', effects: ['shield'], element: 'ember' },
-      { delivery: 'lob', effects: ['damage'], element: 'ember' },
-    ],
-  },
   {
     id: 'warden',
     ru: 'warden',
-    why: 'heals through the beam and raises walls, the bolt pulls and hits; drags the fight out',
+    why: "a pulling field into a cleansing lunge, with a healing disc to stand in; a brawler that recovers",
     kit: [
-      { delivery: 'beam', effects: ['heal', 'wall'], element: 'frost' },
-      { delivery: 'blink', effects: ['wall'], element: 'ember' },
-      { delivery: 'bolt', effects: ['cleanse', 'pull', 'damage'], element: 'void' },
+      { delivery: 'zone', effects: ['pull', 'damage'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage', 'cleanse'], element: 'kinetic' },
+      { delivery: 'zone', effects: ['heal'], element: 'kinetic' },
     ],
   },
   {
-    id: 'conjurer',
-    ru: 'conjurer',
-    why: 'fields boost and heal, the blink widens vision; plays off area',
+    id: 'spark',
+    ru: 'spark',
+    why: "a burning field that knocks, a blink that heals, and a beam that only boosts its turn; a skirmisher",
     kit: [
-      { delivery: 'zone', effects: ['boost'], channel: 'range', element: 'kinetic' },
-      { delivery: 'blink', effects: ['boost'], channel: 'vision', element: 'void' },
-      { delivery: 'zone', effects: ['heal', 'damage'], element: 'arc' },
+      { delivery: 'zone', effects: ['burn', 'knock'], element: 'kinetic' },
+      { delivery: 'blink', effects: ['heal'], element: 'kinetic' },
+      { delivery: 'beam', effects: ['boost'], element: 'kinetic', channel: 'turn' },
     ],
   },
   {
-    id: 'runner',
-    ru: 'runner',
-    why: 'lunges burn, weaken and speed itself up; lives at lunge range',
+    id: 'pyro',
+    ru: 'pyro',
+    why: "three fires: a beam, a knocking field and a pulling mortar; nothing lands hard, everything keeps burning",
     kit: [
-      { delivery: 'dash', effects: ['burn', 'weaken'], channel: 'range', element: 'arc' },
-      { delivery: 'zone', effects: ['boost'], channel: 'cooldown', element: 'arc' },
-      { delivery: 'dash', effects: ['boost'], channel: 'range', element: 'void' },
+      { delivery: 'beam', effects: ['burn'], element: 'ember' },
+      { delivery: 'zone', effects: ['burn', 'knock'], element: 'ember' },
+      { delivery: 'lob', effects: ['burn', 'pull'], element: 'ember' },
     ],
   },
   {
-    id: 'lobber',
-    ru: 'lobber',
-    why: 'three mortars: blind, wall, damage; hits from behind cover and never closes',
+    id: 'cutter',
+    ru: 'cutter',
+    why: "beam, lunge and a knocking fan, all plain damage; the ladder's own best-rated shape",
     kit: [
-      { delivery: 'lob', effects: ['blind', 'wall'], element: 'arc' },
-      { delivery: 'lob', effects: ['wall'], element: 'ember' },
-      { delivery: 'lob', effects: ['damage'], element: 'void' },
+      { delivery: 'beam', effects: ['damage'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage'], element: 'kinetic' },
+      { delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+    ],
+  },
+  {
+    id: 'golem',
+    ru: 'golem',
+    why: "a knocking fan and two lunges, one of them stunning; the ladder's heavy brawler",
+    kit: [
+      { delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage', 'stun'], element: 'kinetic' },
     ],
   },
 ];
@@ -224,10 +236,19 @@ export const BASELINE = {
    * следующий шаг (открытые параметры умений) обязан его сократить, и первым
    * же признаком успеха будет то, что это число можно опустить.
    */
-  bestMin: 0.85,
+  /*
+   * ── RE-MEASURED 07.09 ─────────────────────────────────────────────────────
+   *
+   * The five above holds a best "worst" of 47.5% at 20 seeds on the product
+   * field, and the starter presets' worst results on the viability grid are
+   * 0% / 0% / 50% (keeper / breaker / saboteur). 0.55 sits above both — a
+   * candidate has to beat every one of the five at 62.5% on the grid to be
+   * called a hole, which the gate checks is reachable without a clean sweep.
+   */
+  bestMin: 0.75,
   /* Медианный худший результат по пятерым: ниже этого набор слабее поля. */
-  medianMin: 0.13,
-  measuredAt: '30.08, product field, 20 seeds per opponent and side',
+  medianMin: 0.325,
+  measuredAt: '07.09 (v9 prices, budgets 28/60, hp axis 210…360), product field, 20 seeds per opponent and side',
 };
 
 /**

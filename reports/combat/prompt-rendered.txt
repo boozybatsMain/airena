@@ -1,0 +1,640 @@
+### COMPILED KIT A (own, blue)
+k1: {"id":"k1","generic":true,"kind":"lob","element":"ember","channel":null,"cost":12,"windup":0.5,"recover":0.2,"cooldown":2.6,"needsLos":false,"interruptible":true,"moveScale":0.6,"turnScale":0.7,"effects":[{"id":"damage","klass":"targeted","mag":33.6,"duration":null,"mind":false,"size":null,"channel":null}],"range":15,"speed":18,"splash":2.2,"arc":true,"aim":"point","damage":34}
+k2: {"id":"k2","generic":true,"kind":"zone","element":"acid","channel":null,"cost":13,"windup":0.45,"recover":0.25,"cooldown":3,"needsLos":false,"interruptible":true,"moveScale":0.6399999999999999,"turnScale":0.73,"effects":[{"id":"burn","klass":"targeted","mag":9.8,"duration":1,"mind":false,"size":null,"channel":null}],"range":12,"radius":2.6,"duration":2.4,"aim":"point","zoneTicks":5}
+k3: {"id":"k3","generic":true,"kind":"blink","element":"void","channel":null,"cost":8,"windup":0,"recover":0.18,"cooldown":3,"needsLos":false,"interruptible":false,"moveScale":1,"turnScale":1,"effects":[{"id":"cleanse","klass":"self","mag":null,"duration":null,"mind":false,"size":null,"channel":null}],"distance":6.5,"iframes":0.25,"aim":"point"}
+
+### COMPILED KIT B (enemy, orange)
+k1: {"id":"k1","generic":true,"kind":"bolt","element":"arc","channel":null,"cost":13,"windup":0.34,"recover":0.16,"cooldown":2.2,"needsLos":false,"interruptible":true,"moveScale":0.728,"turnScale":0.796,"effects":[{"id":"damage","klass":"targeted","mag":24,"duration":null,"mind":false,"size":null,"channel":null}],"range":18,"speed":22,"aim":"facing","damage":24}
+k2: {"id":"k2","generic":true,"kind":"cone","element":"kinetic","channel":null,"cost":15,"windup":0.28,"recover":0.28,"cooldown":2,"needsLos":true,"interruptible":true,"moveScale":0.776,"turnScale":0.832,"effects":[{"id":"damage","klass":"targeted","mag":28.56,"duration":null,"mind":false,"size":null,"channel":null},{"id":"knock","klass":"targeted","mag":6.8,"duration":null,"mind":false,"size":null,"channel":null}],"range":3.4,"halfAngle":0.96,"aim":"facing","damage":29}
+k3: {"id":"k3","generic":true,"kind":"self","element":"frost","channel":null,"cost":13,"windup":0.3,"recover":0.18,"cooldown":3,"needsLos":false,"interruptible":true,"moveScale":0.76,"turnScale":0.8200000000000001,"effects":[{"id":"shield","klass":"self","mag":12,"duration":2.5,"mind":false,"size":null,"channel":null}],"aim":"none"}
+
+### PROMPT LENGTH: 40816 chars, 627 lines
+
+### PROMPT AS HANDED TO THE MODEL (blue, kit A vs kit B)
+You are the mind of one creature in a duel.
+
+Your body is yours alone. Every number in it was chosen for THIS creature and
+describes nothing else: there are no kinds here, and no creature inherits
+anything from another. Your opponent is another creature with its own numbers,
+and both bodies are spelled out below — yours to you, theirs to you, and the
+same disclosure the other way round.
+
+You will find yourself in perception as p.self.id = 'blue'. That is the side
+of the arena you were put on. It is a label for one of the two slots and says
+nothing about a body, a skill or a shape.
+
+---
+
+You are writing the entire mind of one fighter in a duel, as JavaScript.
+
+Reply with code only. No prose, no explanation, no markdown fence. Exactly this shape:
+
+function think(p, api) {
+  // whatever you want
+}
+
+Helper functions and constants declared beside it are kept and are in scope for
+every call. The function must be named think and must take exactly two
+parameters; a different arity is a compile fault and the fighter is born
+mindless.
+
+think(p, api) is called 15 times a second while you are alive. It returns
+nothing. The only way it changes the world is by calling api verbs. Perception p
+is rebuilt fresh for every call.
+
+---
+
+THE WORLD
+
+A flat square arena. The ground is the X/Z plane; +Y is up and nothing but a hop
+or a leap ever leaves the ground. The arena runs from -20 to +20 on both X and Z, walled on
+all four sides. Nothing can leave it.
+
+Headings are radians. Heading 0 faces +Z; the angle increases toward +X, so
+heading = Math.atan2(dx, dz) and the unit vector of a heading is
+{ x: Math.sin(h), z: Math.cos(h) }.
+
+6 solid blocks stand on the floor, 3.2 m tall, axis-aligned:
+
+    x -7, z -3, half-width 1.2, half-depth 3.5
+    x 7, z 3, half-width 1.2, half-depth 3.5
+    x 0, z -10, half-width 3.6, half-depth 1.2
+    x 0, z 10, half-width 3.6, half-depth 1.2
+    x -12.5, z 11, half-width 1.6, half-depth 1.6
+    x 12.5, z -11, half-width 1.6, half-depth 1.6
+
+A block stops a body and stops a line of sight. Nothing sees or shoots through
+one, and nothing walks through one. The walls do the same.
+
+The simulation advances 30 times a second. You think on every second step, so
+15 times a second, and the world moves twice between two of your thoughts.
+
+A skill's phases are served on those same steps: a phase ends on the first step
+at or past its length, and any overshoot comes off the phase after it. Every
+duration in the tables below is the served one, so what you are told is what the
+world runs.
+
+The two fighters start 31 m apart on opposite ends of a diameter, at an angle
+that changes from match to match, facing each other.
+
+The match ends when one fighter reaches 0 hp.
+
+From 30 seconds the arena itself starts burning both of you. The rate rises
+with every second that passes: at time t you lose 0.015 * (t - 30) of your MAXIMUM
+hp per second, and so does your opponent. It is proportional, so whoever holds
+the smaller fraction of their maximum burns to nothing first. From full health
+the burn alone kills at 41.547 seconds. p.burn is the current rate and
+p.burnStartsIn counts down to it.
+
+If 50 seconds somehow pass with both alive, the larger hp fraction wins and
+exactly equal fractions is a draw.
+
+---
+
+YOUR BODY
+
+  hp                  240
+  collision radius    1.5 m
+  top speed           5.8 m/s
+  acceleration        24 m/s^2   (so 5.8 m/s is reached in 0.242 s)
+  turn rate           7.5 rad/s  (a half turn takes 0.419 s)
+  mass                2.536        (the heavier body yields less when they collide)
+  skills              k1, k2, k3
+
+Movement direction and facing are independent: a body can walk in one direction
+while pointing in another. Facing turns toward what you asked for at the turn
+rate above; it never snaps.
+
+---
+
+YOUR SKILLS
+
+k1
+  cooldown            2.6 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                0.5 s of wind-up, then it lands, then 0.2 s of recovery
+  while casting       your top speed is multiplied by 0.6 and your turn rate by 0.7 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent
+  aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point, and it holds for the whole wind-up
+  delivery            lob — a projectile released at the strike from 1.8 m ahead of your centre, at 18 m/s, toward a landing spot whose direction AND distance are both read at the strike, from where you stand then, whatever the wind-up took you through; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. The spot is clamped at the strike: never nearer than 3.7 m, never past 15 m, never nearer the arena's edge than 2.2 m. On landing a circle of 2.2 m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance
+  range               15 m
+  speed               18 m/s
+  splash              2.2 m around the point it lands on
+  reach               18.7 m between the two centres at the very most — your range 15 m plus the 2.2 m of splash plus their 1.5 m of radius — and it will not land nearer to you than 3.7 m, your own radius plus that splash, whatever distance you ask for
+  effect damage       takes 33.6 hp off what it hits
+
+k2
+  cooldown            3 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                0.467 s of wind-up, then it lands, then 0.233 s of recovery
+  while casting       your top speed is multiplied by 0.64 and your turn rate by 0.73 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent
+  aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point, and it holds for the whole wind-up
+  delivery            zone — a disc of 2.6 m placed where the strike reads it, from where you stand then and not where you ordered it — on the point you pass in api.use(name, {x, z}), clamped to 12 m, or with no point along your facing at the enemy's distance or 12 m, whichever is shorter. It works for 2.4 s: on the step it lands and every 0.5 s after, 5 ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above 0.35 m. Damage and fire tick; a control the disc carries is applied ONCE per cast per body, on the first tick that body is inside it, for the whole duration on this card — the later ticks do not attempt it and announce nothing. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor
+  range               12 m
+  radius              2.6 m
+  lasts               2.4 s on the ground
+  reach               16.1 m between the two centres, at the very most: the disc lands on your aim point clamped to your range, or with no point along your facing at their distance or your range, whichever is SHORTER, and it works on a body whose centre is within 2.6 m of the disc plus their own 1.5 m of radius
+  effect burn         sets what it hits on fire at 9.8 hp per second for 1 s; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire on a burning body adds its length to the time still burning, up to twice its own length, and keeps the stronger rate; a disc's ticks keep its fire alive rather than lengthening it
+  whole disc          a body that stands in it from the first tick to the last burns for 3 s — 2 s from the first tick to the last, plus the 1 s that last tick renews — and loses 29.4 hp to the fire
+
+k3
+  cooldown            3 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                it lands immediately, then 0.2 s of recovery
+  aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point
+  delivery            blink — your body is moved up to 6.5 m on the step you order it — toward the point you pass in api.use(name, {x, z}), stopping at it; or along the direction pair you pass; or along your facing — never ending inside a block. You are invulnerable for 0.267 s from the landing; your velocity is cut to 0.3 of what it was. No wind-up, so nothing telegraphs it
+  distance            6.5 m
+  effect cleanse      removes fire, root, blindness, silence, stun and every weaken from you; not a shield, not a boost, not an immunity
+
+The cards above are the verbs you are holding as this is written: the three
+your creature bought, and there is no fourth. The three can be exchanged for
+three others between one match and the next, and you are NOT rewritten when
+they are: the same program you are writing now runs with the new set. So a
+range copied out of the table above and typed into your source as a number
+describes a skill you may no longer have, and nothing will tell you it has
+stopped being true.
+
+The live figures are in perception, under p.self.kit, keyed by the same names
+api.use takes; the opponent's are under p.enemy.kit. They are rebuilt for every
+thought, from the set actually equipped. Their windup, recover and cooldown are
+the DECLARED figures — the ones the ability was compiled with — while the cards
+above print the SERVED ones, which is what the world runs: a phase ends on the
+first step at or past its length, and a countdown is subtracted one step at a
+time until it crosses zero. The two never differ by a whole step of the world's
+clock, and the served figure is the one a fighter experiences.
+
+---
+
+YOUR OPPONENT'S BODY
+
+  hp                  240
+  collision radius    1.5 m
+  top speed           5.8 m/s
+  acceleration        24 m/s^2   (so 5.8 m/s is reached in 0.242 s)
+  turn rate           7.5 rad/s  (a half turn takes 0.419 s)
+  mass                2.536        (the heavier body yields less when they collide)
+  skills              k1, k2, k3
+
+Movement direction and facing are independent: a body can walk in one direction
+while pointing in another. Facing turns toward what you asked for at the turn
+rate above; it never snaps.
+
+---
+
+YOUR OPPONENT'S SKILLS
+
+The same numbers, disclosed to both sides.
+
+k1
+  cooldown            2.2 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                0.367 s of wind-up, then it lands, then 0.133 s of recovery
+  while casting       your top speed is multiplied by 0.728 and your turn rate by 0.796 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent
+  aim                 your facing at the strike: api.use(name, {x, z}) turns you toward the point at your turn rate, and it holds for the whole wind-up
+  delivery            bolt — a projectile released at the strike from 1.8 m ahead of your centre, along your facing at the strike, at 22 m/s. It connects with a body whose centre comes within 1.85 m of it, and a body inside its invulnerability window consumes the shot rather than letting it through. A block, an arena wall or a wall THEY raised ends it, and that ending announces nothing; a wall you raised yourself does not stop it. From the moment it is released it is listed in p.arena.projectiles, for both sides
+  range               18 m
+  speed               22 m/s
+  reach               21.983 m between the two centres, at the very most: it leaves 1.8 m ahead of your centre, flies 18.333 m — its range rounded UP to whole steps of the world — and touches them when it comes within 1.85 m of their centre
+  effect damage       takes 24 hp off what it hits
+
+k2
+  cooldown            2 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                0.3 s of wind-up, then it lands, then 0.267 s of recovery
+  while casting       your top speed is multiplied by 0.776 and your turn rate by 0.832 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent
+  aim                 your facing at the strike: api.use(name, {x, z}) turns you toward the point at your turn rate, and it holds for the whole wind-up
+  delivery            cone — a wedge from your centre, 55 degrees either side of your facing at the strike, measured to the other body's CENTRE, reaching 3.4 m to its surface. It needs a clear centre-to-centre line, and it sweeps the FLOOR: a body above 0.35 m when it lands takes nothing
+  range               3.4 m
+  reach               4.9 m between the two centres, at the very most: the range is measured to their SURFACE, so 1.5 m of their radius is added to it. Your own radius is NOT: the wedge is measured from your centre
+  effect damage       takes 28.56 hp off what it hits
+  effect knock        an impulse of 6.8 m/s on what it hits, away from you, added to whatever impulse it already carries and decaying at 9 m/s² — a shade under 2.57 m of travel whatever the body weighs or wants — the impulse is dropped to zero the moment it decays below 0.4 m/s, and the world moves the body in whole steps; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling
+
+k3
+  cooldown            3 s, counted from the step the order is applied; the wind-up and the recovery run inside it
+  cast                0.3 s of wind-up, then it lands, then 0.2 s of recovery
+  while casting       your top speed is multiplied by 0.76 and your turn rate by 0.82 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent
+  aim                 none — a point handed to it turns you not at all and changes nothing
+  delivery            self — at the strike its effects happen to you, where you stand
+  effect shield       12 hp of absorption before hp, for 2.5 s, against ability damage and fire, not against the arena's burn; a second shield keeps the larger figure and the later time; visible as p.self.shield and p.enemy.shield
+
+---
+
+HOW THE PIECES INTERACT
+
+One cast, in order. When your thought returns, the order is applied on that
+same step, and the ability's cooldown starts on that step — the wind-up and
+the recovery both run inside it. From the order to the end of the recovery your
+body moves at the card's share of its top speed and turns at the card's share
+of its turn rate: the recovery is slowed exactly as much as the wind-up. The
+strike happens on the first step at or past the wind-up, and everything about
+where it goes is read at THAT instant — your facing, your aim point, the
+enemy's position for a disc or a mortar with no aim point — never at the
+instant you ordered it. The recovery follows: nothing can be started until it
+ends. No ability in this world, bought or free, has a cooldown longer than
+3 s.
+
+The wind-up is visible to your opponent: their p.enemy.casting.telegraph is
+true from their next thought until the strike, their casting.skill names the
+ability, and their p.enemy.kit[skill] holds its numbers. Yours shows you the
+same about them. casting.remaining counts down to the end of the RECOVERY; the
+strike lands when casting.elapsed reaches the ability's wind-up.
+
+What either of you does is seen by the other no earlier than the other's next
+thought: perception is built for both sides before either side's orders are
+applied, and one thought is 2 steps.
+
+Aiming. api.use(name, { x, z }) names a point on the ground. An aim point is a
+LOCK for the whole wind-up: your body re-derives its heading from the point on
+every step of the wind-up, and api.face or api.faceAt called on a later thought
+is ignored until the strike. To aim somewhere else, order the ability again.
+The lock ends at the strike. A beam, a bolt, a fan or a lunge goes where the
+body points at the strike. A mortar and a disc land ON the point, clamped to
+their range — the point is read at the strike, from where you stand then, so
+walking through the wind-up does not move it. A blink goes toward the point and
+stops there when it is nearer than the blink's distance. An ability whose aim
+is 'none' — an aura, a leap — turns you not at all when a point is handed
+to it. With no point, everything uses your facing at the strike, and a mortar
+or a disc lands at the enemy's distance as it stands then.
+
+Things in flight and on the floor. A bolt in p.arena.projectiles continues
+along its vx, vz for 'left' seconds and connects with a body whose centre comes
+within 1.85 m of it — their radius plus the
+touch margin, the same figure a bolt's card prints. A mortar (arc: true) comes down at
+x + vx·left, z + vz·left, and its splash circle catches a body whose centre is
+within the splash plus that body's radius. A disc in p.arena.zones does not say
+which ability made it; the disc-shaped ability in that side's kit is the one,
+and a side keeps at most one disc per ability on the floor. A raised wall is in
+p.arena.obstacles with 'until' (seconds left) and 'by' (the side that raised
+it), and api.los, api.ray and api.pathTo know it like any block.
+
+What a hit does, in order. Damage passes through the attacker's damage
+channel, then the defender's armor channel (a divisor), then the defender's
+shield, then hp. A body inside its invulnerability window takes nothing: it is
+told { type:'evaded', skill, by } once for that ability on that step — once,
+not once per effect — and the attacker is told 'missed' with reason
+'invulnerable', also once. A bolt is spent on such a body rather than passing
+through it. A hit the shield ate whole is still a hit: both sides get their
+event with amount 0 and the 'absorbed' figure, and a hit the shield ate PART of
+carries 'absorbed' too. Fire takes hp every step at its rate, through the
+shield's absorption and past both channels, and announces itself as
+{ type:'burning', skill:'burn', hp } once every 10 hp, never as 'damaged'.
+The arena's burn from 30 s ignores shields and channels and takes a fraction
+of MAXIMUM hp: a heal changes how long it takes, a shield does not.
+
+An ability whose effects carry neither damage nor fire still tells you it
+connected: { type:'dealt', skill, amount: 0, landed, enemyHp } arrives once per
+body per step, and 'landed' lists the ids of the effects that actually took. A
+control refused by an armed immunity is NOT in that list, so the event tells
+"the root took" from "the root was refused" on its own. A damaging ability does
+not send this one — its 'dealt' carries the real amount and no 'landed'.
+
+Statuses. Stunned: no movement, no turning, no new ability, a cancellable
+wind-up that is running is cancelled with its cooldown spent, and a lunge that
+is travelling stops where it stands. Rooted: no movement; turning, abilities
+and impulses all work. Silenced: no new ability, refused with reason
+'silenced', except an aura, blink or leap of yours that carries a cleanse; a
+cancellable wind-up is cancelled. Blinded: your p.enemy block — position,
+velocity, dist, visible, casting — is the one from 1 s ago, and
+p.self.blinded is true. None of these touches a projectile already in flight, a
+disc already on the floor, or a wall.
+
+Nothing stacks, and controls do not even queue. A second fire on a burning body
+adds its own length to the time still burning, up to twice that length, and the
+higher rate wins — except a disc's own ticks, which renew their fire rather
+than lengthening it. A second shield keeps the larger figure and the later
+time. A boost or a weaken on a channel replaces the one that was there.
+
+The four controls — stun, root, silence, blind — are different. A control arms
+an immunity the moment it LANDS, not when it ends: from that instant until its
+duration plus the card's immune seconds have passed, no control of those
+classes lands on that body at all. That includes a second copy of the same
+control, and it includes a control from any other ability of either side. A
+stun arms 'act' and 'move'; a root arms 'move'; a silence arms 'act'; a blind
+arms 'sense'. p.self.immune and p.enemy.immune list the classes in force for
+the WHOLE window, so a body that is stunned right now already lists 'act' and
+'move' and will keep listing them after the stun has worn off. A control
+refused this way is a 'missed' with reason 'immune' and the effect's name, and
+it is always a different cast: a disc applies the control it carries once per
+cast per body, on the first step that body is inside it, and its later ticks do
+not try again. The rest of the ability is unaffected — damage, fire, an
+impulse, a wall and every self effect on that same cast still land.
+
+A wind-up longer than 0.2 s is cancellable; a stun, a silence, a knock or a pull
+that lands during it cancels it, and you get { type:'interrupted', skill, by }
+— or { type:'interruptedEnemy', skill } when it was theirs.
+
+Impulses. A knock or a pull is a velocity on a slot of its own that decays at
+9 m/s² whatever the body is doing, and is dropped to zero the moment it
+falls below 0.4 m/s — so the travel is a shade under the impulse squared over
+twice that drag. A body pushed into a wall or a block stops there. An impulse
+that lands on a body in the middle of a lunge ends the lunge, and then moves
+the body normally.
+
+Leaving the ground. A leap is one shape in three parts: a crouch, an airborne
+phase, a landing. Its own effects apply at take-off. From the crouch to the
+end of the landing no ability can be started — refused with reason 'airborne'
+while you are actually in the air, and with reason 'busy' during the crouch and
+the landing, because on both of those you are still on the ground — and the
+horizontal velocity is the one you had at take-off. Above 0.35 m — most of the
+airborne phase — a fan, a disc's tick and a lunge pass underneath; a beam, a
+bolt and a mortar hit exactly as on the ground. { type:'landed' } arrives on
+the step you touch down. A blink has no wind-up, so nothing telegraphs it; it
+is invulnerable for its card's seconds from the landing.
+
+What is announced and what is not. p.events keeps at most 32 entries between
+two thoughts, oldest first. A bolt that hits a block or flies out of range
+announces nothing; a disc that catches nobody announces nothing; a mortar that
+lands on nobody announces 'missed' with reason 'aim'. No event marks a status
+landing on you: read p.self.stunned, rooted, silenced, blinded, burning,
+shield, invulnerable, immune — and p.enemy.stunned, rooted, burning, shield,
+invulnerable, immune. api.say is accepted at most once every 4 s: a line
+inside that window is dropped in silence, costs no order and raises no event.
+
+---
+
+WHAT YOU PERCEIVE — the object p
+
+p.t             seconds since the match began
+p.dt            seconds between two of your thoughts
+p.tick          simulation step count. The world steps before anyone is asked
+                to think, so the first value you ever see is 2
+                or one less — the match seed decides which — and never zero
+p.timeLeft      seconds before the backstop clock decides on hp fraction
+p.burn          fraction of your maximum hp the arena is burning off you per
+                second right now, and off your opponent too. 0 before it starts
+p.burnStartsIn  seconds until it does
+
+p.self
+  .id           'blue' or 'orange' — which of the two slots of the arena
+                you are standing in. The two sides are told apart by colour
+                and nothing else; neither carries a body, a skill set or a
+                shape
+  .x .z         position on the ground plane
+  .y            height above the ground; > 0 only while you are off the ground
+  .vx .vz       velocity, m/s, knockback included
+  .speed        magnitude of that velocity
+  .heading      radians, where you are pointing right now
+  .hp .maxHp
+  .radius .maxSpeed .turnRate
+  .alive .airborne .stunned .invulnerable
+  .busy         true while any skill of yours is running, the crouch and the
+                landing of a jump included
+  .casting      null, or { skill, phase, elapsed, remaining, total, telegraph }
+                phase is 'windup' | 'strike' | 'dash' | 'air' | 'recover'
+                telegraph is true while the effect has not landed yet
+  .cooldowns    { skillName: seconds remaining, 0 means ready }
+  .skills       the names you may pass to api.use
+  .kit          your skills as LIVE numbers, under the same names api.use
+                takes: the three your creature holds, and there is no fourth.
+                An entry carries { kind, element,
+                effects, channel, windup, recover, cooldown, aim, magnitudes }
+                and whichever of range,
+                radius, splash, distance, halfAngle, speed, damage, ticks,
+                airborne, duration, dashSpeed, iframes its delivery has. aim is
+                'point' | 'facing' | 'none' — how api.use(name, {x, z}) is read.
+                magnitudes is { effectId: { mag, duration, immune, channel } }
+                as compiled on this ability. windup, recover and cooldown are
+                the DECLARED figures, not the served ones the cards print. It is
+                rebuilt for every thought from the set you are actually holding,
+                which is not necessarily the set the tables above were printed
+                from
+  .blinded .silenced .rooted .burning
+                true while the status holds
+  .shield       hp of absorption left on you
+  .immune       the control classes that cannot land on you right now:
+                'act' | 'move' | 'sense'. A class appears the moment the
+                control lands and stays for the control's duration plus its
+                immune seconds, so it is listed while the control is still
+                running
+  .immuneLeft   { act, move, sense } — seconds left of that same window per
+                class, 0 for a class not currently armed. A class still in
+                .immune with a small number here is about to drop out of it
+
+p.enemy
+  .id .x .z .y .vx .vz .speed .heading
+  .hp .maxHp .radius .maxSpeed
+  .alive .airborne .stunned .invulnerable .busy
+  .casting      the same shape as p.self.casting, so you can see a wind-up
+                while it is still winding up
+  .skills       what they may use
+  .kit          the same shape, for their three, keyed by the
+                names in their .skills. A creature of the arena's reference stock holds
+                laser, blink and jump or smash, charge and jump instead of
+                k1..k3; those are presented in this same shape (laser as a
+                beam, smash as a fan, charge as a lunge), so .kit is never null
+  .shield .rooted .burning .immune .immuneLeft
+                the same meanings, for them
+  .dist         straight-line distance between the two centres
+  .visible      true when nothing solid sits on the straight line between your
+                centre and theirs, tested this instant. A beam or a bolt tests
+                a DIFFERENT line, at the strike: from radius + muzzle ahead of
+                the caster along its facing, not centre to centre and not now.
+                api.ray tests a facing from your centre, api.los a point from
+                your centre — those are the closest tests you can run yourself
+
+  That is the whole list. In particular there is no p.enemy.cooldowns: what
+  they have ready is not given to you. There is no p.enemy.turnRate either: their maxSpeed is live and carries whatever boost or weaken is on their speed channel, but their turn rate reaches you only as the static figure in their body block above, so a weaken on their turn channel never shows in perception. Every use of a skill by either side is
+  announced — you get { type:'enemyStarted', skill } the moment they begin one.
+
+p.arena
+  .zones        discs on the ground that are still working: {x, z, r, mine, left}.
+                mine is true for the ones you put there; left is seconds until
+                it stops. Standing in one applies whatever it carries, again,
+                every half second
+  .projectiles  things in flight: {x, z, vx, vz, mine, arc, left}. An arc one
+                passes over blocks; the others are stopped by them. left is
+                seconds of flight remaining
+  .half         20
+  .obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents; a raised wall
+                carries until (seconds left) and by (the side that raised it)
+
+p.events        what happened to you since your last thought, oldest first,
+                at most 32 of them. Each is { type, ... }:
+  { type:'damaged', skill, amount, hp, from:{x,z}, absorbed? }   you were hit; amount is what
+                                                           reached hp, absorbed what a shield took
+  { type:'dealt', skill, amount, enemyHp, absorbed? }      you hit them, same figures
+  { type:'dealt', skill, amount:0, landed, enemyHp }       an ability of yours carrying neither
+                                                           damage nor fire connected; landed lists
+                                                           the effects that took, a refused control
+                                                           is absent from it. Once per body per step
+  { type:'missed', skill, reason, effect? }                your ability landed on nothing, or a
+                                                           control of yours was refused.
+                                                           reason: 'aim' | 'cover' | 'range' | 'airborne' | 'invulnerable' | 'immune'
+  { type:'evaded', skill, by }                             an ability of theirs reached you inside
+                                                           your invulnerability window and did
+                                                           nothing. Once per ability per step, not
+                                                           once per effect; by is the side that cast
+  { type:'blocked', by }                                   you walked into 'wall' or 'obstacle'
+  { type:'contact' }                                       the two bodies are touching
+  { type:'blinked', from, to, moved }
+  { type:'landed' }                                        your leap touched down
+  { type:'knockback', by }                                 an impulse landed on you
+  { type:'interrupted', skill, by }                        your wind-up was cancelled
+  { type:'interruptedEnemy', skill }                       you cancelled theirs
+  { type:'burning', rate, hp }                             the arena is taking hp from you
+  { type:'burning', skill:'burn', hp }                     an enemy's fire is
+  { type:'refused', skill, reason }                        api.use did not start it.
+                                                           reason: 'cooldown' | 'busy' | 'stunned' | 'silenced' | 'airborne' | 'dead' | 'unknown'
+  { type:'enemyStarted', skill, windup }                   they began something; windup as declared
+  { type:'enemyCommitted', skill }                         their lunge direction is now locked
+
+p.mem           a read-only copy of everything you have stored. Writing to it
+                does nothing; use api.remember.
+
+---
+
+WHAT YOU CAN DO — the object api
+
+Movement orders STAND. One call keeps steering the body until you replace it,
+including on the thoughts where you call nothing. There is no per-frame
+re-issuing.
+
+api.move(dx, dz)        Steer along a direction. Raw: it does not avoid
+                        anything, so it will hold you against a block if that is
+                        where you pointed. dx,dz need not be normalised.
+                        {0,0} is a full stop.
+api.moveTo(x, z)        Walk to a point, routed around the blocks. The order
+                        stands until the point is reached or replaced; on
+                        arrival you brake to a stop and stand there until your
+                        next order.
+api.stop()              Drop the movement order.
+api.face(dx, dz)        Turn toward a direction. Stands until replaced.
+api.faceAt(x, z)        Turn toward a point, measured when you call it.
+api.use(name)           Order an ability along your facing at the strike.
+api.use(name, {x, z})   Order it AT a point on the ground: you turn toward the
+                        point at your turn rate, and the point holds for the
+                        whole wind-up — a later api.face or api.faceAt does not
+                        replace it. A mortar and a disc land ON it, clamped to
+                        range; a blink goes toward it and stops there; a beam,
+                        fan, bolt or lunge goes where you point at the strike
+                        (aim in p.self.kit says which of the three an ability
+                        is, and 'none' means the point does nothing at all).
+api.use(name, metres)   Mortar only: the landing distance along your facing.
+api.use(name, dx, dz)   Blink only: a direction. For every other delivery a
+                        pair is ignored and the ability goes along your facing.
+                        The return value of every form says only that the
+                        ORDER was accepted, not that the ability started:
+                        orders are applied after your thought finishes, and one
+                        can still be refused there — on cooldown, already busy,
+                        stunned, silenced, off the ground. A refusal arrives as
+                        a 'refused' event on your next thought. api.ready(name)
+                        tells you in advance.
+api.ready(name)         true when api.use(name) would start: cooldown over,
+                        nothing of yours running, not stunned, not silenced
+                        (a cleanse-carrying aura, blink or leap excepted), on
+                        the ground, alive.
+api.cooldown(name)      seconds left, 0 when ready.
+api.los(x, z)           true when nothing solid sits between your centre and
+                        that point.
+api.ray(dx, dz, maxDist) Cast a line from your centre. Returns
+                        { hit, dist, x, z } — where the first solid thing is, or
+                        the end of the line. maxDist is capped at 60.
+api.pathTo(x, z)        { dist, direct, points:[{x,z}] } — a walkable route,
+                        its true walking length, and whether the straight line
+                        was already clear. null when there is no route.
+api.rand()              a number in [0,1). Seeded per match.
+api.remember(key, value) Store anything JSON can hold. 48 keys, and a key
+                        longer than 32 characters is cut to its first 32
+                        — two long keys with the same opening are one key. A
+                        value whose JSON runs past 4096 characters, or that
+                        JSON cannot hold, is dropped in silence, and so is a
+                        new key once the 48 are full.
+api.recall(key, fallback)
+api.forget(key)
+api.say(text)           Up to 90 characters, shown above your body to whoever is
+                        watching, and accepted at most once every 4 s: a line
+                        inside that window is dropped in silence — no fault, no
+                        event, no order spent. It has no effect on the fight.
+
+move, face, use and say are QUEUED and applied together once your thought
+returns, so calling one of them twice in one thought keeps the LAST call and
+the earlier one never happens: no half of a thought can watch the other half
+act. move, moveTo and stop share the one movement slot, and face and faceAt
+share the one facing slot. remember and forget are the exception to the queue —
+they write through the instant you call them, so one thought can store several
+keys and read them back immediately — but they are not an exception to the
+count: each one spends an order like any other.
+64 orders are honoured per thought; the rest are dropped. recall spends a
+perception call, not an order.
+The perception verbs — ready, cooldown, los, ray, pathTo, rand, recall — have
+their own separate allowance of 400, so probing the world can never eat into
+the orders you meant to give.
+
+---
+
+WHAT IS ALREADY IN SCOPE
+
+V — plane vectors as plain { x, z } objects.
+  V.add(a,b)   V.sub(a,b)   V.scale(a,s)   V.lerp(a,b,t)
+  V.len(a)     V.dist(a,b)  V.dot(a,b)     V.norm(a)
+  V.toward(a,b)             unit vector from a to b
+  V.away(a,b)               unit vector from b to a
+  V.perp(a)                 rotated a quarter turn
+  V.rot(a,radians)
+  V.heading(a)              the heading of a direction
+  V.fromHeading(h)          the direction of a heading
+  V.angleTo(heading, dir)   signed shortest angle from a heading to a direction,
+                            in (-PI, PI]
+  V.clamp(v, lo, hi)
+  V.lead(shooter, target, targetVel, speed)
+                            where a target moving at constant velocity will be
+                            when something released from shooter now and
+                            travelling at "speed" reaches it. Returns the
+                            target's own position when speed is 0. A bolt and
+                            a mortar have a speed (p.self.kit[name].speed) and
+                            are released at the strike, wind-up seconds after
+                            the order, from 1.8 m ahead of your centre — your own
+                            radius plus the muzzle offset, the same figure the
+                            cards print; a beam has none.
+  V.norm and V.toward return {x:0,z:0} for a zero-length input, and a zero
+  vector passed to api.move is a full stop.
+
+Math is available in full except Math.random. console.log works and goes to a
+log nobody's fight depends on.
+
+---
+
+THE RULES
+
+1. NO Math.random AND NO Date.
+   Both throw. The reason is not safety, it is replay: a match must be
+   reproducible from the seed and the two brains, so that a hundred rounds can
+   be run headless and mean something, and so a fight can be watched again
+   exactly as it happened. Both of those read a clock this world does not have.
+   api.rand() is the seeded replacement and is as random as you need.
+
+2. TWO KINDS OF MEMORY, AND THE DIFFERENCE BETWEEN THEM.
+   A variable declared beside think keeps its value from one thought to the
+   next and is reset when a new match starts. It works; write to it freely.
+   What it does not do is show up anywhere outside your own head: p.mem does
+   not contain it and nothing recording the fight can see it.
+   api.remember(key, value) / api.recall(key, fallback) do both — they persist
+   for the match and they come back to you as p.mem, which is also what anyone
+   watching can read. Neither is better. Use whichever you want for whatever
+   reason you want.
+
+3. A THOUGHT HAS 200000 STEPS AND 400 PERCEPTION CALLS.
+   A step is a loop iteration, a function call, a branch. The limit is counted
+   in STEPS rather than in milliseconds on purpose: the same fight has to
+   produce the same log on a quiet machine and on a busy one, and a clock
+   cannot promise that. There is a wall clock behind it — 2000 ms — but
+   it is a backstop for the pathological, not the rule you are living under.
+   Overrunning either aborts that thought: no orders are issued, your standing
+   orders keep running, and the fault is counted. Both sit far above what even
+   a thought that reasons carefully about the whole arena spends — they are
+   guards against an accidental infinite loop, not budgets you have to husband.
+   The perception cap RAISES rather than quietly returning false, because a
+   sense that lies is worse than a sense that stops.
+
+4. A THROWN ERROR COSTS YOU THAT THOUGHT, NOT THE MATCH.
+   Your standing orders keep running and the next thought is attempted. After
+   25 faults the mind is switched off for the rest of the fight and the body
+   coasts on whatever it was last told.
+
+DIALECT: modern JavaScript. const, let, arrow functions, template literals,
+for-of, destructuring, classes, and the array methods all work. Rule 1 is about
+two names, not about the language.
+
+---
+
+THE OBJECTIVE
+
+Kill your opponent. Stay alive.
+
+That is the whole of it. Nothing above tells you how, and nothing above is a
+recommendation: it is an inventory of what exists, what it costs and what the
+world does. How you fight is yours.

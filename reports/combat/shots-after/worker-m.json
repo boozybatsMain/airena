@@ -1,0 +1,62 @@
+{
+  "state": "worker",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/worker",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "worker",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 47,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 37,
+      "since": 10455
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 210,
+      "rendererRequested": 210,
+      "shellReady": 4425,
+      "screenReady": 4481,
+      "viewerStart": 5228,
+      "rendererUp": 5246,
+      "envBuilt": 5324,
+      "postBuilt": 5335,
+      "precompiled": 9734,
+      "postWarm": 10452,
+      "rendererReady": 10454,
+      "firstDraw": 10458,
+      "firstMatch": 10492,
+      "firstFrame": 10493
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

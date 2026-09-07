@@ -124,9 +124,9 @@ async function league(entries, label) {
     for (let j = i + 1; j < entries.length; j++) {
       for (let s = 0; s < ROUNDS; s++) {
         const seed = 900 + s * 7919;
-        jobs.push({ a: entries[i].kit, b: entries[j].kit, seed, sym: !REAL });
+        jobs.push({ a: entries[i].kit, b: entries[j].kit, seed, sym: !REAL, cooldown: null });
         meta.push([i, j]);
-        jobs.push({ a: entries[j].kit, b: entries[i].kit, seed, sym: !REAL });
+        jobs.push({ a: entries[j].kit, b: entries[i].kit, seed, sym: !REAL, cooldown: null });
         meta.push([j, i]);
       }
     }
@@ -401,8 +401,8 @@ async function presets() {
       for (let s2 = 0; s2 < rounds; s2++) {
         const seed = 900 + s2 * 7919;
         /* Зеркально: сперва A на синей, потом A на оранжевой. */
-        jobs.push({ a: A.kit, b: B.kit, seed, sym: false }); meta.push([i, j]);
-        jobs.push({ a: B.kit, b: A.kit, seed, sym: false }); meta.push([j, i]);
+        jobs.push({ a: A.kit, b: B.kit, seed, sym: false, cooldown: null }); meta.push([i, j]);
+        jobs.push({ a: B.kit, b: A.kit, seed, sym: false, cooldown: null }); meta.push([j, i]);
       }
     }
   }
@@ -442,7 +442,7 @@ async function selftest() {
   const jobs = [];
   const owner = [];
   for (const [label, B] of bases) {
-    for (let i = 0; i < 12; i++) { jobs.push({ a: B, b: B, seed: 900 + i * 7919, sym: !REAL }); owner.push(label); }
+    for (let i = 0; i < 12; i++) { jobs.push({ a: B, b: B, seed: 900 + i * 7919, sym: !REAL, cooldown: null }); owner.push(label); }
   }
   const r = await runJobs(jobs);
   const per = new Map();

@@ -16,6 +16,9 @@ import { BUILD_AXES, axisCost } from '../core/config.js';
 import { randomUUID } from 'node:crypto';
 import { abilitiesOf } from '../skills/describe.js';
 import { iconUrls, iconUrlsMany } from './forge/icons.js';
+/* Одна функция, а не копия правила: `arena-loop.js` читает тег перед боем,
+   здесь он записывается при рождении, и расходиться им нельзя. */
+import { inferReferenceTag } from './arena-loop.js';
 
 /**
  * ДВЕ СТОРОНЫ АРЕНЫ. ЭТО ЦВЕТА, И БОЛЬШЕ НИЧЕГО.
@@ -400,11 +403,21 @@ export function create(db, {
    * остаться стоковым телом (оно же и запасное).
    */
   const refToStore = bodySafe ? `gen:${id}` : bodyRef;
+  /*
+   * ЧЕМ ОНО БУДЕТ ДРАТЬСЯ БЕЗ КИТА — ЗАПИСЫВАЕТСЯ ВМЕСТЕ С МОЗГОМ.
+   *
+   * Существо без грамматического набора дерётся эталонной фикстурой §1, и
+   * фикстур две. Раньше выбор делал цвет стороны, то есть чётность сида, и
+   * половину боёв мозг видел глаголы, которых не знает. Тег принадлежит
+   * мозгу — значит пишется в ту же строку и той же вставкой, что и мозг.
+   * У существа с китом он null: фикстура ему не нужна.
+   */
+  const referenceTag = kitActive ? null : inferReferenceTag(brainSource);
   db.prepare(`INSERT INTO creature
     (id, owner_id, name, body_ref, kit_json, brain_source, brain_model,
      constants_version, prompt, unfit_json, rating, peak_rating, tactics_card,
-     is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size, build_json)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+     is_library, created_at, updated_at, season, kit_active, body_source, body_safe, body_draws, vfx_json, birth_note, size, build_json, reference_tag)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id, ownerId ?? null, name, refToStore, JSON.stringify(kit),
     brainSource ?? null, brainModel ?? null, constantsVersion, prompt ?? null,
     JSON.stringify(unfit), rating, rating, tacticsCard,
@@ -414,6 +427,7 @@ export function create(db, {
     birthNote && birthNote.length ? JSON.stringify(birthNote) : null,
     Number.isFinite(size) ? size : null,
     build ? JSON.stringify(build) : null,
+    referenceTag,
   );
   return db.prepare('SELECT * FROM creature WHERE id = ?').get(id);
 }
@@ -428,9 +442,14 @@ export function create(db, {
  * обязана пережить рефактор.
  */
 export function refactor(db, id, { brainSource, brainModel, constantsVersion, tacticsCard, now = Date.now() }) {
+  /* Мозг сменился — значит мог смениться и набор, против имён которого он
+     написан. Пересчитывается той же функцией, что при рождении, и только для
+     существа без кита (`kit_active = 0` в подзапросе): у остальных null. */
   db.prepare(`UPDATE creature SET brain_source = ?, brain_model = ?, constants_version = ?,
-              tactics_card = COALESCE(?, tactics_card), updated_at = ? WHERE id = ?`)
-    .run(brainSource, brainModel, constantsVersion, tacticsCard, now, id);
+              tactics_card = COALESCE(?, tactics_card),
+              reference_tag = CASE WHEN kit_active THEN NULL ELSE ? END,
+              updated_at = ? WHERE id = ?`)
+    .run(brainSource, brainModel, constantsVersion, tacticsCard, inferReferenceTag(brainSource), now, id);
   return db.prepare('SELECT * FROM creature WHERE id = ?').get(id);
 }
 

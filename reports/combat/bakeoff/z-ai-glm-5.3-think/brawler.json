@@ -1,0 +1,82 @@
+{
+  "model": "z-ai/glm-5.3:think",
+  "modelId": "z-ai/glm-5.3",
+  "mode": "think",
+  "channel": "openrouter",
+  "label": "Z.ai: GLM 5.3",
+  "thinkBudget": 8000,
+  "maxTokens": 262144,
+  "effort": null,
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:44:59.618Z",
+  "admitted": false,
+  "stage": "forge",
+  "costUsd": 0,
+  "elapsedMs": 137,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 8000,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    },
+    {
+      "attempt": 1,
+      "thinkBudget": 2000,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    }
+  ],
+  "usage": null,
+  "problems": [
+    {
+      "code": "rejected",
+      "message": "the mind returned nothing usable"
+    }
+  ],
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834
+}

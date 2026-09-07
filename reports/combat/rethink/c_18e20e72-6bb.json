@@ -1,0 +1,187 @@
+{
+  "id": "c_18e20e72-6bb",
+  "name": "STONE GOLEM",
+  "rating": 1302,
+  "fights": 11638,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1225,
+    "tacticsCard": "This is a relentless brawler: it always faces the enemy, closes to melee, and once inside about four meters it circles side to side, flipping direction every couple of seconds, to keep from getting stuck while staying in striking distance. Its priority is stun dash first whenever the target is visible between roughly two and nine meters (and not immune to control), then the melee cone under four meters, then the damage dash as a gap closer — so it's constantly spending cooldowns to jump in with no retreat, no health check, and no regard for whether it's winning the trade.",
+    "sourceSha": "30fcacc11e338e28a645f8946b237938de42975f15f66c7568b4dedbd444b41a",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_18e20e72-6bb.before.30fcacc1.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1415,
+    "tacticsCard": "This fighter is aggressive and closes distance relentlessly, but the moment it spots a telegraphed enemy cast within 12 range it breaks off to juke sideways rather than pressing the attack. Up close it opens with its cone strike, and at medium range it leans on a dash-stun to lock the enemy down, falling back to a plain damage dash if the stun is on cooldown or blocked by immunity.",
+    "rating": 1394,
+    "fights": 11670,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "stun"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 43,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 15.23,
+      "faults": 0,
+      "thinks": 229,
+      "orders": 258,
+      "uses": 12,
+      "hits": 9,
+      "damageDealt": 252.23999999999998,
+      "stubDamageDealt": 167.52,
+      "aliveTicks": 456,
+      "idleInReachTicks": 98,
+      "stillTicks": 31,
+      "fuelSpent": 389,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 11.87,
+      "faults": 0,
+      "thinks": 178,
+      "orders": 197,
+      "uses": 9,
+      "hits": 9,
+      "damageDealt": 252.23999999999998,
+      "stubDamageDealt": 224.64,
+      "aliveTicks": 355,
+      "idleInReachTicks": 84,
+      "stillTicks": 21,
+      "fuelSpent": 308,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 10.53,
+      "faults": 0,
+      "thinks": 158,
+      "orders": 201,
+      "uses": 7,
+      "hits": 6,
+      "damageDealt": 168.48,
+      "stubDamageDealt": 252.23999999999998,
+      "aliveTicks": 315,
+      "idleInReachTicks": 97,
+      "stillTicks": 31,
+      "fuelSpent": 285,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 12.6,
+      "faults": 0,
+      "thinks": 189,
+      "orders": 221,
+      "uses": 9,
+      "hits": 9,
+      "damageDealt": 252.23999999999998,
+      "stubDamageDealt": 167.51999999999998,
+      "aliveTicks": 377,
+      "idleInReachTicks": 88,
+      "stillTicks": 19,
+      "fuelSpent": 314,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 38722,
+  "forgeMs": 32920,
+  "admitMs": 316,
+  "cardMs": 5482,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 32918,
+      "chars": 1415
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 2918,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.09934699999999999,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1415,
+  "promptHash": "d1c057e3ee12a9847c33e22a7383d00c0aaca364ef53098282d19010617d26f1",
+  "generatedAt": "2026-09-07T10:39:06.027Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T03:57:25.375Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:02:05.170Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "c72c4e654e0c3929aa11ed2cb06897b5b14bf6ec935f55f47d1bd0dedba0e396",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.14,
+    "idleInReach": 0.244,
+    "still": 0.068,
+    "casts": 9.25
+  },
+  "card": "This fighter is aggressive and closes distance relentlessly, but the moment it spots a telegraphed enemy cast within 12 range it breaks off to juke sideways rather than pressing the attack. Up close it opens with its cone strike, and at medium range it leans on a dash-stun to lock the enemy down, falling back to a plain damage dash if the stun is on cooldown or blocked by immunity."
+}

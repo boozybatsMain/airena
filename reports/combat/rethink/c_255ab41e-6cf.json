@@ -1,0 +1,194 @@
+{
+  "id": "c_255ab41e-6cf",
+  "name": "ASH WOLF",
+  "rating": 1270,
+  "fights": 9599,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1184,
+    "tacticsCard": "This is an aggressive pressure fighter that wants to live inside knife range. It refreshes its speed buff whenever the enemy is within medium range, closes gaps with a leading dash from roughly mid distance, and once inside about four units it circles the target while waiting for the cone burn to come off cooldown — it only fires that cone at a grounded, visible enemy, so an opponent who jumps or breaks line of sight shuts down its main damage entirely.",
+    "sourceSha": "f785fd7fd913daf5f6a987ba8c672f9e5f6bf806547dc8494a48465fc5bd6cb2",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_255ab41e-6cf.before.f785fd7f.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1454,
+    "tacticsCard": "This fighter relentlessly closes distance and keeps facing the enemy at all times, only breaking off aim to sidestep away from an incoming dash or cone attack during its wind-up. Once close enough, it prioritizes the cheap silence/burn skill, then the big damage dash if that's not ready, and otherwise just keeps its speed buff topped up while chasing.",
+    "rating": 1270,
+    "fights": 9627,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "burn"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "ember"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "burn",
+        "silence"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 48,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 16.4,
+      "faults": 0,
+      "thinks": 246,
+      "orders": 520,
+      "uses": 14,
+      "hits": 4,
+      "damageDealt": 240.24600000000044,
+      "stubDamageDealt": 223.77133333333393,
+      "aliveTicks": 491,
+      "idleInReachTicks": 96,
+      "stillTicks": 0,
+      "fuelSpent": 260,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 14.6,
+      "faults": 0,
+      "thinks": 219,
+      "orders": 464,
+      "uses": 13,
+      "hits": 4,
+      "damageDealt": 231.17800000000054,
+      "stubDamageDealt": 247.65266666666705,
+      "aliveTicks": 437,
+      "idleInReachTicks": 63,
+      "stillTicks": 2,
+      "fuelSpent": 232,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 15.4,
+      "faults": 0,
+      "thinks": 231,
+      "orders": 489,
+      "uses": 14,
+      "hits": 4,
+      "damageDealt": 240.13800000000057,
+      "stubDamageDealt": 233.41333333333372,
+      "aliveTicks": 461,
+      "idleInReachTicks": 64,
+      "stillTicks": 3,
+      "fuelSpent": 245,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 15.13,
+      "faults": 0,
+      "thinks": 227,
+      "orders": 481,
+      "uses": 14,
+      "hits": 3,
+      "damageDealt": 210.7046666666672,
+      "stubDamageDealt": 250.90000000000038,
+      "aliveTicks": 453,
+      "idleInReachTicks": 72,
+      "stillTicks": 5,
+      "fuelSpent": 241,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 65621,
+  "forgeMs": 58870,
+  "admitMs": 575,
+  "cardMs": 6172,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 58869,
+      "chars": 1454
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 4910,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.117699,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1454,
+  "promptHash": "5a748ff3454cf0a32f40e5e840455a7b249ffcfcfd6dfead7bcebda6e83c0eb3",
+  "generatedAt": "2026-09-07T10:39:44.750Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:03:43.233Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T06:25:51.399Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:00:01.291Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "5e98169d2a277328a48386fa3d10bbbe8a043cec1e14b16a6f11729214da2810",
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 0.965,
+    "idleInReach": 0.16,
+    "still": 0.005,
+    "casts": 13.75
+  },
+  "card": "This fighter relentlessly closes distance and keeps facing the enemy at all times, only breaking off aim to sidestep away from an incoming dash or cone attack during its wind-up. Once close enough, it prioritizes the cheap silence/burn skill, then the big damage dash if that's not ready, and otherwise just keeps its speed buff topped up while chasing."
+}

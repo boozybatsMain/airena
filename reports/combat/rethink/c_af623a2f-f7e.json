@@ -1,0 +1,187 @@
+{
+  "id": "c_af623a2f-f7e",
+  "name": "GRAVEDIGGER",
+  "rating": 1204,
+  "fights": 5921,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 4011,
+    "tacticsCard": "This fighter is a mid-range zoner: it tries to sit around eight or nine units away, constantly circling sideways and flipping its strafe direction every few seconds, closing in when too far and backing off when the enemy crowds it. It fires its projectile on cooldown at a predicted lead point whenever the enemy is roughly in range, drops its zone as a follow-up, and actively runs out of any enemy ground effect; if it loses sight of the target it paths straight toward it instead of holding spacing.",
+    "sourceSha": "cf0f22a3bb26345dd51589ad1cc156db4571144c5ad8a156c490ff52887da39f",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_af623a2f-f7e.before.cf0f22a3.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2013,
+    "tacticsCard": "This fighter refuses to brawl: it kites and weaves to stay pinned around a 9-meter range, always turning to face you, and steps out of any hostile zone underfoot rather than tanking it. Its answer is a lead-aimed mortar the moment you're within 16.5m, backed by a leading zone throw inside 12.5m if the mortar is down, and it tops off its own health almost obsessively — healing at 95% HP is overly cautious and wastes cooldowns that could otherwise be pressuring you.",
+    "rating": 1225,
+    "fights": 5958,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn",
+        "blind"
+      ],
+      "element": "radiation"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "burn"
+      ],
+      "element": "radiation"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield",
+        "heal"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 51,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 36.67,
+      "faults": 0,
+      "thinks": 550,
+      "orders": 1148,
+      "uses": 33,
+      "hits": 0,
+      "damageDealt": 218.56000000000077,
+      "stubDamageDealt": 238.2266666666675,
+      "aliveTicks": 1099,
+      "idleInReachTicks": 79,
+      "stillTicks": 8,
+      "fuelSpent": 1046,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 36.7,
+      "faults": 0,
+      "thinks": 550,
+      "orders": 1147,
+      "uses": 33,
+      "hits": 0,
+      "damageDealt": 226.2800000000008,
+      "stubDamageDealt": 241.72000000000085,
+      "aliveTicks": 1100,
+      "idleInReachTicks": 105,
+      "stillTicks": 3,
+      "fuelSpent": 1183,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 37.17,
+      "faults": 0,
+      "thinks": 557,
+      "orders": 1161,
+      "uses": 33,
+      "hits": 0,
+      "damageDealt": 233.7466666666675,
+      "stubDamageDealt": 206.37333333333405,
+      "aliveTicks": 1114,
+      "idleInReachTicks": 88,
+      "stillTicks": 1,
+      "fuelSpent": 1212,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 36.3,
+      "faults": 0,
+      "thinks": 544,
+      "orders": 1135,
+      "uses": 33,
+      "hits": 0,
+      "damageDealt": 244.94666666666754,
+      "stubDamageDealt": 215.70666666666742,
+      "aliveTicks": 1088,
+      "idleInReachTicks": 61,
+      "stillTicks": 16,
+      "fuelSpent": 1108,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 112304,
+  "forgeMs": 105393,
+  "admitMs": 651,
+  "cardMs": 6255,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 105391,
+      "chars": 2013
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8970,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.163049,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2013,
+  "promptHash": "fcff99846910f73d71e9b46257b156dd44db0c0c2256e01e7f1047d1833fa7ed",
+  "generatedAt": "2026-09-07T10:52:23.397Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:02:03.126Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:03:28.280Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "b19826eba2311993a287a5efff58243c2eb13682321e905873d4438c75d85ff5",
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 1.024,
+    "idleInReach": 0.076,
+    "still": 0.006,
+    "casts": 33
+  },
+  "card": "This fighter refuses to brawl: it kites and weaves to stay pinned around a 9-meter range, always turning to face you, and steps out of any hostile zone underfoot rather than tanking it. Its answer is a lead-aimed mortar the moment you're within 16.5m, backed by a leading zone throw inside 12.5m if the mortar is down, and it tops off its own health almost obsessively — healing at 95% HP is overly cautious and wastes cooldowns that could otherwise be pressuring you."
+}

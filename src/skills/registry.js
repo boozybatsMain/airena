@@ -19,6 +19,19 @@
  * Больше исключений не нужно, и добавлять их нельзя без решения основателя.
  */
 
+/*
+ * THIS FILE IS SERVED TO THE BROWSER (`/skills/registry.js`, via
+ * `describe.js` and the viewer's VFX modules) and therefore imports NOTHING
+ * from `src/core/config.js`, which reads the tuning overlay with `node:fs`.
+ * An import added here on 07.09 broke every screen of the client — the
+ * module graph failed on `core/config.js` (404) and the live screen sat on
+ * "connecting to the arena". The tuning overlay (`AIRENA_TUNING`, sections
+ * `deliveries` and `effects`) is applied to these tables by the server-only
+ * `src/skills/compile.js`, which every server path imports before a number
+ * is read; the tables are mutated in place, so `costOf` and the prompt see
+ * the overlaid values too.
+ */
+
 /** Классы атомов: кому применяется эффект. */
 export const TARGETED = 'targeted';
 export const SELF = 'self';
@@ -96,15 +109,31 @@ function table(obj) { return Object.assign(Object.create(null), obj); }
  * Длительности премия НЕ трогает: конус, который оглушает дольше луча, —
  * это другая механика, а не более сильная та же.
  */
+/*
+ * `cooldown` — THE RHYTHM OF A SHAPE, in seconds from the start of the cast.
+ *
+ * Founder's direction, 07.09: no ability waits longer than about three
+ * seconds, and the cooldown is no longer a balance lever — it used to be
+ * derived from the price (0.9 s a point, 7–16 s), and the result was a fight
+ * spent waiting. The numbers below are per DELIVERY, because a shape has a
+ * natural rhythm: the close fan swings fastest, the beam that crosses the
+ * whole arena and the field that owns ground for seconds sit at the ceiling.
+ * Everything that used to be paid for with cooldown is now paid for with
+ * WEIGHT (`cost`) and with magnitude, and both are measured by
+ * `tools/atombalance.mjs` rather than argued.
+ */
 export const DELIVERIES = table({
   beam: {
-    id: 'beam', ru: 'Beam', klass: TARGETED, cost: 5,
+    id: 'beam', ru: 'Beam', klass: TARGETED, cost: 4, cooldown: 3.0,
     silhouette: 'a cylinder from the caster to the point of impact',
-    windup: 0.65, recover: 0.10, range: 24, needsLos: true,
+    windup: 0.5, recover: 0.10, range: 24, needsLos: true,
     doc: 'instant, along a straight line, stopped by the first obstacle',
   },
   cone: {
-    id: 'cone', ru: 'Fan', klass: TARGETED, cost: 4, power: 1.7,
+    /* ×1.4 at 2.0 s (was ×1.7 at 1.8 s): still the highest damage per second in
+       the grammar — the approach is what it costs — without being a quarter
+       of a default body per swing. */
+    id: 'cone', ru: 'Fan', klass: TARGETED, cost: 2, power: 1.4, cooldown: 2.0,
     silhouette: 'a cone wedge spreading from the caster',
     windup: 0.28, recover: 0.28, range: 3.4, halfAngle: 0.96, needsLos: true,
     /* Слабость называется в том же `doc`, что и сила: D160 сделал три доставки
@@ -113,15 +142,20 @@ export const DELIVERIES = table({
     doc: 'close, wide and fast; it runs along the ground and misses anyone who has left it',
   },
   bolt: {
-    id: 'bolt', ru: 'Bolt', klass: TARGETED, cost: 4,
+    id: 'bolt', ru: 'Bolt', klass: TARGETED, cost: 4, cooldown: 2.2,
     silhouette: 'a bolt sprite flying in a straight line',
     windup: 0.34, recover: 0.16, range: 18, speed: 22, needsLos: false,
     doc: 'it takes time to arrive and can be side-stepped',
   },
   lob: {
-    id: 'lob', ru: 'Mortar', klass: TARGETED, cost: 4,
+    /* ×1.4: the hardest shape to land — a second of flight, a point named
+       ahead of a moving body — pays the most when it does (founder, 07.09).
+       The comment read ×1.25 while the value beside it read 1.4, and
+       `docs/COMBAT.md` repeated each of the two once. 1.4 is what the panel
+       measured and what the sim applies; both documents now say so. */
+    id: 'lob', ru: 'Mortar', klass: TARGETED, cost: 2, cooldown: 2.6, power: 1.4,
     silhouette: 'a lobbed arc with a landing marker',
-    windup: 0.5, recover: 0.2, range: 15, speed: 12, needsLos: false, arc: true,
+    windup: 0.5, recover: 0.2, range: 15, speed: 18, needsLos: false, arc: true,
     /*
      * `splash` — РАДИУС ПОРАЖЕНИЯ В ТОЧКЕ ПРИЗЕМЛЕНИЯ, и до 04.09 у навеса
      * своей механики не было вовсе.
@@ -170,29 +204,36 @@ export const DELIVERIES = table({
      *
      * 1.8 — середина плоского участка и самая далёкая от зоны его половина.
      */
-    splash: 1.8,
+    splash: 2.2,
     doc: 'it flies over obstacles and touches nobody on the way; it strikes in a circle where it lands',
   },
   zone: {
-    id: 'zone', ru: 'Field', klass: WORLD, cost: 5,
+    id: 'zone', ru: 'Field', klass: WORLD, cost: 3, cooldown: 3.0,
     silhouette: 'a disc of the field lying on the floor',
-    windup: 0.45, recover: 0.25, range: 12, radius: 3.0, duration: 3.0, needsLos: false,
+    /* 2.4 s of life under a 3.0 s cooldown: a field is re-placed, never held. */
+    windup: 0.45, recover: 0.25, range: 12, radius: 2.6, duration: 2.4, needsLos: false,
     doc: 'an area that keeps working for several seconds; it lies on the floor, so anyone off the ground misses a tick or two but not the whole cast',
   },
   dash: {
-    id: 'dash', ru: 'Lunge', klass: TARGETED, cost: 4,
+    id: 'dash', ru: 'Lunge', klass: TARGETED, cost: 2, cooldown: 3.0, power: 1.15,
     silhouette: 'a trail ribbon behind the body',
-    windup: 0.18, recover: 0.26, distance: 8.0, needsLos: true,
+    /* `dashSpeed` — the lunge travels (sim.js `dashStepGeneric`): 8 m at 20 m/s
+       is 0.4 s of a body crossing the floor with its heading locked, which a
+       leap can pass over and a spectator can follow. The premium pays for a
+       shape that has to reach its target and is stopped by the first block. */
+    windup: 0.30, recover: 0.26, distance: 8.0, dashSpeed: 20, needsLos: true,
     doc: 'the caster charges forward and hits everything on the way; it runs along the ground and misses anyone who has left it',
   },
   blink: {
-    id: 'blink', ru: 'Blink', klass: SELF, cost: 5,
+    id: 'blink', ru: 'Blink', klass: SELF, cost: 7, cooldown: 3.0,
     silhouette: 'two rings, one where it left and one where it arrived',
-    windup: 0.0, recover: 0.18, distance: 7.5, iframes: 0.28, needsLos: false,
+    /* 6.5 m and 0.25 s at a three-second rhythm: at 7.5 m and 0.28 s the blink
+       answered every attack in the grammar every time it was ready. */
+    windup: 0.0, recover: 0.18, distance: 6.5, iframes: 0.25, needsLos: false,
     doc: 'instant displacement with a moment of invulnerability',
   },
   self: {
-    id: 'self', ru: 'Aura', klass: SELF, cost: 3,
+    id: 'self', ru: 'Aura', klass: SELF, cost: 4, cooldown: 3.0,
     silhouette: 'a shell around the body',
     windup: 0.30, recover: 0.18, needsLos: false,
     doc: 'applied to the caster',
@@ -223,29 +264,32 @@ export const DELIVERIES = table({
    * нести атаку. Атомы срабатывают на отрыве, то есть «прыжок со щитом» —
    * это прыжок, на котором щит уже стоит.
    *
-   * ЦЕНА 5, И ЭТО ЗАМЕР, А НЕ АНАЛОГИЯ.
+   * ЦЕНУ НАЗНАЧАЕТ ПАНЕЛЬ (8 по проходу v9, 07.09) — А ВОТ ЧТО ОНА ПОКУПАЕТ. СТАРОЕ ОБОСНОВАНИЕ ССЫЛАЛОСЬ НА АРИФМЕТИКУ,
+   * КОТОРОЙ БОЛЬШЕ НЕТ.
    *
-   * Сначала стояло 4 — «как у рывка: обе доставки покупают перемещение».
-   * Аналогия неверна, и видно это через кулдаун, который выводится из цены
-   * (`cooldownPoints × 0.9`):
+   * Здесь стоял вывод через кулдаун, считавшийся из цены (`cooldownPoints ×
+   * 0.9`: «прыжок·очищение 7 очков → 6.30 с против конус·урон 11 очков →
+   * 9.90 с»). С 07.09 кулдаун принадлежит ДОСТАВКЕ, а не цене: у прыжка он
+   * 3.0 с, как у луча, зоны, рывка, мигания и ауры, и никакая цена его не
+   * двигает. Прежний довод — «контрмера перезаряжается в полтора раза быстрее
+   * того, что она контрит» — на этих числах просто не существует.
    *
-   *     прыжок·очищение     4+3 = 7  очков →  6.30 с
-   *     конус·урон          4+7 = 11 очков →  9.90 с
-   *     зона·урон           5+7 = 12 очков → 10.80 с
+   * Цена — из прибора (см. таблицу цен выше), и вот на чём она стоит. Прыжок покупает 0.55 с вне
+   * досягаемости ТРЁХ доставок из девяти (`GROUND_DELIVERIES`) — то есть
+   * уклонение, а не перемещение, — и по SELF-классу может нести сверх этого
+   * щит, лечение или очищение. Это то же, что покупает мигание (6: 0.25 с
+   * неуязвимости ко ВСЕМУ и 6.5 м), на ступень дешевле: окно шире, но уходом
+   * от луча или снаряда оно не является.
    *
-   * То есть контрмера перезаряжалась в полтора раза быстрее того, что она
-   * контрит: на КАЖДЫЙ входящий наземный каст прыжок был готов. Уклонение,
-   * доступное всегда, — это не выбор момента, а налог на три доставки из
-   * девяти.
-   *
-   * При цене 5 самый дешёвый прыжок стоит 8 очков и готов раз в 7.2 с, самый
-   * частый наземный урон — раз в 9.9 с. Уклонение остаётся возможным на
-   * большинстве кастов и перестаёт быть автоматическим, а цена встаёт в один
-   * ряд с двумя другими доставками, которые покупают неуязвимость и площадь:
-   * мигание (5) и зона (5).
+   * D160: бесплатного прыжка ни у кого нет. Уклонение — покупка, и пять очков
+   * платят именно за него; кто его не купил, уходит шагом в сторону. Верна ли
+   * эта пятёрка, скажет панель `tools/atombalance.mjs`.
    */
   jump: {
-    id: 'jump', ru: 'Leap', klass: SELF, cost: 5,
+    /* 3.0 like the other self deliveries: at 2.4 s the leap was the cheapest
+       carrier of a heal or a shield in the grammar AND a dodge, and the first
+       pricing pass put leap:heal and leap:shield in four of the top five kits. */
+    id: 'jump', ru: 'Leap', klass: SELF, cost: 6, cooldown: 3.0,
     silhouette: 'a leap arc and a shadow circle under the body',
     /*
      * ЗАМАХ 0.06, А НЕ 0.10 У ЗАХАРДКОЖЕННОГО ПРЫЖКА, И ЭТО ЗАМЕР.
@@ -308,84 +352,158 @@ export const DELIVERIES = table({
  * зеркально, на симметричной арене одним и тем же мозгом. Отдельным участником
  * стоит «ничего» — набор без третьего умения, — и он даёт абсолютную привязку.
  *
- * ТЕКУЩИЙ ЗАМЕР: один прогон на ПОЛНОСТЬЮ починенном приборе, две доставки по
- * 1260 боёв, кулдаун фиксирован. Столбец «лучший» — максимум по доставкам.
+ * ТЕКУЩИЙ ЗАМЕР (07.09, проход v11): `tools/atombalance.mjs` на панели из
+ * четырёх пилотов (kit-stub, rusher, kiter, controller), 480 случайных
+ * законных наборов × 24 боя каждый (11 520 матчей), ридж-регрессия винрейта
+ * на состав набора БЕЗ признака «цена» (D197), в мире после D201 (hp 210…360).
+ * Столбец «лучший» — ценность атома (п.п. винрейта за единицу), отображённая
+ * в 0…100 между худшим и лучшим; «панель» — сама ценность ± её ошибка. Цены —
+ * те, при которых проход был сыгран (v10b, применённый с демпфированием ½),
+ * плюс четыре сдвига на пол по его же вердикту: Stun, Blind, Pull, Boost 2 → 1.
+ * `reports/combat/atombalance-panel-v11.md`.
  *
- *     атом            лучший   снаряд   зона
- *     Damage            100%      97      100
- *     Burn               90%      90       82
- *     Heal               72%      57       72
- *     Stun               65%      65       35
- *     Knockback          61%      50       61
- *     Silence            61%      26       61
- *     Root               59%      59       43
- *     Shield             52%      52       28
- *     Wall               51%      44       51
- *     Weaken             51%      49       51
- *     Boost              49%      43       49
- *     Blind              45%      29       45
- *     Pull               39%      29       39
- *     Cleanse            30%      30       17
+ *     атом            лучший   панель
+ *     Damage           100%   +18.0 ± 1.2
+ *     Burn              63%   +9.7 ± 1.2
+ *     Heal              50%   +6.7 ± 1.0
+ *     Shield            37%   +3.8 ± 0.9
+ *     Cleanse           27%   +1.6 ± 0.8
+ *     Silence           22%   +0.5 ± 1.0
+ *     Knockback         20%   -0.1 ± 1.0
+ *     Weaken            14%   -1.4 ± 1.4
+ *     Root              13%   -1.5 ± 0.8
+ *     Stun              11%   -2.0 ± 1.0
+ *     Blind             10%   -2.4 ± 1.0
+ *     Pull               8%   -2.7 ± 1.0
+ *     Wall               7%   -2.9 ± 0.8
+ *     Boost              0%   -4.5 ± 1.4
  *
- * ЕДИНОЙ ПРИВЯЗКИ НЕТ: набор из двух умений берёт 30.4% через снаряд и 14.9%
- * через зону. Это не шум — это то же самое, что и расхождение атомов: сколько
- * стоит «третье умение», зависит от того, какие два уже есть.
+ * ГЛАВНОЕ ЧИСЛО — ЦЕННОСТЬ НА ОЧКО, а не корреляция. Плоские цены значат, что
+ * очко бюджета покупает одинаковый винрейт, где бы его ни потратили. По
+ * четырнадцати эффектам разброс (sd) шёл 1.73 (v5) → 1.46 (v6) → 1.30 (v7)
+ * → 1.21 (v8) → 1.11 (v9) в мире 180 hp и 1.27 (v10b) → 1.30 (v11) в мире
+ * 240 hp (D201: панель пилотов там стоит дольше); `tools/checkprices.mjs`
+ * держит его как храповик внутри одного мира.
+ * Урон упирается в потолок цены 10 и всё ещё покупает +2.0 п.п. за очко —
+ * это единственная сознательная неплоскость: урон — обязательная часть
+ * любого набора (L2), и его цена ограничена бюджетом, а не прибором.
+ * Корреляция «цена ↔ ценность» говорит только о ПОРЯДКЕ цен.
  *
- * ── ПОЧЕМУ ЗДЕСЬ ОДИН ПРОГОН, А НЕ УСРЕДНЁННЫЕ ДВА ────────────────────────
- *
- * Прогонов было два, и я усреднил их — это была ошибка. Первый снят до того,
- * как в эталонном мозге починили расчёт дальности (он не прибавлял радиус
- * цели, хотя симуляция прибавляет). Усреднять замер на сломанном приборе с
- * замером на исправном — значит наполовину сохранить поломку.
- *
- * Здесь стоит второй, снятый на приборе после всех починок.
- *
- * Про «устойчивость проверена повтором» здесь стояло число 0.82, и оно было
- * бессмысленным: команда детерминирована (сиды `900 + s*7919`), повтор даёт
- * побитово те же числа, то есть не проверяет НИЧЕГО. Устойчивость таблицы
- * проверяется только расширением выборки — другим числом сидов, — и делать это
- * надо той же командой с другим `--rounds`, а не повтором той же.
- *
- * ── ЧТО БЫЛО СЛОМАНО В ПРИБОРЕ ────────────────────────────────────────────
- *
- * Эталонный мозг выбирал дистанцию по САМОЙ ДАЛЬНЕЙ доставке в наборе и
- * пропускал умения, до которых не достаёт. Конус (3.4 м) в наборе с лучом
- * (24 м) не применялся ни разу. Замерено: у 80.2% случайных законных наборов
- * было мёртвое умение, мертвы 37.4% всех умений, и в основе прежней лиги
- * атомов мёртв был конус — значит та таблица снята одним умением вместо двух.
- * После починки мёртвых 10.9%.
- *
- * Второе: мозг считал дальность без радиуса цели, хотя `deliver.js` его
- * прибавляет.
+ * ЧТО СДВИНУЛ ПЕРВЫЙ КРУГ ПРАВОК (compile.js: доля делится только между
+ * атомами С ВЕЛИЧИНОЙ; контроль зоны кладётся один раз за каст целиком;
+ * горение продлевается, а не обновляется; стена 5 с и прозрачна для своих
+ * выстрелов) и ВЕЛИЧИНЫ (D200: корень 2.2 с, толчок 8, ослабление ×0.5,
+ * усиление ×1.6 на 4 с, навес 18 м/с и круг 2.2 м, замах рывка 0.30 с, круг
+ * поля 2.6 м, замах луча 0.5 с): ловушек v6 было пять (root, knock, weaken,
+ * boost, lob), в v9 — две, обе на полу цены (knock, weaken). Население
+ * панели по-прежнему доходит до 30-секундного пожара в 68 % боёв — четыре
+ * пилота кайтят и уворачиваются; лестница живых умов — 5–8 % (spectate).
  *
  * ── ЦЕНЫ И ОДНО НАЗВАННОЕ ИСКЛЮЧЕНИЕ ──────────────────────────────────────
  *
- * По лучшему случаю (D72), ранги отображены в 3…7. Корреляция цены с лучшим случаем 0.91.
+ * По лучшему случаю (D72), ранги отображены в 1…10. Корреляция цены с лучшим случаем 0.88.
  *
- * Исключение: ослепление, немота и стена получают на очко больше своего ранга.
- * Эталонный мозг не строит планов, а эти три атома стоят ровно столько,
- * сколько планов ими можно построить. Это надбавка с причиной; прежняя
- * формулировка («они ниже привязки») была ложной и снята (D99).
+ * Исключений больше нет (07.09): панель из четырёх пилотов строит планы —
+ * controller держит контроль под чужой замах, kiter ставит стену под луч —
+ * и цена ослепления, немоты и стены снята с их измеренной ценности, а не с
+ * надбавки за «планы, которые можно построить».
  *
  * Как перепроверить — ОБЯЗАТЕЛЬНО после каждой правки цен И после любой правки
- * эталонного мозга, потому что мозг это часть прибора (D109):
- *   for v in bolt zone; do node tools/kitbalance.mjs --atoms --via=$v; done
+ * пилотов панели, потому что пилоты это часть прибора (D109):
+ *   node tools/atombalance.mjs --n=240 --games=24 --pilots=stub,rusher,kiter,controller
+ */
+/*
+ * ── MAGNITUDES AT A THREE-SECOND RHYTHM ─────────────────────────────────────
+ *
+ * Every ability is usable about ten times in a fight instead of twice, so every
+ * per-cast number was re-scaled against a design pace rather than kept.
+ *
+ * WHAT FOLLOWS IS NOT A TABLE OF NUMBERS. The table is the code below, and a
+ * second copy of it in prose is a second source of truth that goes stale on the
+ * first tuning pass. It did: this comment listed "damage 26→14, burn 5×3, heal
+ * 10, shield 20 for 5 s, boost ×1.3 / weaken ×0.75 for 2.5 s, wall 3 s" under
+ * the heading "STARTING values", while the fields below read 24 / 7 for 3 s /
+ * cap 16 / 12 for 2.5 s / ×1.4 and ×0.65 for 2.8 s / 5 s. A reader cannot tell
+ * a stale list from a live one, so there is no list.
+ *
+ * What is worth writing down is the SHAPE of each rule, which does not move
+ * when a magnitude does:
+ *
+ *   damage   the yardstick every other piece is measured against. The shape's
+ *            premium (`power` on the delivery) multiplies this and burn, and
+ *            nothing else — an impulse or a shield carried by a fan is the
+ *            same impulse and the same shield.
+ *   burn     one hit's worth of harm spread over its duration. It EXTENDS,
+ *            never stacks: a second fire adds its own length to what is still
+ *            burning, capped at twice that length (effects.js). A FIELD's
+ *            ticks renew instead — standing in fire is one fire — and the
+ *            field's rate is `ZONE_TOTAL_SHARE` of the atom's with one second
+ *            of afterburn (compile.js).
+ *   heal     a share of what is MISSING, floored and capped: self-limiting, so
+ *            it rewards healing when hurt and gives almost nothing to a mind
+ *            that heals on cooldown at full health.
+ *   shield   expires before its own cooldown. A shield is re-cast, not held.
+ *   stun/root/silence/blind  each arms its CLASS's immunity the moment it
+ *            lands, for `duration + immune` seconds (effects.js): a control is
+ *            a moment the caster chooses, never a rhythm it holds. In a field
+ *            it lands once per cast per body, at whole duration.
+ *   knock/pull  an impulse in m/s on the knockback slot, not a distance: the
+ *            distance is mag² ÷ (2 · KNOCKBACK_DRAG) and follows from it.
+ *   boost/weaken  shorter than the cooldown that carries them, or they stop
+ *            being an ability and become a body stat.
+ *   wall     one per caster, and it now outlives every cooldown that can build
+ *            it — the only lever a piece already at the price floor has left.
+ *
+ * THE LIVE NUMBERS ARE THE FIELDS BELOW. The evidence behind them is
+ * `reports/combat/atombalance-panel-v5.md` — the pass the current prices were
+ * set from — the three passes before it, and `atombalance-panel-r1.md`, the
+ * first pass after the round-1 fixes (same prices, the magnitudes above), which
+ * is the one the price table in the comment before `EFFECTS` now quotes. A
+ * magnitude no price can fix (a
+ * piece with a significant negative value under every pilot) is re-scaled and
+ * the run repeated: `docs/COMBAT.md` §5.
  */
 export const EFFECTS = table({
-  damage: { id: 'damage', ru: 'Damage', klass: TARGETED, cost: 7, vfx: 'a flash of impact on the target', mag: 26 },
-  burn: { id: 'burn', ru: 'Burn', klass: TARGETED, cost: 7, vfx: 'a smouldering trail on the body of the target', mag: 7.0, duration: 4 },
-  knock: { id: 'knock', ru: 'Knockback', klass: TARGETED, cost: 5, vfx: 'a wave from the point of impact', mag: 2.4 },
-  pull: { id: 'pull', ru: 'Pull', klass: TARGETED, cost: 3, vfx: 'lines converging on the caster', mag: 3.0 },
-  stun: { id: 'stun', ru: 'Stun', klass: TARGETED, cost: 6, vfx: 'a ring above the head of the target', duration: 0.9 },
-  root: { id: 'root', ru: 'Root', klass: TARGETED, cost: 5, vfx: 'clamps at the feet of the target', duration: 1.4 },
-  shield: { id: 'shield', ru: 'Shield', klass: SELF, cost: 4, vfx: 'a shell tracing the silhouette of the body', mag: 40, duration: 5 },
-  heal: { id: 'heal', ru: 'Heal', klass: SELF, cost: 6, vfx: 'rising sparks', mag: 26 },
-  cleanse: { id: 'cleanse', ru: 'Cleanse', klass: SELF, cost: 3, vfx: 'a shell shrugged off' },
-  blind: { id: 'blind', ru: 'Blind', klass: TARGETED, cost: 5, mind: true, vfx: 'interference over the silhouette of the target', duration: 2.5 },
-  silence: { id: 'silence', ru: 'Silence', klass: TARGETED, cost: 6, mind: true, vfx: 'a struck-through cast sign', duration: 2.2 },
-  wall: { id: 'wall', ru: 'Wall', klass: WORLD, cost: 5, vfx: 'a slab growing out of the floor', duration: 5, size: [4, 1] },
-  boost: { id: 'boost', ru: 'Boost', klass: SELF, cost: 4, needsChannel: true, vfx: 'a glow along the channel', mag: 1.35, duration: 5 },
-  weaken: { id: 'weaken', ru: 'Weaken', klass: TARGETED, cost: 4, needsChannel: true, vfx: 'a dimming along the channel', mag: 0.7, duration: 4 },
+  damage: { id: 'damage', ru: 'Damage', klass: TARGETED, cost: 10, vfx: 'a flash of impact on the target', mag: 24 },
+  burn: { id: 'burn', ru: 'Burn', klass: TARGETED, cost: 10, vfx: 'a smouldering trail on the body of the target', mag: 8.0, duration: 3 },
+  /* `mag` is an impulse in m/s on the knockback slot, decaying at
+     KNOCKBACK_DRAG (config.js): it moves a body mag² ÷ (2 · drag) metres —
+     2.0 m for the knock, 2.35 m for the pull — whatever the body weighs or wants. */
+  knock: { id: 'knock', ru: 'Knockback', klass: TARGETED, cost: 1, vfx: 'a wave from the point of impact', mag: 10.0 },
+  pull: { id: 'pull', ru: 'Pull', klass: TARGETED, cost: 1, vfx: 'lines converging on the caster', mag: 6.5 },
+  /*
+   * `immune` — seconds of immunity to the SAME control the target keeps
+   * after it expires (effects.js). At cooldowns of three seconds and under a
+   * control that could be re-applied on cooldown is a fighter who never
+   * plays; the window makes every stun a MOMENT the caster has to choose,
+   * not a rhythm it can hold. Sized so that the control plus its immunity is
+   * longer than the fastest cooldown that can carry it.
+   */
+  stun: { id: 'stun', ru: 'Stun', klass: TARGETED, cost: 1, vfx: 'a ring above the head of the target', duration: 1.0, immune: 3.0 },
+  root: { id: 'root', ru: 'Root', klass: TARGETED, cost: 2, vfx: 'clamps at the feet of the target', duration: 2.2, immune: 3.0 },
+  shield: { id: 'shield', ru: 'Shield', klass: SELF, cost: 9, vfx: 'a shell tracing the silhouette of the body', mag: 12, duration: 2.5 },
+  /* A heal gives `share` of the hp that is missing, never less than `floor`,
+     never more than `mag` (effects.js): it rewards the mind that heals when
+     it is hurt and gives almost nothing to one that heals on cooldown. */
+  /* 9% of the missing hp, cap 12 (was 12% / 16, fix round 1): with the share
+     rule no longer taxing controls, a heal+shield aura at 0.85 share still
+     gave up to 13.6 + 10.2 hp per 3 s ≈ 7.9 hp/s — one sustain slot cancelled
+     one bolt of damage (≈ 8.2 dps), and two sustain kits could not finish
+     each other: the C-vs-D mirror reached the 30 s burn clock in 100 % of
+     fights at a mean 42 s (`reports/combat/review-r1-balance.md` §3). A heal
+     is still a share of what is missing; it is just a smaller one. */
+  heal: { id: 'heal', ru: 'Heal', klass: SELF, cost: 10, vfx: 'rising sparks', mag: 12, floor: 4, share: 0.09 },
+  cleanse: { id: 'cleanse', ru: 'Cleanse', klass: SELF, cost: 5, vfx: 'a shell shrugged off' },
+  blind: { id: 'blind', ru: 'Blind', klass: TARGETED, cost: 1, mind: true, vfx: 'interference over the silhouette of the target', duration: 2.2, immune: 3.0 },
+  silence: { id: 'silence', ru: 'Silence', klass: TARGETED, cost: 3, mind: true, vfx: 'a struck-through cast sign', duration: 1.8, immune: 3.0 },
+  /* 5 s (was 4) and transparent to its own caster's beam, bolt and line of
+     sight (deliver.js `shotSolids`, fix round 1): a wall grows in front of its
+     caster, so on an attack ability it blocked the caster's own next shot —
+     an atom that cancelled itself, −7.3 pp at cost 1, which no price could
+     fix. Cover you shoot from behind, still a solid for every body. */
+  wall: { id: 'wall', ru: 'Wall', klass: WORLD, cost: 1, vfx: 'a slab growing out of the floor', duration: 5, size: [4, 1] },
+  boost: { id: 'boost', ru: 'Boost', klass: SELF, cost: 1, needsChannel: true, vfx: 'a glow along the channel', mag: 1.6, duration: 4.0 },
+  weaken: { id: 'weaken', ru: 'Weaken', klass: TARGETED, cost: 1, needsChannel: true, vfx: 'a dimming along the channel', mag: 0.4, duration: 2.8 },
 });
 
 /**
@@ -393,13 +511,13 @@ export const EFFECTS = table({
  * стоит больше канала, который двигает число.
  */
 export const CHANNELS = table({
-  speed: { id: 'speed', ru: 'Speed', cost: 2 },
-  turn: { id: 'turn', ru: 'Turning', cost: 2 },
+  speed: { id: 'speed', ru: 'Speed', cost: 3 },
+  turn: { id: 'turn', ru: 'Turning', cost: 1 },
   damage: { id: 'damage', ru: 'Damage', cost: 3 },
-  armor: { id: 'armor', ru: 'Armour', cost: 3 },
-  cooldown: { id: 'cooldown', ru: 'Cooldown', cost: 3 },
-  range: { id: 'range', ru: 'Range', cost: 2 },
-  vision: { id: 'vision', ru: 'Vision', cost: 4, mind: true },
+  armor: { id: 'armor', ru: 'Armour', cost: 2 },
+  cooldown: { id: 'cooldown', ru: 'Cooldown', cost: 10 },
+  range: { id: 'range', ru: 'Range', cost: 1 },
+  vision: { id: 'vision', ru: 'Vision', cost: 1, mind: true },
 });
 
 /**
@@ -592,6 +710,10 @@ export const GROUND_DELIVERIES = new Set(['cone', 'zone', 'dash']);
  *     всего законных умений                              9 243
  *     самое дорогое: beam/damage+burn+boost/vision — 32 очка
  *
+ * (Числа этого перебора — те, при которых бюджет выбирали. Живой перебор
+ * сегодня даёт 8 691: см. таблицу ниже и `tools/checkgrammar.mjs`, который
+ * его и повторяет.)
+ *
  *     бюджет   допущено   из них трёхэффектных   доля
  *         16        559                      0    0%
  *         18      1 198                      0    0%
@@ -631,13 +753,51 @@ export const GROUND_DELIVERIES = new Set(['cone', 'zone', 'dash']);
  * Числа держит `tools/checkgrammar.mjs`: он повторяет этот перебор на каждом
  * прогоне и падает, если они разъехались.
  */
-export const SKILL_BUDGET = 22;
+/*
+ * ── RE-DERIVED 07.09 UNDER THE NEW WEIGHTS ─────────────────────────────────
+ *
+ * The 07.09 re-pricing (measured by `tools/atombalance.mjs` on the four-pilot
+ * panel) lowered most control atoms and raised damage, heal and shield. The
+ * enumeration under the new prices:
+ *
+ *     всего законных умений                              8 691
+ *     самое дорогое                                     31 очко
+ *
+ *     бюджет   допущено   из них трёхэффектных   доля
+ *         20      6 520                  4 875   75%
+ *         22      7 593                  5 940   78%   ← выбран
+ *
+ * (Пересчитано 07.09: `validateSkill` перестала пропускать ослабление по
+ * каналу «откат» — оно держало плитку дольше трёх секунд, не показывая этого
+ * ни одной цифрой на экране. Минус 552 законных умения; доли трёхэффектных,
+ * на которых стоит выбор потолка, не сдвинулись ни на пункт.)
+ *
+ * The ceiling barely binds now: the measured prices put every control at
+ * 1–3 points, so a third effect is cheap and its cost is paid in SHARE
+ * (0.7 of each magnitude, compile.js), not in points. That is the intended
+ * trade — the ceiling exists to stop the two dear pieces, damage (9) and
+ * burn (7), from stacking with sustain on one ability.
+ *
+ * 18 would have kept the old "the third effect is rare" share, and it was
+ * measured against the stored kits: 18 creatures out of 78 would have been
+ * over the ceiling — a shield+heal aura costs 19, a fan of damage+burn 22.
+ * The rule that decides is the founder's (07.09): an unbalanced set may
+ * exist; a player's set must not silently stop working. 22 keeps every stored
+ * ability legal under the measured prices (damage 9, burn 7 — the two pieces
+ * the panel valued highest), and with the gentler effect share (compile.js) a
+ * third effect at 0.7 is a choice, not a trap. `tools/checkgrammar.mjs`
+ * re-runs this enumeration and fails when it drifts.
+ */
+export const SKILL_BUDGET = 28;
 /**
  * Бюджет всего кита. Не 3 × SKILL_BUDGET: три максимальных скилла (66) — это
  * набор без единого выбора. 52 значит «три крепких по 17 или один дорогой и
  * два поскромнее», то есть решение, а не сложение.
  */
-export const KIT_BUDGET = 52;
+/* 56 holds every stored set under the measured prices (the dearest, a
+   STONE GOLEM of three two-effect abilities, sits at 55), and 2.5 abilities
+   at the ceiling is still not three. */
+export const KIT_BUDGET = 60;
 /** Каждое существо несёт ровно 3 скилла (зафиксировано 28.08). */
 export const KIT_SIZE = 3;
 
@@ -687,6 +847,37 @@ export function validateSkill(skill) {
     bad.push({ code: 'channel', ru: 'Boost and Weaken have to name a channel' });
   }
   if (!needsChannel && skill.channel) bad.push({ code: 'channel_extra', ru: 'a channel is named, but nothing here turns it' });
+
+  /*
+   * WEAKEN CANNOT TURN THE COOLDOWN CHANNEL, AND BOOST STILL CAN.
+   *
+   * The founder's rule is absolute: no ability ever waits longer than three
+   * seconds. Every chip in the game obeys it — and a weaken on the cooldown
+   * channel broke it INVISIBLY. `sim.js` counts a cooldown down at
+   * `DT × channelMul(f, 'cooldown')`, so ×0.65 for 2.8 s does not raise the
+   * number on the tile, it makes the tile count slower: measured with a
+   * bolt:weaken/cooldown against a plain kit over six seeds, a 3 s aura was
+   * still on cooldown 4.60 s after the cast, and 1 587 of 11 687 cooling ticks
+   * ran past cooldown + one tick. The chip never read above 3.000, so nothing
+   * on screen and no gate could see the rule break.
+   *
+   * The alternative — apply the multiplier to the STARTING value of the next
+   * cooldown and clamp to 3 s — keeps the piece at the cost of a second rule
+   * about when a channel is read. Refused: a promise the player can check on
+   * the tile is worth more than one weaken/channel pair, and the pair is worth
+   * nothing anyway (weaken measured −4.7 in four passes running). Checked
+   * against the database before the rule was written: 0 of 78 stored creatures
+   * carry any ability on the cooldown channel at all, so nothing legal today
+   * stops working.
+   *
+   * Boost keeps it. A cooldown that counts down FASTER cannot break a ceiling.
+   */
+  if (skill.channel === 'cooldown' && eff.includes('weaken')) {
+    bad.push({
+      code: 'channel_weaken_cooldown',
+      ru: 'Weaken cannot turn the Cooldown channel: it would hold a tile past the three-second ceiling. Boost may.',
+    });
+  }
 
   /*
    * L1 — первое из двух исключений в грамматике (второе — E1 ниже).

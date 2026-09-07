@@ -49,6 +49,61 @@ export function kitOf(c) {
 }
 
 /**
+ * ЧЕМ ДЕРЁТСЯ БОЕЦ БЕЗ КИТА — РЕШАЕТ ЕГО МОЗГ, А НЕ ЦВЕТ СТОРОНЫ.
+ *
+ * Третий вход матча рядом с `kitOf` и `buildOf`, и появился он по той же
+ * причине, что и они: величина, принадлежащая существу, раздавалась стороной.
+ *
+ * Существо с `kit_active = 0` дерётся эталонной фикстурой §1, и фикстур две —
+ * `laser/blink/jump` и `smash/charge/jump`. Какая достанется, решал цвет
+ * (`referenceTagOf(side)`), а цвет — это чётность сида, то есть монетка. Мозг
+ * при этом написан ровно против ОДНОГО набора и зовёт его имена руками.
+ *
+ * Следствие видно на экране: на «чужом» цвете `p.self.skills` показывает
+ * незнакомые глаголы, `api.ready('laser')` всегда false, и туша ходит весь
+ * бой. Замер по 1200 строкам текущей версии констант: 410 сторон из 2400 не
+ * применили ничего, и 335 из них — ровно этот случай.
+ *
+ * @returns {'octopus'|'gorilla'|null} null у существа с китом: ему фикстура не
+ *   нужна вовсе, и подсовывать ей тег значило бы обещать умения, которых нет.
+ */
+export function refTagOf(c) {
+  if (!c || c.kit_active) return null;
+  const stored = c.reference_tag;
+  if (stored === 'octopus' || stored === 'gorilla') return stored;
+  /* Колонки может не быть (строка старше миграции) или её могли не заполнить.
+     Тогда читаем ту же правду из первоисточника — из самого мозга. Это дороже
+     одного поля и всё равно ничтожно рядом с боем (~70 мс). */
+  return inferReferenceTag(c.brain_source);
+}
+
+/**
+ * Какой эталонный набор мозг зовёт ПО ИМЕНИ.
+ *
+ * Считаются только вызовы `api.use/ready/cooldown('имя')` — то есть глаголы,
+ * которые мозг отдаёт СЕБЕ. Простое «упоминается ли слово laser в тексте» не
+ * годится и было проверено: все 21 живых мозга упоминают оба набора, потому
+ * что читают ЧУЖИЕ умения из перцепции (`enemy.casting.skill === 'charge'`) и
+ * пишут о них в комментариях. По вызовам разделение чистое: 21 из 21.
+ *
+ * Обе половины разом или ни одной — не гадаем, отдаём null: такой мозг
+ * называет вызывающая сторона, а не эвристика.
+ */
+export function inferReferenceTag(source) {
+  if (!source || typeof source !== 'string') return null;
+  const re = /\bapi\s*\.\s*(?:use|ready|cooldown)\s*\(\s*(['"`])([a-zA-Z0-9_$]+)\1/g;
+  let octopus = 0; let gorilla = 0; let m;
+  while ((m = re.exec(source)) !== null) {
+    if (m[2] === 'laser' || m[2] === 'blink') octopus++;
+    else if (m[2] === 'smash' || m[2] === 'charge') gorilla++;
+  }
+  if (octopus && gorilla) return null;
+  if (octopus) return 'octopus';
+  if (gorilla) return 'gorilla';
+  return null;
+}
+
+/**
  * Телосложение существа — ОДНО место, где строка базы превращается в числа матча.
  *
  * Ровно та же причина, по которой рядом живёт `kitOf`: телосложение задаёт
@@ -193,6 +248,9 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
         /* Телосложение — такой же вход матча, как набор и сид: от него
            зависят здоровье, радиус, скорость, разворот и масса. */
         builds: { [aSlot]: buildOf(a), [bSlot]: buildOf(b) },
+        /* И эталонный набор бойца без кита — тоже вход, и тоже его
+           собственный. См. `refTagOf`: цвет стороны его больше не решает. */
+        referenceTag: { [aSlot]: refTagOf(a), [bSlot]: refTagOf(b) },
       },
     );
     result = out.result;
@@ -251,7 +309,13 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
     d.a, d.b, aAfter, bAfter,
     /* Имена сторон уходят в базу НЫНЕШНИЕ. Старые строки остаются как есть и
        читаются через мост `sideResult` (`creatures.js`). */
-    JSON.stringify({ [aSlot]: result[aSlot], [bSlot]: result[bSlot], log: keepLog(result.log) }),
+    /* `summary` считается по ПОЛНОМУ логу, до обрезки: `keepLog` выбрасывает
+       ровно ту середину, в которой стоят почти все попадания и отказы. */
+    JSON.stringify({
+      [aSlot]: result[aSlot], [bSlot]: result[bSlot],
+      summary: summariseLog(result.log, [aSlot, bSlot]),
+      log: keepLog(result.log),
+    }),
     /* `training` приходит от вызывающего: он один знает, был ли соперник
        ИЗМЕРЕННЫМ спарринг-партнёром или просто библиотечным. Пока не знает —
        старое поведение, чтобы не переписывать историю задним числом. */
@@ -269,6 +333,9 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
 
   return {
     id, seed, aSlot, bSlot,
+    /* Трансляция обязана прогнать ТОТ ЖЕ бой: без тега зрелищный прогон отдал
+       бы бойцу без кита набор по цвету, то есть другой бой под тем же id. */
+    referenceTag: { [aSlot]: refTagOf(a), [bSlot]: refTagOf(b) },
     winner: winnerSlot === null ? null : (winnerSlot === aSlot ? a.id : b.id),
     reason: result.reason, seconds: result.seconds,
     deltas: { [a.id]: d.a, [b.id]: d.b },
@@ -294,16 +361,166 @@ export async function playMatch(db, a, b, deps, { training = null } = {}) {
  * Правило: ВСЕ реплики (их не больше двадцати по 90 знаков, ~2 КБ), плюс
  * начало и конец событий. Середина плотного боя — это повторы, и их не жаль.
  */
-function keepLog(log) {
+/*
+ * ── СКОЛЬКО ЛОГА ВЛЕЗАЕТ, И ПОЧЕМУ ИМЕННО СТОЛЬКО ────────────────────────────
+ *
+ * Правило «голова 20 + хвост 30» выбрасывало СЕРЕДИНУ, а середина — это сам
+ * бой: в бою на 34 секунды здоровье уезжало со 170 до 38 внутри окна, в
+ * котором лежали одни реплики. Из-за этого ни экран «что оно думало», ни
+ * разбор постфактум не могли прочесть ничего, кроме начала и конца, а
+ * «мёртвый участок», посчитанный по такой строке, был артефактом обрезки.
+ *
+ * Порог выведен из замера, а не назначен. 250 последних боёв лестницы
+ * переиграны в одном процессе (`runMatch`, те же сиды, наборы, тела и мозги):
+ * полный лог — медиана 3.2 КБ, p95 5.9 КБ, максимум 7.9 КБ; событий в бою —
+ * медиана 49, p95 101, максимум 146. То есть при 15 КБ НЕ ОБРЕЗАЕТСЯ НИ ОДИН
+ * бой из 250, а порог остаётся страховкой от боя, какого мы ещё не видели, а
+ * не повседневным правилом. Прежнее «голова 20 + хвост 30» теряло хоть одно
+ * событие у 98 боёв из 250 и в среднем 8 событий на такой бой — и терял он
+ * ровно середину, ту, где сходится вся драка.
+ *
+ * Цена: `result_json` было в среднем 3.75 КБ на матч, стало 4.45 КБ — плюс
+ * 0.70 КБ (×1.19), из которых 227 байт это сама сводка. Прирост скромный
+ * ровно потому, что прежнее правило и так держало полсотни строк; платим мы
+ * за середину длинных боёв, а не за все бои разом. При нынешнем темпе
+ * (~1 бой/с) это около +60 МБ в сутки поверх прежних ~320 МБ. Правило
+ * удаления старых матчей в продукте по-прежнему отсутствует (см. шапку
+ * `tools/backup.mjs`), и это решение придётся принять раньше на пятую часть.
+ */
+export const LOG_BUDGET_BYTES = Number(process.env.AIRENA_LOG_BUDGET || 15_000);
+
+/**
+ * Подряд идущие ОДИНАКОВЫЕ тики урона — в одну строку со счётчиком.
+ *
+ * Зона живёт пять тиков и пишет пять строк `damage` с одним и тем же
+ * (кто, кому, чем). Для зрителя это одно событие — «стоял в огне», — и
+ * именно такие строки съедали лог, ради которого выбрасывалось всё
+ * остальное. Схлопывается ТОЛЬКО подряд идущее: любое событие другого типа
+ * между тиками означает, что в бою что-то произошло, и разрывает серию.
+ *
+ * Первая строка серии остаётся НЕТРОНУТОЙ — те же `t`, `amount`, `hp`, — а
+ * счётчик приезжает добавочными полями. Читатель, который про них не знает
+ * (лента, разбор боя), видит обычную строку урона и не врёт зрителю большим
+ * числом; читатель, который знает, печатает «×5».
+ */
+function collapseTicks(log) {
+  const out = [];
+  /* Открытые серии текущего «блока» подряд идущих `damage`: ключ → строка в
+     `out`. Любое событие другого типа закрывает все серии разом. */
+  let runs = new Map();
+  for (const e of log) {
+    if (!e || typeof e !== 'object') continue;
+    if (e.type !== 'damage') { runs = new Map(); out.push(e); continue; }
+    const key = `${e.who}|${e.target}|${e.skill}`;
+    const open = runs.get(key);
+    if (open) {
+      open.n = (open.n || 1) + 1;
+      open.until = e.t;
+      open.total = Math.round(((open.total ?? open.amount ?? 0) + (e.amount ?? 0)) * 1000) / 1000;
+      continue;
+    }
+    const copy = { ...e };
+    runs.set(key, copy);
+    out.push(copy);
+  }
+  return out;
+}
+
+const bytesOf = (a) => Buffer.byteLength(JSON.stringify(a), 'utf8');
+
+/**
+ * Что из лога матча остаётся жить.
+ *
+ * `log.slice(-40)` терял начало боя — а реплики `api.say()` почти всегда
+ * звучат в первые секунды: замерено, лог в БД начинался с t=11.7, и разбор
+ * боя выходил пустым ровно у тех матчей, где мозгу было что сказать.
+ * F11 назвал эти строки одним из двух доказательств взамен закрытого
+ * исходника; терять их — терять доказательство.
+ *
+ * Правило: ВСЕ реплики, все остальные события, серии тиков урона — одной
+ * строкой со счётчиком. Если и это не влезло в бюджет, режется голова и
+ * хвост, а не середина: доля хвоста больше, потому что убивающий удар и то,
+ * что к нему привело, — это конец, а не начало.
+ */
+export function keepLog(log, budget = LOG_BUDGET_BYTES) {
   if (!Array.isArray(log)) return [];
-  const says = log.filter((e) => e && e.type === 'say');
-  const rest = log.filter((e) => e && e.type !== 'say');
-  const head = rest.slice(0, 20);
-  const tail = rest.slice(-30);
-  const seen = new Set();
-  return [...says, ...head, ...tail]
-    .filter((e) => { const k = JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; })
-    .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+  const all = collapseTicks(log);
+  if (bytesOf(all) <= budget) return all;
+
+  const says = all.filter((e) => e.type === 'say');
+  const rest = all.filter((e) => e.type !== 'say');
+  const take = (n) => {
+    const head = Math.floor(n * 0.4);
+    const seen = new Set();
+    return [...says, ...rest.slice(0, head), ...rest.slice(rest.length - (n - head))]
+      .filter((e) => { const k = JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+  };
+  /* Двоичный поиск по числу оставленных событий: `JSON.stringify` считается
+     около пятнадцати раз на матч, и только у боёв, которые не влезли. */
+  let lo = 0; let hi = rest.length; let best = take(0);
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const cand = take(mid);
+    if (bytesOf(cand) <= budget) { best = cand; lo = mid + 1; } else hi = mid - 1;
+  }
+  return best;
+}
+
+/**
+ * ЧТО ПРОИЗОШЛО В БОЮ — ДЮЖИНА ЧИСЕЛ НА СТОРОНУ, ПОСЧИТАННЫХ ДО ОБРЕЗКИ.
+ *
+ * Обрезка лога делает базу нечитаемой как измерение: темп, промахи, отказы и
+ * уклонения, снятые с обрезанной строки, — это свойство обрезки. Замерено:
+ * по БД выходило 4.3–5.9 применений на 10 с, тот же бой в `spectate.mjs` —
+ * 8.7. Поэтому сводка считается ЗДЕСЬ, по полному логу, и живёт рядом с ним.
+ *
+ * Словарь событий — тот же, что у `reports/combat/spectate.mjs`, и
+ * приписывание стороне сделано по полю `who` самой строки, а не «по смыслу»:
+ *
+ *   casts      `use` — сколько раз эта сторона применила умение
+ *   hits       `damage` + `ignite` — сколько раз её удар нанёс урон (у зоны
+ *              это тики: серия схлопывается в логе, но не в счётчике)
+ *   misses     `miss` + `chargeMiss` — её удар не дошёл, с причиной в логе
+ *   dodges     она сама увернулась: `evade` (i-кадры) на ней плюс чужой
+ *              `miss:airborne`, то есть промах по прыгнувшему телу
+ *   immune     `immune` — контроль по НЕЙ отказан её же иммунитетом
+ *   refused    `refused` — сим отказал в её приказе (кулдаун, немота, чужое имя)
+ *   interrupts `interrupt` — она сбила чужой каст
+ *   absorbed   `absorbed` — её удар щит съел целиком, зритель не увидел ничего
+ *   heals      `heal` — её вылечили
+ */
+export function summariseLog(log, slots) {
+  const out = {};
+  for (const s of slots) {
+    out[s] = { casts: 0, hits: 0, misses: 0, dodges: 0, immune: 0, refused: 0, interrupts: 0, absorbed: 0, heals: 0 };
+  }
+  const at = (who) => (who && out[who]) || null;
+  const other = (who) => slots.find((s) => s !== who);
+  for (const e of (Array.isArray(log) ? log : [])) {
+    if (!e || typeof e !== 'object') continue;
+    const mine = at(e.who);
+    switch (e.type) {
+      case 'use': if (mine) mine.casts++; break;
+      case 'damage': case 'ignite': if (mine) mine.hits++; break;
+      case 'chargeMiss': if (mine) mine.misses++; break;
+      case 'miss': {
+        if (mine) mine.misses++;
+        /* Промах ПО прыгнувшему — заслуга того, кто прыгнул, а не промах
+           стрелка в чистом виде: `spectate.mjs` считает его уклонением. */
+        if (e.reason === 'airborne') { const d = at(other(e.who)); if (d) d.dodges++; }
+        break;
+      }
+      case 'evade': if (mine) mine.dodges++; break;
+      case 'immune': if (mine) mine.immune++; break;
+      case 'refused': if (mine) mine.refused++; break;
+      case 'interrupt': if (mine) mine.interrupts++; break;
+      case 'absorbed': if (mine) mine.absorbed++; break;
+      case 'heal': if (mine) mine.heals++; break;
+      default: break;
+    }
+  }
+  return out;
 }
 
 function bump(db, c, score, ratingAfter, at, faulted = false) {

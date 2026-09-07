@@ -1,0 +1,67 @@
+=== 1. served phase durations of grammar deliveries vs the prompt's cast line ===
+beam   config windup 0.65 recover 0.1
+       world serves: windup 19 ticks = 0.633 s, recover 3 ticks = 0.1 s
+       prompt says:  cast                0.667 s of wind-up, then it lands, then 0.133 s of recovery
+cone   config windup 0.28 recover 0.28
+       world serves: windup 8 ticks = 0.267 s, recover 8 ticks = 0.267 s
+       prompt says:  cast                0.3 s of wind-up, then it lands, then 0.3 s of recovery
+bolt   config windup 0.34 recover 0.16
+       world serves: windup 10 ticks = 0.333 s, recover 4 ticks = 0.133 s
+       prompt says:  cast                0.367 s of wind-up, then it lands, then 0.167 s of recovery
+lob    config windup 0.5 recover 0.2
+       world serves: windup 14 ticks = 0.467 s, recover 6 ticks = 0.2 s
+       prompt says:  cast                0.533 s of wind-up, then it lands, then 0.233 s of recovery
+zone   config windup 0.45 recover 0.25
+       world serves: windup 13 ticks = 0.433 s, recover 7 ticks = 0.233 s
+       prompt says:  cast                0.467 s of wind-up, then it lands, then 0.267 s of recovery
+dash   config windup 0.18 recover 0.26
+       world serves: windup 5 ticks = 0.167 s, recover 8 ticks = 0.267 s
+       prompt says:  cast                0.2 s of wind-up, then it lands, then 0.267 s of recovery
+blink  config windup 0 recover 0.18
+       world serves: recover 5 ticks = 0.167 s
+       prompt says:  cast                it lands immediately, then 0.2 s of recovery
+self   config windup 0.3 recover 0.18
+       world serves: windup 8 ticks = 0.267 s, recover 6 ticks = 0.2 s
+       prompt says:  cast                0.333 s of wind-up, then it lands, then 0.2 s of recovery
+jump   config windup 0.06 recover 0.16 airborne 0.55
+       world serves: windup 1 ticks = 0.033 s, air 17 ticks = 0.567 s, recover 5 ticks = 0.167 s
+       prompt says:  cast                0.067 s of wind-up, then it lands, then 0.167 s of recovery
+
+=== 2. lob argument: single number vs pair ===
+api.use('k1')  act.reach=null  lands at d=14 (enemy at 14 m)
+api.use('k1', 10)  act.reach=10  lands at d=10 (enemy at 14 m)
+api.use('k1', 10, 0)  act.reach=null  lands at d=14 (enemy at 14 m)
+api.use('k1', 10, undefined)  act.reach=10  lands at d=10 (enemy at 14 m)
+api.use('k1', 3, 4)  act.reach=null  lands at d=14 (enemy at 14 m)
+
+=== 3. grammar knock: where the impulse goes, how far it moves a target, whether anything is interrupted ===
+orange idle: impulse into vz=15.32 (control velocity) kz=0 (knockback slot); pushed 4.171 m total; orange events: 4:enemyStarted; orange act after: null; zone placed: 0
+orange mid-windup of a zone: impulse into vz=15.32 (control velocity) kz=0 (knockback slot); pushed 4.171 m total; orange events: 4:enemyStarted 12:interrupted; orange act after: null; zone placed: 0
+
+=== 4. stun mid-cast: does the cast still land? ===
+orange stunned at tick 12, orange in phase null; orange's lob projectile appeared at never
+
+=== 5. zone totals: burn vs damage, target standing still in the disc for its whole life ===
+zone:damage  hp lost 41.598 over 8 s (single damage hit would be 26)
+zone:burn  hp lost 6.659 over 8 s (single burn hit would be 7 dps x 4 s = 28)
+
+=== 6. cooldown: ticks from cast to ready ===
+config cooldown 9.9; ordered on think at tick 2; cooldowns.k1 === 0 first seen at tick 300; 298 ticks = 9.933 s
+
+=== 7. blind: how old the enemy block is ===
+blinded for 37 thoughts (2.467 s, config 2.5 s); at t=1.6 sees enemy z=4.8, real z=10.584, lag ≈ 1 s; first blinded thought lag ≈ 0.333 s
+
+=== 8. wall: where it grows ===
+caster at (0,-9) facing +Z; wall box {"x":0,"z":-5.8,"hx":2,"hz":0.5,"h":2.2,"temporary":true,"until":5.333333333333333,"by":"blue","skill":"k1"} (centre 3.2 m ahead; full size 4 x 1)
+
+=== 9. shield vs damage order, and what perception shows ===
+orange shield 40 then hit by 26 damage: hp 180 -> 180, shield left 14; blue's perception saw p.enemy.shield=40
+
+=== 10. events feed cap ===
+60 refused orders in one thought -> p.events.length next thought = 32
+
+=== 11. aim read at strike, not at order: bolt cast while turning ===
+heading at order 1.571 rad; bolt left along 0 rad after a 0.34 s wind-up at turnScale 0.796 (turn rate 7.5 rad/s -> 2.03 rad of turning available)
+
+=== 12. root: movement, turning, casting ===
+rooted thoughts: 20; speed while rooted max 3.8; heading changed from 1.571 to 1.571; api.use while rooted refused with: busy,cooldown; orange projectiles fired: 1

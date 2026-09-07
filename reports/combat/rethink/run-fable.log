@@ -1,0 +1,55 @@
+
+  rethink
+  bundle sub:fable:high (Claude Fable, effort high) · constants now c-d3c58948 · db /Users/boozybats/Public/Repos/work/Airena/data/airena.db
+  out /Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink
+
+  plan: 34 candidate(s), 12 to rethink, 22 skipped (--force), --limit=12
+    rethink  1601  c_c4eb7da3-a72  THE RIFT           sub:opus:plain                 c-d3c58948
+              kit 45/56 body 22.29/25  Bolt: Damage + Silence · Void | Blink: Shield · Void | Field: Damage + Pull · Void
+    rethink  1547  c_a843173b-ea4  MONOCYCLE CUTTER   sub:opus:plain                 c-d3c58948
+              kit 41/56 body 22.29/25  Beam: Damage · Laser | Lunge: Damage · Kinetic | Fan: Damage + Knockback · Kinetic
+    rethink  1539  c_35e1741f-274  BARROW WARDEN      sub:opus:plain                 c-d3c58948
+              kit 49/56 body 22.29/25  Field: Damage + Pull · Gravity | Mortar: Damage + Weaken through the Speed channel · Gravity | Aura: Shield + Boost through the Armour channel · Gravity
+    rethink  1534  c_18e20e72-6bb  STONE GOLEM        sub:opus:plain                 c-d3c58948
+              kit 45/56 body 22.29/25  Fan: Damage + Knockback · Kinetic | Lunge: Damage · Kinetic | Lunge: Damage + Stun · Kinetic
+    rethink  1532  c_280b5a22-908  KILLER WASP        sub:opus:plain                 c-d3c58948
+              kit 47/56 body 22.29/25  Lunge: Damage + Burn · Ember | Blink: Boost through the Speed channel · Arc | Bolt: Damage + Weaken through the Speed channel · Void
+    rethink  1489  c_15a339f3-1cd  ASH AND ICE        sub:opus:plain                 c-d3c58948
+              kit 48/56 body 22.29/25  Fan: Burn + Damage · Ember | Bolt: Damage + Root · Frost | Aura: Cleanse + Boost through the Speed channel · Ember
+    rethink  1472  c_8bb73425-8cd  MINE HEDGEHOG      sub:opus:plain                 c-d3c58948
+              kit 51/56 body 22.29/25  Field: Burn + Damage · Ember | Fan: Damage + Knockback · Kinetic | Aura: Shield + Cleanse · Frost
+    rethink  1446  c_4109357b-a49  BARROW SHADE       sub:opus:plain                 c-d3c58948
+              kit 45/56 body 22.29/25  Field: Damage + Pull · Gravity | Field: Weaken + Pull through the Speed channel · Gravity | Mortar: Damage + Weaken through the Speed channel · Gravity
+    rethink  1415  c_303e3387-581  STONE GOLEM        sub:opus:plain                 c-d3c58948
+              kit 50/56 body 22.29/25  Fan: Damage + Knockback · Kinetic | Field: Damage + Root · Kinetic | Aura: Shield + Heal · Kinetic
+    rethink  1395  c_7ea987df-b0a  COLDSNAP           sub:opus:plain                 c-d3c58948
+              kit 41/56 body 22.29/25  Field: Damage + Weaken through the Speed channel · Frost | Bolt: Root + Weaken through the Armour channel · Frost | Fan: Damage · Frost
+    rethink  1360  c_e24810eb-c7c  THUNDERSTRIKE      sub:opus:plain                 c-d3c58948
+              kit 36/56 body 22.29/25  Aura: Boost through the Damage channel · Arc | Beam: Damage + Stun · Arc | Blink: Shield · Arc
+    rethink  1347  c_cdb90c01-ad9  ACID CUTTER        sub:opus:plain                 c-d3c58948
+              kit 41/56 body 22.29/25  Fan: Weaken + Burn through the Armour channel · Acid | Beam: Damage · Laser | Lunge: Damage · Kinetic
+    skip     1328  c_1eb4e823-708  ETCHER             sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1305  c_a6994a7b-c82  GRIM HIGHLANDER    sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1289  c_af623a2f-f7e  GRAVEDIGGER        sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1270  c_255ab41e-6cf  ASH WOLF           sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1260  c_e4653a50-181  FOUNDRY FIST       sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1240  c_c764acde-f2f  MANTIS REAPER      sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1230  c_73fc47a4-2d5  MERCURY EEL        sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1219  c_877bf4e7-bf1  VILE SHRIMP        sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1210  c_bee0fcba-180  TOWER              sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1203  c_f9fb473a-187  BARROW             sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1200  c_83089e56-e2f  SALT BULL          sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1200  c_b53d1c3d-3d3  GLASS JELLYFISH    sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1184  c_998fea28-c41  GEAR HOPPER        sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1180  c_b7a28147-337  BILGE CRAB         sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1178  c_04539cd5-46c  FURNACE            sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1175  c_bbf95643-d91  LASER CUTTER       sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1168  c_7c8ffee4-b3b  BLACK KITE         sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1160  c_dc319c88-aee  GLASS WASP         sub:opus:plain                 c-d3c58948  library  — beyond --limit=12
+    skip     1142  c_e8a4582b-3d4  DRAGONFLY          sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1136  c_ba1bb611-82e  ICE MAGE           sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1107  c_3aa2bb0f-f14  SLEDGEHAMMER       sub:opus:plain                 c-d3c58948  — beyond --limit=12
+    skip     1101  c_86e14a3c-519  HEAVY REACTOR      sub:opus:plain                 c-d3c58948  — beyond --limit=12
+
+  [ 1/12] THE RIFT           c_c4eb7da3-a72  1601  sub:opus:plain → sub:fable:high  REWRITTEN  won 0/4, hits 64, faults 0  8498 chars  133 s
+EXIT 143

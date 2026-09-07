@@ -1,0 +1,55 @@
+{
+  "state": "create-visitor",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/create?ui=create-visitor",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "create",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 101,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 18376
+    },
+    "drawn": {
+      "n": 1,
+      "firstAt": 18379,
+      "firstMs": 34,
+      "lastMs": 34,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "medium"
+    },
+    "backend": "webgpu",
+    "quality": "medium",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 2919,
+      "rendererRequested": 2919,
+      "shellReady": 10927,
+      "screenReady": 10950,
+      "viewerStart": 11252,
+      "rendererUp": 11269,
+      "envBuilt": 11386,
+      "postBuilt": 11408,
+      "precompiled": 17371,
+      "postWarm": 18375,
+      "rendererReady": 18376,
+      "firstDraw": 18413
+    },
+    "forced": 1,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

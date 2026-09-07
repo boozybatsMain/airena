@@ -1,0 +1,187 @@
+{
+  "id": "c_a6994a7b-c82",
+  "name": "GRIM HIGHLANDER",
+  "rating": 1253,
+  "fights": 10314,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1248,
+    "tacticsCard": "This one is a relentless pressure fighter: it charges straight in, holds a tight ring around three to four and a half meters, and strafes sideways there, flipping direction on a fixed timer while it waits for cooldowns. It leads with the disc at any range under twelve meters, aiming at where the enemy will be, follows with the dash whenever the gap sits between three and ten meters, and slaps on the weakening effect the moment it's inside four and a half.",
+    "sourceSha": "49499e941bbd3e5383c47c6823488f2413490953324ddae64baf663837dc4d83",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_a6994a7b-c82.before.49499e94.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2887,
+    "tacticsCard": "This fighter reacts before it attacks: it sidesteps a telegraphed dash, backs away from a telegraphed cone if too close, and steps out of enemy zones the instant it stands in one — all before ever checking its own cooldowns. When safe, it plays a fairly sound spacing game: dash-burst at mid-range with a line-of-sight check on a predicted position, cone-poke up close, zone-damage as a filler at range, and it kites away when the enemy is right on top of it or closes in when too far, with a random strafe direction it only reconsiders every couple seconds.",
+    "rating": 1258,
+    "fights": 10342,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "weaken"
+      ],
+      "channel": "damage",
+      "element": "ember"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 35,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 26.63,
+      "faults": 0,
+      "thinks": 400,
+      "orders": 645,
+      "uses": 19,
+      "hits": 9,
+      "damageDealt": 85.8528,
+      "stubDamageDealt": 266.1311999999999,
+      "aliveTicks": 798,
+      "idleInReachTicks": 181,
+      "stillTicks": 15,
+      "fuelSpent": 1216,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 31.9,
+      "faults": 0,
+      "thinks": 478,
+      "orders": 714,
+      "uses": 25,
+      "hits": 19,
+      "damageDealt": 208.06079999999994,
+      "stubDamageDealt": 233.57759999999993,
+      "aliveTicks": 956,
+      "idleInReachTicks": 149,
+      "stillTicks": 3,
+      "fuelSpent": 1498,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 31.63,
+      "faults": 0,
+      "thinks": 474,
+      "orders": 741,
+      "uses": 25,
+      "hits": 20,
+      "damageDealt": 215.67359999999988,
+      "stubDamageDealt": 256.4255999999999,
+      "aliveTicks": 948,
+      "idleInReachTicks": 201,
+      "stillTicks": 7,
+      "fuelSpent": 1459,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 35.6,
+      "faults": 0,
+      "thinks": 534,
+      "orders": 819,
+      "uses": 28,
+      "hits": 22,
+      "damageDealt": 183.32159999999996,
+      "stubDamageDealt": 183.504,
+      "aliveTicks": 1067,
+      "idleInReachTicks": 183,
+      "stillTicks": 10,
+      "fuelSpent": 1467,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 117517,
+  "forgeMs": 107821,
+  "admitMs": 811,
+  "cardMs": 8880,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 107820,
+      "chars": 2887
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9912,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.17028400000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2887,
+  "promptHash": "15486f78e4f84ee6864bd38820aac37a84b8fc1940ff1aa8f2c3bc509c954fc4",
+  "generatedAt": "2026-09-07T10:43:15.703Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:02:54.807Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:59:13.589Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "20e951ccb57955f49c2bff9b25127d0bc4629cb369da249f41784cc618441bc7",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.737,
+    "idleInReach": 0.189,
+    "still": 0.009,
+    "casts": 24.25
+  },
+  "card": "This fighter reacts before it attacks: it sidesteps a telegraphed dash, backs away from a telegraphed cone if too close, and steps out of enemy zones the instant it stands in one — all before ever checking its own cooldowns. When safe, it plays a fairly sound spacing game: dash-burst at mid-range with a line-of-sight check on a predicted position, cone-poke up close, zone-damage as a filler at range, and it kites away when the enemy is right on top of it or closes in when too far, with a random strafe direction it only reconsiders every couple seconds."
+}

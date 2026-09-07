@@ -1,0 +1,187 @@
+{
+  "id": "c_e24810eb-c7c",
+  "name": "THUNDERSTRIKE",
+  "rating": 1218,
+  "fights": 5958,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2304,
+    "tacticsCard": "This bot is a mid-range beam duelist: it tries to sit around twelve units away, constantly strafing sideways and flipping its strafe direction every 2.5 seconds, and it fires its beam the moment it's off cooldown with a small lead on the target's movement. It reacts to the enemy's telegraphed cast by blinking sideways to break the firing line, and it uses the same blink offensively to close the gap when the enemy drifts beyond beam range; the speed boost is saved for moments when the beam is nearly ready and the enemy isn't casting.\n\nTwo weak spots stand out.",
+    "sourceSha": "704414167ba298c920ff06de12f90efd7988187d6123f212b18449bee295b165",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_e24810eb-c7c.before.70441416.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2475,
+    "tacticsCard": "This fighter tries to keep a steady 16-unit orbit around the enemy, circling with random direction changes while closing in or backing off if it drifts too far outside that band. It watches specifically for the enemy's telegraphed beam (k2) and reacts by blinking or strafing perpendicular to dodge, and it panics into a defensive blink away plus a one-liner when its own HP drops below 28%.",
+    "rating": 1314,
+    "fights": 5992,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "damage",
+      "element": "arc"
+    },
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage",
+        "stun"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "shield"
+      ],
+      "element": "arc"
+    }
+  ],
+  "kitCost": 41,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 34.47,
+      "faults": 0,
+      "thinks": 517,
+      "orders": 987,
+      "uses": 23,
+      "hits": 6,
+      "damageDealt": 204.00000000000003,
+      "stubDamageDealt": 196.80000000000004,
+      "aliveTicks": 1033,
+      "idleInReachTicks": 183,
+      "stillTicks": 139,
+      "fuelSpent": 955,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 26.33,
+      "faults": 0,
+      "thinks": 395,
+      "orders": 758,
+      "uses": 20,
+      "hits": 7,
+      "damageDealt": 244.80000000000004,
+      "stubDamageDealt": 182.40000000000003,
+      "aliveTicks": 789,
+      "idleInReachTicks": 59,
+      "stillTicks": 152,
+      "fuelSpent": 798,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 26.4,
+      "faults": 0,
+      "thinks": 396,
+      "orders": 758,
+      "uses": 20,
+      "hits": 7,
+      "damageDealt": 244.80000000000004,
+      "stubDamageDealt": 144.00000000000003,
+      "aliveTicks": 791,
+      "idleInReachTicks": 61,
+      "stillTicks": 110,
+      "fuelSpent": 766,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 27.4,
+      "faults": 0,
+      "thinks": 411,
+      "orders": 779,
+      "uses": 18,
+      "hits": 6,
+      "damageDealt": 189.60000000000002,
+      "stubDamageDealt": 261.6,
+      "aliveTicks": 821,
+      "idleInReachTicks": 144,
+      "stillTicks": 117,
+      "fuelSpent": 794,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 111603,
+  "forgeMs": 104963,
+  "admitMs": 746,
+  "cardMs": 5889,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 104963,
+      "chars": 2475
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9829,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.163683,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2475,
+  "promptHash": "c9100fcf69c1cc64580ad245ad370b9a25f899a8381ef398b8511c28d803ba0b",
+  "generatedAt": "2026-09-07T10:48:33.305Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:02:28.627Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:05:24.234Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "79be448defe5edcae9cc3fa7254aac38299c0179edb081ceccc3d4d63c5b80d4",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.125,
+    "idleInReach": 0.13,
+    "still": 0.151,
+    "casts": 20.25
+  },
+  "card": "This fighter tries to keep a steady 16-unit orbit around the enemy, circling with random direction changes while closing in or backing off if it drifts too far outside that band. It watches specifically for the enemy's telegraphed beam (k2) and reacts by blinking or strafing perpendicular to dodge, and it panics into a defensive blink away plus a one-liner when its own HP drops below 28%."
+}

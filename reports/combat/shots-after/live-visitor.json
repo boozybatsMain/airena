@@ -1,0 +1,61 @@
+{
+  "state": "live-visitor",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/live?ui=live-visitor",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 16,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 39,
+      "since": 84376
+    },
+    "drawn": {
+      "n": 40,
+      "firstAt": 84386,
+      "firstMs": 43,
+      "lastMs": 19,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 21.409999999403958,
+    "marks": {
+      "t0": 21828.5,
+      "rendererRequested": 21829,
+      "shellReady": 29136,
+      "screenReady": 29155,
+      "viewerStart": 71623,
+      "rendererUp": 71876,
+      "envBuilt": 72033,
+      "postBuilt": 72619,
+      "precompiled": 79592,
+      "postWarm": 84371,
+      "rendererReady": 84375,
+      "firstDraw": 84430
+    },
+    "forced": 0,
+    "ready": false,
+    "loop": {
+      "want": 24,
+      "ticked": 37,
+      "ok": true,
+      "ms": 790,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

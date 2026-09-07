@@ -1,0 +1,55 @@
+{
+  "state": "birth-wait-long",
+  "group": "MAKING ONE",
+  "url": "http://localhost:8787/#/birth/demo?ui=birth-wait-long",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "birth",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 24,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 1,
+      "since": 26342
+    },
+    "drawn": {
+      "n": 2,
+      "firstAt": 26347,
+      "firstMs": 39,
+      "lastMs": 24,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 4570.800000011921,
+      "rendererRequested": 4571,
+      "shellReady": 11002,
+      "screenReady": 11123,
+      "viewerStart": 17645,
+      "rendererUp": 17675,
+      "envBuilt": 17776,
+      "postBuilt": 17791,
+      "precompiled": 22856,
+      "postWarm": 26337,
+      "rendererReady": 26342,
+      "firstDraw": 26386
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

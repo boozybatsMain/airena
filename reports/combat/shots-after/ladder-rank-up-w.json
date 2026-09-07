@@ -1,0 +1,43 @@
+{
+  "state": "ladder-rank-up",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder?ui=rank-up",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 600,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 7285
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 148.69999998807907,
+      "rendererRequested": 149,
+      "shellReady": 1154,
+      "screenReady": 3479,
+      "viewerStart": 6469,
+      "rendererUp": 6617,
+      "envBuilt": 6680,
+      "postBuilt": 6754
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

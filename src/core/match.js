@@ -19,8 +19,10 @@ import { createWorld, snapshot, step } from './sim.js';
  *   record    keep every snapshot (a replay), off by default
  *   onFrame   called with each snapshot as it is produced
  */
-export function runMatch(brains, { seed = 1, record = false, onFrame = null, observer = null, curtainSeconds = 0, kits = null, builds = null } = {}) {
-  const world = createWorld(seed, { curtainSeconds, kits, builds });
+export function runMatch(brains, { seed = 1, record = false, onFrame = null, observer = null, curtainSeconds = 0, kits = null, builds = null, referenceTag = null } = {}) {
+  /* `referenceTag` — { blue, orange }, тег эталонной фикстуры ПО БОЙЦУ для
+     того, кто приехал без кита. См. `createWorld`: цвет её больше не решает. */
+  const world = createWorld(seed, { curtainSeconds, kits, builds, referenceTag });
   if (observer) world.observer = observer;
   const frames = record ? [] : null;
 

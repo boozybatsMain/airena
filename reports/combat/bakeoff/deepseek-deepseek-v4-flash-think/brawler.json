@@ -1,0 +1,131 @@
+{
+  "model": "deepseek/deepseek-v4-flash:think",
+  "modelId": "deepseek/deepseek-v4-flash",
+  "mode": "think",
+  "channel": "openrouter",
+  "label": "DeepSeek: DeepSeek V4 Flash 0423",
+  "thinkBudget": 8000,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:48:42.122Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 12.53,
+      "faults": 0,
+      "thinks": 188,
+      "orders": 198,
+      "uses": 10,
+      "hits": 7,
+      "damageDealt": 108.6,
+      "fuelSpent": 198,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 11.13,
+      "faults": 0,
+      "thinks": 167,
+      "orders": 176,
+      "uses": 9,
+      "hits": 5,
+      "damageDealt": 75,
+      "fuelSpent": 176,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 11.13,
+      "faults": 0,
+      "thinks": 167,
+      "orders": 176,
+      "uses": 9,
+      "hits": 5,
+      "damageDealt": 75,
+      "fuelSpent": 176,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 12.67,
+      "faults": 0,
+      "thinks": 190,
+      "orders": 199,
+      "uses": 9,
+      "hits": 6,
+      "damageDealt": 91.8,
+      "fuelSpent": 199,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0.0026,
+  "referenceUsd": null,
+  "elapsedMs": 70705,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 8000,
+      "ok": true,
+      "error": null,
+      "costUsd": 0.0025586946,
+      "elapsedMs": 70704,
+      "chars": 2931
+    }
+  ],
+  "usage": {
+    "in": 8167,
+    "out": 5147,
+    "reasoning": 3732,
+    "reasoningShare": 0.7250825723722557
+  },
+  "resolvedModel": null,
+  "provider": "Parasail",
+  "sourceChars": 2931,
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834
+}

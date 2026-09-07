@@ -45,7 +45,7 @@ export class IsolateError extends Error {
  * @param {object} brains  { blue: source, orange: source } — уже допущенные
  * @param {object} opts    seed, record, curtainSeconds, timeoutMs
  */
-export function runIsolated(brains, { seed = 1, seeds = null, kits = null, builds = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
+export function runIsolated(brains, { seed = 1, seeds = null, kits = null, builds = null, referenceTag = null, record = false, curtainSeconds = 0, timeoutMs = MATCH_TIMEOUT_MS } = {}) {
   const prepared = {};
   for (const [slot, src] of Object.entries(brains)) {
     prepared[slot] = instrument(src).code;
@@ -56,7 +56,9 @@ export function runIsolated(brains, { seed = 1, seeds = null, kits = null, build
       /* `builds` едет наравне с `kits` и `seed`: это вход матча, от него
          зависят здоровье, радиус, скорость и масса. Забыть его — значит
          показать бой, которого не было. */
-      workerData: { seed, seeds, brains: prepared, kits, builds, record, curtainSeconds },
+      /* `referenceTag` едет по той же причине, что `kits` и `builds`: боец без
+         кита дерётся набором, который выбрал ЕГО МОЗГ, а не цвет стороны. */
+      workerData: { seed, seeds, brains: prepared, kits, builds, referenceTag, record, curtainSeconds },
       resourceLimits: LIMITS,
       /* Ни аргументов, ни переменных окружения, ни stdin: изолят не должен
          уметь прочитать ни ключ (E4: ключ Anthropic живёт в env хоста), ни
@@ -102,12 +104,17 @@ export function runIsolated(brains, { seed = 1, seeds = null, kits = null, build
 /**
  * Допуск мозга: четыре стены подряд, до единой записи в БД.
  *
- * Возвращает { ok, problems, probe } — `probe` это два пробных боя против
- * спарринг-партнёра, тот же смысл, что у `src/brain/validate.js`, но за стеной.
+ * Возвращает { ok, problems, probe, behaviour, warnings } — `probe` это
+ * четыре пробных боя против спарринг-партнёра на ОДНОМ И ТОМ ЖЕ ките (D191
+ * §1), тот же смысл, что у `src/brain/validate.js`, но за стеной. `behaviour`
+ * несёт измеренные числа (wins, damageShare, idleInReach, still, casts) вне
+ * зависимости от исхода — `tools/bakeoff.mjs` и `tools/rethink.mjs` шлют их
+ * назад модели одним ремонтным ходом до отказа (D191 §2). `warnings` — гейт
+ * D191 §5, литералы кита в сравнениях мозга: он никогда не роняет `ok`.
  */
 export async function admit(source, slot, { sparring, kit = null, seeds = [11, 22, 33, 44] } = {}) {
-  const stat = analyse(source);
-  if (!stat.ok) return { ok: false, stage: 'analyse', problems: stat.problems };
+  const stat = analyse(source, { kit });
+  if (!stat.ok) return { ok: false, stage: 'analyse', problems: stat.problems, warnings: stat.warnings || [] };
 
   let ins;
   try { ins = instrument(source); }
@@ -116,7 +123,7 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
     return { ok: false, stage: 'instrument', problems: [{ code: 'no_fuel_points', message: 'некуда вставить учёт топлива — мозг не содержит ни функции, ни цикла' }] };
   }
 
-  if (!sparring) return { ok: true, stage: 'analyse', problems: [], probe: null };
+  if (!sparring) return { ok: true, stage: 'analyse', problems: [], probe: null, warnings: stat.warnings || [] };
 
   /* Вторая сторона — просто «не эта». Сторон две, они равноправны, и никаких
      чисел за именем не стоит: важно лишь посадить спарринг напротив. */
@@ -125,9 +132,27 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
   for (const seed of seeds) {
     try {
       const m = await runIsolated({ [slot]: source, [other]: sparring },
-        { seed, kits: kit ? { [slot]: kit } : null });
+        {
+          seed,
+          /*
+           * СПАРРИНГ ДЕРЁТСЯ ТЕМ ЖЕ КИТОМ, ЧТО И КАНДИДАТ (D191 §1).
+           *
+           * До этой строки кит уезжал только кандидату (`{ [slot]: kit }`):
+           * противоположная сторона оставалась на захардкоженной фикстуре
+           * (`smash`/`charge`/`jump`), то есть «спарринг на том же ките» было
+           * неправдой — сравнивались мозг с реальным набором и мозг с чужим,
+           * не имеющим отношения к делу. Тот же кит на обеих сторонах — это и
+           * есть требование «на ОДНОМ И ТОМ ЖЕ ките»; сам спарринг-партнёр
+           * обязан при этом читать умения из перцепции (`brains/kit-stub/`),
+           * а не звать их по именам фикстуры — см. правку в
+           * `src/server/forge/pipeline.js`, `tools/bakeoff.mjs`,
+           * `tools/rethink.mjs`, которые выбирают файл спарринга.
+           */
+          kits: kit ? { [slot]: kit, [other]: kit } : null,
+        });
       const fuel = m.fuel?.[slot];
       const me = m.result[slot] || {};
+      const stub = m.result[other] || {};
       const sum = (o) => (o && typeof o === 'object' ? Object.values(o).reduce((a, b) => a + (Number(b) || 0), 0) : Number(o) || 0);
       probe.push({
         seed, winner: m.result.winner, seconds: m.result.seconds,
@@ -136,10 +161,19 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
         /* `uses` и `hits` — словари по имени умения; нас интересует сумма. */
         uses: sum(me.uses), hits: sum(me.hits),
         damageDealt: me.damageDealt ?? 0,
+        /* Урон СПАРРИНГА — для «damage ≥ 40% чужого» (D191 §1). */
+        stubDamageDealt: stub.damageDealt ?? 0,
+        /* `behavior` — из воркера (`worker.js`): живые тики, и из них те, где
+           нет активного действия и готовое умение уже достаёт до врага
+           (`reachOf`, копия из `reports/combat/spectate.mjs`), и те, где тело
+           буквально стоит. Пусто, если воркер их не считал (кит не выдан). */
+        aliveTicks: me.behavior?.aliveTicks ?? 0,
+        idleInReachTicks: me.behavior?.idleInReachTicks ?? 0,
+        stillTicks: me.behavior?.stillTicks ?? 0,
         fuelSpent: fuel?.spent ?? 0, fuelExhausted: !!fuel?.exhausted,
       });
     } catch (e) {
-      return { ok: false, stage: 'probe', problems: [{ code: e.code || 'probe', message: e.message }], probe };
+      return { ok: false, stage: 'probe', problems: [{ code: e.code || 'probe', message: e.message }], probe, warnings: stat.warnings || [] };
     }
   }
 
@@ -148,14 +182,14 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
      Замерено: DeepSeek/горилла, `Math.random` в детерминированном бою. */
   const faulty = probe.filter((r) => r.thinks > 0 && r.faults / r.thinks > 0.25);
   if (faulty.length) {
-    return { ok: false, stage: 'probe', probe, problems: [{
+    return { ok: false, stage: 'probe', probe, warnings: stat.warnings || [], problems: [{
       code: 'faults',
       message: `мозг падает на ${Math.round((faulty[0].faults / faulty[0].thinks) * 100)}% мыслей`,
     }] };
   }
   const starved = probe.filter((r) => r.fuelExhausted);
   if (starved.length) {
-    return { ok: false, stage: 'probe', probe, problems: [{
+    return { ok: false, stage: 'probe', probe, warnings: stat.warnings || [], problems: [{
       code: 'fuel',
       message: 'мозг исчерпал бюджет шагов внутри одной мысли — вероятен неограниченный цикл',
     }] };
@@ -184,7 +218,7 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
    */
   const acted = probe.some((r) => r.orders > 0);
   if (!acted) {
-    return { ok: false, stage: 'probe', probe, problems: [{
+    return { ok: false, stage: 'probe', probe, warnings: stat.warnings || [], problems: [{
       code: 'idle',
       message: 'мозг не отдал ни одной команды за оба пробных боя — существо стояло бы на месте',
     }] };
@@ -222,20 +256,91 @@ export async function admit(source, slot, { sparring, kit = null, seeds = [11, 2
    * пробу, а не про мозг.
    */
   if (kit && fired === 0) {
-    return { ok: false, stage: 'probe', probe, problems: [{
+    return { ok: false, stage: 'probe', probe, warnings: stat.warnings || [], problems: [{
       code: 'never_uses',
       message: 'мозгу выдан набор, и он не применил из него ни одного умения за все пробные бои',
     }] };
   }
 
   if (fired > 0 && !connected) {
-    return { ok: false, stage: 'probe', probe, problems: [{
+    return { ok: false, stage: 'probe', probe, warnings: stat.warnings || [], problems: [{
       code: 'never_hits',
       message: `мозг применил умения ${fired} раз и ни разу не попал за оба пробных боя`,
     }] };
   }
 
-  return { ok: true, stage: 'probe', problems: [], probe };
+  /*
+   * ШЕСТАЯ СТЕНА: ПОБЕДА, ПРИСУТСТВИЕ, ДВИЖЕНИЕ (D191 §1).
+   *
+   * `review-r1-minds.md`, «Admission passes minds that lose every fight»:
+   * шесть допущенных мозгов дают 0% против спарринга на своём же ките, и
+   * стены выше это пропускают — они спрашивают только «стрелял ли» и «попал
+   * ли хоть раз», а не «играл ли достаточно, чтобы вообще иметь шанс».
+   * Дальше — то же самое, числом, по всем четырём пробным боям сразу:
+   *
+   *   wins / damageShare  хоть одна победа из четырёх, или урон не меньше
+   *                       40% урона спарринга — мозг, который ни разу не
+   *                       выигрывает и почти не наносит урона, не играет;
+   *   idleInReach         доля живых тиков, где действие не идёт и ГОТОВОЕ
+   *                       умение уже достаёт до врага (`reachOf`, та же
+   *                       арифметика, что в карточке кита) — мозг с оружием
+   *                       в руках, который просто не стреляет;
+   *   still               доля живых тиков буквально стоя (< 0.3 м/с) без
+   *                       активного действия — та же метрика, что у
+   *                       `reports/combat/spectate.mjs` `stillNoAct`;
+   *   casts               применений умений в среднем за бой — мозг,
+   *                       который жмёт кнопку раз в двадцать секунд, не
+   *                       ведёт бой, даже если формально не бездействует.
+   *
+   * Пороги — 40% и 3 каста — не подбирались под конкретный мозг: это ровно
+   * числа, которые просил ревью, и именно они уходят в ремонтный ход
+   * (`tools/bakeoff.mjs`, `tools/rethink.mjs`, D191 §2) до отказа.
+   *
+   * ГЕЙТ СЧИТАЕТСЯ, ТОЛЬКО КОГДА ПРОБЕ ВЫДАН КИТ — тот же принцип, что у
+   * `never_uses` выше. Без кита спарринг (`kit-stub`) сам не применяет
+   * ничего: он читает умения из перцепции, а их там нет, — и это про пробу,
+   * а не про мозг. `casts`/`wins`/`damageShare` в этом случае измеряют
+   * неполную конфигурацию, а не существо, а `checkisolate.mjs` держит на
+   * этом пути собственный контрольный мозг без кита.
+   */
+  const aliveTicks = probe.reduce((a, r) => a + r.aliveTicks, 0);
+  const idleInReachTicks = probe.reduce((a, r) => a + r.idleInReachTicks, 0);
+  const stillTicks = probe.reduce((a, r) => a + r.stillTicks, 0);
+  const totalDamage = probe.reduce((a, r) => a + r.damageDealt, 0);
+  const totalStubDamage = probe.reduce((a, r) => a + r.stubDamageDealt, 0);
+  const wins = probe.filter((r) => r.winner === slot).length;
+  const idleInReach = aliveTicks ? idleInReachTicks / aliveTicks : 0;
+  const still = aliveTicks ? stillTicks / aliveTicks : 0;
+  /* Урон спарринга — ноль лишь когда сам спарринг неисправен или бой кончился
+     мгновенно; в этом случае любой урон кандидата уже ≥ 40% от нуля. */
+  const damageShare = totalStubDamage > 0 ? totalDamage / totalStubDamage : (totalDamage > 0 ? Infinity : 0);
+  const casts = probe.length ? fired / probe.length : 0;
+  const pct = (x) => `${Math.round(Math.min(x, 9.99) * 100)}%`;
+  const behaviour = {
+    wins, damageShare: Number.isFinite(damageShare) ? Math.round(damageShare * 1000) / 1000 : damageShare,
+    idleInReach: Math.round(idleInReach * 1000) / 1000,
+    still: Math.round(still * 1000) / 1000,
+    casts: Math.round(casts * 100) / 100,
+  };
+
+  const failed = [];
+  if (kit) {
+    if (wins < 1 && damageShare < 0.4) {
+      failed.push(`проиграл все ${probe.length} из ${probe.length} боёв спаррингу на своём же ките и нанёс лишь ${pct(damageShare)} от его урона`);
+    }
+    if (idleInReach > 0.4) failed.push(`простоял с готовым умением в досягаемости врага ${pct(idleInReach)} живого времени`);
+    if (still > 0.4) failed.push(`простоял на месте (< 0.3 м/с, без действия) ${pct(still)} живого времени`);
+    if (casts < 3) failed.push(`применял умения в среднем ${casts.toFixed(1)} раза за бой`);
+  }
+
+  if (failed.length) {
+    return { ok: false, stage: 'probe', probe, behaviour, warnings: stat.warnings || [], problems: [{
+      code: 'behaviour',
+      message: `мозг ${failed.join('; ')}`,
+    }] };
+  }
+
+  return { ok: true, stage: 'probe', problems: [], probe, behaviour, warnings: stat.warnings || [] };
 }
 
 export { OUT_OF_FUEL };

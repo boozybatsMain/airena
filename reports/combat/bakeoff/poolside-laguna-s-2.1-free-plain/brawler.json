@@ -1,0 +1,84 @@
+{
+  "model": "poolside/laguna-s-2.1:free:plain",
+  "modelId": "poolside/laguna-s-2.1:free",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Poolside: Laguna S 2.1 (free)",
+  "thinkBudget": 0,
+  "maxTokens": 32768,
+  "effort": null,
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:53:46.009Z",
+  "admitted": false,
+  "stage": "analyse",
+  "problems": [
+    {
+      "code": "syntax",
+      "message": "не разбирается: Unexpected token (28:0)"
+    }
+  ],
+  "probe": null,
+  "costUsd": 0,
+  "referenceUsd": null,
+  "elapsedMs": 7750,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 7749,
+      "chars": 1209
+    }
+  ],
+  "usage": {
+    "in": 8763,
+    "out": 441,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": null,
+  "provider": "Poolside",
+  "sourceChars": 1209,
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834,
+  "readmittedAt": "2026-09-07T00:22:59.408Z"
+}

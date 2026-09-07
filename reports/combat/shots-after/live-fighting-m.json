@@ -1,0 +1,70 @@
+{
+  "state": "live-fighting",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 7,
+    "waiting": 0,
+    "fps": {
+      "last": 1,
+      "min": 1,
+      "ticks": 20,
+      "since": 19074
+    },
+    "drawn": {
+      "n": 87,
+      "firstAt": 10552,
+      "firstMs": 31,
+      "lastMs": 12,
+      "direct": 5,
+      "blank": 3,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "medium",
+    "msPerFrame": 22.386666666666667,
+    "marks": {
+      "t0": 1071.4000000059605,
+      "rendererRequested": 1072,
+      "shellReady": 1563,
+      "screenReady": 1570,
+      "viewerStart": 2479,
+      "rendererUp": 2490,
+      "envBuilt": 2571,
+      "postBuilt": 2582,
+      "precompiled": 7297,
+      "postWarm": 10549,
+      "rendererReady": 10550,
+      "firstDraw": 10583,
+      "firstMatch": 10624,
+      "firstFrame": 10627
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 3193,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "render: Cannot read properties of undefined (reading 'abs') @ eval (eval at buildBody (/viewer/loadbody.js:302:16), <anonymous>:36:66) <- Ni.call (/vendor/three.webgpu.min.js?v=mtqvpt2u:6:32450) <- Ni"
+  ],
+  "overlaps": [],
+  "covered": []
+}

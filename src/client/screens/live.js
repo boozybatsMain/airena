@@ -2140,6 +2140,19 @@ function dressFeedLine(el) {
  * (`· beam · out of range`), a repeat marker (`x3`) and a quip (`· “…”`).
  */
 function feedSentence(el, nameSpan, side) {
+  /*
+   * A LINE THAT IS ALREADY A SENTENCE IS LEFT ALONE.
+   *
+   * This function exists because the viewer writes a hit as `· lunge · 26` and
+   * the product says `drives a KINETIC LUNGE`. The viewer also writes the
+   * arena's RULES now — `· stun refused — immune`, `· cut short`, `· shield
+   * took 12` — and those are not `<ability> · <tail>`: run through the parser
+   * they would come out as "lands a stun refused — immune", an ability named
+   * after the sentence describing it. The viewer marks the ROW `data-ev`; this
+   * is where the mark is honoured. The clock, the side ink and the name are
+   * still rewritten above — only the tail is the viewer's own.
+   */
+  if (el.dataset.ev) return null;
   let after = false;
   let amount = null; let repeat = ''; let quip = false;
   const tail = [];

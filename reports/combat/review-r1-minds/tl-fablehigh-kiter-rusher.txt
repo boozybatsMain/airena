@@ -1,0 +1,87 @@
+
+===== TIMELINE sub-fable-high/kiter vs pilot:rusher seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 132 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 132 act -
+  0.07  MIND says "Fast feet, sharp eyes. Let's dance."
+  0.07  pilot says "coming through"
+  0.07  pilot casts k2 (blink)
+  0.73  pilot casts k3 (beam)
+  1.20  MIND casts k2 (blink)
+  1.37  pilot k3 MISSED: cover
+  1.87  MIND casts k3 (beam)
+  1.87  pilot casts k1 (bolt)
+  2.00  -- t=2 dist 16.1 | MIND (-7.9,2.6) v3.6 hp 132 act k3/windup cd k1:0 k2:2.2 k3:2.9 | pilot (5.3,-6.5) v5.3 hp 132 act k1/windup
+  2.20    pilot bolt released heading -0.8 — 9.7° off the direct bearing, enemy moving 3.6 m/s
+  2.50  MIND k3 hits for 10.2 → pilot hp 121.8
+  2.67  MIND casts k1 (bolt)
+  3.00  pilot k1 MISSED: aim
+  3.00    MIND bolt released heading 2 — -3.1° off the direct bearing, enemy moving 7.5 m/s
+  3.17  MIND k1 hits for 20.4 → pilot hp 101.4
+  4.00  -- t=4 dist 10.2 | MIND (-10.5,2.2) v3.2 hp 132 act - cd k1:0.9 k2:0.2 k3:0.9 | pilot (-0.9,-1.1) v0 hp 101.4 act -
+  4.33  pilot casts k2 (blink)
+  4.53  pilot casts k3 (beam)
+  5.00  MIND says "Not today."
+  5.00  MIND casts k2 (blink)
+  5.33  MIND casts k3 (beam)
+  5.33  pilot casts k1 (bolt)
+  5.67    pilot bolt released heading -1.9 — 14.2° off the direct bearing, enemy moving 3.6 m/s
+  5.80  pilot k1 hits for 10.2 → MIND hp 121.8
+  5.97  MIND k3 hits for 10.2 → pilot hp 91.2
+  5.97  MIND k3: silence shrugged off (immune)
+  6.00  -- t=6 dist 4.6 | MIND (-12.9,-1.1) v0 hp 121.8 act k3/recover cd k1:0 k2:2 k3:2.3 | pilot (-9.9,2.4) v7.5 hp 91.2 act -
+  6.13  MIND casts k1 (bolt)
+  6.47  MIND k1 hits for 20.4 → pilot hp 70.8
+  6.47  MIND k1: root shrugged off (immune)
+  6.47    MIND bolt released heading 0.9 — 3.5° off the direct bearing, enemy moving 7.1 m/s
+  7.33  pilot says "coming through"
+  7.33  pilot casts k2 (blink)
+  7.53  pilot casts k3 (beam)
+  8.00  MIND casts k2 (blink)
+  8.00  -- t=8 dist 11.1 | MIND (-10.3,-9) v2.6 hp 121.8 act k2/recover cd k1:0.3 k2:3 k3:0.3 | pilot (-13,1.8) v3.1 hp 70.8 act k3/windup
+  8.33  MIND casts k3 (beam)
+  8.33  pilot casts k1 (bolt)
+  8.67    pilot bolt released heading -3 — 8° off the direct bearing, enemy moving 1.2 m/s
+  8.97  MIND k3 hits for 10.2 → pilot hp 60.6
+  9.13  MIND casts k1 (bolt)
+  9.43  pilot k1 MISSED: cover
+  9.47    MIND bolt released heading -0.4 — -0.5° off the direct bearing, enemy moving 7.5 m/s
+  9.50  MIND k1 hits for 20.4 → pilot hp 40.2
+ 10.00  -- t=10 dist 6.5 | MIND (-11.8,-14.4) v7.5 hp 121.8 act - cd k1:1.3 k2:1 k3:1.3 | pilot (-11.1,-7.9) v0 hp 40.2 act -
+ 10.80  pilot casts k2 (blink)
+ 11.00  pilot casts k3 (beam)
+ 11.47  MIND says "Not today."
+ 11.47  MIND casts k2 (blink)
+ 11.63  pilot k3 MISSED: cover
+ 11.67  MIND casts k3 (beam)
+ 11.80  pilot casts k1 (bolt)
+ 12.00  -- t=12 dist 4.1 | MIND (-16,-11.8) v3 hp 121.8 act k3/windup cd k1:0 k2:2.5 k3:2.7 | pilot (-15.2,-15.8) v5.4 hp 40.2 act k1/windup
+ 12.13  pilot k1 hits for 10.2 → MIND hp 111.6
+ 12.13    pilot bolt released heading -0.3 — -11.5° off the direct bearing, enemy moving 3.1 m/s
+ 12.30  MIND k3 hits for 10.2 → pilot hp 30
+ 12.30  MIND k3: silence shrugged off (immune)
+ 12.47  MIND casts k1 (bolt)
+ 12.80  MIND k1 hits for 20.4 → pilot hp 9.6
+ 12.80  MIND k1: root shrugged off (immune)
+ 12.80    MIND bolt released heading -1.8 — 9.4° off the direct bearing, enemy moving 6.8 m/s
+ 13.80  pilot says "coming through"
+ 13.80  pilot casts k2 (blink)
+ 14.00  pilot casts k3 (beam)
+ 14.00  -- t=14 dist 3.2 | MIND (-14.1,-11.9) v1.8 hp 111.6 act - cd k1:0.7 k2:0.5 k3:0.7 | pilot (-12.1,-9.4) v2.5 hp 9.6 act k3/windup
+ 14.47  MIND casts k2 (blink)
+ 14.63  pilot k3 MISSED: cover
+ 14.67  MIND casts k3 (beam)
+ 14.80  pilot casts k1 (bolt)
+ 15.13    pilot bolt released heading 2.4 — -10.1° off the direct bearing, enemy moving 3.6 m/s
+ 15.20  pilot k1 hits for 10.2 → MIND hp 101.4
+ 15.20  pilot k1: root shrugged off (immune)
+ 15.30  MIND k3 hits for 10.2 → pilot hp 0
+ 15.30  pilot dies
+ 15.30  END {"winner":"blue","reason":"kill"}
+
+
+## sub-fable-high/kiter
+  vs pilot:rusher: W-D-L 1-0-0 | len 15.3s | sudden death 0/1 | mean dist 8.6 m | reasons kill
+    MIND  casts/10s 9.2 cdUtil 74% hit 100% (9/9) dmg/game 132.6 still 12% noAct 59% idle+ready 22% idle+inReach 11% allCd 51%
+          uses k2 5, k3 5, k1 4 | dead slots 0/3 | miss — | refused —
+          immune silence 2, root 2 (on damage-carrying casts 4, on pure controls 0; already immune when ordered 4) | dodges 0 | interrupts made 0 taken 0 | say 3 | faults 0
+          telegraph resp 90% (9/10) | lead usage 25% (1/4) mean off-bearing 4.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.8 hit 50% dmg/game 30.6 still 13% idle+inReach 10% immune root 1 dodges 0 interrupts made 0

@@ -1,0 +1,83 @@
+{
+  "model": "poolside/laguna-s-2.1:free:plain",
+  "modelId": "poolside/laguna-s-2.1:free",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Poolside: Laguna S 2.1 (free)",
+  "thinkBudget": 0,
+  "maxTokens": 32768,
+  "effort": null,
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:53:53.763Z",
+  "admitted": false,
+  "stage": "forge",
+  "costUsd": 0,
+  "elapsedMs": 2450,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 2176,
+      "chars": 51
+    },
+    {
+      "attempt": 1,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": "rate",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    }
+  ],
+  "usage": null,
+  "problems": [
+    {
+      "code": "rejected",
+      "message": "the mind returned nothing usable",
+      "cause": "openrouter 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"poolside/laguna-s-2.1:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Poolside\",\"is_byok\":fal"
+    }
+  ],
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

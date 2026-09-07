@@ -1,0 +1,68 @@
+{
+  "state": "live-fighting",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 7,
+    "waiting": 0,
+    "fps": {
+      "last": 6,
+      "min": 1,
+      "ticks": 19,
+      "since": 33208
+    },
+    "drawn": {
+      "n": 36,
+      "firstAt": 23973,
+      "firstMs": 56,
+      "lastMs": 9,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "medium",
+    "msPerFrame": 36.583333333333336,
+    "marks": {
+      "t0": 356.59999999403954,
+      "rendererRequested": 357,
+      "shellReady": 1593,
+      "screenReady": 1612,
+      "viewerStart": 4277,
+      "rendererUp": 4308,
+      "envBuilt": 4502,
+      "postBuilt": 4559,
+      "precompiled": 15908,
+      "postWarm": 23967,
+      "rendererReady": 23969,
+      "firstDraw": 24029,
+      "firstMatch": 24137,
+      "firstFrame": 24145
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 2350,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

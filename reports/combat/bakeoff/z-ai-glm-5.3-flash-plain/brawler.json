@@ -1,0 +1,131 @@
+{
+  "model": "z-ai/glm-5.3-flash:plain",
+  "modelId": "z-ai/glm-5.3-flash",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Z.ai: GLM 5.3 Flash",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:47:30.568Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 11.73,
+      "faults": 25,
+      "thinks": 156,
+      "orders": 190,
+      "uses": 6,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 264,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 10.4,
+      "faults": 25,
+      "thinks": 133,
+      "orders": 146,
+      "uses": 6,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 222,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 10.4,
+      "faults": 25,
+      "thinks": 133,
+      "orders": 146,
+      "uses": 6,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 222,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 12.07,
+      "faults": 25,
+      "thinks": 158,
+      "orders": 196,
+      "uses": 6,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 260,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0.0007,
+  "referenceUsd": null,
+  "elapsedMs": 6921,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0.00074980125,
+      "elapsedMs": 6921,
+      "chars": 1660
+    }
+  ],
+  "usage": {
+    "in": 8045,
+    "out": 616,
+    "reasoning": 37,
+    "reasoningShare": 0.060064935064935064
+  },
+  "resolvedModel": null,
+  "provider": "Z.AI",
+  "sourceChars": 1660,
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834
+}

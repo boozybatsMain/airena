@@ -1354,6 +1354,27 @@ export class Vfx {
       case 'wall': return this.wall(e, P, ctx);
       case 'impact': return this.impact(e, P, ctx);
       case 'status': return this.status(e, P, ctx);
+      /*
+       * ── THE RULES THAT DECIDE A FIGHT ARE DRAWN LIKE EVERYTHING ELSE ────
+       *
+       * These five carry no element, and that is deliberate: they are not
+       * things a fighter DID, they are the arena answering. A stun refused by
+       * immunity, a wind-up cut short, a shield eating a hit, a shield
+       * shattering, a body slipping a hit inside blink i-frames — the
+       * spectator review of 07.09 measured 2.7–4.1 refusals and 1.3–1.6
+       * interrupts per fight and found not one of them on screen, in a fight
+       * whose outcome three of them decided (TOWER vs THUNDERSTRIKE).
+       *
+       * They are drawn in the FUNCTION INK (`signMat`), like the atom signs
+       * and the jump's shadow, for the same reason those are: a rule has to
+       * be learned once and recognised whoever fired it. The element palette
+       * would make the same rule look like ten different events.
+       */
+      case 'immune': return this.immune(e, P, ctx);
+      case 'interrupt': return this.interrupt(e, P, ctx);
+      case 'absorbed': return this.absorbed(e, P, ctx);
+      case 'shieldBroke': return this.shieldBroke(e, P, ctx);
+      case 'evade': return this.evade(e, P, ctx);
       default: return false;
     }
   }
@@ -2440,6 +2461,214 @@ export class Vfx {
       s.gravity(0, e.effect === 'heal' ? 0.4 : -1.8, 0);
       s.color(hue(P, i));
       s.life(this.now, rnd(0.35, 0.7), rnd(0.24, 0.50));
+    });
+    return true;
+  }
+
+  /*
+   * ── THE FIVE RULE MARKS ──────────────────────────────────────────────────
+   *
+   * Every one of them is anchored to a BODY, not to a point on the floor, and
+   * every one of them follows that body while it lives — the same decision
+   * `effectMark` already made and for the same reason: these say something
+   * about a fighter, not about the place where it happened. They are short
+   * (0.28–0.55 s), they are drawn in the function ink, and none of them uses
+   * additive blending: a rule is a statement, not a firework, and the arena's
+   * one glowing thing per frame is already spoken for by the ability that
+   * caused it.
+   *
+   * The shapes are chosen against the vocabulary that exists, so that no two
+   * words look alike at the 26 m the camera actually sits at:
+   *
+   *   immune       two rings at the chest that spring OUT and BACK
+   *   interrupt    the cast bar over the head, snapped in half
+   *   absorbed     a shell that flashes and collapses INWARD
+   *   shieldBroke  the same shell, in shards, going outward
+   *   evade        two ghost outlines where the body was
+   */
+
+  /** `who` refused a control: the rings bounce off and come back. */
+  immune(e, P, ctx) {
+    const at = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+    if (!at) return false;
+    const R = Math.max(0.6, at.r);
+    const H = Math.max(0.8, at.h);
+    const mat = signMat(0.9);
+    const g = new THREE.Group();
+    for (let i = 0; i < 2; i++) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.05, R * 1.42, 30), mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = H * (i ? 0.78 : 0.44);
+      g.add(ring);
+    }
+    g.position.set(at.x, 0, at.z);
+    this.spawnMesh(g, 0.42, (o, u) => {
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      if (p) o.position.set(p.x, 0, p.z);
+      /*
+       * OUT FAST, THEN BACK. Everything else in this file that expands keeps
+       * expanding — the knock wave, the cleanse shell, the burn crown — so a
+       * ring that returns is a word none of them can be mistaken for, and it
+       * is the right word: the control reached the body and was sent back.
+       */
+      const k = u < 0.3 ? u / 0.3 : Math.max(0, 1 - (u - 0.3) / 0.7);
+      o.scale.setScalar(1 + k * 0.6);
+      mat.opacity = 0.9 * (1 - Math.max(0, u - 0.4) / 0.6) ** 1.1;
+    });
+    return true;
+  }
+
+  /**
+   * `who`'s wind-up was cut short by `by`.
+   *
+   * The plate over a fighter's head carries a CAST BAR (`main.js`,
+   * `updatePlate`), and a spectator learns within one fight that the red line
+   * filling up means something is coming. So an interrupt is drawn as that
+   * same bar, at that same height, breaking in half and falling — the one
+   * gesture that needs no legend because the thing it breaks is already on
+   * screen above the fighter's name.
+   */
+  interrupt(e, P, ctx) {
+    const at = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+    if (!at) return false;
+    const H = Math.max(0.8, at.h);
+    const y = H + 0.55;
+    const mat = signMat(0.95);
+    const geo = new THREE.BoxGeometry(0.92, 0.15, 0.15);
+    const g = new THREE.Group();
+    const half = [];
+    for (let i = 0; i < 2; i++) {
+      const b = new THREE.Mesh(geo, mat);
+      b.position.x = (i ? 0.48 : -0.48);
+      g.add(b);
+      half.push(b);
+    }
+    g.position.set(at.x, y, at.z);
+    this.spawnMesh(g, 0.45, (o, u) => {
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      if (p) o.position.set(p.x, y, p.z);
+      /* Held whole for a sixth of a second — otherwise there is nothing to
+         see break — then the halves swing down and apart. */
+      const k = Math.max(0, (u - 0.16) / 0.84);
+      half[0].position.x = -0.48 - k * 0.55;
+      half[1].position.x = 0.48 + k * 0.55;
+      half[0].rotation.z = -k * 0.9;
+      half[1].rotation.z = k * 0.9;
+      half[0].position.y = -k * k * 0.7;
+      half[1].position.y = -k * k * 0.7;
+      mat.opacity = 0.95 * (1 - k) ** 1.2;
+    });
+    /* A short spark at the break, so the eye is sent there. */
+    this.burst(at.x, y, at.z, P, 14);
+    return true;
+  }
+
+  /**
+   * `amount` of a hit went into `who`'s shield instead of its health.
+   *
+   * The shell COLLAPSES INWARD, which is the opposite of the cleanse shell
+   * (`atomImpact`, outward and gone) and the opposite of the shatter below.
+   * Three shells, three directions, one glance.
+   */
+  absorbed(e, P, ctx) {
+    const at = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+    if (!at) return false;
+    const R = Math.max(0.7, at.r) * 1.5;
+    const H = Math.max(0.8, at.h);
+    const sh = new THREE.Mesh(new THREE.SphereGeometry(R, 18, 12), inkMat(0x2b2118, 0.34));
+    sh.position.set(at.x, H * 0.55, at.z);
+    this.spawnMesh(sh, 0.34, (o, u) => {
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      if (p) o.position.set(p.x, H * 0.55, p.z);
+      o.scale.setScalar(1.28 - u * 0.42);
+      o.material.opacity = 0.34 * (1 - u) ** 0.8;
+    });
+    /* A hairline at the shell's equator: the surface that took the hit. */
+    const ring = new THREE.Mesh(new THREE.RingGeometry(R * 0.98, R * 1.1, 32), signMat(0.85));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(at.x, H * 0.55, at.z);
+    this.spawnMesh(ring, 0.34, (o, u) => {
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      if (p) o.position.set(p.x, H * 0.55, p.z);
+      o.scale.setScalar(1.28 - u * 0.42);
+      o.material.opacity = 0.85 * (1 - u) ** 0.9;
+    });
+    return true;
+  }
+
+  /** `who`'s shield is gone: the same shell, in pieces, outward. */
+  shieldBroke(e, P, ctx) {
+    const at = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+    if (!at) return false;
+    const R = Math.max(0.7, at.r) * 1.5;
+    const H = Math.max(0.8, at.h);
+    const mat = signMat(0.9);
+    const g = new THREE.Group();
+    const shards = [];
+    const N = 9;
+    /* Deterministic, like every other sign in this file: a replay of a fight
+       has to look like the fight (A2). */
+    const rng = mulberry(seedOf(e) ^ 0x5b12);
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const tilt = rnd(-0.5, 0.5, rng);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(R * 0.55, R * 0.72), mat);
+      s.position.set(Math.sin(a) * R, H * 0.55 + tilt, Math.cos(a) * R);
+      s.rotation.set(tilt, a, rnd(-0.4, 0.4, rng));
+      g.add(s);
+      shards.push({ s, a, tilt, spin: rnd(-3.4, 3.4, rng) });
+    }
+    g.position.set(at.x, 0, at.z);
+    this.spawnMesh(g, 0.55, (o, u) => {
+      const p = ctx && ctx.bodyPos ? ctx.bodyPos(e.who) : null;
+      if (p) o.position.set(p.x, 0, p.z);
+      for (const sd of shards) {
+        const r = R * (1 + u * 1.5);
+        sd.s.position.set(Math.sin(sd.a) * r, H * 0.55 + sd.tilt + u * 0.5 - u * u * 1.1, Math.cos(sd.a) * r);
+        sd.s.rotation.z += sd.spin * 0.016;
+      }
+      mat.opacity = 0.9 * (1 - u) ** 1.3;
+    });
+    this.burst(at.x, H * 0.55, at.z, P, 22);
+    return true;
+  }
+
+  /**
+   * `who` was not where the hit was — blink i-frames swallowed it.
+   *
+   * Two outlines of the body's own footprint, left standing where it stood,
+   * fading a beat apart. A dodge is the one event in a fight that is invisible
+   * BY CONSTRUCTION — nothing happens, which is the point — so the mark has to
+   * supply the "was here, is not" itself.
+   */
+  evade(e, P, ctx) {
+    const at = ctx && ctx.bodyShape ? ctx.bodyShape(e.who) : null;
+    if (!at) return false;
+    const R = Math.max(0.5, at.r);
+    const H = Math.max(0.8, at.h);
+    const g = new THREE.Group();
+    const ghosts = [];
+    /* Across the facing, so the pair reads as a step aside and not as a body
+       that grew two heads. */
+    const nx = Math.cos(at.yaw || 0);
+    const nz = -Math.sin(at.yaw || 0);
+    for (let i = 0; i < 2; i++) {
+      const side = i ? 1 : -1;
+      const m = signMat(0.34);
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.92, R * 0.92, H, 16, 1, true), m);
+      cyl.position.set(nx * side * R * 1.25, H / 2, nz * side * R * 1.25);
+      g.add(cyl);
+      ghosts.push({ m, side });
+    }
+    g.position.set(at.x, 0, at.z);
+    this.spawnMesh(g, 0.4, (o, u) => {
+      for (const gh of ghosts) {
+        /* Staggered: one is already going as the other arrives — a flicker,
+           not a pair of statues. */
+        const k = Math.min(1, Math.max(0, (u - (gh.side > 0 ? 0.12 : 0)) / 0.7));
+        gh.m.opacity = 0.34 * (1 - k) ** 0.9;
+        gh.m.visible = k < 1;
+      }
     });
     return true;
   }

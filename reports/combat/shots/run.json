@@ -1,0 +1,46 @@
+{
+  "at": "2026-09-06T23:04:13.405Z",
+  "base": "http://localhost:8787",
+  "out": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/shots",
+  "db": {
+    "path": "/Users/boozybats/Public/Repos/work/Airena/data/airena.db",
+    "exists": true,
+    "bytes": 1690935296,
+    "modified": "2026-09-06T23:03:55.299Z"
+  },
+  "commit": "8699fb678a9f3be2e741b146938b25fbca5d90ca",
+  "branch": "main",
+  "dirtyFiles": 5,
+  "node": "v24.18.0",
+  "finishedAt": "2026-09-06T23:04:57.926Z",
+  "seconds": 44,
+  "only": [
+    "live-fighting",
+    "live-hud"
+  ],
+  "partial": true,
+  "claim": {
+    "ok": true,
+    "creature": "c_18e20e72-6bb",
+    "account": "g_12d99b9d-bf0"
+  },
+  "replay": "m_99f1be08-9fc",
+  "captures": 2,
+  "failures": 0,
+  "states": [
+    {
+      "id": "live-hud",
+      "errors": 0,
+      "overlaps": 0,
+      "covered": 0,
+      "flaw": null
+    },
+    {
+      "id": "live-fighting",
+      "errors": 0,
+      "overlaps": 0,
+      "covered": 0,
+      "flaw": null
+    }
+  ]
+}

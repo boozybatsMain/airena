@@ -123,8 +123,8 @@ const valueAt = (name, pts) => {
  *
  * Раздача идёт «наливом»: доля, упёршаяся в потолок своей оси, отдаёт остаток
  * остальным. Без этого набор с одной жадной осью тратил бы меньше бюджета, чем
- * остальные, — и лига сравнивала бы не телосложения, а цены. Ровно та ошибка,
- * от которой лигу атомов пришлось лечить фиксированным кулдауном.
+ * остальные, — и лига сравнивала бы не телосложения, а цены: сравнивать надо
+ * одно, всё прочее держать равным.
  */
 function buildFrom(share) {
   const pts = Object.fromEntries(AXES.map((n) => [n, 0]));
@@ -214,13 +214,29 @@ const KIT = [
   { delivery: 'self', effects: ['heal'], element: 'frost' },
 ];
 
+/*
+ * THE PILOT PANEL (07.09). One pilot valued one thing: the kit-stub does not
+ * kite and rarely misses, so on it a fast body and a small body were worth
+ * nothing and a tanky one took 95%. The bodies are now played by every pilot
+ * in `--pilots` (default: the whole panel in brains/pilots plus the stub),
+ * the same pilot on both sides of a match, rotating with the seed — so a
+ * body's win rate is an average over minds that chase, kite and set up.
+ */
+const PILOTS = String(arg('pilots', 'stub,rusher,kiter,controller')).split(',').map((s) => s.trim()).filter(Boolean);
+
 function jobsFor(pairs) {
   const jobs = []; const meta = [];
   for (const [i, j] of pairs) {
     for (let s = 0; s < ROUNDS; s++) {
+      const pilot = PILOTS[s % PILOTS.length];
       for (const flip of [false, true]) {
         jobs.push({
           a: KIT, b: KIT, seed: 1000 + s, sym: true,
+          /* The registry's own cooldowns — the schedule the game is played on.
+             Said out loud because a body league measured on any other cadence
+             is a league about the cadence, not about the bodies. */
+          cooldown: null,
+          pilots: { blue: pilot, orange: pilot },
           /* Стороны арены — это ЦВЕТА, blue и orange, и больше ничего: ни
              вида, ни архетипа за ними нет. Тело каждой приезжает вот этим
              полем, наравне с набором и сидом. */

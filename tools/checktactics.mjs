@@ -325,8 +325,8 @@ function loadStore() {
  * форму — с карточками умений грамматики, — и её не читал никто. Обещание при
  * этом было записано, в `src/brain/prompt.js` над `kitBlocks`, дословно:
  * «`checktactics` sweeps this text too, and a tactical hint here would fail it
- * exactly as it would anywhere else». Не sweeps. Строки `DELIVERY_LINE`,
- * `EFFECT_LINE` и абзац про смену набора шли к моделям неаудированными.
+ * exactly as it would anywhere else». Не sweeps. Карточки доставок и
+ * эффектов и абзац про смену набора шли к моделям неаудированными.
  *
  * Наборы — ФИКСИРОВАННЫЕ и перечислены здесь, а не собираются случайно: ключ
  * вердикта считается от текста сегмента, и набор, меняющийся от прогона к

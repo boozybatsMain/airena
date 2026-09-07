@@ -1,0 +1,43 @@
+{
+  "state": "ladder",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 596,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 5982
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 339.80000001192093,
+      "rendererRequested": 340,
+      "shellReady": 1103,
+      "screenReady": 1245,
+      "viewerStart": 3835,
+      "rendererUp": 5286,
+      "envBuilt": 5351,
+      "postBuilt": 5456
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

@@ -1,0 +1,171 @@
+{
+  "id": "c_19ff07a7-841",
+  "name": "SHAFT-50",
+  "rating": 1250,
+  "fights": 11688,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 7231,
+    "tacticsCard": null,
+    "sourceSha": "db52275a053beb9cedbc5633cfadf54fa471963190fe9bcc297966eeae56754a"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2902,
+    "tacticsCard": "This fighter tries to hover around range 11, circling side-to-side when the enemy is at good distance, and fires beam or zone attacks with basic velocity-leading whenever they're off cooldown and the enemy is visible — it's fairly trigger-happy, spamming whatever's ready rather than picking moments. When it spots the enemy winding up a beam or zone attack, it picks a dodge side and either blinks away (if close and the blink is up) or strafes; but the dodge-side choice is only re-rolled when a *new* cast starts, so it will strafe in a fixed, predictable direction for the whole duration of any…",
+    "rating": 1250,
+    "fights": 11707,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 20.13,
+      "faults": 0,
+      "thinks": 302,
+      "orders": 501,
+      "uses": 18,
+      "hits": 5,
+      "damageDealt": 173.76000000000022,
+      "stubDamageDealt": 240.21333333333376,
+      "aliveTicks": 603,
+      "idleInReachTicks": 62,
+      "stillTicks": 1,
+      "fuelSpent": 439,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 19.03,
+      "faults": 0,
+      "thinks": 285,
+      "orders": 486,
+      "uses": 16,
+      "hits": 4,
+      "damageDealt": 192.3200000000004,
+      "stubDamageDealt": 240.21333333333382,
+      "aliveTicks": 570,
+      "idleInReachTicks": 104,
+      "stillTicks": 4,
+      "fuelSpent": 403,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 21.27,
+      "faults": 0,
+      "thinks": 319,
+      "orders": 519,
+      "uses": 21,
+      "hits": 7,
+      "damageDealt": 240.05333333333363,
+      "stubDamageDealt": 235.20000000000027,
+      "aliveTicks": 637,
+      "idleInReachTicks": 35,
+      "stillTicks": 19,
+      "fuelSpent": 444,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 22.4,
+      "faults": 0,
+      "thinks": 336,
+      "orders": 564,
+      "uses": 19,
+      "hits": 7,
+      "damageDealt": 228.48000000000025,
+      "stubDamageDealt": 243.41333333333358,
+      "aliveTicks": 671,
+      "idleInReachTicks": 98,
+      "stillTicks": 1,
+      "fuelSpent": 475,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 90128,
+  "forgeMs": 80392,
+  "admitMs": 540,
+  "cardMs": 9188,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 80389,
+      "chars": 2902
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6924,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.0838748,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2902,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:38:13.279Z",
+  "previous": [],
+  "candidateSha": "8858af837fa35463aacadc7397d87d5738c719c7ddf92e4b0e5566e27bef530a",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.87,
+    "idleInReach": 0.121,
+    "still": 0.01,
+    "casts": 18.5
+  },
+  "card": "This fighter tries to hover around range 11, circling side-to-side when the enemy is at good distance, and fires beam or zone attacks with basic velocity-leading whenever they're off cooldown and the enemy is visible — it's fairly trigger-happy, spamming whatever's ready rather than picking moments. When it spots the enemy winding up a beam or zone attack, it picks a dodge side and either blinks away (if close and the blink is up) or strafes; but the dodge-side choice is only re-rolled when a *new* cast starts, so it will strafe in a fixed, predictable direction for the whole duration of any…"
+}

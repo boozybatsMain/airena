@@ -363,6 +363,24 @@ function beatText(b, ability, mark, opening) {
     case 'evade': return ability ? `slips the ${named}` : 'slips away';
     case 'interrupt': return ability ? `cuts short the ${named}` : 'cuts the attack short';
     case 'landed': return 'lands from the leap';
+    /*
+     * ── THE FIVE RULES THE PANEL USED TO DROP ──────────────────────────────
+     *
+     * Every one of them is the answer to a question a reader of this panel
+     * asks out loud: why did that stun do nothing, where did the health go,
+     * why did a hit for 28 take 16 off the bar, and what is that slab doing in
+     * the middle of the arena. The numbers travel with the line because "heals"
+     * and "takes damage on the shield" are categories; 10 and 12 are facts.
+     */
+    case 'immune': return `refuses the ${String(b.effect || 'control')} — immune`;
+    case 'absorbed': return Number(b.amount) > 0
+      ? `takes ${num(Math.round(Number(b.amount)))} on the shield`
+      : 'takes it on the shield';
+    case 'shieldBroke': return 'loses its shield';
+    case 'heal': return Number(b.amount) > 0
+      ? `heals ${num(Math.round(Number(b.amount)))}`
+      : 'heals';
+    case 'wall': return 'raises a wall';
     case 'burned': return 'burns down in the closing arena';
     case 'chargeMiss': return b.reason === 'wall' ? 'slams into a wall' : 'charges past';
     case 'death': return 'goes down';
@@ -392,9 +410,18 @@ function refusal(b, named) {
  * quips and the heaviest exchange in front, and lets the repetition live
  * behind `Show all` where it belongs.
  */
+/*
+ * The rules rank BETWEEN a hit and a miss, deliberately.
+ *
+ * A shield breaking or a control refused is why the next hit landed or did not,
+ * so it outranks the ordinary exchange around it; a heal and a wall are
+ * decisions a mind made and rank with an interrupt. None of them outranks the
+ * knock-out or a quip, which are what the panel is for.
+ */
 const BEAT_WEIGHT = {
-  death: 120, burned: 90, say: 46, hit: 30, chargeMiss: 22, interrupt: 20,
-  evade: 18, blocked: 16, dodged: 15, blink: 12, refused: 10, miss: 8, landed: 6,
+  death: 120, burned: 90, say: 46, hit: 30, shieldBroke: 28, chargeMiss: 22,
+  heal: 22, interrupt: 20, wall: 20, evade: 18, immune: 17, blocked: 16,
+  absorbed: 16, dodged: 15, blink: 12, refused: 10, miss: 8, landed: 6,
 };
 
 const beatScore = (l) => (BEAT_WEIGHT[l.type] || 5)
@@ -1478,7 +1505,11 @@ export async function enter(root, args, ctx) {
     const firstHit = beats.findIndex((b) => b?.type === 'hit');
     const lines = beats.map((b, i) => {
       const actor = idOf(b);
-      const ownerId = (b.type === 'evade' || b.type === 'interrupt') ? across[actor] : actor;
+      /* Whose ability the line names is not always whose line it is: a dodge,
+         an interrupt, a refusal and an absorbed hit all name the ability the
+         OTHER fighter cast. */
+      const ACROSS = new Set(['evade', 'interrupt', 'immune', 'absorbed']);
+      const ownerId = ACROSS.has(b.type) ? across[actor] : actor;
       const dict = (ownerId && names[ownerId]) || shared;
       const side = sideClass(actor);
       /* The name stays as the arena writes it. Title-casing it here made the
@@ -1509,7 +1540,10 @@ export async function enter(root, args, ctx) {
       return text
         ? {
           t: b.t, name, side, type: b.type, amount: b.amount,
-          opening: i === firstHit, sig: `${b.type}|${b.who}|${b.skill || ''}`, text,
+          opening: i === firstHit,
+          /* The signature is what `pickBeats` de-duplicates on: two refusals of
+             the same atom are one beat, two of different atoms are two. */
+          sig: `${b.type}|${b.who}|${b.skill || ''}|${b.effect || ''}`, text,
         }
         : null;
     }).filter(Boolean);

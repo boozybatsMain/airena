@@ -525,7 +525,27 @@ const STATES = [
    */
   { id: 'live-searching', group: 'THE FIGHT', route: '/live?ui=searching' },
   { id: 'live-vs', group: 'THE FIGHT', route: '/live?ui=vs' },
-  { id: 'live-hud', group: 'THE FIGHT', route: '/live?ui=fighting', extra: true },
+  /*
+   * IT WAITS FOR THE RENDERER, AND THAT IS NOT THE SAME AS WAITING FOR A FIGHT.
+   *
+   * This state photographs the HUD on the screen's own fixtures, so it needs no
+   * broadcast — but it is still a `live-` state, and every `live-` state is
+   * held to `driveFrames`, which reads `window.__airenaDrawn`. That object is
+   * published at the top of `src/viewer/main.js`, and the shell imports the
+   * viewer asynchronously (`bootRenderer`): on a loaded stand the default
+   * settle window expires first, `__airenaDrawn` is still undefined, and the
+   * probe reports "ticked 0 of 24 frames in 0 ms (page undefined)" about a page
+   * whose only fault was that the renderer had not finished arriving. Three of
+   * three widths failed that way while `live-fighting`, which does wait, passed
+   * beside them — the tell that the fault was the wait and not the screen.
+   *
+   * So it waits for the two things it is a picture OF: the renderer booted and
+   * the fixture HUD mounted with its tiles.
+   */
+  {
+    id: 'live-hud', group: 'THE FIGHT', route: '/live?ui=fighting', extra: true, wait: 20000,
+    ready: "!!window.__airenaDrawn && !!document.querySelector('.hud-fake .cds > .cd')",
+  },
   /*
    * A FIRST FRAME IS NOT A FIGHT.
    *
@@ -586,7 +606,20 @@ const STATES = [
     act: "(document.querySelectorAll('#screen .ability')[1] || document.querySelector('#screen .ability'))?.focus(), 1",
   },
   { id: 'history', group: 'THE RECORD', route: '/history' },
-  { id: 'history-detail', group: 'THE RECORD', route: '/history?ui=detail' },
+  /*
+   * IT WAITS FOR THE RETELLING, which is the only reason this state exists.
+   *
+   * The panel opens on a `/api/match/:id` round-trip and the capture used to
+   * shoot whatever was on screen at the end of the default settle: three grey
+   * skeleton blocks, photographed under the name of the screen that is supposed
+   * to show a fight told back. Nothing in the picture could fail a gate — a
+   * skeleton has no overlapping text — so the state passed while proving
+   * nothing. It now waits for a beat to exist.
+   */
+  {
+    id: 'history-detail', group: 'THE RECORD', route: '/history?ui=detail', wait: 15000,
+    ready: "!!document.querySelector('.beats .beat')",
+  },
   { id: 'ladder', group: 'THE RECORD', route: '/ladder' },
   { id: 'ladder-rank-up', group: 'THE RECORD', route: '/ladder?ui=rank-up', extra: true },
   { id: 'ladder-minds', group: 'THE RECORD', route: '/ladder/minds' },

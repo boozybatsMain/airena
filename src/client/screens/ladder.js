@@ -413,6 +413,12 @@ export async function enter(root, args, ctx) {
   moreError = null;
   const mine = ++visit;
 
+  /* A fresh mount starts at the top, so the dock starts hidden — `syncDockSeen`
+     (below, "THE DOCK EARNS THE FLOOR BY BEING SCROLLED TO") only ever turns
+     it on, in response to a real scroll. */
+  root.classList.remove('dock-seen');
+  root.addEventListener('scroll', syncDockSeen, { passive: true });
+
   mount(root, h('div.doc.lad', h('div.doc-inner', skeleton())));
 
   await load();
@@ -492,6 +498,9 @@ export function update(args, ctx) {
   const nextDock = footer();
   if (dock && nextDock) dock.replaceWith(nextDock);
   rootRef.scrollTop = 0;
+  /* A tab press hands the reader a fresh top of a different table, and the
+     dock has not earned this one's floor yet either. */
+  syncDockSeen();
   showBodies();
 
   /* The minds table is fetched the first time it is asked for, and only then:
@@ -523,6 +532,7 @@ export function leave() {
   ticker = null;
   if (offSession) offSession();
   offSession = null;
+  if (rootRef) rootRef.removeEventListener('scroll', syncDockSeen);
   ctxRef = null;
   rootRef = null;
   board = null;
@@ -1197,6 +1207,31 @@ function prizeRow(c, i, prize) {
 }
 
 /* ── sticky footer: where am I ───────────────────────────────────────────── */
+
+/*
+ * THE DOCK EARNS THE FLOOR BY BEING SCROLLED TO, NOT BY BEING LOADED.
+ *
+ * `.lad-dock` stays pinned to the screen's bottom edge for as long as there is
+ * more table below the fold (`ui/screens/ladder.css`), which is what lets it
+ * answer "where am I" without the reader hunting for it — but on a laptop
+ * (720 px) or a phone (844 px) the podium alone already reaches far enough
+ * down the first frame that the pin's own footprint lands on the FIRST
+ * standings row before the reader has touched the page. That is not a case of
+ * the header needing to be a fixed number of pixels shorter: the table is
+ * dozens of rows long at every width this screen supports, the pin is exactly
+ * as tall as one row, and a table longer than the screen ALWAYS has some row
+ * sitting at the bottom edge — trimming the header only changes which row
+ * that is, never removes it. `dock-seen` is the flag that answers the
+ * question the layout actually turns on: has this reader scrolled past the
+ * podium at all. It lives on the screen root, which survives every repaint
+ * and every CREATURES ↔ MINDS ↔ SEASON swap, so the fade never has to be
+ * re-armed by hand — only re-armed to OFF when a swap hands the reader a
+ * fresh top of a different table.
+ */
+function syncDockSeen() {
+  if (!rootRef) return;
+  rootRef.classList.toggle('dock-seen', rootRef.scrollTop > 16);
+}
 
 /** My place on the prize board, which counts player creatures alone. */
 function seasonRankOfMe(me) {

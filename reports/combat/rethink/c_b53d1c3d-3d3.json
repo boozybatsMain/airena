@@ -1,0 +1,185 @@
+{
+  "id": "c_b53d1c3d-3d3",
+  "name": "GLASS JELLYFISH",
+  "rating": 1200,
+  "fights": 10971,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2298,
+    "tacticsCard": "This fighter is a mid-range circler: it tries to sit between roughly 8 and 15 units, closing when further and backing off when closer, while constantly strafing sideways and firing its third skill with lead prediction inside 20 units, falling back on the direct-aim first skill out to 25. Its main defensive trick is watching incoming enemy projectiles and, if one is on a near-collision course within about six units of travel, blinking or dashing sideways with the second skill — that's its only real risk-taker, and it burns it purely reactively.",
+    "sourceSha": "e738bd83ec4aa058e8995de13bacf1b60394d9f580a258a4cb9b8a36166407cd",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_b53d1c3d-3d3.before.e738bd83.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2632,
+    "tacticsCard": "This fighter tries to hover around a fairly long 13.5-unit range, circle-strafing when nobody is casting anything dangerous, and leaning on lead-prediction for both its ranged attacks whenever the enemy is visible and in range — it clearly favors the long-range poke over the projectile skill, only throwing the latter as a backup.",
+    "rating": 1200,
+    "fights": 11023,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 20.17,
+      "faults": 0,
+      "thinks": 303,
+      "orders": 474,
+      "uses": 17,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 192,
+      "aliveTicks": 604,
+      "idleInReachTicks": 82,
+      "stillTicks": 54,
+      "fuelSpent": 937,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 14.77,
+      "faults": 0,
+      "thinks": 221,
+      "orders": 357,
+      "uses": 11,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 192,
+      "aliveTicks": 442,
+      "idleInReachTicks": 39,
+      "stillTicks": 3,
+      "fuelSpent": 685,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 18.73,
+      "faults": 0,
+      "thinks": 281,
+      "orders": 463,
+      "uses": 13,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 192,
+      "aliveTicks": 561,
+      "idleInReachTicks": 83,
+      "stillTicks": 2,
+      "fuelSpent": 869,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 15.33,
+      "faults": 0,
+      "thinks": 230,
+      "orders": 354,
+      "uses": 14,
+      "hits": 10,
+      "damageDealt": 240,
+      "stubDamageDealt": 168,
+      "aliveTicks": 459,
+      "idleInReachTicks": 53,
+      "stillTicks": 20,
+      "fuelSpent": 712,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 74249,
+  "forgeMs": 65778,
+  "admitMs": 459,
+  "cardMs": 8009,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 65778,
+      "chars": 2632
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6116,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.127342,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2632,
+  "promptHash": "97f16d7dbdaf0fe402e0a7e80c0bfbd202a75ec0ad875bbc6ff4f9d51899138e",
+  "generatedAt": "2026-09-07T10:56:14.362Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:07:00.903Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:03:04.782Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "6169dc22aee36da23b18513638cbb4309a1c42426263b5cc6d40084ea9aecb41",
+  "behaviour": {
+    "wins": 4,
+    "damageShare": 1.29,
+    "idleInReach": 0.124,
+    "still": 0.038,
+    "casts": 13.75
+  },
+  "card": "This fighter tries to hover around a fairly long 13.5-unit range, circle-strafing when nobody is casting anything dangerous, and leaning on lead-prediction for both its ranged attacks whenever the enemy is visible and in range — it clearly favors the long-range poke over the projectile skill, only throwing the latter as a backup."
+}

@@ -1,0 +1,188 @@
+{
+  "id": "c_f9fb473a-187",
+  "name": "BARROW",
+  "rating": 880,
+  "fights": 6123,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2259,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to hold about 8.5 units away, strafing sideways and flipping its circling direction every three seconds, backing off when you close in and closing with a slight arc when you drift out. It fires its root-and-damage strike on cooldown at anything visible within roughly 14.5 units, aiming at where you'll be half a second later, falls back to the weaker attack otherwise, and pops its shield when it sees a telegraphed cast nearby, when you're within 8 units unshielded, or when it's burning.",
+    "sourceSha": "6cee768e80843d8651341c26a3fd6c5c679259f0be4ae996f5c51c461a66411d",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_f9fb473a-187.before.6cee768e.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2479,
+    "tacticsCard": "This fighter keeps its distance, circling to stay about 7.5 units from the enemy and stepping out of any hostile zones it's standing in, always turning to face its target. It leads with ranged attacks on cooldown — firing k2 and k1 with predictive aiming out to 16 range — and only raises its shield reactively when it senses an incoming k2 windup or opportunistically when idle and unshielded.",
+    "rating": 1055,
+    "fights": 6186,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "pull",
+        "weaken"
+      ],
+      "channel": "speed",
+      "element": "gravity"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "root"
+      ],
+      "element": "gravity"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield"
+      ],
+      "element": "gravity"
+    }
+  ],
+  "kitCost": 37,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 35.33,
+      "faults": 0,
+      "thinks": 530,
+      "orders": 1094,
+      "uses": 34,
+      "hits": 43,
+      "damageDealt": 174.23999999999998,
+      "stubDamageDealt": 189.11999999999998,
+      "aliveTicks": 1059,
+      "idleInReachTicks": 3,
+      "stillTicks": 173,
+      "fuelSpent": 1667,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 35.23,
+      "faults": 0,
+      "thinks": 528,
+      "orders": 1091,
+      "uses": 35,
+      "hits": 41,
+      "damageDealt": 155.51999999999998,
+      "stubDamageDealt": 190.55999999999997,
+      "aliveTicks": 1056,
+      "idleInReachTicks": 4,
+      "stillTicks": 163,
+      "fuelSpent": 1665,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 35.63,
+      "faults": 0,
+      "thinks": 534,
+      "orders": 1103,
+      "uses": 35,
+      "hits": 45,
+      "damageDealt": 182.39999999999998,
+      "stubDamageDealt": 183.83999999999997,
+      "aliveTicks": 1068,
+      "idleInReachTicks": 5,
+      "stillTicks": 148,
+      "fuelSpent": 1698,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 36.23,
+      "faults": 0,
+      "thinks": 543,
+      "orders": 1121,
+      "uses": 35,
+      "hits": 42,
+      "damageDealt": 162.23999999999998,
+      "stubDamageDealt": 170.39999999999998,
+      "aliveTicks": 1086,
+      "idleInReachTicks": 3,
+      "stillTicks": 165,
+      "fuelSpent": 1705,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 107434,
+  "forgeMs": 99815,
+  "admitMs": 1030,
+  "cardMs": 6529,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 99814,
+      "chars": 2479
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8089,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.153125,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2479,
+  "promptHash": "f9048059424babc052252660c9c10fca110bea8dc058d89a72b82f0366b64fe9",
+  "generatedAt": "2026-09-07T11:16:07.994Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:05:53.782Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:08:13.267Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "9c6599d7052570a97d9fb4f68dad930fd08161a27c3a2001c4822fc0805cf5bc",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.919,
+    "idleInReach": 0.004,
+    "still": 0.152,
+    "casts": 34.75
+  },
+  "card": "This fighter keeps its distance, circling to stay about 7.5 units from the enemy and stepping out of any hostile zones it's standing in, always turning to face its target. It leads with ranged attacks on cooldown — firing k2 and k1 with predictive aiming out to 16 range — and only raises its shield reactively when it senses an incoming k2 windup or opportunistically when idle and unshielded."
+}

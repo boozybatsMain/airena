@@ -1,0 +1,68 @@
+{
+  "state": "live-visitor",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/live?ui=live-visitor",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 12,
+    "waiting": 0,
+    "fps": {
+      "last": 48,
+      "min": 48,
+      "ticks": 56,
+      "since": 17043
+    },
+    "drawn": {
+      "n": 105,
+      "firstAt": 16046,
+      "firstMs": 27,
+      "lastMs": 4,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "medium",
+      "sides": {
+        "blue": "slot",
+        "orange": "slot",
+        "mine": null
+      }
+    },
+    "backend": "webgpu",
+    "quality": "medium",
+    "msPerFrame": 16.609473684273265,
+    "marks": {
+      "t0": 1482.4000000059605,
+      "rendererRequested": 1483,
+      "shellReady": 6651,
+      "screenReady": 6664,
+      "viewerStart": 8379,
+      "rendererUp": 8393,
+      "envBuilt": 8505,
+      "postBuilt": 8521,
+      "precompiled": 15034,
+      "postWarm": 16042,
+      "rendererReady": 16042,
+      "firstDraw": 16073,
+      "firstMatch": 16119,
+      "firstFrame": 16124
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 393,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

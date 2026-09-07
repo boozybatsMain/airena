@@ -1,0 +1,193 @@
+{
+  "id": "c_c4eb7da3-a72",
+  "name": "THE RIFT",
+  "rating": 1549,
+  "fights": 6323,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 3108,
+    "tacticsCard": "This fighter is a mid-range kiter: it wants to sit around eleven units away, strafing sideways and flipping direction every second or so, closing in only when the enemy drifts too far or goes out of sight. It fires its main projectile on cooldown with lead prediction whenever the enemy is visible inside twenty units, drops the short-range attack under thirteen, and reserves the dash mainly for sidestepping incoming shots or breaking away when hurt or when the enemy starts casting.",
+    "sourceSha": "3da6defff96e75aad961e4c30277a364bfddc678836bf1e515ee6d708ff55405",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_c4eb7da3-a72.before.3da6deff.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2995,
+    "tacticsCard": "This fighter is a disciplined kiter: it taunts once, then tries to sit around range 15, backing off if you close in and advancing if you stray too far, strafing sideways when the distance is just right. It blinks away the instant it sees your telegraphed k1/k3 windup or if an enemy zone sits under it, and otherwise plinks away with cheap k1 bolts (leading your velocity) or drops a predictive k3 zone when in range — its \"risk\" moments are only the reactive blink-dodges, since it never blinks proactively to engage.",
+    "rating": 1574,
+    "fights": 6331,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "silence"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "shield"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "pull"
+      ],
+      "element": "void"
+    }
+  ],
+  "kitCost": 48,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 32.43,
+      "faults": 0,
+      "thinks": 487,
+      "orders": 1006,
+      "uses": 25,
+      "hits": 13,
+      "damageDealt": 245.13599999999997,
+      "stubDamageDealt": 135.40800000000002,
+      "aliveTicks": 972,
+      "idleInReachTicks": 383,
+      "stillTicks": 54,
+      "fuelSpent": 1434,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 25.03,
+      "faults": 0,
+      "thinks": 375,
+      "orders": 775,
+      "uses": 18,
+      "hits": 14,
+      "damageDealt": 244.56,
+      "stubDamageDealt": 35.424,
+      "aliveTicks": 750,
+      "idleInReachTicks": 325,
+      "stillTicks": 15,
+      "fuelSpent": 1092,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 21.97,
+      "faults": 0,
+      "thinks": 329,
+      "orders": 683,
+      "uses": 18,
+      "hits": 16,
+      "damageDealt": 255.98399999999998,
+      "stubDamageDealt": 64.56,
+      "aliveTicks": 658,
+      "idleInReachTicks": 229,
+      "stillTicks": 14,
+      "fuelSpent": 923,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 26.17,
+      "faults": 0,
+      "thinks": 392,
+      "orders": 811,
+      "uses": 20,
+      "hits": 13,
+      "damageDealt": 257.13599999999997,
+      "stubDamageDealt": 112.56,
+      "aliveTicks": 784,
+      "idleInReachTicks": 307,
+      "stillTicks": 6,
+      "fuelSpent": 1106,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 120678,
+  "forgeMs": 112075,
+  "admitMs": 680,
+  "cardMs": 7919,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 112073,
+      "chars": 2995
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9686,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.16797000000000004,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2995,
+  "promptHash": "ebb381e1c7ffe9baf90efb22608e0409c81414bd9a2cc0c6c66b26022374fde9",
+  "generatedAt": "2026-09-07T10:27:18.123Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T03:58:54.903Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T04:11:12.474Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:57:56.434Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "54cee17c1b9b7563e28fc23df93c7190d8c4280c0ae8885eebc3d6980f7a2e15",
+  "behaviour": {
+    "wins": 4,
+    "damageShare": 2.882,
+    "idleInReach": 0.393,
+    "still": 0.028,
+    "casts": 20.25
+  },
+  "card": "This fighter is a disciplined kiter: it taunts once, then tries to sit around range 15, backing off if you close in and advancing if you stray too far, strafing sideways when the distance is just right. It blinks away the instant it sees your telegraphed k1/k3 windup or if an enemy zone sits under it, and otherwise plinks away with cheap k1 bolts (leading your velocity) or drops a predictive k3 zone when in range — its \"risk\" moments are only the reactive blink-dodges, since it never blinks proactively to engage."
+}

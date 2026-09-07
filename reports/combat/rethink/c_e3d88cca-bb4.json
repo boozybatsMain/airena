@@ -1,0 +1,171 @@
+{
+  "id": "c_e3d88cca-bb4",
+  "name": "NEEDLE-42",
+  "rating": 1183,
+  "fights": 9849,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 7128,
+    "tacticsCard": null,
+    "sourceSha": "88b3a20a80398dfd17a2e13eb67492bb38f72659a9a56697f55685b403910d65"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2692,
+    "tacticsCard": "This fighter mostly hovers at medium range (~10 units), weaving side-to-side rather than committing to a fixed spot, and only closes in or backs off when the gap gets too extreme. It watches specifically for the enemy's beam telegraph and, if it has its dash ready, dodges perpendicular-plus-away from it — a solid reactive read.",
+    "rating": 1183,
+    "fights": 9870,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 26.37,
+      "faults": 0,
+      "thinks": 396,
+      "orders": 666,
+      "uses": 23,
+      "hits": 8,
+      "damageDealt": 246.13333333333355,
+      "stubDamageDealt": 159.52000000000052,
+      "aliveTicks": 790,
+      "idleInReachTicks": 171,
+      "stillTicks": 3,
+      "fuelSpent": 1005,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 22.27,
+      "faults": 0,
+      "thinks": 334,
+      "orders": 578,
+      "uses": 17,
+      "hits": 7,
+      "damageDealt": 246.40000000000032,
+      "stubDamageDealt": 175.146666666667,
+      "aliveTicks": 667,
+      "idleInReachTicks": 197,
+      "stillTicks": 3,
+      "fuelSpent": 810,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 28.47,
+      "faults": 0,
+      "thinks": 427,
+      "orders": 731,
+      "uses": 22,
+      "hits": 6,
+      "damageDealt": 260.4800000000005,
+      "stubDamageDealt": 219.2000000000005,
+      "aliveTicks": 853,
+      "idleInReachTicks": 268,
+      "stillTicks": 4,
+      "fuelSpent": 1069,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 26.93,
+      "faults": 0,
+      "thinks": 404,
+      "orders": 698,
+      "uses": 22,
+      "hits": 6,
+      "damageDealt": 234.34666666666703,
+      "stubDamageDealt": 260.3200000000003,
+      "aliveTicks": 807,
+      "idleInReachTicks": 244,
+      "stillTicks": 15,
+      "fuelSpent": 938,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 118086,
+  "forgeMs": 109431,
+  "admitMs": 720,
+  "cardMs": 7925,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 109429,
+      "chars": 2692
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9134,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.10597480000000001,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2692,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:44:03.165Z",
+  "previous": [],
+  "candidateSha": "520e9df09364d3e161de9f475a049c704de1830103a35b7d5a281dc3b5c54a48",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.213,
+    "idleInReach": 0.282,
+    "still": 0.008,
+    "casts": 21
+  },
+  "card": "This fighter mostly hovers at medium range (~10 units), weaving side-to-side rather than committing to a fixed spot, and only closes in or backs off when the gap gets too extreme. It watches specifically for the enemy's beam telegraph and, if it has its dash ready, dodges perpendicular-plus-away from it — a solid reactive read."
+}

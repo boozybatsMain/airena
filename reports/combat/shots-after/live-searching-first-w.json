@@ -1,0 +1,74 @@
+{
+  "state": "live-searching-first",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/live?ui=searching-first",
+  "size": "1280x720",
+  "session": "loop: ticked 6 of 24 frames in 6035 ms (page visible) — the arena did not draw for the capture",
+  "signals": {
+    "screen": "live",
+    "phase": "searching",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 18,
+    "waiting": 0,
+    "fps": {
+      "last": 1,
+      "min": 1,
+      "ticks": 2,
+      "since": 16131
+    },
+    "drawn": {
+      "n": 10,
+      "firstAt": 10083,
+      "firstMs": 27,
+      "lastMs": 15,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 67.30000001192093,
+      "rendererRequested": 68,
+      "shellReady": 1799,
+      "screenReady": 1809,
+      "viewerStart": 2552,
+      "rendererUp": 2564,
+      "envBuilt": 2638,
+      "postBuilt": 2651,
+      "precompiled": 7020,
+      "postWarm": 10080,
+      "rendererReady": 10081,
+      "firstDraw": 10109,
+      "firstMatch": 10156,
+      "firstFrame": 10158
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 6,
+      "ok": false,
+      "ms": 6035,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "loop: ticked 6 of 24 frames in 6035 ms (page visible) — the arena did not draw for the capture"
+  ],
+  "overlaps": [
+    "Live feed × Your first fight: 35×4",
+    "Last fight × Your first fight: 35×19",
+    "drives a kinetic × Your first fight: 35×7"
+  ],
+  "covered": []
+}

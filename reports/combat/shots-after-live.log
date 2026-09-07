@@ -1,0 +1,83 @@
+
+  SCREEN STATES
+
+  base   http://localhost:8787
+  out    /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+  sizes  1440×900  1280×720  390×844
+  tree   8699fb678a on main[2m + 60 uncommitted files[0m
+  db     /Users/boozybats/Public/Repos/work/Airena/data/airena.db  1942.6 MB, modified 2026-09-07 10:00
+
+  claim  STONE GOLEM (c_18e20e72-6bb) → g_83bffd13-758
+  replay m_e896946f-cde on constants c-0c03af0b
+
+
+  THE FIRST HOUR
+[31m    live-searching-first 1 err    0 overlap    0 covered   loop: ticked 8 of 24 frames in 6756 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-searching-first-w 1 err    3 overlap    0 covered   loop: ticked 6 of 24 frames in 6035 ms (page visible) — the arena did not draw for the capture[0m
+    live-searching-first-m 0 err    0 overlap    0 covered
+    live-result-first    0 err    0 overlap    0 covered
+    live-result-first-w  0 err    0 overlap    0 covered
+    live-result-first-m  0 err    0 overlap    0 covered
+
+  THE FIGHT
+    live-searching       0 err    0 overlap    0 covered
+    live-searching-w     0 err    0 overlap    0 covered
+[31m    live-searching-m     1 err    0 overlap    0 covered   loop: ticked 11 of 24 frames in 6038 ms (page visible) — the arena did not draw for the capture[0m
+    live-vs              0 err    0 overlap    0 covered
+    live-vs-w            0 err    0 overlap    0 covered
+    live-vs-m            0 err    0 overlap    0 covered
+    live-hud             0 err    0 overlap    0 covered
+    live-hud-w           0 err    0 overlap    0 covered
+    live-hud-m           0 err    0 overlap    0 covered
+    live-fighting        1 err    0 overlap    0 covered
+    live-fighting-w      2 err    0 overlap    0 covered
+    live-fighting-m      1 err    0 overlap    0 covered
+
+  STATE                  ERRORS   OVERLAPS  COVERED
+  ────────────────────── ──────── ───────── ────────
+  THE FIRST HOUR
+[31m  live-searching-first   1        0         0   loop[0m
+[31m  live-searching-first-w 1        3         0   loop[0m
+  live-searching-first-m 0        0         0
+  live-result-first      0        0         0
+  live-result-first-w    0        0         0
+  live-result-first-m    0        0         0
+  THE FIGHT
+  live-searching         0        0         0
+  live-searching-w       0        0         0
+[31m  live-searching-m       1        0         0   loop[0m
+  live-vs                0        0         0
+  live-vs-w              0        0         0
+  live-vs-m              0        0         0
+  live-hud               0        0         0
+  live-hud-w             0        0         0
+  live-hud-m             0        0         0
+  live-fighting          1        0         0
+  live-fighting-w        2        0         0
+  live-fighting-m        1        0         0
+[31m
+  stamped, and not evidence of anything but themselves:[0m
+[31m    live-searching-first   loop: ticked 8 of 24 frames in 6756 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-searching-first-w loop: ticked 6 of 24 frames in 6035 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-searching-m       loop: ticked 11 of 24 frames in 6038 ms (page visible) — the arena did not draw for the capture[0m
+
+  console errors:
+    live-fighting: render: Cannot read properties of undefined (reading 'abs') @ eval (eval at buildBody (/viewer/loadbody.js:302:16), <anonymous>:36:66) <- Ni.call (/vendor/three.webgpu.min.js?v=mtqvpt2u:6:32450) <- Ni
+    live-fighting-w: render: Cannot read properties of undefined (reading 'abs') @ eval (eval at buildBody (/viewer/loadbody.js:302:16), <anonymous>:36:66) <- Ni.call (/vendor/three.webgpu.min.js?v=mtqvpt2u:6:32450) <- Ni
+    live-fighting-w: TypeError: Cannot read properties of undefined (reading 'abs')
+    live-fighting-m: render: Cannot read properties of undefined (reading 'abs') @ eval (eval at buildBody (/viewer/loadbody.js:302:16), <anonymous>:36:66) <- Ni.call (/vendor/three.webgpu.min.js?v=mtqvpt2u:6:32450) <- Ni
+[31m
+  overlapping text:[0m
+[31m    live-searching-first-w: Live feed × Your first fight: 35×4[0m
+[31m    live-searching-first-w: Last fight × Your first fight: 35×19[0m
+[31m    live-searching-first-w: drives a kinetic × Your first fight: 35×7[0m
+
+  18 captures in /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+[31m
+  FAILED: 3 of 18 photographed the wrong session or a screen still arriving[0m
+  FAILED: 3 of 18 had console errors
+[31m  FAILED: 1 of 18 have text on text or text under a panel (§12)[0m
+
+[2m  repeat:  node tools/shots.mjs --base=http://localhost:8787 --out=/Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after --only=live-searching-first,live-searching,live-fighting
+[0m
+SHOTS2 EXIT 1

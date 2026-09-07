@@ -3,6 +3,7 @@
  *
  *   node tools/checkladder.mjs
  *   node tools/checkladder.mjs --falsify    сломать K и показать, что гейт ловит
+ *   node tools/checkladder.mjs --no-db      только арифметика, без чтения базы
  *
  * ЗАЧЕМ. На живых данных корреляция «рейтинг ↔ доля побед» вышла 0.18 — то есть
  * лестница почти ничего не предсказывала. Из такой цифры можно сделать два
@@ -19,10 +20,19 @@
  * задана разницей сил: проверяется арифметика лестницы, а не арена.
  */
 
+import { DatabaseSync } from 'node:sqlite';
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { constantsVersion } from '../src/core/version.js';
 import { K_BASE, K_PLACEMENT, PLACEMENT_FIGHTS, START_RATING, clampRating, expectedScore, rate }
   from '../src/server/ladder.js';
 
 const FALSIFY = process.argv.includes('--falsify');
+const NO_DB = process.argv.includes('--no-db');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const DB = process.env.AIRENA_DB || join(ROOT, 'data/airena.db');
 
 /* Детерминированный генератор: гейт, зависящий от Math.random, падает раз в
    двадцать прогонов и приучает не верить гейтам. */
@@ -238,6 +248,108 @@ if (FALSIFY) {
   ok('шаг ловится', bigStep > MAX_STEP, `шаг ${bigStep.toFixed(1)} против порога ${MAX_STEP}`);
   const bigRho = median(RUNS.map(() => season(160, 600, 'window').rho));
   console.log(`     а корреляция при этом ${bigRho.toFixed(2)} — то есть порядок она не ломает`);
+}
+
+/*
+ * ── ВТОРАЯ ПОЛОВИНА ГЕЙТА: ТЕМП, ПРОЧИТАННЫЙ ИЗ НАСТОЯЩИХ БОЁВ ──────────────
+ *
+ * Всё выше — арифметика: сорок существ с ЗАДАННОЙ силой, исход — монета. Она
+ * охраняет K и ничего не знает про то, дерутся ли существа на самом деле.
+ * Между тем ровно это и оказалось сломано: треть сторон публичной лестницы
+ * была телом, которое ходит весь бой и не применяет ничего, а результат такого
+ * боя от честного проигрыша ничем не отличается — ни исходом, ни длиной, ни
+ * причиной смерти.
+ *
+ * Прочитать это из базы стало возможно только сейчас. `keepLog` хранил голову
+ * и хвост, и темп, снятый с обрезанной строки, был свойством обрезки: по базе
+ * выходило 4.3–5.9 применений на 10 с, тот же бой в `spectate.mjs` — 8.7.
+ * Теперь `arena-loop.js` считает сводку по ПОЛНОМУ логу до обрезки и кладёт её
+ * в `result_json.summary`, и её можно спросить.
+ *
+ * Два порога, и оба — про то, что видит зритель, а не про рейтинг:
+ *   применений на бойца на 10 с    медиана ≥ 5   (§3 просит ≥ 6; здесь
+ *                                                 нижняя граница «дерётся»)
+ *   сторон, не применивших ничего  0             (цель §3 — «мёртвых слотов
+ *                                                 ≤ 2%», ноль строже нарочно:
+ *                                                 после починки фикстур на
+ *                                                 250 переигранных боях их 0)
+ *
+ * ВЫБОРКА РЕШАЕТ, ГЕЙТ ЭТО ИЛИ ОТЧЁТ. Меньше 200 боёв текущей версии констант
+ * со сводкой — печатаем и не роняем: сразу после смены констант или после
+ * выкатки самой сводки боёв в базе просто нет, и падать на этом значит
+ * приучать не верить гейтам. От 200 — это гейт.
+ */
+const PACE_SAMPLE = 200;
+const PACE_MIN_CASTS_10S = 5;
+
+function paceFromDb() {
+  if (NO_DB) return null;
+  if (!existsSync(DB)) return { skip: `базы ${DB} нет` };
+  let db;
+  try { db = new DatabaseSync(DB, { readOnly: true }); } catch (e) { return { skip: `база не открылась: ${e.message}` }; }
+  const cv = constantsVersion();
+  let rows;
+  try {
+    rows = db.prepare(`SELECT a_slot, b_slot, seconds, result_json FROM match
+      WHERE constants_version = ? AND kind IN ('ladder', 'training')
+        AND result_json LIKE '%"summary"%'
+      ORDER BY started_at DESC LIMIT ?`).all(cv, PACE_SAMPLE);
+  } catch (e) { db.close(); return { skip: `запрос не прошёл: ${e.message}` }; }
+  db.close();
+
+  const per10s = []; let dead = 0; let sides = 0; let used = 0;
+  for (const m of rows) {
+    let j; try { j = JSON.parse(m.result_json); } catch { continue; }
+    const sum = j.summary;
+    if (!sum) continue;
+    const secs = Number(m.seconds);
+    if (!Number.isFinite(secs) || secs <= 0) continue;
+    used++;
+    for (const slot of [m.a_slot, m.b_slot]) {
+      /* Мост старых имён сторон здесь не нужен: сводка появилась после
+         переименования, и под старым именем её не существует. */
+      const s = sum[slot];
+      if (!s) continue;
+      sides++;
+      per10s.push((s.casts / secs) * 10);
+      if (s.casts === 0) dead++;
+    }
+  }
+  return { cv, used, sides, dead, per10s: per10s.sort((a, b) => a - b) };
+}
+
+const pace = paceFromDb();
+if (pace) {
+  console.log('\n  ТЕМП ПО ЗАПИСАННЫМ БОЯМ\n');
+  if (pace.skip) {
+    console.log(`  пропущено: ${pace.skip}\n`);
+  } else if (!pace.used) {
+    console.log(`  боёв версии ${pace.cv} со сводкой в базе нет — читать нечего.`);
+    console.log('  Сводка пишется `arena-loop.js` начиная с этой версии кода; она появится');
+    console.log('  сама, как только сервер сыграет первые бои.\n');
+  } else {
+    const med = pace.per10s[Math.floor(pace.per10s.length / 2)];
+    const enough = pace.used >= PACE_SAMPLE;
+    console.log(`  версия констант ${pace.cv}, боёв со сводкой ${pace.used}, сторон ${pace.sides}`
+      + `${enough ? '' : `  (меньше ${PACE_SAMPLE} — отчёт, не гейт)`}`);
+    const say = (name, ok, note) => {
+      console.log(`  ${enough ? (ok ? '✓' : '✗') : '·'} ${name}  ${note}`);
+      if (enough && !ok) bad++;
+    };
+    say('применений на бойца на 10 с', med >= PACE_MIN_CASTS_10S,
+      `медиана ${med.toFixed(2)}, порог ${PACE_MIN_CASTS_10S}`);
+    say('сторон, не применивших ничего', pace.dead === 0,
+      `${pace.dead} из ${pace.sides}`);
+    if (enough && pace.dead) {
+      console.log('\n  Мёртвая сторона — это не проигрыш, а неисправность: начните с');
+      console.log('  `node tools/checkfixtures.mjs`, он называет её поимённо.');
+    }
+    if (enough && med < PACE_MIN_CASTS_10S) {
+      console.log('\n  Темп ниже порога — это либо цены умений, либо мозги: `spectate.mjs`');
+      console.log('  на витринной выборке разделит одно от другого.');
+    }
+    console.log('');
+  }
 }
 
 console.log(bad ? `\n  ПРОВАЛ: ${bad}\n` : '\n  ДЕРЖИТ\n');

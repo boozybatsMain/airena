@@ -1,0 +1,179 @@
+{
+  "id": "c_a7d3cfba-205",
+  "name": "RIDGE-50",
+  "rating": 1250,
+  "fights": 11982,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 4986,
+    "tacticsCard": null,
+    "sourceSha": "40b74818b5f83408f1e1022b2f0f49b56baf67655da5c6041567935688adbe16"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 902,
+    "tacticsCard": "This fighter is relentless: it walks straight at the enemy and stares them down constantly, never holding distance or backing off. Up close it favors the melee cone the moment the enemy is grounded and visible, otherwise it dashes in to close the gap or land a hit, and it'll throw up its shield reactively when it sees a telegraphed cast — but only if the shield's down and off cooldown.",
+    "rating": 1250,
+    "fights": 12004,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 38,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 19.23,
+      "faults": 0,
+      "thinks": 289,
+      "orders": 598,
+      "uses": 20,
+      "hits": 11,
+      "damageDealt": 249.35999999999999,
+      "stubDamageDealt": 119.52000000000001,
+      "aliveTicks": 576,
+      "idleInReachTicks": 19,
+      "stillTicks": 0,
+      "fuelSpent": 451,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 21.07,
+      "faults": 0,
+      "thinks": 316,
+      "orders": 655,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 219.83999999999997,
+      "stubDamageDealt": 264,
+      "aliveTicks": 631,
+      "idleInReachTicks": 13,
+      "stillTicks": 1,
+      "fuelSpent": 480,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 21.07,
+      "faults": 0,
+      "thinks": 316,
+      "orders": 655,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 219.83999999999997,
+      "stubDamageDealt": 264,
+      "aliveTicks": 631,
+      "idleInReachTicks": 12,
+      "stillTicks": 1,
+      "fuelSpent": 481,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 21.47,
+      "faults": 0,
+      "thinks": 322,
+      "orders": 667,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 219.83999999999997,
+      "stubDamageDealt": 264,
+      "aliveTicks": 643,
+      "idleInReachTicks": 13,
+      "stillTicks": 1,
+      "fuelSpent": 486,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 98149,
+  "forgeMs": 45419,
+  "admitMs": 47223,
+  "cardMs": 5502,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 45418,
+      "chars": 1655
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 3589,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.050067200000000006,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 902,
+  "promptHash": "a06bf78e045ed0b95f84c6ce6730579c43be7e89c514bd370d4bcb52aca127a9",
+  "generatedAt": "2026-09-07T10:40:58.923Z",
+  "previous": [],
+  "candidateSha": "9f4b40374964c9788b4dca308da0fa4681ece1451b0214d8e9aa67c858a1d66e",
+  "repair": {
+    "attempted": true,
+    "message": "Your mind just ran 4 trial fights against a scripted opponent holding your exact same kit. Measured: it idled — no action running, a ready ability already in reach of the enemy — 56% of the time it was alive;",
+    "costUsd": 0,
+    "admitted": true,
+    "problems": []
+  },
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.997,
+    "idleInReach": 0.023,
+    "still": 0.001,
+    "casts": 22.25
+  },
+  "card": "This fighter is relentless: it walks straight at the enemy and stares them down constantly, never holding distance or backing off. Up close it favors the melee cone the moment the enemy is grounded and visible, otherwise it dashes in to close the gap or land a hit, and it'll throw up its shield reactively when it sees a telegraphed cast — but only if the shield's down and off cooldown."
+}

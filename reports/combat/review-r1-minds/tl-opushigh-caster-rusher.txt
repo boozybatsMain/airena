@@ -1,0 +1,184 @@
+
+===== TIMELINE sub-opus-high/caster vs pilot:rusher seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 156 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 156 act -
+  0.07  pilot says "coming around"
+  1.93  MIND says "Look up."
+  1.93  MIND casts k1 (lob)
+  1.93  pilot casts k1 (lob)
+  2.00  -- t=2 dist 17 | MIND (5,11.7) v3.7 hp 156 act k1/windup cd k1:2.5 k2:0 k3:0 | pilot (8.7,-4.9) v4 hp 156 act k1/windup
+  2.40    MIND mortar released → lands (12.7,-0.1) in 1.07s; enemy then at (9.7,-2.4) moving 3.8 m/s → error 3.8 m miss; aim off bearing -18.6°
+  2.40    pilot mortar released → lands (8.1,10.4) in 1.18s; enemy then at (5.1,8.6) moving 3.8 m/s → error 3.5 m miss; aim off bearing 8.1°
+  2.67  pilot casts k2 (zone)
+  3.30  MIND k1 MISSED: aim
+  3.43  pilot k1 MISSED: aim
+  3.60  pilot k2: root shrugged off (immune)
+  4.00  -- t=4 dist 10.7 | MIND (7.4,8) v6.4 hp 148.5 act - cd k1:0.5 k2:0 k3:0 | pilot (9.7,-2.4) v0 hp 156 act -
+  4.10  pilot k2: root shrugged off (immune)
+  4.33  MIND casts k2 (zone)
+  4.40  pilot casts k3 (self)
+  4.93  pilot casts k1 (lob)
+  5.07  MIND casts k1 (lob)
+  5.27  MIND k2: root shrugged off (immune)
+  5.40    pilot mortar released → lands (15.2,5.1) in 0.74s; enemy then at (11.8,7.1) moving 3.8 m/s → error 3.9 m miss; aim off bearing 12.9°
+  5.53    MIND mortar released → lands (9.6,-2.6) in 0.77s; enemy then at (12.7,0.6) moving 3.8 m/s → error 4.4 m miss; aim off bearing 2.1°
+  5.67  pilot casts k2 (zone)
+  5.77  MIND k2: root shrugged off (immune)
+  5.97  pilot k1 MISSED: aim
+  6.00  MIND casts k3 (self)
+  6.00  -- t=6 dist 6.9 | MIND (12.1,6.6) v5.7 hp 139.6 act k3/windup cd k1:1.7 k2:1.3 k3:3 | pilot (11.8,-0.3) v4.1 hp 155.9 act k2/windup
+  6.10  pilot k2: root shrugged off (immune)
+  6.13  pilot says "hot floor"
+  6.13  MIND k1 MISSED: aim
+  6.27  MIND k2: root shrugged off (immune)
+  7.10  pilot k2: root shrugged off (immune)
+  7.53  pilot casts k1 (lob)
+  7.67  MIND casts k1 (lob)
+  8.00    pilot mortar released → lands (12.2,17.6) in 0.72s; enemy then at (14.7,12.7) moving 3.8 m/s → error 5.5 m miss; aim off bearing -7.7°
+  8.00  -- t=8 dist 4.9 | MIND (13.1,14) v3.8 hp 138 act k1/windup cd k1:2.3 k2:0 k3:1 | pilot (12.8,9.1) v3.8 hp 145.7 act k1/recover
+  8.13    MIND mortar released → lands (13,10.9) in 0.28s; enemy then at (12.3,10.3) moving 3.8 m/s → error 0.9 m HIT; aim off bearing -2.5°
+  8.23  MIND k1 hits for 28.6 → pilot hp 117.1
+  8.27  pilot casts k3 (self)
+  8.57  pilot k1 MISSED: aim
+  8.80  pilot casts k2 (zone)
+  9.00  MIND casts k3 (self)
+  9.53  MIND says "Floor's hot now."
+  9.53  MIND casts k2 (zone)
+ 10.00  -- t=10 dist 8.2 | MIND (16.3,8) v4.1 hp 141.4 act k2/recover cd k1:0.3 k2:2.5 k3:2 | pilot (12.5,15.3) v4.8 hp 121.8 act -
+ 10.13  pilot casts k1 (lob)
+ 10.27  MIND casts k1 (lob)
+ 10.47  MIND k2: root shrugged off (immune)
+ 10.60    pilot mortar released → lands (13.9,7.1) in 0.67s; enemy then at (17.7,3.4) moving 2.8 m/s → error 5.3 m miss; aim off bearing 8.8°
+ 10.73    MIND mortar released → lands (13.1,14.2) in 0.76s; enemy then at (14.3,10.4) moving 3.8 m/s → error 4 m miss; aim off bearing -0.5°
+ 10.97  MIND k2: root shrugged off (immune)
+ 11.10  pilot k1 MISSED: aim
+ 11.27  pilot casts k3 (self)
+ 11.33  MIND k1 hits for 28.6 → pilot hp 90.7
+ 11.33  MIND k1: blind shrugged off (immune)
+ 11.80  pilot casts k2 (zone)
+ 12.00  MIND casts k3 (self)
+ 12.00  -- t=12 dist 9.7 | MIND (17.5,-1.3) v5.6 hp 141.4 act k3/windup cd k1:0.9 k2:0.5 k3:3 | pilot (15,8.1) v4.1 hp 97.1 act k2/windup
+ 12.73  pilot casts k1 (lob)
+ 12.73  pilot k2: root shrugged off (immune)
+ 13.20    pilot mortar released → lands (16.8,-5.8) in 0.73s; enemy then at (17.5,-9.8) moving 6.4 m/s → error 4 m miss; aim off bearing 4.6°
+ 13.23  pilot k2: root shrugged off (immune)
+ 13.77  pilot k1 MISSED: aim
+ 13.80  MIND casts k1 (lob)
+ 14.00  -- t=14 dist 8.2 | MIND (17.3,-9.9) v3.8 hp 140.9 act k1/windup cd k1:2.4 k2:0 k3:1 | pilot (16.8,-1.7) v6.4 hp 97.1 act -
+ 14.27  pilot says "not done yet"
+ 14.27  pilot casts k3 (self)
+ 14.27    MIND mortar released → lands (17.3,-7.2) in 0.27s; enemy then at (16.7,-4.5) moving 5.6 m/s → error 2.7 m HIT; aim off bearing 10.7°
+ 14.37  MIND k1 MISSED: aim
+ 14.53  MIND casts k2 (zone)
+ 14.80  pilot casts k2 (zone)
+ 15.23  pilot k2: root shrugged off (immune)
+ 15.47  MIND k2: root shrugged off (immune)
+ 15.53  pilot casts k1 (lob)
+ 15.97  MIND k2: root shrugged off (immune)
+ 16.00    pilot mortar released → lands (16.8,-18.2) in 0.78s; enemy then at (18.6,-17.8) moving 0 m/s → error 1.8 m HIT; aim off bearing 0.4°
+ 16.00  -- t=16 dist 8.8 | MIND (16.8,-17.8) v0 hp 132.9 act - cd k1:0.4 k2:1.5 k3:0 | pilot (16.7,-9) v3.8 hp 104.1 act k1/recover
+ 16.23  pilot k2: root shrugged off (immune)
+ 16.60  pilot k1 hits for 28.6 → MIND hp 99.3
+ 16.73  pilot k2: root shrugged off (immune)
+ 16.93  MIND says "Look up."
+ 16.93  MIND casts k1 (lob)
+ 17.27  pilot casts k3 (self)
+ 17.40    MIND mortar released → lands (16.6,-10.8) in 0.64s; enemy then at (18.6,-16.9) moving 1.6 m/s → error 6.4 m miss; aim off bearing -41.7°
+ 17.67  MIND casts k3 (self)
+ 17.80  pilot casts k2 (zone)
+ 17.87  MIND k1 MISSED: aim
+ 18.00  -- t=18 dist 2.9 | MIND (16.1,-18.4) v2.4 hp 98 act k3/recover cd k1:1.5 k2:0 k3:2.7 | pilot (18.6,-16.8) v2.1 hp 104.7 act k2/windup
+ 18.23  pilot k2: root shrugged off (immune)
+ 18.53  pilot casts k1 (lob)
+ 18.73  pilot k2: root shrugged off (immune)
+ 19.00    pilot mortar released → lands (15.2,-14) in 0.37s; enemy then at (15.9,-11.4) moving 6.4 m/s → error 2.6 m HIT; aim off bearing -1.9°
+ 19.20  pilot k1 hits for 26.4 → MIND hp 71.6
+ 19.20  pilot k1: blind shrugged off (immune)
+ 19.53  MIND casts k1 (lob)
+ 20.00    MIND mortar released → lands (15.6,-12) in 0.27s; enemy then at (18,-12.7) moving 6.2 m/s → error 2.5 m HIT; aim off bearing 25.7°
+ 20.00  -- t=20 dist 4.1 | MIND (17.2,-9) v3.8 hp 67.5 act k1/recover cd k1:2.1 k2:0 k3:0.7 | pilot (17,-13.1) v6.2 hp 104.7 act -
+ 20.10  MIND k1 hits for 28.6 → pilot hp 76.1
+ 20.27  MIND casts k2 (zone)
+ 20.27  pilot casts k3 (self)
+ 20.73  pilot says "hot floor"
+ 20.80  pilot casts k2 (zone)
+ 21.00  MIND casts k3 (self)
+ 21.20  MIND k2: root shrugged off (immune)
+ 21.53  pilot casts k1 (lob)
+ 21.70  MIND k2: root shrugged off (immune)
+ 21.73  pilot k2: root shrugged off (immune)
+ 22.00    pilot mortar released → lands (17.2,-3.5) in 0.4s; enemy then at (12.2,-2.9) moving 6.4 m/s → error 5 m miss; aim off bearing 29.9°
+ 22.00  -- t=22 dist 4.8 | MIND (14.6,-3.4) v6.4 hp 77.9 act - cd k1:0.1 k2:1.3 k3:2 | pilot (16.2,-8) v3.8 hp 85.1 act k1/recover
+ 22.23  pilot k1 MISSED: aim
+ 22.23  pilot k2: root shrugged off (immune)
+ 22.40  MIND casts k1 (lob)
+ 22.87    MIND mortar released → lands (13.6,-1.9) in 0.27s; enemy then at (12.7,-5.3) moving 5.3 m/s → error 3.5 m miss; aim off bearing -44°
+ 22.97  MIND k1 hits for 28.6 → pilot hp 51
+ 22.97  MIND k1: blind shrugged off (immune)
+ 23.27  MIND casts k2 (zone)
+ 23.27  pilot casts k3 (self)
+ 23.70  MIND k2: root shrugged off (immune)
+ 23.80  pilot casts k2 (zone)
+ 24.00  MIND says "Patch and press."
+ 24.00  MIND casts k3 (self)
+ 24.00  -- t=24 dist 4.1 | MIND (10.4,0.5) v5 hp 71.9 act k3/windup cd k1:1 k2:2.3 k3:3 | pilot (10,-3.6) v4.1 hp 63.6 act k2/windup
+ 24.23  pilot k2: root shrugged off (immune)
+ 24.53  pilot casts k1 (lob)
+ 25.00    pilot mortar released → lands (13.7,6.6) in 0.8s; enemy then at (11.3,6.7) moving 0 m/s → error 2.4 m HIT; aim off bearing 0.2°
+ 25.23  pilot k2: root shrugged off (immune)
+ 25.63  pilot k1 hits for 28.6 → MIND hp 52
+ 25.67  MIND casts k1 (lob)
+ 26.00  -- t=26 dist 5.3 | MIND (10.9,7.3) v3.8 hp 49 act k1/windup cd k1:2.3 k2:0.3 k3:1 | pilot (10.9,2.1) v6.4 hp 61.6 act -
+ 26.13    MIND mortar released → lands (9.4,-1.2) in 0.73s; enemy then at (9.8,5) moving 6.4 m/s → error 6.2 m miss; aim off bearing 11.9°
+ 26.27  pilot casts k3 (self)
+ 26.40  MIND casts k2 (zone)
+ 26.70  MIND k1 MISSED: aim
+ 26.80  pilot says "stay right there"
+ 26.80  pilot casts k2 (zone)
+ 27.13  MIND casts k3 (self)
+ 27.23  pilot k2: root shrugged off (immune)
+ 27.53  pilot casts k1 (lob)
+ 27.73  pilot k2: root shrugged off (immune)
+ 28.00    pilot mortar released → lands (4.1,15.4) in 0.68s; enemy then at (1.2,13.9) moving 6.4 m/s → error 3.2 m HIT; aim off bearing 8.2°
+ 28.00  -- t=28 dist 6.5 | MIND (4.3,13.5) v6.4 hp 59.1 act - cd k1:0.3 k2:1.4 k3:2.1 | pilot (9.1,9.1) v3.8 hp 72.9 act k1/recover
+ 28.53  pilot k1 hits for 27.8 → MIND hp 31.3
+ 28.53  pilot k1: blind shrugged off (immune)
+ 28.60  MIND casts k1 (lob)
+ 29.07    MIND mortar released → lands (2.9,14.7) in 0.27s; enemy then at (3.6,13.6) moving 6 m/s → error 1.3 m HIT; aim off bearing -27.4°
+ 29.17  MIND k1 hits for 28.6 → pilot hp 44.3
+ 29.27  pilot casts k3 (self)
+ 29.40  MIND casts k2 (zone)
+ 29.80  pilot casts k2 (zone)
+ 30.00  -- t=30 dist 4.4 | MIND (-3.3,14.2) v4.1 hp 30 act k2/recover cd k1:1.2 k2:2.4 k3:0.1 | pilot (1.1,13.8) v0 hp 57.7 act k2/windup
+ 30.13  MIND casts k3 (self)
+ 30.33  MIND k2: root shrugged off (immune)
+ 30.53  pilot casts k1 (lob)
+ 30.83  MIND k2: root shrugged off (immune)
+ 31.00    pilot mortar released → lands (-4.4,15.1) in 0.28s; enemy then at (-6.7,18.4) moving 2.2 m/s → error 4 m miss; aim off bearing -25°
+ 31.13  pilot k1 MISSED: aim
+ 31.20  MIND says "Look up."
+ 31.20  MIND casts k1 (lob)
+ 31.67    MIND mortar released → lands (-3.9,14.7) in 0.38s; enemy then at (-5.3,17.9) moving 5.4 m/s → error 3.4 m miss; aim off bearing 11.1°
+ 31.90  MIND k1 hits for 28.6 → pilot hp 18.7
+ 31.90  MIND k1: blind shrugged off (immune)
+ 32.00  -- t=32 dist 3.9 | MIND (-8.7,16.1) v6.4 hp 38.8 act - cd k1:1.8 k2:0.4 k3:1.1 | pilot (-5.1,17.8) v6.1 hp 18.2 act -
+ 32.27  pilot casts k3 (self)
+ 32.80  pilot casts k2 (zone)
+ 33.13  MIND casts k3 (self)
+ 33.53  pilot casts k1 (lob)
+ 33.73  pilot k2: root shrugged off (immune)
+ 34.00    pilot mortar released → lands (-6.2,8.8) in 0.34s; enemy then at (-6.6,5.9) moving 6.4 m/s → error 2.9 m HIT; aim off bearing 3°
+ 34.00  -- t=34 dist 4.9 | MIND (-6.2,8) v6.4 hp 36.9 act - cd k1:0 k2:0 k3:2.1 | pilot (-5.4,12.8) v3.2 hp 17.7 act k1/recover
+ 34.17  pilot k1 hits for 24.8 → MIND hp 10.5
+ 34.23  pilot k2: root shrugged off (immune)
+ 34.47  MIND casts k1 (lob)
+ 34.73  MIND dies
+ 34.73  END {"winner":"orange","reason":"kill"}
+
+
+## sub-opus-high/caster
+  vs pilot:rusher: W-D-L 0-0-1 | len 34.7s | sudden death 1/1 | mean dist 7.4 m | reasons kill
+    MIND  casts/10s 8.1 cdUtil 74% hit 67% (12/18) dmg/game 171.4 still 5% noAct 53% idle+ready 37% idle+inReach 27% allCd 43%
+          uses k1 12, k2 7, k3 9 | dead slots 0/3 | miss k1:aim 5 | refused —
+          immune root 12, blind 3 (on damage-carrying casts 15, on pure controls 0; already immune when ordered 2) | dodges 0 | interrupts made 0 taken 0 | say 5 | faults 0
+          telegraph resp 76% (25/33) | lead usage 70% (7/10) mean off-bearing 15.5° | mortar: 11 thrown, 4 on target (36%), vs moving target 4/10, mean landing error 3.6 m (no-lead would be 1.8 m)
+    PILOT casts/10s 9.5 hit 61% dmg/game 136.1 still 10% idle+inReach 2% immune root 19, blind 2 dodges 0 interrupts made 0

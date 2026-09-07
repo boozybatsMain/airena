@@ -144,7 +144,7 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
       for (let k = j + 1; k < effIds.length; k++) all.push([effIds[i], effIds[j], effIds[k]]);
     }
   }
-  let legal = 0; let maxCost = 0; const atBudget = { 22: 0, 24: 0 }; let threeAt22 = 0;
+  let legal = 0; let maxCost = 0; const atBudget = { 20: 0, 22: 0 }; let threeAt20 = 0;
   {
     for (const d of Object.keys(DELIVERIES)) {
       for (const es of all) {
@@ -156,19 +156,25 @@ const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueO
           if (!Number.isFinite(c)) continue;
           legal++;
           if (c > maxCost) maxCost = c;
-          if (c <= 22) { atBudget[22]++; if (es.length === 3) threeAt22++; }
-          if (c <= 24) atBudget[24]++;
+          if (c <= 20) { atBudget[20]++; if (es.length === 3) threeAt20++; }
+          if (c <= 22) atBudget[22]++;
         }
       }
     }
   }
-  const want = { legal: 9243, maxCost: 32, at22: 2059, at24: 3488, three22: 322 };
-  const got = { legal, maxCost, at22: atBudget[22], at24: atBudget[24], three22: threeAt22 };
+  /* Re-counted 07.09 after `validateSkill` refused Weaken on the Cooldown
+     channel (registry.js: it holds a tile past the three-second ceiling
+     without the number on the tile ever showing it). That rule removes 552
+     legal abilities — 9243 → 8691 — and the registry's own table moved with
+     it. The ceiling's argument is unchanged: the share of three-effect
+     abilities is 75% at 20 and 78% at 22, exactly as before. */
+  const want = { legal: 8691, maxCost: 42, at20: 4967, at22: 6321, three20: 3415 };
+  const got = { legal, maxCost, at20: atBudget[20], at22: atBudget[22], three20: threeAt20 };
   const off = Object.keys(want).filter((k) => want[k] !== got[k]);
   ok('перечисление под SKILL_BUDGET воспроизводится', off.length === 0,
     off.length
       ? off.map((k) => `${k}: в комментарии ${want[k]}, посчитано ${got[k]}`).join('; ')
-      : `${legal} законных, самое дорогое ${maxCost}, при 22 — ${atBudget[22]} (из них 3-эффектных ${threeAt22})`);
+      : `${legal} законных, самое дорогое ${maxCost}, при 20 — ${atBudget[20]} (из них 3-эффектных ${threeAt20})`);
 }
 
 // ── 4. мир остаётся корректным: солиды с размерами, позиции — числа ────────

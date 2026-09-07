@@ -47,7 +47,7 @@ export const TUNING = (() => {
 })();
 
 /** Apply `{ section: { key: { field: value } } }` over a table of records. */
-function tune(table, section) {
+export function tune(table, section) {
   const patch = TUNING[section];
   if (!patch) return table;
   for (const [key, fields] of Object.entries(patch)) {
@@ -221,6 +221,23 @@ export const MAX_QUERIES_PER_THINK = 400;
 /** Characters `api.say` will carry, and how long a line stays on the ticker. */
 export const SAY_MAX_CHARS = 90;
 export const SAY_SECONDS = 3.0;
+/**
+ * THE QUIP CAP — one line per fighter per this many seconds.
+ *
+ * A mind thinks fifteen times a second and `api.say` used to be accepted on
+ * every one of them. Measured over 361 stored ladder quips: 9.8 lines a match
+ * and 1.9 DISTINCT lines per speaking fighter — the same sentence pushed onto
+ * the ticker again and again, which reads as a stuck screen rather than as a
+ * mind talking. The cap is on the SIM, not on the viewer, so the log a replay
+ * is assembled from carries what the crowd actually saw.
+ *
+ * A `say` inside the window is dropped silently: it is not a fault, it costs
+ * no budget, and no event is emitted. A refusal event would teach a mind to
+ * spend a thought retrying the line instead of fighting, which is the opposite
+ * of what the cap is for. 4.0 s is a shade longer than the 3.0 s a line stays
+ * on the ticker, so a fighter is never speaking over itself.
+ */
+export const SAY_EVERY = 4.0;
 /** Keys `api.remember` will keep, and the size of one stored value once JSON'd. */
 export const MEM_MAX_KEYS = 48;
 export const MEM_MAX_VALUE_BYTES = 4096;
@@ -309,6 +326,33 @@ export const BEAM_RADIUS = 0.4;
 
 /** Friction when no move order is standing: how fast a body coasts to rest. */
 export const BRAKE_ACCEL = 30;
+
+/*
+ * ── LITERALS THE PROMPT QUOTES, NAMED (07.09) ───────────────────────────────
+ *
+ * Each of these lived as a bare number at its call site while the prompt
+ * either stayed silent about it or typed it by hand. A number the mind is
+ * told has to come from here (the rule at the top of this file), so here they
+ * are: the call sites read them and the prompt quotes them.
+ */
+/** A beam is released this far ahead of the caster's centre. */
+export const BEAM_MUZZLE = 0.2;
+/** A bolt or a mortar is released this far ahead of the caster's centre. */
+export const PROJECTILE_MUZZLE = 0.3;
+/** A bolt connects when it comes within the target's radius plus this. */
+export const PROJECTILE_TOUCH = 0.35;
+/** A wall grows this far ahead of the caster's centre, along the facing. */
+export const WALL_AHEAD = 3.2;
+/** Height of a raised wall (the arena's blocks are WALL_HEIGHT tall). */
+export const WALL_RAISED_HEIGHT = 2.2;
+/** A blink keeps this share of the body's velocity on landing. */
+export const BLINK_VELOCITY_KEEP = 0.3;
+/** The events a mind is handed between two thoughts, at most. */
+export const EVENTS_MAX = 32;
+/** A wind-up longer than this can be cancelled by a stun, a silence or an impact. */
+export const INTERRUPT_MIN_WINDUP = 0.2;
+/** Fire and the arena announce themselves once every this many hp. */
+export const BURN_EVENT_EVERY = 10;
 
 /** A knockback impulse decays at this rate; below this speed it is dropped. */
 export const KNOCKBACK_DRAG = 9;
@@ -714,7 +758,33 @@ export const BUILD_AXES = {
    * Середина возвращена к 180 — туда, где стояло среднее двух прежних тел.
    * Цена середины прежняя, пять очков: сдвинуты концы, а не экономика.
    */
-  hp: { min: 60, max: 300, def: 180, per: 24 },
+  /*
+   * FLOOR 120 AND 14 hp A POINT (07.09). With kills deciding fights instead
+   * of the arena's proportional burn, health became the axis that pays: on
+   * the body league a body that put everything into hp took 95% and a
+   * 60-hp glass body 6%. Raising the floor (a body cannot be four hits of
+   * glass) and the price (300 hp costs 13 points of 25, not 10) brought the
+   * worst deviation from 45 to 27 points on the stub pilot; the rest of the
+   * gap is the pilot's, which does not kite and does not miss — see the
+   * multi-pilot body league in `tools/sizebalance.mjs`.
+   *
+   * FLOOR 150 AND 9 hp A POINT (fix round 1, 07.09). The balance review found
+   * the body gate red at floor 120 / 14 a point (small body 37.5 %, −12.5
+   * against the 12-point gate), and on the pilots as they are now (the
+   * rusher lands its hits) the same axes read small 24 %, tanky 70 %. The
+   * radius price is not the lever: scanned from 0.06 to 0.13 a point the
+   * small body sat at 15–26 % throughout, because it cannot buy hp at all
+   * and every other body simply got smaller as radius got cheaper. What the
+   * league says is that 120 hp is glass no mobility pays for. A higher floor
+   * with a dearer point keeps the top of the axis where it was (300) and
+   * narrows the spread a budget can open between two bodies: at 25 points
+   * the all-hp body reads 225 instead of 237 and the no-hp body 150 instead
+   * of 120. Measured together with the 1.0 m radius floor below,
+   * `--rounds=40`: even 55 %, tanky 60 %, small 49 %, fast 49 %. No stored
+   * creature carries a build of its own (all 78 fight in the default body),
+   * so no stored body is re-priced by this. The default body costs 21.3.
+   */
+  hp: { min: 210, max: 360, def: 240, per: 9 },
   maxSpeed: { min: 3.0, max: 8.6, def: 5.8, per: 0.56 },
   accel: { min: 12, max: 36, def: 24, per: 2.4 },
   /*
@@ -734,9 +804,32 @@ export const BUILD_AXES = {
    * умение сделает разворот решающим, вес поднимется — и это будет решение,
    * подпёртое тем же прибором, а не восстановление симметрии ради симметрии.
    */
-  turnRate: { min: 2.5, max: 12.5, def: 7.5, per: 1.0, weight: 0.5 },
-  radius: { min: 1.2, max: 1.8, def: 1.5, per: 0.06, inverse: true },
-  jumpHeight: { min: 0.8, max: 3.2, def: 2.0, per: 0.24, weight: 0.5 },
+  /*
+   * 0.35 (was 0.5; fix round 1, 07.09). On the pilots as they are now the
+   * body that spends on turning and jumping — the league's "agile" — read
+   * 37–40 % at weight 0.5 with every other body inside the gate: the same
+   * saturation the paragraph above describes, priced a little too dear
+   * still. At 0.35 (`--rounds=40`): even 48 %, tanky 57 %, small 51 %,
+   * fast 42 %, agile 52 % — worst 7.7 points, inside the instrument's
+   * resolution. The default body costs 19.8 of 25.
+   */
+  turnRate: { min: 2.5, max: 12.5, def: 7.5, per: 1.0, weight: 0.35 },
+  /* 0.10 a step (was 0.06): on the four-pilot body league a small body bought
+     little — the panel's minds hit it almost as often — so the smallest body
+     costs 6 points now instead of 10.
+
+     FLOOR 1.0 m (was 1.2; fix round 1, 07.09). The review's proposal, 0.13 a
+     step, was measured and rejected: cheaper radius shrinks EVERY body that
+     spends on it while the smallest one is pinned at the floor, so the small
+     body fell to 26 % and the even body rose to 66 %. A lower floor is the
+     lever that reaches only the body that chooses to be small: at 1.0 m it is
+     a target 28 % narrower than the even body's 1.38 m instead of 13 %, which
+     is the dodge the panel's pilots actually miss against. Nothing else
+     moves — no stored creature carries its own build, and the default body
+     stays 1.5 m at the same price. Measured with the hp axis above. */
+  radius: { min: 1.0, max: 1.8, def: 1.5, per: 0.10, inverse: true },
+  /* Same weight as turning, for the same measured reason (see `turnRate`). */
+  jumpHeight: { min: 0.8, max: 3.2, def: 2.0, per: 0.24, weight: 0.35 },
 };
 
 /** Цена одной оси в очках. */
@@ -829,6 +922,29 @@ export function statsOf(build) {
  *
  * `moveScale` is what the caster's top speed is multiplied by while committed.
  * `interruptible` says whether a knockback cancels it.
+ *
+ * ── THE FIXTURE IS UNDER THE THREE-SECOND RULE TOO (07.09) ─────────────────
+ *
+ * The founder's rule is "no ability waits longer than about three seconds",
+ * and this table broke it in public: `blink` at 3.9 s and `charge` at 4.0 s
+ * were printed on the cooldown chip of 52% of live ladder fights, because a
+ * creature whose kit is not active fights on this fixture (`skillsOf`).
+ * `smash` broke the other half of the rule — 35 hp every 1.3 s is 27 hp/s
+ * against the grammar fan's 16.8 — so a hand-made set nobody ever measured
+ * was the hardest hitter on the ladder.
+ *
+ * The numbers are now the grammar's own, so the fixture is the beam, the fan
+ * and the lunge in disguise rather than a fifth balance regime:
+ *
+ *     laser  damage 27 → 24     the grammar's damage atom at full share
+ *     smash  damage 35 → 33.6   24 × the fan's 1.4 premium, at cooldown 2.0
+ *     blink  cooldown 3.9 → 3.0 the blink delivery's rhythm
+ *     charge cooldown 4.0 → 3.0 the lunge delivery's rhythm
+ *
+ * `jump` stays at 2.8 s: it was already under the ceiling. Every remaining
+ * geometry number here — ranges, wind-ups, dash speed, i-frames — is
+ * untouched, because §1 and §16 are measured on them. `tools/test.mjs` holds
+ * the ceiling for this table and for every registry delivery.
  */
 export const SKILLS = {
   laser: {
@@ -838,7 +954,7 @@ export const SKILLS = {
     windup: 0.65,
     recover: 0.10,
     cooldown: 2.2,
-    damage: 27,
+    damage: 24,
     range: 24,
     moveScale: 0.45,
     /*
@@ -887,7 +1003,7 @@ export const SKILLS = {
     kind: 'teleport',
     windup: 0.0,
     recover: 0.18,
-    cooldown: 3.9,
+    cooldown: 3.0,
     distance: 7.5,
     iframes: 0.28,
     moveScale: 1.0,
@@ -901,8 +1017,8 @@ export const SKILLS = {
     kind: 'cone',
     windup: 0.28,
     recover: 0.28,
-    cooldown: 1.3,
-    damage: 35,
+    cooldown: 2.0,
+    damage: 33.6,
     range: 2.9,
     /** Half-angle of the cone, radians. 55 deg either side of the heading. */
     halfAngle: 0.96,
@@ -930,7 +1046,7 @@ export const SKILLS = {
     kind: 'dash',
     windup: 0.28,
     recover: 0.35,
-    cooldown: 4.0,
+    cooldown: 3.0,
     damage: 30,
     /**
      * Dash speed and its maximum duration; 15 * 0.8 = 12 m of POSSIBLE reach.
@@ -1115,7 +1231,7 @@ export function skillDuration(s) {
  * «горит, пока стоишь», а одно срабатывание в конце — как «ничего, ничего,
  * ничего, смерть».
  */
-export const ZONE_TOTAL_SHARE = 1.6;
+export const ZONE_TOTAL_SHARE = 1.4;
 
 /** Как часто зона срабатывает, в секундах. */
 export const ZONE_PERIOD = 0.5;

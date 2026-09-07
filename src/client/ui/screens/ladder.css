@@ -873,14 +873,18 @@
  * The bar is 2 + 46 + 2 px plus the home indicator's inset (`ui/chrome.css`),
  * so every offset that was chosen to clear it has to grow with the inset —
  * bare pixels put the last six of the pill under the bar on a notched phone.
- * The dock's bottom edge IS the top of that bar: 50 px + the inset, exactly,
- * so no row can appear in a gap that no longer exists.
+ * The dock's bottom edge IS the top of that bar. It used to say so itself,
+ * 50 px + the inset of sticky offset; now the screen's own scroller is the
+ * one that stops there (below, "the list stops before the tab bar"), so the
+ * dock's sticky edge is flush with the bottom of a box that already ends in
+ * the right place — a second 50 px here would double the gap and float the
+ * pill above the bar with a strip of ground between them.
  */
 @media (max-width: 900px) {
   .lad { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
   .lad:has(.lad-wrap.has-foot) { padding-bottom: 0; }
   .lad-wrap.has-foot .lad-body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
-  .lad-dock { bottom: calc(50px + env(safe-area-inset-bottom)); padding-bottom: 14px; }
+  .lad-dock { bottom: 0; padding-bottom: 14px; }
   .lad-dock::before { top: -26px; }
   .lad-seg > button { padding: 0 14px; }
   /* This is the width where the shell trades its rail for a tab bar — a touch
@@ -1138,4 +1142,78 @@
   .lad-line .name { font-size: 13px; }
   .lad-meta { gap: 3px 10px; }
   .lad-cap { margin-left: 4px; font-size: 8px; letter-spacing: .1em; }
+}
+
+/*
+ * ── the dock introduces itself once the reader has moved ──────────────────
+ *
+ * `.lad-dock` is `position: sticky; bottom: 0` on purpose ("THE DOCK REACHES
+ * THE BOTTOM OF THE SCREEN", above) — for as long as more of the table sits
+ * below the fold, it stays pinned to the visible bottom edge, not only once
+ * the reader has scrolled to the true end of the list. The table is longer
+ * than every viewport this screen supports, so at rest (`scrollTop === 0`)
+ * that pin always lands on some row — the podium leaves just enough of the
+ * first standings row exposed on a 720 px laptop, and the same is true one
+ * row into MINDS or SEASON, and again under the phone's tab bar. No fixed
+ * number of pixels trimmed off the header changes that: the pin is one row
+ * tall, the table outruns the screen, and some row is always sitting at the
+ * bottom edge — trimming only changes which one. `screens/ladder.js` marks
+ * the scroller `dock-seen` the moment it actually moves, and the dock fades
+ * in on that mark instead of standing over a row nobody has scrolled to.
+ */
+.screen[data-screen="ladder"] .lad-dock {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear var(--d-ui);
+}
+.screen[data-screen="ladder"].dock-seen .lad-dock {
+  opacity: 1; visibility: visible;
+  transition: opacity var(--d-ui) var(--ease), visibility 0s linear 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen[data-screen="ladder"] .lad-dock { transition: none; }
+}
+
+/*
+ * ── a phone: the list stops before the tab bar, not behind it ─────────────
+ *
+ * `#chrome .rail` (`ui/chrome.css`) is a fixed 50 px band the shell floats
+ * over every screen at ≤900 px, independent of the document underneath it.
+ * `.lad`'s own bottom padding only ever reserved room at the very END of the
+ * list — the last row, once the reader has scrolled all the way down — and
+ * said nothing about every position in between, where the bar sits over
+ * whatever row currently touches the bottom edge.
+ *
+ * A ROW HERE HAS NO FIXED HEIGHT TO ALIGN AGAINST. `.lad-meta`'s mind name
+ * wraps rather than truncates on purpose (below, "it is never cut") — the one
+ * field a phone's standings row exists to carry may not lose a syllable to a
+ * clipping trick — so two boards with different minds fighting stack their
+ * rows to two different heights, and a margin measured to clear the bar for
+ * ONE board's rows can sit a taller row from a different board straight back
+ * under it. The scroller is given more than the bar's own floor instead —
+ * enough that a row has to be less than half inside the box to still count
+ * as showing at all (`tools/checklayout.mjs`'s own rule for a clipped row) —
+ * so the last row a reader can actually read always clears the bar, whatever
+ * height it happened to grow to.
+ */
+@media (max-width: 900px) {
+  #screen > .screen[data-screen="ladder"] {
+    bottom: calc(130px + env(safe-area-inset-bottom));
+  }
+  /*
+   * THE DOCK DOES NOT LOSE ITS OWN FLOOR TO THE ROWS' MARGIN.
+   *
+   * The scroller above just gave up 80 px more than the tab bar needs, purely
+   * so a tall wrapped row is clipped rather than shown half under it — and a
+   * sticky child cannot pin past the box that clips it, so the dock would
+   * float 80 px above the bar with bare ground showing under it if it stayed
+   * inside that box. It is fixed to the viewport instead, at the same
+   * position it always answered from, with the document's own content column
+   * (`ui/base.css` `.doc`'s padding, mirrored here since a fixed element
+   * keeps none of it) rather than the shortened scroller.
+   */
+  .lad-dock {
+    position: fixed; left: var(--chrome-pad); right: var(--chrome-pad);
+    bottom: calc(50px + env(safe-area-inset-bottom));
+    z-index: var(--z-screen);
+  }
 }

@@ -144,6 +144,9 @@
   #feed .ft { display: inline-block; min-width: 44px; margin-right: 14px;
     color: var(--dim); font-variant-numeric: tabular-nums; }
   #feed b { color: var(--ink); font-weight: 700; }
+  /* Строка о ПРАВИЛЕ, а не об ударе: тише удара, но имя стороны сохраняет
+     свой цвет — оно инлайновое. */
+  #feed div[data-ev] { color: var(--dim); }
 
   /* ── легенда: панель в стиле MATCH STATS ─────────────────────────────── */
   #legend { position: absolute; right: 24px; bottom: 66px; width: 268px;

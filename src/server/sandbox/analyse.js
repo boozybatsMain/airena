@@ -20,6 +20,10 @@
 
 import { parse } from 'acorn';
 
+import {
+  BEAM_MUZZLE, BEAM_RADIUS, DEFAULT_BUILD, DT, PROJECTILE_MUZZLE, PROJECTILE_TOUCH, statsOf,
+} from '../../core/config.js';
+
 /*
  * Этот файл проверяет НЕ ТОЛЬКО мозги.
  *
@@ -91,10 +95,73 @@ const NAMED = Object.assign(Object.create(null), {
   performance: 'часы мозгу недоступны — бой обязан быть повторяемым',
 });
 
+/*
+ * ── LITERAL KIT NUMBERS, FOR THE STATIC WARNING BELOW (D191 §5) ─────────────
+ *
+ * `reachOf` is `reports/combat/spectate.mjs`'s function of the same name,
+ * copied rather than imported: that file is a report script (it opens the
+ * live DB at import time), and this one runs on every admission. The two are
+ * meant to stay identical — same formula, same six kinds — and the review
+ * that asked for this gate (`review-r1-minds.md`, "Literal kit numbers
+ * persist") measured the arithmetic against real hits there, not here.
+ *
+ * Admission never carries a creature's own build into its static pass (the
+ * trial fights in `admit()` don't either — see the comment on `runIsolated`
+ * there), so "reach" is computed on the arena's default body for both sides.
+ * That is an approximation, not the real reach against the actual sparring
+ * body, and it is a WARNING for exactly that reason: close enough to catch a
+ * copied number, not exact enough to reject on.
+ */
+const boltFlight = (def) => (def.speed
+  ? Math.ceil((def.range / def.speed) / DT - 1e-9) * def.speed * DT : def.range);
+const reachOf = (def, me, you) => {
+  switch (def.kind) {
+    case 'beam': return me.radius + BEAM_MUZZLE + def.range + you.radius + BEAM_RADIUS;
+    case 'cone': return def.range + you.radius;
+    case 'bolt': return me.radius + PROJECTILE_MUZZLE + boltFlight(def) + you.radius + PROJECTILE_TOUCH;
+    case 'lob': return def.range + def.splash + you.radius;
+    case 'zone': return def.range + def.radius + you.radius;
+    case 'dash': return def.distance + me.radius + you.radius;
+    default: return null;
+  }
+};
+
 /**
- * Разобрать и проверить. Возвращает { ok, problems[], ast } —
+ * The figures printed on a compiled kit's own card — range, reach, wind-up,
+ * cooldown, speed, splash — as a flat { ability, label, value } list, one
+ * entry per figure the ability actually carries. Zero-valued figures are
+ * dropped: a bare `0` or `0.0` in a comparison is not a copied number, it is
+ * every brain's baseline, and warning on it would be pure noise.
+ */
+function kitFigures(kit) {
+  const out = [];
+  if (!kit) return out;
+  const body = { radius: statsOf(DEFAULT_BUILD).radius };
+  for (const [name, def] of Object.entries(kit)) {
+    if (!def || typeof def !== 'object') continue;
+    const push = (label, value) => {
+      if (Number.isFinite(value) && value !== 0) out.push({ ability: name, label, value });
+    };
+    push('range', def.range);
+    push('wind-up', def.windup);
+    push('cooldown', def.cooldown);
+    push('speed', def.speed ?? def.dashSpeed);
+    push('splash', def.splash);
+    const reach = reachOf(def, body, body);
+    if (reach !== null) push('reach', reach);
+  }
+  return out;
+}
+
+const COMPARISON_OPS = new Set(['<', '>', '<=', '>=', '==', '===', '!=', '!==']);
+
+/**
+ * Разобрать и проверить. Возвращает { ok, problems[], warnings[], ast } —
  * список, а не первую ошибку: чинить по одному сообщению за раз мучительно,
  * а мозг чинит модель, которой список видно целиком.
+ *
+ * `warnings` не влияет на `ok`: это D191 §5, литералы кита в сравнениях —
+ * измерение, а не отказ.
  */
 export function analyse(source, {
   maxChars = 60000,
@@ -106,8 +173,12 @@ export function analyse(source, {
      то, что читатель действительно написал. */
   outsideRu = 'перцепция или api',
   vocabularyRu = 'api, p, mem и стандартная математика',
+  /* Кит кандидата — тот же, что едет в пробные бои. Только для D191 §5:
+     статический анализ тела и старые вызовы без кита его не передают. */
+  kit = null,
 } = {}) {
   const problems = [];
+  const warnings = [];
   if (typeof source !== 'string' || !source.trim()) {
     return { ok: false, problems: [{ code: 'empty', message: 'пустой исходник' }] };
   }
@@ -259,6 +330,9 @@ export function analyse(source, {
   let depth = 0;
   const at = (node) => (node.loc ? `${node.loc.start.line}:${node.loc.start.column}` : '?');
   const bad = (code, message, node) => problems.push({ code, message, at: at(node) });
+  const warn = (code, message, node) => warnings.push({ code, message, at: at(node) });
+  /* D191 §5: computed once, off the кит passed in — empty when none is. */
+  const figures = kitFigures(kit);
 
   /* Параметры помечаются отдельно от локальных: писать в них нельзя. */
   function markParams(p) {
@@ -505,6 +579,30 @@ export function analyse(source, {
       case 'WithStatement':
         bad('with', 'with запрещён: он ломает анализ областей видимости', node);
         break;
+      /*
+       * D191 §5: числовой литерал в СРАВНЕНИИ, совпадающий (±2%) с числом,
+       * напечатанным на карточке ЭТОГО ЖЕ кита, — предупреждение, не отказ.
+       * Мозг вправе прочитать `p.self.kit.k1.range` и сравнить с ним; он не
+       * вправе (в смысле годности) переписать то же число рукой — оно
+       * рассинхронизируется в первый же день, когда игрок сменит набор.
+       * Отказа тут нет НАМЕРЕННО: `review-r1-minds.md` просит измерить это
+       * прежде, чем решать, гейтить ли, — ложных срабатываний в 2%-й
+       * окрестности достаточно (0.28 замаха совпадёт со случайным 0.28 где
+       * угодно), чтобы отказ по одному этому был неверным решением.
+       */
+      case 'BinaryExpression':
+        if (figures.length && COMPARISON_OPS.has(node.operator)) {
+          for (const side of [node.left, node.right]) {
+            if (side.type !== 'Literal' || typeof side.value !== 'number') continue;
+            for (const fig of figures) {
+              if (Math.abs(side.value - fig.value) > Math.abs(fig.value) * 0.02) continue;
+              warn('literal_kit_number',
+                `literal ${side.value} in a comparison is within 2% of ${fig.ability}.${fig.label} `
+                + `(${fig.value}) printed on this kit's own card`, node);
+            }
+          }
+        }
+        break;
       case 'ImportExpression':
       case 'ImportDeclaration':
         bad('import', 'модули мозгу недоступны', node);
@@ -544,7 +642,7 @@ export function analyse(source, {
   /* `source` наружу — это исходник ПОСЛЕ снятия обёртки модуля: дальше по
      цепочке идёт разметка топливом, и она обязана размечать ровно то, что
      разбиралось здесь, иначе она наткнётся на тот же `import`. */
-  return { ok: problems.length === 0, problems, ast, source, unwrapped };
+  return { ok: problems.length === 0, problems, warnings, ast, source, unwrapped };
 }
 
 function hoist(node, declare) {

@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 
 import { compileBrain } from '../src/brain/host.js';
 import {
-  ARENA_HALF, BUILD_AXES, BUILD_BUDGET, DEFAULT_BUILD, OBSTACLES, SKILLS,
+  ARENA_HALF, BUILD_AXES, BUILD_BUDGET, DEFAULT_BUILD, OBSTACLES, SAY_EVERY, SKILLS,
   SPAWN_RADIUS, SUDDEN_DEATH_AT, buildCost, normalizeBuild, statsOf,
 } from '../src/core/config.js';
 /* `inCone`, `segBox` и `DT` отсюда ушли: первый жил в единственной проверке,
@@ -26,6 +26,9 @@ import { createWorld, perceive, snapshot, step, SOLIDS, burnRate } from '../src/
 /* Кит собирается прямо здесь: инвариант навеса — про доставку из грамматики,
    а её нет ни у одного из двух эталонов §1. */
 import { compileKit } from '../src/skills/compile.js';
+import { DELIVERIES as GRAMMAR_DELIVERIES, EFFECTS as GRAMMAR_EFFECTS } from '../src/skills/registry.js';
+import { KNOCKBACK_DRAG } from '../src/core/config.js';
+const HEAL_ATOM = GRAMMAR_EFFECTS.heal;
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail = '') => {
@@ -408,6 +411,482 @@ group('sandbox');
   const b = runMatch({ blue: compileBrain('let n = 0;\nfunction think(p, api) { n++; api.say(String(n)); }', 'counter'), orange: stub('orange') }, { seed: 8 });
   ok('a freshly compiled brain starts from a clean slate',
     JSON.stringify(a.result.log) === JSON.stringify(b.result.log));
+}
+
+// ---------------------------------------------------------------------------
+group('grammar mechanics');
+
+/*
+ * The four rules the 07.09 overhaul added to the grammar, each one checked in
+ * a controlled world rather than argued: the aim point, the immunity window,
+ * the grammar interrupt, and the one-per-caster caps on fields and walls.
+ * Every one of them is a promise the prompt makes to a mind.
+ */
+const mech = (kitA, kitB, thinkA, thinkB, opts = {}) => {
+  const a = compileKit(kitA, opts), b = compileKit(kitB, opts);
+  const w = createWorld(11, { kits: { blue: a.defs, orange: b.defs } });
+  const think = (id, p, api) => (id === 'blue' ? thinkA : thinkB)(p, api, w);
+  return { w, think };
+};
+const place = (f, x, z, heading) => {
+  f.x = x; f.z = z; f.px = x; f.pz = z; f.heading = heading; f.wantHeading = heading;
+  f.vx = 0; f.vz = 0; f.kx = 0; f.kz = 0; f.y = 0;
+};
+const LOB = [{ delivery: 'lob', effects: ['damage'], element: 'ember' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+const ZONE = [{ delivery: 'zone', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+const STUNBOLT = [{ delivery: 'bolt', effects: ['stun'], element: 'void' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }];
+const BEAM = [{ delivery: 'beam', effects: ['damage'], element: 'laser' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+const STUNCONE = [{ delivery: 'cone', effects: ['stun'], element: 'kinetic' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }];
+const WALL = [{ delivery: 'self', effects: ['wall'], element: 'kinetic' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+const idle = (p, api) => { api.move(0, 0); };
+
+{
+  // A mortar ordered at a point lands on the point, whatever the facing.
+  const { w, think } = mech(LOB, BEAM, (p, api) => {
+    if (api.ready('k1')) api.use('k1', { x: -3, z: 4 });
+  }, idle);
+  place(w.fighters.blue, 3, -2, 0); place(w.fighters.orange, 12, 12, Math.PI);
+  let landed = null, aim = null;
+  for (let i = 0; i < 120 && !landed; i++) {
+    step(w, think);
+    for (const e of w.fx) if (e.kind === 'lob') aim = { x: e.x1, z: e.z1 };
+    for (const e of w.log) if (e.type === 'miss' && e.who === 'blue') landed = true;
+  }
+  ok('a mortar aimed at a point lands on that point',
+    !!aim && Math.abs(aim.x + 3) < 0.05 && Math.abs(aim.z - 4) < 0.05, `landed at ${JSON.stringify(aim)}`);
+}
+{
+  // A field ordered at a point lands on the point, clamped to its range.
+  const { w, think } = mech(ZONE, BEAM, (p, api) => {
+    if (api.ready('k1')) api.use('k1', { x: 4, z: 6 });
+  }, idle);
+  place(w.fighters.blue, 0, 0, Math.PI); place(w.fighters.orange, -12, -12, 0);
+  for (let i = 0; i < 40 && !(w.zones && w.zones.length); i++) step(w, think);
+  const z = (w.zones || [])[0];
+  ok('a field aimed at a point lands on that point',
+    !!z && Math.abs(z.x - 4) < 0.05 && Math.abs(z.z - 6) < 0.05, `field at ${JSON.stringify(z && { x: z.x, z: z.z })}`);
+  const { w: w2, think: t2 } = mech(ZONE, BEAM, (p, api) => {
+    if (api.ready('k1')) api.use('k1', { x: 0, z: 30 });
+  }, idle);
+  place(w2.fighters.blue, 0, 0, 0); place(w2.fighters.orange, 12, 12, 0);
+  for (let i = 0; i < 40 && !(w2.zones && w2.zones.length); i++) step(w2, t2);
+  const z2 = (w2.zones || [])[0];
+  ok('and never beyond its range', !!z2 && Math.abs(z2.z - 12) < 0.05 && Math.abs(z2.x) < 0.05, `field at ${JSON.stringify(z2 && { x: z2.x, z: z2.z })}`);
+}
+{
+  // A second stun inside the immunity window lands on nothing and says so.
+  const { w, think } = mech(STUNBOLT, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (api.ready('k1') && p.enemy.visible) api.use('k1');
+  }, idle, { fixedCooldown: 1.1 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 6, Math.PI);
+  for (let i = 0; i < 30 * 12 && !w.done; i++) step(w, think);
+  const stuns = w.log.filter((e) => e.type === 'use' && e.who === 'blue' && e.skill === 'k1').length;
+  const immune = w.log.filter((e) => e.type === 'immune' && e.effect === 'stun').length;
+  ok('a stun inside the immunity window is refused', stuns >= 6 && immune >= 2, `${stuns} casts, ${immune} refused as immune`);
+  const seen = perceive(w, 'blue');
+  ok('and perception names what the enemy is immune to', Array.isArray(seen.enemy.immune) && Array.isArray(seen.self.immune));
+}
+{
+  // A stun landing on a grammar wind-up cancels it.
+  let cast = false;
+  const { w, think } = mech(STUNCONE, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (p.enemy.casting && p.enemy.casting.telegraph && api.ready('k1')) api.use('k1');
+  }, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (!cast && p.t > 0.5 && api.ready('k1')) { api.use('k1'); cast = true; }
+  });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 3.2, Math.PI);
+  for (let i = 0; i < 90; i++) step(w, think);
+  const interrupted = w.log.some((e) => e.type === 'interrupt' && e.who === 'blue' && e.skill === 'k1');
+  const beamFired = w.log.some((e) => (e.type === 'damage' || e.type === 'miss') && e.who === 'orange' && e.skill === 'k1');
+  ok('a stun on a wind-up cancels the cast', interrupted && !beamFired, `interrupt ${interrupted}, beam still fired ${beamFired}`);
+}
+{
+  // One field per ability per caster: the new cast replaces the old.
+  const { w, think } = mech(ZONE, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (api.ready('k1')) api.use('k1');
+  }, idle, { fixedCooldown: 1.1 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 8, Math.PI);
+  let most = 0;
+  for (let i = 0; i < 30 * 6; i++) { step(w, think); most = Math.max(most, (w.zones || []).filter((z) => z.who === 'blue').length); }
+  ok('a caster never has two fields of one ability on the floor', most === 1, `${most} at once`);
+}
+{
+  // One wall per caster, the same way — whichever ability built it.
+  const { w, think } = mech(WALL, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (api.ready('k1')) api.use('k1');
+  }, idle, { fixedCooldown: 1.1 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 10, Math.PI);
+  let most = 0, navSaw = false;
+  for (let i = 0; i < 30 * 6; i++) {
+    step(w, think);
+    most = Math.max(most, w.obstacles.filter((o) => o.temporary && o.by === 'blue').length);
+    /* The navigator must know the wall: a path from behind it to the enemy is not direct. */
+    const r = w.nav.orange.path(0, 0, 0, 10);
+    if (r && !r.direct) navSaw = true;
+  }
+  ok('a caster never has two walls standing', most === 1, `${most} at once`);
+  ok('and the navigator routes around a temporary wall', navSaw);
+}
+{
+  // A lunge travels: the body moves over several ticks, the hit lands on contact.
+  const DASH = [{ delivery: 'dash', effects: ['damage'], element: 'kinetic' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+  const { w, think } = mech(DASH, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (p.t > 0.3 && api.ready('k1')) api.use('k1');
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 6, Math.PI);
+  let dashTicks = 0, maxStep = 0, lastX = 0, lastZ = 0;
+  for (let i = 0; i < 60; i++) {
+    const b = w.fighters.blue;
+    const px = b.x, pz = b.z;
+    step(w, think);
+    if (b.act && b.act.phase === 'dash') { dashTicks++; maxStep = Math.max(maxStep, dist2(px, pz, b.x, b.z)); }
+    lastX = b.x; lastZ = b.z;
+  }
+  const hit = w.log.some((e) => e.type === 'damage' && e.who === 'blue' && e.skill === 'k1');
+  ok('a lunge travels over several ticks and lands on contact', dashTicks >= 3 && maxStep < 1.0 && hit,
+    `${dashTicks} dash ticks, largest step ${maxStep.toFixed(2)} m, hit ${hit}`);
+  ok('and the lunge stops on the body it hit', dist2(lastX, lastZ, 0, 6) < 3.2, `ended ${dist2(lastX, lastZ, 0, 6).toFixed(2)} m from the target`);
+}
+{
+  // A knock is an impulse on the knockback slot: a stationary default body moves about mag²/(2·drag) metres.
+  const KNOCK = [{ delivery: 'cone', effects: ['knock'], element: 'kinetic' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }];
+  const { w, think } = mech(KNOCK, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (p.t > 0.2 && api.ready('k1')) api.use('k1');
+  }, idle, { fixedCooldown: 30 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 3.0, Math.PI);
+  for (let i = 0; i < 60; i++) step(w, think);
+  const moved = w.fighters.orange.z - 3.0;
+  /* The registry's knock magnitude squared over twice the drag, a shade under
+     because the impulse is dropped below the 0.4 m/s cut-off. */
+  const KNOCK_WANT = GRAMMAR_EFFECTS.knock.mag ** 2 / (2 * KNOCKBACK_DRAG);
+  ok('a knock moves the target about mag squared over twice the drag', moved > 0.75 * KNOCK_WANT && moved <= KNOCK_WANT + 0.05, `moved ${moved.toFixed(2)} m, expected ≈ ${KNOCK_WANT.toFixed(2)}`);
+}
+{
+  // A heal is a share of the missing hp, floored and capped.
+  const HEAL = [{ delivery: 'self', effects: ['heal'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  const { w, think } = mech(HEAL, BEAM, (p, api) => { if (p.t > 0.2 && api.ready('k1')) api.use('k1'); }, idle, { fixedCooldown: 30 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 15, Math.PI);
+  const MISSING = 60; // → the registry's share of it, between its floor and its cap
+  w.fighters.blue.hp = w.fighters.blue.hp - MISSING;
+  for (let i = 0; i < 30; i++) step(w, think);
+  const healed = w.log.find((e) => e.type === 'heal' && e.who === 'blue');
+  const H = HEAL_ATOM;
+  const want = Math.min(H.mag, Math.max(H.floor ?? 0, MISSING * (H.share ?? 1)));
+  ok('a heal gives a share of the missing hp', !!healed && Math.abs(healed.amount - want) < 0.01, `healed ${healed && healed.amount}, wanted ${want}`);
+}
+{
+  // A hit the shield ate whole is still reported to both sides (a field's first tick is a fraction of a hit, under the shield's amount).
+  const { w, think } = mech([{ delivery: 'zone', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }],
+    [{ delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }],
+    (p, api) => { if (p.t > 0.5 && api.ready('k1')) api.use('k1', { x: p.enemy.x, z: p.enemy.z }); },
+    (p, api) => { if (api.ready('k1')) api.use('k1'); }, { fixedCooldown: 30 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 8, Math.PI);
+  let dealt = null;
+  const think2 = (id, p, api) => { if (id === 'blue') for (const e of p.events) if (e.type === 'dealt' && !dealt) dealt = e; return think(id, p, api); };
+  for (let i = 0; i < 60; i++) step(w, think2);
+  ok('a hit absorbed by a shield is reported as dealt with the absorbed amount', !!dealt && dealt.absorbed > 0 && dealt.amount === 0, JSON.stringify(dealt));
+}
+
+/*
+ * ── THE ROUND-1 FIXES, EACH WITH THE DEFECT IT CLOSES ──────────────────────
+ *
+ * Every case below is a rule a reviewer measured the world breaking. They are
+ * written against behaviour, not against the lines that implement it: a rule
+ * that can only be checked by reading the code is a rule that will be broken
+ * by the next reader of that code.
+ */
+{
+  // MEDIUM-1: `absorbed` on a hit that got THROUGH the shield, not only on one
+  // the shield ate whole. `const struck` used to be scoped inside a block the
+  // reader sat outside of, so the field was silently never attached.
+  const BOLT = [{ delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  const SHIELD = [{ delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  let fired = false, up = false, dealt = null;
+  const { w, think } = mech(BOLT, SHIELD,
+    (p, api) => { api.faceAt(p.enemy.x, p.enemy.z); if (p.t > 0.5 && !fired && api.ready('k1')) { api.use('k1'); fired = true; } },
+    (p, api) => { api.move(0, 0); if (!up && api.ready('k1')) { api.use('k1'); up = true; } });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 6, Math.PI);
+  const watch = (id, p, api) => { if (id === 'blue') for (const e of p.events) if (e.type === 'dealt' && !dealt) dealt = e; return think(id, p, api); };
+  for (let i = 0; i < 90; i++) step(w, watch);
+  ok('a hit that broke the shield carries what the shield took',
+    !!dealt && dealt.amount === 12 && dealt.absorbed === 12, JSON.stringify(dealt));
+}
+{
+  // LOW-4: an immunity window EXPIRES. The window is duration + immune from the
+  // moment the control lands, so a cooldown longer than that lands every time.
+  const SB = [{ delivery: 'bolt', effects: ['stun'], element: 'void' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }];
+  const { w, think } = mech(SB, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (api.ready('k1')) api.use('k1');
+  }, idle, { fixedCooldown: 4.5 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 6, Math.PI);
+  for (let i = 0; i < 30 * 14 && !w.done; i++) step(w, think);
+  const casts = w.log.filter((e) => e.type === 'use' && e.who === 'blue').length;
+  const refused = w.log.filter((e) => e.type === 'immune').length;
+  ok('an immunity window expires and the next control lands',
+    casts >= 3 && refused === 0, `${casts} casts, ${refused} refused`);
+}
+{
+  // HIGH-2 / spectacle 3: a field applies its control ONCE per cast per body,
+  // at the registry's whole duration, and never refuses its own later ticks.
+  const ZS = [{ delivery: 'zone', effects: ['stun'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+  let cast = false, applied = 0;
+  const { w, think } = mech(ZS, BEAM, (p, api) => {
+    if (!cast && p.t > 0.3 && api.ready('k1')) { api.use('k1', { x: p.enemy.x, z: p.enemy.z }); cast = true; }
+  }, idle, { fixedCooldown: 30 });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 8, Math.PI);
+  for (let i = 0; i < 30 * 6; i++) { step(w, think); for (const f of w.fx) if (f.kind === 'status' && f.effect === 'stun') applied++; }
+  const dur = compileKit(ZS).defs.k1.effects.find((e) => e.id === 'stun').duration;
+  ok('a field lands its control once per cast, at its whole duration',
+    applied === 1 && w.log.filter((e) => e.type === 'immune').length === 0 && dur === 1.0,
+    `${applied} applications, ${w.log.filter((e) => e.type === 'immune').length} immune lines, duration ${dur}`);
+}
+{
+  // F2: a mortar aimed at a point lands ON it even while the caster walks —
+  // the distance is read at the strike, as the direction always was.
+  const LOB2 = [{ delivery: 'lob', effects: ['damage'], element: 'ember' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+  let aim = null;
+  const { w, think } = mech(LOB2, BEAM, (p, api) => {
+    api.move(0, 1);
+    if (api.ready('k1')) api.use('k1', { x: 0, z: 10 });
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 14, 14, Math.PI);
+  for (let i = 0; i < 40 && !aim; i++) { step(w, think); for (const e of w.fx) if (e.kind === 'lob') aim = { x: e.x1, z: e.z1 }; }
+  const moved = w.fighters.blue.z;
+  ok('a mortar lands on its point while the caster walks toward it',
+    !!aim && Math.abs(aim.z - 10) < 0.05 && Math.abs(aim.x) < 0.05 && moved > 0.2,
+    `landed ${JSON.stringify(aim)} after walking ${moved.toFixed(2)} m`);
+}
+{
+  // F6: the aim point holds through the wind-up; a later faceAt does not take it.
+  const BOLT2 = [{ delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  let ordered = false, released = null;
+  const { w, think } = mech(BOLT2, BEAM, (p, api) => {
+    if (!ordered && api.ready('k1')) { api.use('k1', { x: 10, z: 10 }); ordered = true; } else api.faceAt(0, -10);
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, -14, -14, 0);
+  for (let i = 0; i < 40 && released === null; i++) { step(w, think); for (const e of w.fx) if (e.kind === 'bolt') released = e.h; }
+  ok('an aim point is not replaced by a later faceAt',
+    released !== null && Math.abs(released - Math.atan2(10, 10)) < 1e-6,
+    `left at ${released}, wanted ${Math.atan2(10, 10)}`);
+}
+{
+  // F4: the DODGER is told, once per ability per tick, and the log carries the
+  // `evade` line the dodge metrics are counted from.
+  const HIT = [{ delivery: 'bolt', effects: ['damage', 'knock'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  const evs = { blue: [], orange: [] };
+  let fired = false;
+  const { w, think } = mech(HIT, BEAM,
+    (p, api) => { api.faceAt(p.enemy.x, p.enemy.z); if (!fired && p.t > 0.4 && api.ready('k1')) { api.use('k1'); fired = true; } },
+    idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 5, Math.PI);
+  const watch = (id, p, api) => { for (const e of p.events) evs[id].push(e); return think(id, p, api); };
+  for (let i = 0; i < 70; i++) { step(w, watch); if (w.projectiles.length) w.fighters.orange.iframes = 1; }
+  const evaded = evs.orange.filter((e) => e.type === 'evaded');
+  const missed = evs.blue.filter((e) => e.type === 'missed' && e.reason === 'invulnerable');
+  ok('a dodge is announced to the dodger, once for a two-effect ability',
+    evaded.length === 1 && missed.length === 1 && w.log.some((e) => e.type === 'evade' && e.who === 'orange'),
+    `${evaded.length} evaded, ${missed.length} missed, ${w.log.filter((e) => e.type === 'evade').length} log lines`);
+}
+{
+  // F5: an ability carrying no damage announces what landed.
+  const ROOTB = [{ delivery: 'bolt', effects: ['root'], element: 'void' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  const seen = [];
+  let fired = false;
+  const { w, think } = mech(ROOTB, BEAM,
+    (p, api) => { api.faceAt(p.enemy.x, p.enemy.z); if (!fired && p.t > 0.4 && api.ready('k1')) { api.use('k1'); fired = true; } }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 5, Math.PI);
+  const watch = (id, p, api) => { if (id === 'blue') for (const e of p.events) if (e.type === 'dealt') seen.push(e); return think(id, p, api); };
+  for (let i = 0; i < 60; i++) step(w, watch);
+  ok('a hit that carries only a control still announces what landed',
+    seen.length === 1 && seen[0].amount === 0 && JSON.stringify(seen[0].landed) === '["root"]',
+    JSON.stringify(seen));
+}
+{
+  // F3: a WORLD atom is built even when the delivery carrying it misses —
+  // for a bolt and a mortar too, not only for the four shapes that resolve.
+  const WB = [{ delivery: 'bolt', effects: ['damage', 'wall'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  let n = 0;
+  const { w, think } = mech(WB, BEAM, (p, api) => {
+    api.face(1, 0);
+    if (n < 1 && p.t > 0.3 && api.ready('k1')) { api.use('k1'); n++; }
+  }, idle, { fixedCooldown: 30 });
+  place(w.fighters.blue, 0, 0, Math.PI / 2); place(w.fighters.orange, 0, 17, Math.PI);
+  for (let i = 0; i < 120; i++) step(w, think);
+  ok('a wall is built even when the bolt carrying it misses',
+    w.log.some((e) => e.type === 'wall' && e.who === 'blue') && w.log.some((e) => e.type === 'miss' && e.who === 'blue'),
+    `${w.log.filter((e) => e.type === 'wall').length} walls, ${w.log.filter((e) => e.type === 'miss').length} misses`);
+}
+{
+  // H2: the caster's own wall is cover it can shoot FROM; the enemy's shot
+  // still stops on it.
+  const WSELF = [{ delivery: 'self', effects: ['wall'], element: 'kinetic' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'lob', effects: ['damage'], element: 'ember' }];
+  let raised = false, shot = false;
+  const { w, think } = mech(WSELF, WSELF, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (!raised && p.t > 0.2 && api.ready('k1')) { raised = true; api.use('k1'); return; }
+    if (raised && !shot && p.t > 1.2 && api.ready('k2')) { shot = true; api.use('k2'); }
+  }, (p, api) => {
+    api.move(0, 0); api.faceAt(p.enemy.x, p.enemy.z);
+    if (p.t > 1.2 && api.ready('k2')) api.use('k2');
+  });
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 9, Math.PI);
+  for (let i = 0; i < 150; i++) { step(w, think); place(w.fighters.orange, 0, 9, Math.PI); place(w.fighters.blue, 0, 0, 0); }
+  const mine = w.log.some((e) => e.type === 'damage' && e.who === 'blue');
+  const theirs = w.log.filter((e) => e.type === 'miss' && e.who === 'orange' && e.reason === 'cover').length;
+  ok('a caster shoots through its own wall and the enemy does not',
+    mine && theirs > 0, `own bolt landed ${mine}, enemy blocked ${theirs} times`);
+}
+{
+  // H2/M3: a second fire EXTENDS the first, capped at twice the atom's length.
+  const CB = [{ delivery: 'cone', effects: ['burn'], element: 'ember' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }, { delivery: 'self', effects: ['shield'], element: 'frost' }];
+  const { w, think } = mech(CB, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (api.ready('k1')) api.use('k1');
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 3.0, Math.PI);
+  const dur = compileKit(CB).defs.k1.effects[0].duration;
+  let most = 0, twice = false;
+  for (let i = 0; i < 30 * 10; i++) {
+    step(w, think); place(w.fighters.orange, 0, 3.0, Math.PI);
+    const st = w.fighters.orange.status;
+    if (st && st.burn) { const left = st.burn.until - w.t; most = Math.max(most, left); if (left > dur + 1e-6) twice = true; }
+  }
+  ok('a burn extends the fire already running, capped at twice its length',
+    twice && most <= 2 * dur + 1e-6, `longest remaining ${most.toFixed(3)} s against a ${dur} s atom`);
+}
+{
+  // LOW-2: a stun ends a lunge's travel where it stands.
+  const D = [{ delivery: 'dash', effects: ['damage'], element: 'kinetic' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+  let dashed = false;
+  const { w, think } = mech(D, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (!dashed && p.t > 0.5 && api.ready('k1')) { api.use('k1'); dashed = true; }
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 12, Math.PI);
+  let stunned = false, travelled = 0;
+  for (let i = 0; i < 90; i++) {
+    const b = w.fighters.blue; const px = b.x, pz = b.z;
+    step(w, think);
+    if (b.act && b.act.phase === 'dash') {
+      travelled += dist2(px, pz, b.x, b.z);
+      /* Land the stun a third of the way through the travel, the way a bolt
+         would: the harness writes the status the atom writes. */
+      if (!stunned && travelled > 2) { b.stun = 0.6; stunned = true; }
+    }
+  }
+  ok('a stun ends a lunge where it stands', stunned && travelled < 4,
+    `travelled ${travelled.toFixed(2)} m of 8 after the stun landed at 2 m`);
+}
+{
+  // LOW-4: a lunge passes UNDER a body that is in the air.
+  const D2 = [{ delivery: 'dash', effects: ['damage'], element: 'kinetic' }, { delivery: 'self', effects: ['shield'], element: 'frost' }, { delivery: 'bolt', effects: ['damage'], element: 'arc' }];
+  let dashed = false;
+  const { w, think } = mech(D2, BEAM, (p, api) => {
+    api.faceAt(p.enemy.x, p.enemy.z);
+    if (!dashed && p.t > 0.5 && api.ready('k1')) { api.use('k1'); dashed = true; }
+  }, idle);
+  place(w.fighters.blue, 0, 0, 0); place(w.fighters.orange, 0, 6, Math.PI);
+  for (let i = 0; i < 90; i++) { w.fighters.orange.y = 1.2; w.fighters.orange.yTick = 1.2; step(w, think); }
+  ok('a lunge passes under a body that is in the air',
+    !w.log.some((e) => e.type === 'damage' && e.who === 'blue')
+      && w.log.some((e) => e.type === 'miss' && e.who === 'blue' && e.reason === 'airborne'),
+    w.log.filter((e) => e.type === 'miss' || e.type === 'damage').map((e) => `${e.type}:${e.reason || ''}`).join(' '));
+}
+{
+  // D160: a creature has EXACTLY the three abilities it bought, and no free
+  // fourth verb. A universal `hop` was appended for one day and reverted
+  // (DESIGN.md D195); these three hold the door shut.
+  const built = compileKit(BEAM);
+  ok('a compiled kit is exactly the abilities the creature bought',
+    built.names.length === BEAM.length
+      && built.names.every((n, i) => n === `k${i + 1}`)
+      && Object.keys(built.defs).length === BEAM.length,
+    JSON.stringify(built.names));
+  const w = createWorld(3, { kits: { blue: built.defs } });
+  const mine = perceive(w, 'blue');
+  ok('and no entry of the kit perception sends carries universal or cost',
+    mine.self.skills.length === BEAM.length
+      && Object.keys(mine.self.kit).length === BEAM.length
+      && Object.values(mine.self.kit).every((d) => d.universal === undefined && d.cost === undefined)
+      && Object.keys(mine.self.cooldowns).length === BEAM.length,
+    JSON.stringify(mine.self.skills));
+  let used = null;
+  for (let i = 0; i < 30; i++) step(w, (id, p, api) => { if (id === 'blue' && used === null && api.ready('k1')) used = api.use('hop'); });
+  ok('and a verb the creature did not buy is refused as unknown',
+    used === false
+      && w.log.some((e) => e.type === 'refused' && e.who === 'blue' && e.skill === 'hop' && e.reason === 'unknown')
+      && !w.log.some((e) => e.type === 'use' && e.skill === 'hop'),
+    `used ${used}`);
+}
+{
+  // Spectacle 8: a quip is accepted at most once every SAY_EVERY seconds, and a
+  // dropped one is not a fault and costs no budget.
+  const { w, think } = mech(BEAM, BEAM, (p, api) => { api.say(`x${p.tick}`); }, idle);
+  for (let i = 0; i < 30 * 12; i++) step(w, think);
+  const said = w.log.filter((e) => e.type === 'say' && e.who === 'blue');
+  const gaps = said.slice(1).map((e, i) => e.t - said[i].t);
+  ok('a fighter quips at most once every SAY_EVERY seconds',
+    said.length >= 2 && said.length <= Math.ceil(12 / SAY_EVERY) + 1
+      && gaps.every((g) => g >= SAY_EVERY - 1e-6)
+      && w.fighters.blue.stats.faults === 0,
+    `${said.length} lines in 12 s, gaps ${gaps.map((g) => g.toFixed(2)).join(',')}`);
+}
+{
+  // LOW-4: the headline rule, held by a gate rather than by a comment. A
+  // registry edit to 5 s used to pass every check in the repository.
+  const overFixture = Object.entries(SKILLS).filter(([, s]) => (s.cooldown ?? 0) > 3.0 + 1e-9);
+  ok('every reference-fixture cooldown is three seconds or less', overFixture.length === 0,
+    overFixture.map(([k, s]) => `${k} ${s.cooldown}`).join(', '));
+  const overDelivery = Object.entries(GRAMMAR_DELIVERIES).filter(([, d]) => (d.cooldown ?? 0) > 3.0 + 1e-9);
+  ok('and every delivery in the grammar', overDelivery.length === 0,
+    overDelivery.map(([k, d]) => `${k} ${d.cooldown}`).join(', '));
+}
+{
+  // LOW-4: determinism where the product actually lives — compiled kits and the
+  // pilot panel, not the two fixture stubs. Same seed, twice, same log.
+  const src = (f) => readFileSync(new URL(`../brains/pilots/${f}`, import.meta.url), 'utf8');
+  const KIT_A = [{ delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+    { delivery: 'zone', effects: ['burn', 'root'], element: 'ember' },
+    { delivery: 'self', effects: ['shield', 'heal'], element: 'frost' }];
+  const KIT_B = [{ delivery: 'bolt', effects: ['damage', 'silence'], element: 'void' },
+    { delivery: 'lob', effects: ['damage'], element: 'acid' },
+    { delivery: 'blink', effects: ['cleanse'], element: 'void' }];
+  const kits = { blue: compileKit(KIT_A).defs, orange: compileKit(KIT_B).defs };
+  const run = () => JSON.stringify(runMatch({
+    blue: compileBrain(src('rusher.js'), 'rusher'),
+    orange: compileBrain(src('kiter.js'), 'kiter'),
+  }, { seed: 90210, kits }).result.log);
+  const a = run(), b = run();
+  ok('two runs of one seed with kits and pilots are the same fight', a === b,
+    `${a.length} vs ${b.length} bytes`);
+}
+
+{
+  // A kitted mind facing a reference-fixture opponent still finds a kit under p.enemy.kit.
+  const a = compileKit(BEAM);
+  const w = createWorld(13, { kits: { blue: a.defs } });
+  const seen = perceive(w, 'blue');
+  const names = Object.keys(seen.enemy.kit || {});
+  ok('a fixture opponent presents its skills as a kit', names.length === 3 && names.every((n) => seen.enemy.skills.includes(n)) && seen.enemy.kit.smash.kind === 'cone',
+    `enemy.kit keys ${names.join(',')}`);
+  ok('and a fixture fighter\'s own kit view stays null', perceive(w, 'orange').self.kit === null);
+}
+
+{
+  // The grammar modules the browser imports must stay free of Node-only imports.
+  // An import of core/config.js (node:fs) in registry.js broke every client screen on 07.09.
+  const served = ['registry.js', 'describe.js'];
+  const importsOf = (src) => src.split('\n').filter((l) => /^\s*import\b/.test(l)).join('\n');
+  const dirty = served.filter((f) => /core\/config\.js|node:/.test(importsOf(readFileSync(new URL(`../src/skills/${f}`, import.meta.url), 'utf8'))));
+  ok('the grammar modules served to the browser import nothing Node-only', dirty.length === 0, `dirty: ${dirty.join(', ')}`);
 }
 
 // ---------------------------------------------------------------------------

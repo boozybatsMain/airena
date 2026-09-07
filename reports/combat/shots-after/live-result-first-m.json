@@ -1,0 +1,89 @@
+{
+  "state": "live-result-first",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/live?ui=result-first",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "result",
+    "opacity": 1,
+    "classes": "screen has-card",
+    "mounted": 1,
+    "nodes": 55,
+    "waiting": 0,
+    "fps": {
+      "last": 17,
+      "min": 3,
+      "ticks": 2,
+      "since": 12599
+    },
+    "drawn": {
+      "n": 25,
+      "firstAt": 10092,
+      "firstMs": 26,
+      "lastMs": 6,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "orange"
+      },
+      "beat": {
+        "sid": "orange",
+        "tall": 0.527,
+        "want": 0.498,
+        "lapped": false,
+        "dist": 44,
+        "box": [
+          -0.18,
+          0.18,
+          0.43,
+          0.96
+        ],
+        "card": [
+          -0.92,
+          0.92,
+          0.38,
+          -0.77
+        ],
+        "pair": true,
+        "stand": 1
+      }
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 16.37999999920527,
+    "marks": {
+      "t0": 57,
+      "rendererRequested": 57,
+      "shellReady": 1568,
+      "screenReady": 1582,
+      "viewerStart": 2490,
+      "rendererUp": 2495,
+      "envBuilt": 2548,
+      "postBuilt": 2579,
+      "precompiled": 6997,
+      "postWarm": 10086,
+      "rendererReady": 10086,
+      "firstDraw": 10118,
+      "firstMatch": 10182,
+      "firstFrame": 10184
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 2501,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

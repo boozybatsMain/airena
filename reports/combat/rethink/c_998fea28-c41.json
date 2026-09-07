@@ -1,0 +1,187 @@
+{
+  "id": "c_998fea28-c41",
+  "name": "GEAR HOPPER",
+  "rating": 1053,
+  "fights": 9367,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1699,
+    "tacticsCard": "This fighter plays a mid-range strafing game: it circles at roughly six to thirteen metres, backs off hard if you close inside six, and closes in when you drift past thirteen, constantly sidestepping to stay a moving target. Its main answer is a lead-aimed lob whenever you're between about three and seventeen metres out, and it takes its one real risk with a dash onto you inside ten metres — but only if you're visible and grounded. It also watches enemy projectiles and slides perpendicular to the predicted landing spot to dodge.",
+    "sourceSha": "a4d1a8a56037c3f0dedc2c4b460984fa9e86216c903feb588e43ff8a3b36428f",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_998fea28-c41.before.a4d1a8a5.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 4389,
+    "tacticsCard": "This fighter keeps its distance, hovering at roughly 4.5–11 units while circling the enemy with a lazy sinusoidal strafe, and prefers to poke with its best ranged skill whenever it has a clear line of sight rather than closing in. It only commits to its dash when the enemy is already within near-guaranteed reach, using it as a quick engage/gap-closer with lead prediction, and it'll try to jump-dodge an incoming enemy dash if it has an airborne self-skill ready.",
+    "rating": 1169,
+    "fights": 9431,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "jump",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "kinetic"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 38,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 26.83,
+      "faults": 0,
+      "thinks": 403,
+      "orders": 1233,
+      "uses": 24,
+      "hits": 6,
+      "damageDealt": 201.6,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 804,
+      "idleInReachTicks": 91,
+      "stillTicks": 0,
+      "fuelSpent": 7022,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 19.63,
+      "faults": 0,
+      "thinks": 294,
+      "orders": 901,
+      "uses": 19,
+      "hits": 8,
+      "damageDealt": 238.38,
+      "stubDamageDealt": 271.98,
+      "aliveTicks": 588,
+      "idleInReachTicks": 27,
+      "stillTicks": 13,
+      "fuelSpent": 5135,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 22.63,
+      "faults": 0,
+      "thinks": 339,
+      "orders": 1035,
+      "uses": 18,
+      "hits": 8,
+      "damageDealt": 207.96000000000004,
+      "stubDamageDealt": 258.65999999999997,
+      "aliveTicks": 678,
+      "idleInReachTicks": 228,
+      "stillTicks": 177,
+      "fuelSpent": 6003,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 31.73,
+      "faults": 0,
+      "thinks": 476,
+      "orders": 1451,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 234.60000000000005,
+      "stubDamageDealt": 234.60000000000005,
+      "aliveTicks": 951,
+      "idleInReachTicks": 374,
+      "stillTicks": 371,
+      "fuelSpent": 8388,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 115144,
+  "forgeMs": 107444,
+  "admitMs": 286,
+  "cardMs": 7410,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 107444,
+      "chars": 4389
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9077,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.161613,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 4389,
+  "promptHash": "da5e8a04764bbe8eed4855ae2bcd42130a625699d5749ae510f6af7712616ca2",
+  "generatedAt": "2026-09-07T11:08:04.839Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:09:09.450Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:06:32.789Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "858749c4f28babdfa4f0bf8db77a02e7029d0a33e1b68017fda531b18ccf6dd2",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.853,
+    "idleInReach": 0.238,
+    "still": 0.186,
+    "casts": 21
+  },
+  "card": "This fighter keeps its distance, hovering at roughly 4.5–11 units while circling the enemy with a lazy sinusoidal strafe, and prefers to poke with its best ranged skill whenever it has a clear line of sight rather than closing in. It only commits to its dash when the enemy is already within near-guaranteed reach, using it as a quick engage/gap-closer with lead prediction, and it'll try to jump-dodge an incoming enemy dash if it has an airborne self-skill ready."
+}

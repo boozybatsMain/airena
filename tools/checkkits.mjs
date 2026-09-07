@@ -46,12 +46,12 @@ for (const r of rows) {
     const c = costOf(s);
     total += c;
     const v = validateSkill(s);
-    if (v.length) problems.push(`${s.delivery}:${(s.effects || []).join('+')} — ${v[0]}`);
+    if (v.length) problems.push(`${s.delivery}:${(s.effects || []).join('+')} — ${v[0].ru || v[0].code || v[0]}`);
     else if (c > SKILL_BUDGET) problems.push(`${s.delivery}:${(s.effects || []).join('+')} — ${c} > ${SKILL_BUDGET}`);
   }
   if (total > KIT_BUDGET) problems.push(`набор ${total} > ${KIT_BUDGET}`);
   const built = compileKit(kit);
-  if (built.problems.length) problems.push(...built.problems);
+  if (built.problems.length) problems.push(...built.problems.map((b) => (b.problems || []).map((q) => q.ru || q.code).join(', ')));
 
   if (problems.length) {
     bad++;

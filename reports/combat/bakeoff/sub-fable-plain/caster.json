@@ -1,0 +1,131 @@
+{
+  "model": "sub:fable:plain",
+  "modelId": "sub:fable",
+  "mode": "plain",
+  "channel": "sub",
+  "label": "Claude Fable",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "low",
+  "creature": {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      {
+        "delivery": "lob",
+        "effects": [
+          "damage",
+          "blind"
+        ],
+        "element": "radiation"
+      },
+      {
+        "delivery": "zone",
+        "effects": [
+          "burn",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 156,
+      "maxSpeed": 6.36,
+      "accel": 24,
+      "turnRate": 8.5,
+      "radius": 1.44,
+      "jumpHeight": 1.28
+    }
+  },
+  "generatedAt": "2026-09-07T00:04:10.805Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 26.17,
+      "faults": 0,
+      "thinks": 392,
+      "orders": 807,
+      "uses": 21,
+      "hits": 7,
+      "damageDealt": 184.97500000000002,
+      "fuelSpent": 4798,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 12.53,
+      "faults": 0,
+      "thinks": 188,
+      "orders": 389,
+      "uses": 12,
+      "hits": 1,
+      "damageDealt": 33.02500000000001,
+      "fuelSpent": 2063,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 12.53,
+      "faults": 0,
+      "thinks": 188,
+      "orders": 389,
+      "uses": 12,
+      "hits": 1,
+      "damageDealt": 35.999999999999964,
+      "fuelSpent": 2032,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 10.2,
+      "faults": 0,
+      "thinks": 153,
+      "orders": 316,
+      "uses": 9,
+      "hits": 1,
+      "damageDealt": 20.074999999999996,
+      "fuelSpent": 1798,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.42628900000000003,
+  "elapsedMs": 41903,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 41903,
+      "chars": 4711
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 3354,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-fable-5-1",
+  "provider": "claude-cli",
+  "sourceChars": 4711,
+  "promptHash": "c10afa154e2741ca1f82e685e1b176b8149dbeb43e8293e0c8b570cbd93a298f",
+  "promptChars": 34956
+}

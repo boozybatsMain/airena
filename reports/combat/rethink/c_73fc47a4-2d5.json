@@ -1,0 +1,188 @@
+{
+  "id": "c_73fc47a4-2d5",
+  "name": "MERCURY EEL",
+  "rating": 1230,
+  "fights": 8638,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2342,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to sit around eight units away, strafing sideways and flipping strafe direction every 2.5 seconds, closing in when the enemy goes out of sight or past fourteen units. Its main answer is the bolt with lead-aim at any range under nineteen, and it takes its one real risk with the dash when the enemy is visible between roughly 2.5 and ten units — a close-range punish or finisher. Defensively it scans incoming projectiles and sidesteps, spending its blink to escape when off cooldown.",
+    "sourceSha": "206e4758659870b861e44f0505c7b7ff6c59a99be79573c4335668b56138537f",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_73fc47a4-2d5.before.206e4758.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2205,
+    "tacticsCard": "This fighter always keeps facing you and tries to sit around a 10-unit orbit range while spamming its kit rather than actually landing hits: it dodges sideways with k1 when it senses your telegraphed k2/k3 within 14 range, throws k3 as a close-range finisher between 1.5-9 distance, and otherwise fires a lead-predicted k2 at anything visible within 17 range.",
+    "rating": 1230,
+    "fights": 8675,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse",
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "arc"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "blind"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    }
+  ],
+  "kitCost": 43,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 21.2,
+      "faults": 0,
+      "thinks": 318,
+      "orders": 718,
+      "uses": 20,
+      "hits": 6,
+      "damageDealt": 147.6,
+      "stubDamageDealt": 250.79999999999998,
+      "aliveTicks": 635,
+      "idleInReachTicks": 96,
+      "stillTicks": 18,
+      "fuelSpent": 644,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 17.47,
+      "faults": 0,
+      "thinks": 262,
+      "orders": 582,
+      "uses": 17,
+      "hits": 6,
+      "damageDealt": 151.2,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 523,
+      "idleInReachTicks": 86,
+      "stillTicks": 29,
+      "fuelSpent": 531,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 19.47,
+      "faults": 0,
+      "thinks": 292,
+      "orders": 641,
+      "uses": 18,
+      "hits": 3,
+      "damageDealt": 72,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 583,
+      "idleInReachTicks": 157,
+      "stillTicks": 35,
+      "fuelSpent": 591,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 20.3,
+      "faults": 0,
+      "thinks": 304,
+      "orders": 672,
+      "uses": 19,
+      "hits": 10,
+      "damageDealt": 254.39999999999998,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 608,
+      "idleInReachTicks": 98,
+      "stillTicks": 10,
+      "fuelSpent": 616,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 114477,
+  "forgeMs": 105456,
+  "admitMs": 574,
+  "cardMs": 8444,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 105456,
+      "chars": 2205
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9284,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.160787,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2205,
+  "promptHash": "4247fc2adcbf9ab562bd7b224248cb4b2b27666c95397bd7ce4e1300ba9f2b3a",
+  "generatedAt": "2026-09-07T10:46:38.827Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:05:31.366Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:01:19.589Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "4bce0b7323365a244f61e60fe5a044224cf1e94f9613dd5361ac6a261a1f2c4a",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.617,
+    "idleInReach": 0.186,
+    "still": 0.039,
+    "casts": 18.5
+  },
+  "card": "This fighter always keeps facing you and tries to sit around a 10-unit orbit range while spamming its kit rather than actually landing hits: it dodges sideways with k1 when it senses your telegraphed k2/k3 within 14 range, throws k3 as a close-range finisher between 1.5-9 distance, and otherwise fires a lead-predicted k2 at anything visible within 17 range."
+}

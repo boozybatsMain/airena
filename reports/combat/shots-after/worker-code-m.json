@@ -1,0 +1,55 @@
+{
+  "state": "worker-code",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/worker?ui=worker-code",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "worker",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 50,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 30,
+      "since": 21516
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low"
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 74,
+      "rendererRequested": 74,
+      "shellReady": 5947,
+      "screenReady": 5965,
+      "viewerStart": 16316,
+      "rendererUp": 16362,
+      "envBuilt": 16458,
+      "postBuilt": 16468,
+      "precompiled": 20810,
+      "postWarm": 21508,
+      "rendererReady": 21514,
+      "firstDraw": 21517
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

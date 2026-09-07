@@ -1,0 +1,131 @@
+{
+  "model": "sub:fable:plain",
+  "modelId": "sub:fable",
+  "mode": "plain",
+  "channel": "sub",
+  "label": "Claude Fable",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "low",
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-07T00:05:24.206Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 14.33,
+      "faults": 25,
+      "thinks": 144,
+      "orders": 238,
+      "uses": 5,
+      "hits": 5,
+      "damageDealt": 60,
+      "fuelSpent": 2369,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 11.6,
+      "faults": 25,
+      "thinks": 118,
+      "orders": 187,
+      "uses": 5,
+      "hits": 4,
+      "damageDealt": 48,
+      "fuelSpent": 1940,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 12.4,
+      "faults": 25,
+      "thinks": 117,
+      "orders": 185,
+      "uses": 5,
+      "hits": 5,
+      "damageDealt": 60,
+      "fuelSpent": 1938,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 16.53,
+      "faults": 25,
+      "thinks": 182,
+      "orders": 313,
+      "uses": 8,
+      "hits": 8,
+      "damageDealt": 96,
+      "fuelSpent": 3066,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.559227,
+  "elapsedMs": 83068,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 83068,
+      "chars": 4601
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6238,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-fable-5-1",
+  "provider": "claude-cli",
+  "sourceChars": 4601,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

@@ -32,10 +32,18 @@
  * timings are not the ones a fighter ever experiences. `served` below does that
  * rounding and says why it happens here rather than in config.
  *
- * That promise is MECHANISED rather than trusted. Every number goes out through
- * `q(label, value)`, which formats it exactly as before and — while a trace is
- * running — records the pair and brackets the characters it produced. On that
- * record `tools/checkprompt.mjs` runs the guarantee in both directions:
+ * That promise is MECHANISED rather than trusted, and it covers BOTH forms of
+ * the document: the reference fixture's prompt and the one every player's
+ * creature is handed, whose skill cards are built from a compiled kit. The kit
+ * half used to be outside it — 59 numbers rendered through the untraced `n()`,
+ * so no card figure was checked against the def it came from and no stray
+ * numeral in that prose could be caught (review r1, F7). Every number goes out
+ * through `q(label, value)`, which formats it exactly as before and — while a
+ * trace is running — records the pair and brackets the characters it produced.
+ * Kit labels are `kit.<own|enemy>.<slot>.<field>`; the side is part of the
+ * label because one document prints two different kits. On that record
+ * `tools/checkprompt.mjs` runs the guarantee in both directions, over the
+ * fixture render AND over a kit render:
  *
  *   config -> text   the set of labels emitted must equal its whitelist, and
  *                    each emitted substring must equal the live config value.
@@ -58,11 +66,18 @@
 
 import {
   AIRBORNE_DODGE_MIN,
-  ARENA_HALF, BEAM_RADIUS, FAULT_LIMIT, KNOCKBACK_DRAG, MATCH_SECONDS, statsOf,
-  MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, OBSTACLES, SAY_MAX_CHARS,
+  ARENA_HALF, BEAM_MUZZLE, BEAM_RADIUS, BLINK_VELOCITY_KEEP, BURN_EVENT_EVERY, EVENTS_MAX,
+  FAULT_LIMIT,
+  INTERRUPT_MIN_WINDUP, KNOCKBACK_DRAG, KNOCKBACK_MIN, MATCH_SECONDS, statsOf,
+  MAX_ORDERS_PER_THINK, MAX_QUERIES_PER_THINK, MEM_MAX_KEYS, MEM_MAX_VALUE_BYTES,
+  OBSTACLES, PROJECTILE_MUZZLE,
+  PROJECTILE_TOUCH, SAY_EVERY, SAY_MAX_CHARS,
   SKILLS, SPAWN_RADIUS, SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_EVERY,
-  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, skillsOf, referenceTagOf,
+  THINK_HZ, THINK_TIMEOUT_MS, TICK_HZ, WALL_AHEAD, WALL_RAISED_HEIGHT, ZONE_PERIOD,
+  skillsOf, referenceTagOf,
 } from '../core/config.js';
+import { BLIND_LAG_TICKS } from '../core/effects.js';
+import { DELIVERIES, EFFECTS } from '../skills/registry.js';
 import { FUEL_PER_THINK } from '../server/sandbox/instrument.js';
 
 const n = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000));
@@ -139,8 +154,30 @@ function served(name) {
 /** A countdown accumulator — cooldown, i-frames, stun — as served. */
 function servedCountdown(seconds) {
   let t = seconds, ticks = 0;
-  while (t > 0) { t = Math.max(0, t - TICK); ticks++; }
+  /* The same microsecond floor the sim's countdown applies (`step` in sim.js):
+     a residue of floating-point dust is not a tick anybody waits. */
+  while (t > 0) { t = t - TICK; if (t < 1e-6) t = 0; ticks++; }
   return ticks * TICK;
+}
+
+/**
+ * The phases of a grammar ability as SERVED, the way `served` does it for the
+ * hardcoded five: a phase ends on the first step at or past its length and the
+ * overshoot comes off the next one. The kit block used to print countdown
+ * rounding here — 0.667 s for a beam wind-up the world serves in 0.633 — which
+ * is the one class of lie this file exists to prevent.
+ */
+function servedDef(d) {
+  const fields = d.kind === 'jump' ? ['windup', 'airborne', 'recover']
+    : (d.windup > 0 ? ['windup', 'recover'] : [null, 'recover']);
+  const out = {};
+  let carry = 0;
+  for (const field of fields) {
+    const r = phaseClock(field === null ? 0 : (d[field] || 0), carry);
+    if (field !== null) out[field] = r.served;
+    carry = r.carry;
+  }
+  return out;
 }
 
 /**
@@ -203,7 +240,7 @@ function world() {
   return `THE WORLD
 
 A flat square arena. The ground is the X/Z plane; +Y is up and nothing but a hop
-ever leaves the ground. The arena runs from -${q('arena.half', ARENA_HALF)} to +${q('arena.half', ARENA_HALF)} on both X and Z, walled on
+or a leap ever leaves the ground. The arena runs from -${q('arena.half', ARENA_HALF)} to +${q('arena.half', ARENA_HALF)} on both X and Z, walled on
 all four sides. Nothing can leave it.
 
 Headings are radians. Heading 0 faces +Z; the angle increases toward +X, so
@@ -461,14 +498,14 @@ function skillBlock(name, me, you, youLbl) {
  * `referenceTagOf`) только тогда, когда набора нет вовсе.
  */
 function skillsFor(tag, kit, mine, theirs) {
-  if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit, mine, theirs)}\n\n${KIT_IS_NOT_YOURS}`;
+  if (kit) return `YOUR SKILLS\n\n${kitBlocks(kit, mine, theirs, 'own', 'body.enemy')}\n\n${KIT_IS_NOT_YOURS}`;
   return `YOUR SKILLS\n\n${skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, mine, theirs, 'body.enemy')).join('\n\n')}`;
 }
 
 /** Умения соперника. Применяющий — он, цель — я, поэтому пара перевёрнута. */
 function enemySkillsFor(tag, enemyKit, theirs, mine) {
   const head = "YOUR OPPONENT'S SKILLS\n\nThe same numbers, disclosed to both sides.\n\n";
-  if (enemyKit) return head + kitBlocks(enemyKit, theirs, mine);
+  if (enemyKit) return head + kitBlocks(enemyKit, theirs, mine, 'enemy', 'body.own');
   return head + skillsOf(referenceTagOf(tag)).map((nm) => skillBlock(nm, theirs, mine, 'body.own')).join('\n\n');
 }
 
@@ -507,16 +544,22 @@ function enemySkillsFor(tag, enemyKit, theirs, mine) {
  * стоят и хеш провенанса в `tools/bracket.mjs`, и кэш вердиктов
  * `tools/tactics-verdicts.json`.
  */
-const KIT_IS_NOT_YOURS = `These three are the skills you are holding as this is written. They can be
-exchanged for three others between one match and the next, and you are NOT
-rewritten when they are: the same program you are writing now runs with the new
-set. So a range copied out of the table above and typed into your source as a
-number describes a skill you may no longer have, and nothing will tell you it
-has stopped being true.
+const KIT_IS_NOT_YOURS = `The cards above are the verbs you are holding as this is written: the three
+your creature bought, and there is no fourth. The three can be exchanged for
+three others between one match and the next, and you are NOT rewritten when
+they are: the same program you are writing now runs with the new set. So a
+range copied out of the table above and typed into your source as a number
+describes a skill you may no longer have, and nothing will tell you it has
+stopped being true.
 
 The live figures are in perception, under p.self.kit, keyed by the same names
 api.use takes; the opponent's are under p.enemy.kit. They are rebuilt for every
-thought, from the set actually equipped.`;
+thought, from the set actually equipped. Their windup, recover and cooldown are
+the DECLARED figures — the ones the ability was compiled with — while the cards
+above print the SERVED ones, which is what the world runs: a phase ends on the
+first step at or past its length, and a countdown is subtracted one step at a
+time until it crosses zero. The two never differ by a whole step of the world's
+clock, and the served figure is the one a fighter experiences.`;
 
 /**
  * A skill built out of the §8 grammar, described the way the four hardcoded
@@ -531,70 +574,96 @@ thought, from the set actually equipped.`;
  * everywhere else in this file: config's figure and the world's figure are
  * not the same number, and the model is told the world's.
  */
-const DELIVERY_LINE = {
-  beam: 'a straight line from your muzzle. It stops at the first block, wall or body it meets',
-  cone: 'a wedge ahead of you, close in. It needs a clear line to the body it hits, and it sweeps the FLOOR — a body that is off the ground when it lands takes nothing',
-  bolt: 'a projectile that travels. It can be walked out of, and a block stops it',
-  /*
-   * НАВЕС — ЕДИНСТВЕННАЯ ДОСТАВКА, У КОТОРОЙ ДАЛЬНОСТЬ НАЗЫВАЕТ МОЗГ.
-   *
-   * Здесь стояло «It flies OVER blocks and lands where it was aimed». Первая
-   * половина верна, вторая была неправдой в обе стороны сразу, и обе половины
-   * этой неправды агент механики починил 04.09 в `src/core/deliver.js`
-   * (`lobLanding`, `tickProjectiles`) и в `src/core/sim.js` (`startSkill`).
-   * Своей формулировки он не прислал, поэтому строка ниже написана ПО КОДУ, и
-   * вот по какому:
-   *
-   *   `startSkill`: `const reach = (s.kind === 'lob' && a !== null &&
-   *   Number.isFinite(a)) ? a : null` — для навеса первый аргумент `api.use`
-   *   это ЗАПРОШЕННАЯ ДАЛЬНОСТЬ В МЕТРАХ. Больше её не читает никто: у мигания
-   *   `a, b` — направление, у остальных семи доставок аргументы не читаются.
-   *
-   *   `lobLanding`: `null` (аргумента не было) значит РАССТОЯНИЕ ДО ВРАГА, а
-   *   не предел умения. Запрос зажимается `min(предел, max(свой радиус +
-   *   splash, запрос))`, и поверх — край арены. Зажимается в момент
-   *   приземления каста, а не приказа.
-   *
-   *   `tickProjectiles`, ветка `p.arc`: полёт не проверяет НИЧЕГО — ни тел, ни
-   *   препятствий. Весь удар это круг `splash` вокруг точки падения, и тело
-   *   попадает под него, когда его центр ближе `splash + его радиус`. Пустая
-   *   точка — промах с причиной `aim`, и он приезжает мозгу событием.
-   *
-   * Почему это важно ИМЕННО ДЛЯ ДИСТАНЦИИ: у навеса теперь есть и ближняя
-   * граница, а не только дальняя. Ближе `свой радиус + splash` он не ложится
-   * вовсе — то есть это единственное умение в грамматике, которым нельзя
-   * ударить в упор, и мозг, который об этом не знает, будет жать его вплотную
-   * и получать промахи.
-   */
-  lob: 'a projectile on an arc. It flies OVER blocks and over bodies, touching nothing on the way, and everything happens where it lands: a circle of its splash radius, which catches a body whose centre is within that splash plus their own radius. WHERE it lands is yours to name — api.use(name, metres) takes the distance you want, and with no argument it lands at the enemy\'s distance as it stands when the cast finishes. What you asked for is clamped when the cast lands: never nearer than your own radius plus the splash, never past the range above, never past the edge of the arena. A landing that catches nobody is a miss with reason "aim"',
-  zone: 'a disc on the ground that keeps working for a few seconds after it lands. It sits ON the floor, so a body that is in the air skips the ticks it spends up there — one or two of them, not the whole cast',
-  dash: 'you travel forward and everything on the path is hit. A block stops the travel, and so does height: a body that is off the ground when you arrive takes nothing',
-  blink: 'you are somewhere else immediately, untouchable while you move',
-  self: 'it happens to you, where you stand',
-  jump: 'you leave the ground. Three deliveries travel along the floor — cone, zone and dash — and they pass underneath you while you are up there. Your horizontal velocity is frozen at take-off, and you can order nothing until you land',
-};
+/*
+ * THE CARDS ARE FUNCTIONS OF THE COMPILED ABILITY AND THE TWO BODIES (07.09).
+ *
+ * They were one-line glosses, and the audit of 07.09 found them false or
+ * silent in twenty-six places: no angle for the fan, no invulnerability
+ * figure for the blink, a lunge described as travel that was a teleport, a
+ * mortar "you name where it lands" when only a distance along the facing was
+ * taken, "nothing flies" printed next to a bolt at 22 m/s. Every number below
+ * now comes from the def or from config through `n()`, and every sentence
+ * describes what `deliver.js`, `effects.js` and `sim.js` do — measured by
+ * `tools/checkbehaviour.mjs` where it can be measured.
+ */
+function deliveryLine(d, me, you, K) {
+  /* A function, not a value: `q` records what it emits, so a constant computed
+     eagerly here would be reported as emitted by every delivery — including the
+     four whose text never mentions it, which would make the whitelist in
+     `tools/checkprompt.mjs` a description of this file's control flow rather
+     than of the document. */
+  const air = () => q('airborne.dodgeMin', AIRBORNE_DODGE_MIN);
+  switch (d.kind) {
+    case 'beam':
+      return `a straight line from your muzzle — ${q(K('muzzle'), me.radius + BEAM_MUZZLE)} m ahead of your centre — along your facing at the strike. It stops at the first block, wall or body it meets, and a body is hit when its surface enters the ${q('beam.radius', BEAM_RADIUS)} m of margin the line carries. A wall YOU raised does not stop it; a wall they raised does. Height is not consulted: a body in the air is hit like one on the ground`;
+    case 'cone':
+      return `a wedge from your centre, ${q(K('halfAngleDeg'), d.halfAngle, deg)} degrees either side of your facing at the strike, measured to the other body's CENTRE, reaching ${q(K('range'), d.range)} m to its surface. It needs a clear centre-to-centre line, and it sweeps the FLOOR: a body above ${air()} m when it lands takes nothing`;
+    case 'bolt':
+      return `a projectile released at the strike from ${q(K('muzzle'), me.radius + PROJECTILE_MUZZLE)} m ahead of your centre, along your facing at the strike, at ${q(K('speed'), d.speed)} m/s. It connects with a body whose centre comes within ${q(K('touch'), you.radius + PROJECTILE_TOUCH)} m of it, and a body inside its invulnerability window consumes the shot rather than letting it through. A block, an arena wall or a wall THEY raised ends it, and that ending announces nothing; a wall you raised yourself does not stop it. From the moment it is released it is listed in p.arena.projectiles, for both sides`;
+    case 'lob':
+      return `a projectile released at the strike from ${q(K('muzzle'), me.radius + PROJECTILE_MUZZLE)} m ahead of your centre, at ${q(K('speed'), d.speed)} m/s, toward a landing spot whose direction AND distance are both read at the strike, from where you stand then, whatever the wind-up took you through; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. The spot is clamped at the strike: never nearer than ${q(K('nearBound'), me.radius + d.splash)} m, never past ${q(K('range'), d.range)} m, never nearer the arena's edge than ${q(K('splash'), d.splash)} m. On landing a circle of ${q(K('splash'), d.splash)} m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance`;
+    case 'zone':
+      return `a disc of ${q(K('radius'), d.radius)} m placed where the strike reads it, from where you stand then and not where you ordered it — on the point you pass in api.use(name, {x, z}), clamped to ${q(K('range'), d.range)} m, or with no point along your facing at the enemy's distance or ${q(K('range'), d.range)} m, whichever is shorter. It works for ${q(K('duration'), d.duration)} s: on the step it lands and every ${q('zone.period', ZONE_PERIOD)} s after, ${q(K('zoneTicks'), d.zoneTicks)} ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above ${air()} m. Damage and fire tick; a control the disc carries is applied ONCE per cast per body, on the first tick that body is inside it, for the whole duration on this card — the later ticks do not attempt it and announce nothing. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor`;
+    case 'dash':
+      return `at the end of the wind-up your heading locks and your body travels ${q(K('distance'), d.distance)} m along it at ${q(K('dashSpeed'), d.dashSpeed)} m/s — ${q(K('travelSeconds'), d.distance / d.dashSpeed)} s of travel — and stops the moment it reaches a body, a block or a wall. A body whose centre is within ${q(K('sweepWidth'), me.radius + you.radius)} m of your path is hit on contact, unless it is above ${air()} m, in which case you pass underneath. You cannot turn or steer during the travel. A stun landing on you, or an impulse arriving on top of what you carried into the travel, ends the travel where you stand — and the impulse then moves you normally`;
+    case 'blink':
+      return `your body is moved up to ${q(K('distance'), d.distance)} m on the step you order it — toward the point you pass in api.use(name, {x, z}), stopping at it; or along the direction pair you pass; or along your facing — never ending inside a block. You are invulnerable for ${q(K('iframes'), servedCountdown(d.iframes))} s from the landing; your velocity is cut to ${q('blink.velocityKeep', BLINK_VELOCITY_KEEP)} of what it was. No wind-up, so nothing telegraphs it`;
+    case 'self':
+      return 'at the strike its effects happen to you, where you stand';
+    case 'jump':
+      return `a crouch, ${q(K('airborne'), servedDef(d).airborne)} s in the air, a landing. Its effects apply at take-off. Nothing can be ordered from the crouch to the end of the landing, and your horizontal velocity is frozen at take-off. Above ${air()} m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath you; a beam, a bolt and a mortar hit exactly as on the ground`;
+    default:
+      return '';
+  }
+}
 
-const EFFECT_LINE = {
-  damage: 'takes hp off what it hits',
-  burn: 'sets what it hits on fire: hp comes off over time, and a second hit renews rather than stacks',
-  knock: 'pushes what it hits away from you',
-  pull: 'drags what it hits toward you',
-  stun: 'the target cannot act at all while it lasts',
-  root: 'the target cannot move at all while it lasts; it can still act',
-  shield: 'absorbs damage before hp does, until it is spent or its time runs out',
-  heal: 'puts hp back, never above maximum',
-  cleanse: 'removes fire, root, blindness, silence, stun and every weaken from you',
-  blind: "the target's perception of you arrives late — it sees where you were, and it is told that it is blinded",
-  silence: 'the target cannot start a skill while it lasts; its attempts are refused with reason "silenced"',
-  wall: 'a temporary block grows in front of you and stops bodies and lines of sight like any other',
-  boost: 'multiplies one of your own numbers up while it lasts',
-  weaken: "multiplies one of the target's numbers down while it lasts",
-};
+/**
+ * One effect as it is compiled on THIS ability: the magnitude and the duration
+ * printed are the per-cast (or, for a disc, per-tick) figures the world will
+ * apply, after the effect-count share and the shape's premium.
+ */
+function effectLine(e, d, K) {
+  const E = (field) => K(`effect.${e.id}.${field}`);
+  const dur = e.duration ? `${q(E('duration'), e.duration)} s` : '';
+  const tick = d.kind === 'zone' ? ' per tick' : '';
+  /* Lazy for the same reason `air` is in `deliveryLine`: a `q` call evaluated
+     for every effect would report the drag as emitted by a heal. */
+  const drag = () => q('physics.knockbackDrag', KNOCKBACK_DRAG);
+  const travel = (mag) => `${q(E('travel'), Math.round(((mag * mag) / (2 * KNOCKBACK_DRAG)) * 100) / 100)} m`;
+  /* The ceiling on an impulse's travel, and why the body stops short of it:
+     the slot is zeroed the moment it decays under `KNOCKBACK_MIN`, and the
+     world integrates position in whole steps. */
+  const shade = () => `a shade under ${travel(e.mag)} of travel whatever the body weighs or wants — the impulse is dropped to zero the moment it decays below ${q('physics.knockbackMin', KNOCKBACK_MIN)} m/s, and the world moves the body in whole steps`;
+  switch (e.id) {
+    case 'damage': return `takes ${q(E('mag'), e.mag)} hp off what it hits${tick}`;
+    case 'burn': return `sets what it hits on fire at ${q(E('mag'), e.mag)} hp per second for ${dur}; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire on a burning body adds its length to the time still burning, up to twice its own length, and keeps the stronger rate; a disc's ticks keep its fire alive rather than lengthening it`;
+    case 'knock': return `an impulse of ${q(E('mag'), e.mag)} m/s on what it hits, away from you, added to whatever impulse it already carries and decaying at ${drag()} m/s² — ${shade()}; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling`;
+    case 'pull': return `an impulse of ${q(E('mag'), e.mag)} m/s on what it hits, toward you, added to whatever impulse it already carries and decaying at ${drag()} m/s² — ${shade()}; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling`;
+    case 'stun': return `for ${dur} the target cannot move, turn or start an ability, a cancellable wind-up it lands on is cancelled with its cooldown spent, and a lunge it lands on stops travelling; it arms 'act' and 'move' immunity from the moment it lands until ${q(E('window'), (e.duration || 0) + e.immune)} s later — that is the ${dur} plus ${q(E('immune'), e.immune)} s — so a second stun inside it is refused, not added`;
+    case 'root': return `for ${dur} the target cannot move; it can turn and act, and an impulse still moves it; it arms 'move' immunity from the moment it lands until ${q(E('window'), (e.duration || 0) + e.immune)} s later — the ${dur} plus ${q(E('immune'), e.immune)} s`;
+    case 'shield': return `${q(E('mag'), e.mag)} hp of absorption before hp, for ${dur}, against ability damage and fire, not against the arena's burn; a second shield keeps the larger figure and the later time; visible as p.self.shield and p.enemy.shield`;
+    case 'heal': return `puts back ${q(E('sharePct'), Math.round((e.share ?? 1) * 100))}% of the hp you are missing, never less than ${q(E('floor'), e.floor ?? 0)} and never more than ${q(E('mag'), e.mag)}, never above maximum`;
+    case 'cleanse': return 'removes fire, root, blindness, silence, stun and every weaken from you; not a shield, not a boost, not an immunity';
+    case 'blind': return `for ${dur} the target's p.enemy block — position, velocity, dist, visible, casting — is the one from ${q('blind.lagSeconds', BLIND_LAG_TICKS / TICK_HZ)} s ago, and its p.self.blinded is true; it arms 'sense' immunity from the moment it lands until ${q(E('window'), (e.duration || 0) + e.immune)} s later — the ${dur} plus ${q(E('immune'), e.immune)} s`;
+    case 'silence': return `for ${dur} the target's api.use is refused with reason 'silenced' — except an aura, blink or leap of theirs that carries a cleanse — and a cancellable wind-up it lands on is cancelled; it arms 'act' immunity from the moment it lands until ${q(E('window'), (e.duration || 0) + e.immune)} s later — the ${dur} plus ${q(E('immune'), e.immune)} s`;
+    case 'wall': {
+      const [w, dd] = (e.size || EFFECTS.wall.size || [4, 1]);
+      return `a block ${q('wall.ahead', WALL_AHEAD)} m ahead of you along your facing, ${q(E('width'), w)} m wide, ${q(E('thickness'), dd)} m thick and ${q('wall.height', WALL_RAISED_HEIGHT)} m tall, for ${dur}. The box is axis-aligned and does not rotate with you: it snaps to whichever of X and Z your facing is nearer, so the width lies across that axis and the thickness along it. It stops bodies, lunges, lines of sight and the ENEMY's beams and bolts; your own beam and your own bolt pass through it; a mortar and a disc pass over it. It is built whether or not the delivery carrying it connected — a bolt stopped by cover, a bolt that ran out of range and a mortar that landed on empty floor raise it as surely as a hit does. You keep at most one wall standing — a new one replaces it, whichever ability built it; it appears in p.arena.obstacles with 'until' and 'by'`;
+    }
+    case 'boost': return `multiplies your own ${CHANNEL_LINE[e.channel] || e.channel} by ${q(E('mag'), e.mag)} for ${dur}; a new boost on the same channel replaces it`;
+    case 'weaken': return `multiplies the target's ${CHANNEL_LINE[e.channel] || e.channel} by ${q(E('mag'), e.mag)} for ${dur}; a new weaken on the same channel replaces it`;
+    default: return '';
+  }
+}
 
 const CHANNEL_LINE = {
-  speed: 'top movement speed', turn: 'turn rate', damage: 'damage dealt',
-  armor: 'damage taken', cooldown: 'how fast cooldowns run down',
-  range: 'the reach of deliveries', vision: 'how far perception reaches',
+  speed: 'top movement speed (shown live in p.self.maxSpeed)',
+  turn: 'turn rate (shown live in p.self.turnRate)',
+  damage: 'every hp figure your abilities deal, fire excepted',
+  armor: 'a divisor on every hp figure dealt to you, fire excepted — above one means less gets through, below one more',
+  cooldown: 'how fast your cooldowns count down',
+  range: 'the range of your beam, fan, bolt, mortar and disc; not a lunge, not a blink',
+  vision: 'above one, p.enemy.visible is true even through cover; below one, your p.enemy block lags behind the present',
 };
 
 /*
@@ -650,27 +719,28 @@ const CHANNEL_LINE = {
  *   (`blink`, `self`, `jump`) дальности попадания не существует, и строка,
  *   называющая её, описывала бы геометрию, которой у умения нет.
  */
-function reachLine(d, me, you) {
-  const at = (v, tail) => `${n(v)} m between the two centres, at the very most: ${tail}`;
+function reachLine(d, me, you, K, youLbl) {
+  const at = (label, v, tail) => `${q(K(label), v)} m between the two centres, at the very most: ${tail}`;
+  const theirR = q(`${youLbl}.radius`, you.radius);
   if (d.kind === 'beam') {
-    const muzzle = me.radius + 0.2;
-    return at(muzzle + d.range + you.radius + 0.4,
-      `the beam starts ${n(muzzle)} m ahead of your centre along your facing, runs ${n(d.range)} m from there, `
-      + `carries ${n(0.4)} m of margin, and connects on their SURFACE — so ${n(you.radius)} m of their radius counts too`);
+    const muzzle = me.radius + BEAM_MUZZLE;
+    return at('reach', muzzle + d.range + you.radius + BEAM_RADIUS,
+      `the beam starts ${q(K('muzzle'), muzzle)} m ahead of your centre along your facing, runs ${q(K('range'), d.range)} m from there, `
+      + `carries ${q('beam.radius', BEAM_RADIUS)} m of margin, and connects on their SURFACE — so ${theirR} m of their radius counts too`);
   }
   if (d.kind === 'cone') {
-    return at(d.range + you.radius,
-      `the range is measured to their SURFACE, so ${n(you.radius)} m of their radius is added to it. Your own radius is NOT: `
+    return at('reach', d.range + you.radius,
+      `the range is measured to their SURFACE, so ${theirR} m of their radius is added to it. Your own radius is NOT: `
       + 'the wedge is measured from your centre');
   }
   if (d.kind === 'bolt') {
-    const muzzle = me.radius + 0.3;
+    const muzzle = me.radius + PROJECTILE_MUZZLE;
     /* Сколько тиков живёт снаряд: мир вычитает по тику, пока `life > 0`. */
     const ticks = Math.ceil((d.range / d.speed) / TICK - 1e-9);
     const flight = ticks * d.speed * TICK;
-    return at(muzzle + flight + you.radius + 0.35,
-      `it leaves ${n(muzzle)} m ahead of your centre, flies ${n(flight)} m — its range rounded UP to whole steps of the world — `
-      + `and touches them when it comes within ${n(you.radius + 0.35)} m of their centre`);
+    return at('reach', muzzle + flight + you.radius + PROJECTILE_TOUCH,
+      `it leaves ${q(K('muzzle'), muzzle)} m ahead of your centre, flies ${q(K('flight'), flight)} m — its range rounded UP to whole steps of the world — `
+      + `and touches them when it comes within ${q(K('touch'), you.radius + PROJECTILE_TOUCH)} m of their centre`);
   }
   /*
    * У НАВЕСА ДВЕ ГРАНИЦЫ, И БЛИЖНЯЯ ВАЖНЕЕ ДАЛЬНЕЙ.
@@ -683,18 +753,18 @@ function reachLine(d, me, you) {
    */
   if (d.kind === 'lob') {
     const near = me.radius + d.splash;
-    return `${n(d.range + d.splash + you.radius)} m between the two centres at the very most — your range `
-      + `${n(d.range)} m plus the ${n(d.splash)} m of splash plus their ${n(you.radius)} m of radius — and it will not land `
-      + `nearer to you than ${n(near)} m, your own radius plus that splash, whatever distance you ask for`;
+    return `${q(K('reach'), d.range + d.splash + you.radius)} m between the two centres at the very most — your range `
+      + `${q(K('range'), d.range)} m plus the ${q(K('splash'), d.splash)} m of splash plus their ${theirR} m of radius — and it will not land `
+      + `nearer to you than ${q(K('nearBound'), near)} m, your own radius plus that splash, whatever distance you ask for`;
   }
   if (d.kind === 'zone') {
-    return at(d.range + d.radius + you.radius,
-      `the disc lands along your facing at your range or at their distance, whichever is SHORTER, and it works on a body whose `
-      + `centre is within ${n(d.radius)} m of the disc plus their own ${n(you.radius)} m of radius`);
+    return at('reach', d.range + d.radius + you.radius,
+      `the disc lands on your aim point clamped to your range, or with no point along your facing at their distance or your range, whichever is SHORTER, and it works on a body whose `
+      + `centre is within ${q(K('radius'), d.radius)} m of the disc plus their own ${theirR} m of radius`);
   }
   if (d.kind === 'dash') {
-    return at(d.distance + me.radius + you.radius,
-      `you sweep ${n(d.distance)} m and everything within ${n(me.radius + you.radius)} m of that line — your radius plus theirs — is hit`);
+    return at('reach', d.distance + me.radius + you.radius,
+      `you sweep ${q(K('distance'), d.distance)} m and everything within ${q(K('sweepWidth'), me.radius + you.radius)} m of that line — your radius plus theirs — is hit`);
   }
   return null;
 }
@@ -708,26 +778,47 @@ function reachLine(d, me, you) {
  * `skillBlock`: досягаемость складывается из радиусов ДВУХ конкретных тел, и в
  * блоке чужих умений пара приходит перевёрнутой.
  */
-function kitBlocks(kit, me, you) {
+function kitBlocks(kit, me, you, side, youLbl) {
   return Object.entries(kit).map(([name, d]) => {
+    const K = (field) => `kit.${side}.${name}.${field}`;
     const L = [];
     const push = (k, v) => L.push(`  ${k.padEnd(20)}${v}`);
-    push('cooldown', `${n(servedCountdown(d.cooldown))} s, counted from the moment it starts`);
-    if (d.windup > 0) push('cast', `${n(servedCountdown(d.windup))} s of wind-up, then it lands, then ${n(servedCountdown(d.recover))} s of recovery`);
-    else push('cast', `it lands immediately, then ${n(servedCountdown(d.recover))} s of recovery`);
-    push('delivery', `${d.kind} — ${DELIVERY_LINE[d.kind] || ''}`);
-    if (d.range !== undefined) push('range', `${n(d.range)} m`);
-    if (d.radius !== undefined) push('radius', `${n(d.radius)} m`);
-    if (d.distance !== undefined) push('distance', `${n(d.distance)} m`);
-    if (d.speed !== undefined) push('speed', `${n(d.speed)} m/s`);
+    const ph = servedDef(d);
+    push('cooldown', `${q(K('cooldown'), servedCountdown(d.cooldown))} s, counted from the step the order is applied; the wind-up and the recovery run inside it`);
+    if (d.kind === 'dash') push('cast', `${q(K('windup'), ph.windup)} s of wind-up, then ${q(K('travelSeconds'), d.distance / d.dashSpeed)} s of travel, then ${q(K('recover'), ph.recover)} s of recovery`);
+    else if (d.windup > 0) push('cast', `${q(K('windup'), ph.windup)} s of wind-up, then it lands, then ${q(K('recover'), ph.recover)} s of recovery`);
+    else push('cast', `it lands immediately, then ${q(K('recover'), ph.recover)} s of recovery`);
+    /* THE RECOVERY IS SLOWED AS MUCH AS THE WIND-UP (review r1, F9). The sim
+       scales speed and turn by the ability's figures for the WHOLE act
+       (`moveStep`, `defOf(me, me.act.id)`), and this line named only the
+       wind-up — so the committed time a mind reads off the card was half of
+       the committed time it gets. */
+    /* WHEN the scales apply, and it is not only the wind-up: `moveStep` reads
+       the ability's figures for the WHOLE act, so the recovery is slowed as
+       much as the cast is (review r1, F9). The two phases that drive the body
+       themselves are named, because there the scale is not what decides. */
+    const scaleWhen = d.kind === 'dash'
+      ? 'through the wind-up and through the recovery; during the travel you neither steer nor turn'
+      : (d.kind === 'jump'
+        ? 'through the crouch and through the landing; in the air your velocity is the one you took off with'
+        : 'for the whole act — the recovery is slowed as much as the wind-up');
+    if (d.windup > 0) push('while casting', `your top speed is multiplied by ${q(K('moveScale'), d.moveScale)} and your turn rate by ${q(K('turnScale'), d.turnScale)} ${scaleWhen}; a stun, a silence or an impulse that lands during the wind-up ${d.interruptible ? 'cancels it, and the cooldown is already spent' : 'does not cancel it'}`);
+    const held = d.windup > 0 ? ', and it holds for the whole wind-up' : '';
+    push('aim', d.aim === 'point' ? `a point: api.use(name, {x, z}) — it lands on or goes toward the point${held}`
+      : (d.aim === 'facing' ? `your facing at the strike: api.use(name, {x, z}) turns you toward the point at your turn rate${held}` : 'none — a point handed to it turns you not at all and changes nothing'));
+    push('delivery', `${d.kind} — ${deliveryLine(d, me, you, K)}`);
+    if (d.range !== undefined) push('range', `${q(K('range'), d.range)} m`);
+    if (d.radius !== undefined) push('radius', `${q(K('radius'), d.radius)} m`);
+    if (d.distance !== undefined) push('distance', `${q(K('distance'), d.distance)} m`);
+    if (d.speed !== undefined) push('speed', `${q(K('speed'), d.speed)} m/s`);
     /* Радиус поражения навеса в точке падения. Без него `reach` ниже — сумма,
        одно слагаемое которой нигде не названо, а ближняя граница броска
        (свой радиус + splash) вообще не выводима. */
-    if (d.splash !== undefined) push('splash', `${n(d.splash)} m around the point it lands on`);
-    if (d.duration !== undefined && d.kind === 'zone') push('lasts', `${n(d.duration)} s on the ground`);
+    if (d.splash !== undefined) push('splash', `${q(K('splash'), d.splash)} m around the point it lands on`);
+    if (d.duration !== undefined && d.kind === 'zone') push('lasts', `${q(K('duration'), d.duration)} s on the ground`);
     /* Досягаемость — ПОСЛЕ всех своих слагаемых, чтобы читалась как их сумма,
        а не как ещё одно независимое число. См. `reachLine`. */
-    const reach = reachLine(d, me, you);
+    const reach = reachLine(d, me, you, K, youLbl);
     if (reach) push('reach', reach);
     /*
      * D160: прыжок приезжает из грамматики, и его воздушная фаза — главное
@@ -736,18 +827,174 @@ function kitBlocks(kit, me, you) {
      * то есть не могла бы решить, окупается ли уклонение простоем.
      */
     if (d.kind === 'jump') {
-      push('airborne', `${n(servedCountdown(d.airborne))} s off the ground, above ${n(AIRBORNE_DODGE_MIN)} m for most of it`);
+      push('airborne', `${q(K('airborne'), ph.airborne)} s off the ground, above ${q('airborne.dodgeMin', AIRBORNE_DODGE_MIN)} m for most of it`);
       push('landing', 'you get { type: \'landed\' } in p.events on the tick you touch down');
     }
-    for (const e of d.effects) {
-      const ch = e.channel ? ` (${CHANNEL_LINE[e.channel] || e.channel})` : '';
-      const mag = e.id === 'damage' ? ` — ${n(e.mag)}` : '';
-      const dur = e.duration ? `, ${n(e.duration)} s` : '';
-      push(`effect ${e.id}`, `${EFFECT_LINE[e.id] || ''}${ch}${mag}${dur}`);
+    for (const e of d.effects) push(`effect ${e.id}`, effectLine(e, d, K));
+    if (d.kind === 'zone') {
+      const dmg = d.effects.find((e) => e.id === 'damage');
+      if (dmg) push('whole disc', `a body that stands in it for every tick takes ${q(K('wholeDisc'), Math.round(dmg.mag * d.zoneTicks * 100) / 100)} hp`);
+      /* The same total for a burn field, which was printed for damage only
+         (review r1, F13). A field's ticks RENEW its fire rather than extending
+         it, so what a body standing in it for the whole disc loses is the rate
+         over the disc's life plus one fire's worth of afterburn. */
+      const brn = d.effects.find((e) => e.id === 'burn');
+      if (brn) {
+        const secs = (d.zoneTicks - 1) * ZONE_PERIOD + brn.duration;
+        push('whole disc', `a body that stands in it from the first tick to the last burns for ${q(K('burnSeconds'), Math.round(secs * 1000) / 1000)} s — ${q(K('tickSpan'), (d.zoneTicks - 1) * ZONE_PERIOD)} s from the first tick to the last, plus the ${q(K('effect.burn.duration'), brn.duration)} s that last tick renews — and loses ${q(K('wholeDiscBurn'), Math.round(brn.mag * secs * 100) / 100)} hp to the fire`);
+      }
     }
     /* The name is what api.use takes. Nothing else is a legal argument. */
     return `${name}\n${L.join('\n')}`;
   }).join('\n\n');
+}
+
+// ---------------------------------------------------------------------------
+// 4b. how the pieces interact (grammar kits only)
+// ---------------------------------------------------------------------------
+
+/**
+ * The facts a mind was missing — every one of them a category-3 fact or a
+ * category-1 capability, none a tactic. Written after the audit of 07.09
+ * (`reports/combat/prompt-audit.md`), which found that the grammar half of
+ * the prompt never said when the strike is read, that the wind-up is visible
+ * to the other side, what a status stops, what stacks, or what is announced.
+ * A mind handed a dictionary can only be as sharp as the dictionary.
+ *
+ * Only for kits: the reference fixture keeps its own prompt byte-identical.
+ */
+function interactions(me, you) {
+  const ceiling = Math.max(...Object.values(DELIVERIES).map((d) => d.cooldown || 0));
+  return `HOW THE PIECES INTERACT
+
+One cast, in order. When your thought returns, the order is applied on that
+same step, and the ability's cooldown starts on that step — the wind-up and
+the recovery both run inside it. From the order to the end of the recovery your
+body moves at the card's share of its top speed and turns at the card's share
+of its turn rate: the recovery is slowed exactly as much as the wind-up. The
+strike happens on the first step at or past the wind-up, and everything about
+where it goes is read at THAT instant — your facing, your aim point, the
+enemy's position for a disc or a mortar with no aim point — never at the
+instant you ordered it. The recovery follows: nothing can be started until it
+ends. No ability in this world, bought or free, has a cooldown longer than
+${q('kit.cooldownCeiling', ceiling)} s.
+
+The wind-up is visible to your opponent: their p.enemy.casting.telegraph is
+true from their next thought until the strike, their casting.skill names the
+ability, and their p.enemy.kit[skill] holds its numbers. Yours shows you the
+same about them. casting.remaining counts down to the end of the RECOVERY; the
+strike lands when casting.elapsed reaches the ability's wind-up.
+
+What either of you does is seen by the other no earlier than the other's next
+thought: perception is built for both sides before either side's orders are
+applied, and one thought is ${q('think.every', THINK_EVERY)} steps.
+
+Aiming. api.use(name, { x, z }) names a point on the ground. An aim point is a
+LOCK for the whole wind-up: your body re-derives its heading from the point on
+every step of the wind-up, and api.face or api.faceAt called on a later thought
+is ignored until the strike. To aim somewhere else, order the ability again.
+The lock ends at the strike. A beam, a bolt, a fan or a lunge goes where the
+body points at the strike. A mortar and a disc land ON the point, clamped to
+their range — the point is read at the strike, from where you stand then, so
+walking through the wind-up does not move it. A blink goes toward the point and
+stops there when it is nearer than the blink's distance. An ability whose aim
+is 'none' — an aura, a leap — turns you not at all when a point is handed
+to it. With no point, everything uses your facing at the strike, and a mortar
+or a disc lands at the enemy's distance as it stands then.
+
+Things in flight and on the floor. A bolt in p.arena.projectiles continues
+along its vx, vz for 'left' seconds and connects with a body whose centre comes
+within ${q('projectile.touchFromCentre', you.radius + PROJECTILE_TOUCH)} m of it — their radius plus the
+touch margin, the same figure a bolt's card prints. A mortar (arc: true) comes down at
+x + vx·left, z + vz·left, and its splash circle catches a body whose centre is
+within the splash plus that body's radius. A disc in p.arena.zones does not say
+which ability made it; the disc-shaped ability in that side's kit is the one,
+and a side keeps at most one disc per ability on the floor. A raised wall is in
+p.arena.obstacles with 'until' (seconds left) and 'by' (the side that raised
+it), and api.los, api.ray and api.pathTo know it like any block.
+
+What a hit does, in order. Damage passes through the attacker's damage
+channel, then the defender's armor channel (a divisor), then the defender's
+shield, then hp. A body inside its invulnerability window takes nothing: it is
+told { type:'evaded', skill, by } once for that ability on that step — once,
+not once per effect — and the attacker is told 'missed' with reason
+'invulnerable', also once. A bolt is spent on such a body rather than passing
+through it. A hit the shield ate whole is still a hit: both sides get their
+event with amount 0 and the 'absorbed' figure, and a hit the shield ate PART of
+carries 'absorbed' too. Fire takes hp every step at its rate, through the
+shield's absorption and past both channels, and announces itself as
+{ type:'burning', skill:'burn', hp } once every ${q('burn.eventEvery', BURN_EVENT_EVERY)} hp, never as 'damaged'.
+The arena's burn from ${q('suddenDeath.at', SUDDEN_DEATH_AT)} s ignores shields and channels and takes a fraction
+of MAXIMUM hp: a heal changes how long it takes, a shield does not.
+
+An ability whose effects carry neither damage nor fire still tells you it
+connected: { type:'dealt', skill, amount: 0, landed, enemyHp } arrives once per
+body per step, and 'landed' lists the ids of the effects that actually took. A
+control refused by an armed immunity is NOT in that list, so the event tells
+"the root took" from "the root was refused" on its own. A damaging ability does
+not send this one — its 'dealt' carries the real amount and no 'landed'.
+
+Statuses. Stunned: no movement, no turning, no new ability, a cancellable
+wind-up that is running is cancelled with its cooldown spent, and a lunge that
+is travelling stops where it stands. Rooted: no movement; turning, abilities
+and impulses all work. Silenced: no new ability, refused with reason
+'silenced', except an aura, blink or leap of yours that carries a cleanse; a
+cancellable wind-up is cancelled. Blinded: your p.enemy block — position,
+velocity, dist, visible, casting — is the one from ${q('blind.lagSeconds', BLIND_LAG_TICKS / TICK_HZ)} s ago, and
+p.self.blinded is true. None of these touches a projectile already in flight, a
+disc already on the floor, or a wall.
+
+Nothing stacks, and controls do not even queue. A second fire on a burning body
+adds its own length to the time still burning, up to twice that length, and the
+higher rate wins — except a disc's own ticks, which renew their fire rather
+than lengthening it. A second shield keeps the larger figure and the later
+time. A boost or a weaken on a channel replaces the one that was there.
+
+The four controls — stun, root, silence, blind — are different. A control arms
+an immunity the moment it LANDS, not when it ends: from that instant until its
+duration plus the card's immune seconds have passed, no control of those
+classes lands on that body at all. That includes a second copy of the same
+control, and it includes a control from any other ability of either side. A
+stun arms 'act' and 'move'; a root arms 'move'; a silence arms 'act'; a blind
+arms 'sense'. p.self.immune and p.enemy.immune list the classes in force for
+the WHOLE window, so a body that is stunned right now already lists 'act' and
+'move' and will keep listing them after the stun has worn off. A control
+refused this way is a 'missed' with reason 'immune' and the effect's name, and
+it is always a different cast: a disc applies the control it carries once per
+cast per body, on the first step that body is inside it, and its later ticks do
+not try again. The rest of the ability is unaffected — damage, fire, an
+impulse, a wall and every self effect on that same cast still land.
+
+A wind-up longer than ${q('interrupt.minWindup', INTERRUPT_MIN_WINDUP)} s is cancellable; a stun, a silence, a knock or a pull
+that lands during it cancels it, and you get { type:'interrupted', skill, by }
+— or { type:'interruptedEnemy', skill } when it was theirs.
+
+Impulses. A knock or a pull is a velocity on a slot of its own that decays at
+${q('physics.knockbackDrag', KNOCKBACK_DRAG)} m/s² whatever the body is doing, and is dropped to zero the moment it
+falls below ${q('physics.knockbackMin', KNOCKBACK_MIN)} m/s — so the travel is a shade under the impulse squared over
+twice that drag. A body pushed into a wall or a block stops there. An impulse
+that lands on a body in the middle of a lunge ends the lunge, and then moves
+the body normally.
+
+Leaving the ground. A leap is one shape in three parts: a crouch, an airborne
+phase, a landing. Its own effects apply at take-off. From the crouch to the
+end of the landing no ability can be started — refused with reason 'airborne'
+while you are actually in the air, and with reason 'busy' during the crouch and
+the landing, because on both of those you are still on the ground — and the
+horizontal velocity is the one you had at take-off. Above ${q('airborne.dodgeMin', AIRBORNE_DODGE_MIN)} m — most of the
+airborne phase — a fan, a disc's tick and a lunge pass underneath; a beam, a
+bolt and a mortar hit exactly as on the ground. { type:'landed' } arrives on
+the step you touch down. A blink has no wind-up, so nothing telegraphs it; it
+is invulnerable for its card's seconds from the landing.
+
+What is announced and what is not. p.events keeps at most ${q('events.max', EVENTS_MAX)} entries between
+two thoughts, oldest first. A bolt that hits a block or flies out of range
+announces nothing; a disc that catches nobody announces nothing; a mortar that
+lands on nobody announces 'missed' with reason 'aim'. No event marks a status
+landing on you: read p.self.stunned, rooted, silenced, blinded, burning,
+shield, invulnerable, immune — and p.enemy.stunned, rooted, burning, shield,
+invulnerable, immune. api.say is accepted at most once every ${q('say.every', SAY_EVERY)} s: a line
+inside that window is dropped in silence, costs no order and raises no event.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -777,21 +1024,62 @@ function perception(withKit = false) {
    * одинаковых по геометрии умения отличаются на экране.
    */
   const kitField = withKit ? `
-  .kit          your three skills as LIVE numbers, under the same names api.use
-                takes. Each carries { kind, element, effects, channel, windup,
-                recover, cooldown } and whichever of range, radius, splash,
-                distance, halfAngle, speed, damage, ticks, airborne, duration
-                its delivery has. It is rebuilt for every thought from the set you are
-                actually holding, which is not necessarily the set the tables
-                above were printed from` : '';
+  .kit          your skills as LIVE numbers, under the same names api.use
+                takes: the three your creature holds, and there is no fourth.
+                An entry carries { kind, element,
+                effects, channel, windup, recover, cooldown, aim, magnitudes }
+                and whichever of range,
+                radius, splash, distance, halfAngle, speed, damage, ticks,
+                airborne, duration, dashSpeed, iframes its delivery has. aim is
+                'point' | 'facing' | 'none' — how api.use(name, {x, z}) is read.
+                magnitudes is { effectId: { mag, duration, immune, channel } }
+                as compiled on this ability. windup, recover and cooldown are
+                the DECLARED figures, not the served ones the cards print. It is
+                rebuilt for every thought from the set you are actually holding,
+                which is not necessarily the set the tables above were printed
+                from
+  .blinded .silenced .rooted .burning
+                true while the status holds
+  .shield       hp of absorption left on you
+  .immune       the control classes that cannot land on you right now:
+                'act' | 'move' | 'sense'. A class appears the moment the
+                control lands and stays for the control's duration plus its
+                immune seconds, so it is listed while the control is still
+                running
+  .immuneLeft   { act, move, sense } — seconds left of that same window per
+                class, 0 for a class not currently armed. A class still in
+                .immune with a small number here is about to drop out of it` : '';
   const enemyKitField = withKit ? `
-  .kit          the same shape, for their three` : '';
+  .kit          the same shape, for their three, keyed by the
+                names in their .skills. A creature of the arena's reference stock holds
+                laser, blink and jump or smash, charge and jump instead of
+                k1..k3; those are presented in this same shape (laser as a
+                beam, smash as a fan, charge as a lunge), so .kit is never null
+  .shield .rooted .burning .immune .immuneLeft
+                the same meanings, for them` : '';
+  /*
+   * ЧУЖОЙ СКОРОСТИ ПОВОРОТА В ПЕРЦЕПЦИИ НЕТ, И ОБ ЭТОМ НАДО СКАЗАТЬ.
+   *
+   * `perceive` отдаёт `enemy.maxSpeed` живым — с каналом `speed`, — а
+   * `turnRate` не отдаёт вовсе. Мозг, читающий один живой множитель, вправе
+   * ждать и второго; статическое число из блока тела при этом всё, что у него
+   * есть. Абзац только для набора: у эталонной фикстуры §1 каналов нет ни у
+   * одного умения, и предложение про ослабление поворота описывало бы там
+   * механику, которой в её мире не существует.
+   */
+  const turnNote = withKit
+    ? ' There is no p.enemy.turnRate either: their maxSpeed is live and carries'
+      + ' whatever boost or weaken is on their speed channel, but their turn rate'
+      + ' reaches you only as the static figure in their body block above, so a'
+      + ' weaken on their turn channel never shows in perception.'
+    : '';
   return `WHAT YOU PERCEIVE — the object p
 
 p.t             seconds since the match began
 p.dt            seconds between two of your thoughts
 p.tick          simulation step count. The world steps before anyone is asked
-                to think, so the first value you ever see is ${q('think.firstTick', THINK_EVERY)}, not zero
+                to think, so the first value you ever see is ${q('think.firstTick', THINK_EVERY)}
+                or one less — the match seed decides which — and never zero
 p.timeLeft      seconds before the backstop clock decides on hp fraction
 p.burn          fraction of your maximum hp the arena is burning off you per
                 second right now, and off your opponent too. 0 before it starts
@@ -803,14 +1091,15 @@ p.self
                 and nothing else; neither carries a body, a skill set or a
                 shape
   .x .z         position on the ground plane
-  .y            height above the ground; > 0 only during a hop
+  .y            height above the ground; > 0 only while you are off the ground
   .vx .vz       velocity, m/s, knockback included
   .speed        magnitude of that velocity
   .heading      radians, where you are pointing right now
   .hp .maxHp
   .radius .maxSpeed .turnRate
   .alive .airborne .stunned .invulnerable
-  .busy         true while any skill of yours is running
+  .busy         true while any skill of yours is running, the crouch and the
+                landing of a jump included
   .casting      null, or { skill, phase, elapsed, remaining, total, telegraph }
                 phase is 'windup' | 'strike' | 'dash' | 'air' | 'recover'
                 telegraph is true while the effect has not landed yet
@@ -826,10 +1115,14 @@ p.enemy
   .skills       what they may use${enemyKitField}
   .dist         straight-line distance between the two centres
   .visible      true when nothing solid sits on the straight line between your
-                centre and theirs. This is the same test the beam performs
+                centre and theirs, tested this instant. A beam or a bolt tests
+                a DIFFERENT line, at the strike: from radius + muzzle ahead of
+                the caster along its facing, not centre to centre and not now.
+                api.ray tests a facing from your centre, api.los a point from
+                your centre — those are the closest tests you can run yourself
 
   That is the whole list. In particular there is no p.enemy.cooldowns: what
-  they have ready is not given to you. Every use of a skill by either side is
+  they have ready is not given to you.${turnNote} Every use of a skill by either side is
   announced — you get { type:'enemyStarted', skill } the moment they begin one.
 
 p.arena
@@ -841,9 +1134,18 @@ p.arena
                 passes over blocks; the others are stopped by them. left is
                 seconds of flight remaining
   .half         ${q('arena.half', ARENA_HALF)}
-  .obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents
+  .obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents${withKit ? `; a raised wall
+                carries until (seconds left) and by (the side that raised it)` : ''}
 
-p.events        what happened to you since your last thought, oldest first.
+${withKit ? eventsForKit() : eventsForFixture()}
+
+p.mem           a read-only copy of everything you have stored. Writing to it
+                does nothing; use api.remember.`;
+}
+
+/** The events section of the reference fixture, byte for byte as it was. */
+function eventsForFixture() {
+  return `p.events        what happened to you since your last thought, oldest first.
                 Each is { type, ... }:
   { type:'damaged', skill, amount, hp, from:{x,z} }        you were hit
   { type:'dealt', skill, amount, enemyHp }                 you hit them
@@ -862,10 +1164,45 @@ p.events        what happened to you since your last thought, oldest first.
   { type:'refused', skill, reason }                        api.use did not start it.
                                                            reason: 'cooldown' | 'busy' | 'stunned' | 'airborne' | 'dead' | 'unknown'
   { type:'enemyStarted', skill, windup }                   they began something
-  { type:'enemyCommitted', skill }                         their charge direction is now locked
+  { type:'enemyCommitted', skill }                         their charge direction is now locked`;
+}
 
-p.mem           a read-only copy of everything you have stored. Writing to it
-                does nothing; use api.remember.`;
+/**
+ * The events section for a grammar kit: every event the sim emits on the
+ * grammar path and nothing it does not (the audit found five fixture-only
+ * events listed to every player creature, and 'silenced' and 'immune'
+ * missing from the reasons).
+ */
+function eventsForKit() {
+  return `p.events        what happened to you since your last thought, oldest first,
+                at most ${q('events.max', EVENTS_MAX)} of them. Each is { type, ... }:
+  { type:'damaged', skill, amount, hp, from:{x,z}, absorbed? }   you were hit; amount is what
+                                                           reached hp, absorbed what a shield took
+  { type:'dealt', skill, amount, enemyHp, absorbed? }      you hit them, same figures
+  { type:'dealt', skill, amount:0, landed, enemyHp }       an ability of yours carrying neither
+                                                           damage nor fire connected; landed lists
+                                                           the effects that took, a refused control
+                                                           is absent from it. Once per body per step
+  { type:'missed', skill, reason, effect? }                your ability landed on nothing, or a
+                                                           control of yours was refused.
+                                                           reason: 'aim' | 'cover' | 'range' | 'airborne' | 'invulnerable' | 'immune'
+  { type:'evaded', skill, by }                             an ability of theirs reached you inside
+                                                           your invulnerability window and did
+                                                           nothing. Once per ability per step, not
+                                                           once per effect; by is the side that cast
+  { type:'blocked', by }                                   you walked into 'wall' or 'obstacle'
+  { type:'contact' }                                       the two bodies are touching
+  { type:'blinked', from, to, moved }
+  { type:'landed' }                                        your leap touched down
+  { type:'knockback', by }                                 an impulse landed on you
+  { type:'interrupted', skill, by }                        your wind-up was cancelled
+  { type:'interruptedEnemy', skill }                       you cancelled theirs
+  { type:'burning', rate, hp }                             the arena is taking hp from you
+  { type:'burning', skill:'burn', hp }                     an enemy's fire is
+  { type:'refused', skill, reason }                        api.use did not start it.
+                                                           reason: 'cooldown' | 'busy' | 'stunned' | 'silenced' | 'airborne' | 'dead' | 'unknown'
+  { type:'enemyStarted', skill, windup }                   they began something; windup as declared
+  { type:'enemyCommitted', skill }                         their lunge direction is now locked`;
 }
 
 // ---------------------------------------------------------------------------
@@ -888,7 +1225,7 @@ p.mem           a read-only copy of everything you have stored. Writing to it
  * навеса нет ни у одной стороны, и предложение про метры было бы там правдой
  * ни о чём; заодно `brainPrompt(id)` остаётся байт-в-байт прежним.
  */
-function verbs(withLob = false) {
+function verbs(withLob = false, withKit = false) {
   /* Врезка идёт ВНУТРЬ описания `api.use`, а не отдельным абзацем: это второе
      значение того же аргумента, и абзац поодаль читался бы как другой глагол. */
   const lobArg = withLob ? `
@@ -898,6 +1235,45 @@ function verbs(withLob = false) {
                         The number is clamped as the cast lands, not as you ask.
                        `
     : '';
+  /*
+   * THE KIT'S VERB, in its four forms. The audit of 07.09 found 76 of 222
+   * api.use calls in the database passing a POINT as a pair — which the sim
+   * read as a direction (blink) or ignored (everything else) — because the
+   * one form that means a point did not exist and the text said "a,b are the
+   * direction argument blink takes". Each form is a capability, stated once.
+   */
+  const useKit = `api.use(name)           Order an ability along your facing at the strike.
+api.use(name, {x, z})   Order it AT a point on the ground: you turn toward the
+                        point at your turn rate, and the point holds for the
+                        whole wind-up — a later api.face or api.faceAt does not
+                        replace it. A mortar and a disc land ON it, clamped to
+                        range; a blink goes toward it and stops there; a beam,
+                        fan, bolt or lunge goes where you point at the strike
+                        (aim in p.self.kit says which of the three an ability
+                        is, and 'none' means the point does nothing at all).
+api.use(name, metres)   Mortar only: the landing distance along your facing.
+api.use(name, dx, dz)   Blink only: a direction. For every other delivery a
+                        pair is ignored and the ability goes along your facing.
+                        The return value of every form says only that the
+                        ORDER was accepted, not that the ability started:
+                        orders are applied after your thought finishes, and one
+                        can still be refused there — on cooldown, already busy,
+                        stunned, silenced, off the ground. A refusal arrives as
+                        a 'refused' event on your next thought. api.ready(name)
+                        tells you in advance.
+api.ready(name)         true when api.use(name) would start: cooldown over,
+                        nothing of yours running, not stunned, not silenced
+                        (a cleanse-carrying aura, blink or leap excepted), on
+                        the ground, alive.`;
+  const useFixture = `api.use(name, a, b)     Order a skill. a,b are the direction argument blink
+                        takes.${lobArg} The return value says only that the ORDER was
+                        accepted, not that the skill started: orders are applied
+                        after your thought finishes, and one can still be
+                        refused there — on cooldown, already busy, stunned,
+                        off the ground. A refusal arrives as a 'refused' event
+                        on your next thought. api.ready(name) tells you in
+                        advance.
+api.ready(name)         true when api.use(name) would start.`;
   return `WHAT YOU CAN DO — the object api
 
 Movement orders STAND. One call keeps steering the body until you replace it,
@@ -909,19 +1285,13 @@ api.move(dx, dz)        Steer along a direction. Raw: it does not avoid
                         where you pointed. dx,dz need not be normalised.
                         {0,0} is a full stop.
 api.moveTo(x, z)        Walk to a point, routed around the blocks. The order
-                        stands until the point is reached or replaced.
+                        stands until the point is reached or replaced; on
+                        arrival you brake to a stop and stand there until your
+                        next order.
 api.stop()              Drop the movement order.
 api.face(dx, dz)        Turn toward a direction. Stands until replaced.
 api.faceAt(x, z)        Turn toward a point, measured when you call it.
-api.use(name, a, b)     Order a skill. a,b are the direction argument blink
-                        takes.${lobArg} The return value says only that the ORDER was
-                        accepted, not that the skill started: orders are applied
-                        after your thought finishes, and one can still be
-                        refused there — on cooldown, already busy, stunned,
-                        off the ground. A refusal arrives as a 'refused' event
-                        on your next thought. api.ready(name) tells you in
-                        advance.
-api.ready(name)         true when api.use(name) would start.
+${withKit ? useKit : useFixture}
 api.cooldown(name)      seconds left, 0 when ready.
 api.los(x, z)           true when nothing solid sits between your centre and
                         that point.
@@ -932,20 +1302,29 @@ api.pathTo(x, z)        { dist, direct, points:[{x,z}] } — a walkable route,
                         its true walking length, and whether the straight line
                         was already clear. null when there is no route.
 api.rand()              a number in [0,1). Seeded per match.
-api.remember(key, value) Store anything JSON can hold. ${q('mem.maxKeys', MEM_MAX_KEYS)} keys.
+api.remember(key, value) Store anything JSON can hold. ${q('mem.maxKeys', MEM_MAX_KEYS)} keys, and a key
+                        longer than ${q('mem.maxKeyChars', 32)} characters is cut to its first ${q('mem.maxKeyChars', 32)}
+                        — two long keys with the same opening are one key. A
+                        value whose JSON runs past ${q('mem.maxValueBytes', MEM_MAX_VALUE_BYTES)} characters, or that
+                        JSON cannot hold, is dropped in silence, and so is a
+                        new key once the ${q('mem.maxKeys', MEM_MAX_KEYS)} are full.
 api.recall(key, fallback)
 api.forget(key)
 api.say(text)           Up to ${q('say.maxChars', SAY_MAX_CHARS)} characters, shown above your body to whoever is
-                        watching. It has no effect on the fight.
+                        watching, and accepted at most once every ${q('say.every', SAY_EVERY)} s: a line
+                        inside that window is dropped in silence — no fault, no
+                        event, no order spent. It has no effect on the fight.
 
 move, face, use and say are QUEUED and applied together once your thought
 returns, so calling one of them twice in one thought keeps the LAST call and
 the earlier one never happens: no half of a thought can watch the other half
 act. move, moveTo and stop share the one movement slot, and face and faceAt
-share the one facing slot. remember and forget are the exception — they write
-through the instant you call them, so one thought can store several keys and
-read them back immediately.
-${q('orders.perThink', MAX_ORDERS_PER_THINK)} orders are honoured per thought; the rest are dropped.
+share the one facing slot. remember and forget are the exception to the queue —
+they write through the instant you call them, so one thought can store several
+keys and read them back immediately — but they are not an exception to the
+count: each one spends an order like any other.
+${q('orders.perThink', MAX_ORDERS_PER_THINK)} orders are honoured per thought; the rest are dropped. recall spends a
+perception call, not an order.
 The perception verbs — ready, cooldown, los, ray, pathTo, rand, recall — have
 their own separate allowance of ${q('queries.perThink', MAX_QUERIES_PER_THINK)}, so probing the world can never eat into
 the orders you meant to give.`;
@@ -955,7 +1334,35 @@ the orders you meant to give.`;
 // 7. what is already in scope
 // ---------------------------------------------------------------------------
 
-const HELPERS = `WHAT IS ALREADY IN SCOPE
+/**
+ * @param {boolean} withKit  a grammar kit is being described.
+ *
+ * The `V.lead` paragraph used to end "Nothing in this world flies … no skill
+ * has a projectile speed to pass here" — true of the reference fixture, and
+ * printed to every creature holding a bolt at 22 m/s or a mortar at 12. The
+ * two texts are kept apart: the fixture's stays byte-identical, the kit's
+ * says what the helper is for.
+ */
+function helpers(withKit = false, me = null) {
+  const lead = withKit
+    ? `  V.lead(shooter, target, targetVel, speed)
+                            where a target moving at constant velocity will be
+                            when something released from shooter now and
+                            travelling at "speed" reaches it. Returns the
+                            target's own position when speed is 0. A bolt and
+                            a mortar have a speed (p.self.kit[name].speed) and
+                            are released at the strike, wind-up seconds after
+                            the order, from ${q('projectile.muzzleFromCentre', me.radius + PROJECTILE_MUZZLE)} m ahead of your centre — your own
+                            radius plus the muzzle offset, the same figure the
+                            cards print; a beam has none.`
+    : `  V.lead(shooter, target, targetVel, speed)
+                            where a target moving at constant velocity will be
+                            when something travelling at "speed" reaches it.
+                            Returns the target's own position when speed is 0.
+                            Nothing in this world flies: the beam is
+                            instantaneous and the charge is a body, so no skill
+                            has a projectile speed to pass here.`;
+  return `WHAT IS ALREADY IN SCOPE
 
 V — plane vectors as plain { x, z } objects.
   V.add(a,b)   V.sub(a,b)   V.scale(a,s)   V.lerp(a,b,t)
@@ -969,18 +1376,13 @@ V — plane vectors as plain { x, z } objects.
   V.angleTo(heading, dir)   signed shortest angle from a heading to a direction,
                             in (-PI, PI]
   V.clamp(v, lo, hi)
-  V.lead(shooter, target, targetVel, speed)
-                            where a target moving at constant velocity will be
-                            when something travelling at "speed" reaches it.
-                            Returns the target's own position when speed is 0.
-                            Nothing in this world flies: the beam is
-                            instantaneous and the charge is a body, so no skill
-                            has a projectile speed to pass here.
+${lead}
   V.norm and V.toward return {x:0,z:0} for a zero-length input, and a zero
   vector passed to api.move is a full stop.
 
 Math is available in full except Math.random. console.log works and goes to a
 log nobody's fight depends on.`;
+}
 
 // ---------------------------------------------------------------------------
 // 8. constraints, each with its reason
@@ -1115,13 +1517,14 @@ nothing about a body, a skill or a shape.`,
     skillsFor(id, kits?.own, me, foe),
     bodyBlock(false, foe, kits?.enemy, otherId),
     enemySkillsFor(otherId, kits?.enemy, foe, me),
+    kits?.own ? interactions(me, foe) : null,
     perception(Boolean(kits?.own)),
     /* Условие — доставка, а не набор: аргумент-дальность есть только у навеса. */
-    verbs(Object.values(kits?.own || {}).some((d) => d.kind === 'lob')),
-    HELPERS,
+    verbs(Object.values(kits?.own || {}).some((d) => d.kind === 'lob'), Boolean(kits?.own)),
+    helpers(Boolean(kits?.own), me),
     rules(),
     OBJECTIVE,
-  ].join('\n\n---\n\n');
+  ].filter(Boolean).join('\n\n---\n\n');
 }
 
 /**
@@ -1129,13 +1532,18 @@ nothing about a body, a skill or a shape.`,
  * the (label, text) pairs that produced them.
  *
  * `marked` is what the checkers sweep; `plain` is byte-identical to
- * `brainPrompt(id)` and is asserted to be, so that nothing can be true of the
- * traced render and false of the one a model is handed.
+ * `brainPrompt(id, kits, builds)` and is asserted to be, so that nothing can be
+ * true of the traced render and false of the one a model is handed.
+ *
+ * `kits` and `builds` are passed straight through, and they are the reason the
+ * kit half of the document is inside the guarantee at all: the trace used to
+ * take an id and nothing else, so the only form ever checked was the reference
+ * fixture's, while every creature a player owns reads the kit form.
  */
-export function tracePrompt(id) {
+export function tracePrompt(id, kits = null, builds = null) {
   TRACE = [];
   try {
-    const marked = brainPrompt(id);
+    const marked = brainPrompt(id, kits, builds);
     return {
       marked,
       plain: marked.split(MARK_IN).join('').split(MARK_OUT).join(''),

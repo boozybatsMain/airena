@@ -1,0 +1,187 @@
+{
+  "id": "c_cdb90c01-ad9",
+  "name": "ACID CUTTER",
+  "rating": 993,
+  "fights": 7969,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1908,
+    "tacticsCard": "This fighter tries to sit at about five meters, backing off when crowded, closing when far, and strafing sideways in the mid-band — flipping its strafe direction every 2.2 seconds like clockwork, which is predictable enough to bait and punish. Its priority is a close cone when you're low to the ground, then a gap-closing dash from roughly 4 to 10 meters, otherwise a beam that leads your movement by half a second and roots it in place while firing.",
+    "sourceSha": "e5471748f77f003fcaf7602d3e3638962048805cc5a1996139c18911d78438a6",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_cdb90c01-ad9.before.e5471748.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2951,
+    "tacticsCard": "This fighter tries to hover at a fixed range — 13 out normally, retreating to 18 once it drops below 45% health — sidestepping rhythmically when it's already at the right distance instead of just standing still. It watches for the enemy's telegraphed windups and reacts specifically: it backs straight away from k1/k3 charges and dodges sideways against k2, otherwise it just closes in, retreats, or strafes based on range, then throws k2 at long range, k1 up close, or k3 in the middle band whenever off cooldown and line-of-sight is clear, leading targets slightly by their velocity.",
+    "rating": 1103,
+    "fights": 8058,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "weaken",
+        "burn"
+      ],
+      "channel": "armor",
+      "element": "acid"
+    },
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "laser"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 44,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 19.77,
+      "faults": 0,
+      "thinks": 297,
+      "orders": 568,
+      "uses": 11,
+      "hits": 9,
+      "damageDealt": 230.39999999999998,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 592,
+      "idleInReachTicks": 112,
+      "stillTicks": 1,
+      "fuelSpent": 1624,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 24.2,
+      "faults": 0,
+      "thinks": 363,
+      "orders": 685,
+      "uses": 14,
+      "hits": 9,
+      "damageDealt": 226.79999999999998,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 725,
+      "idleInReachTicks": 123,
+      "stillTicks": 1,
+      "fuelSpent": 2149,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 25.13,
+      "faults": 0,
+      "thinks": 377,
+      "orders": 684,
+      "uses": 16,
+      "hits": 7,
+      "damageDealt": 178.79999999999998,
+      "stubDamageDealt": 254.39999999999998,
+      "aliveTicks": 753,
+      "idleInReachTicks": 126,
+      "stillTicks": 1,
+      "fuelSpent": 2201,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 16.67,
+      "faults": 0,
+      "thinks": 250,
+      "orders": 478,
+      "uses": 10,
+      "hits": 10,
+      "damageDealt": 258,
+      "stubDamageDealt": 230.39999999999998,
+      "aliveTicks": 499,
+      "idleInReachTicks": 48,
+      "stillTicks": 22,
+      "fuelSpent": 1312,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 104119,
+  "forgeMs": 92256,
+  "admitMs": 602,
+  "cardMs": 11257,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 92254,
+      "chars": 2951
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8263,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.151548,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2951,
+  "promptHash": "840992e2fa2498eb912df121a1b1d7b98a94083fb44a8ad939eda46cd567b9f4",
+  "generatedAt": "2026-09-07T11:09:59.984Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:01:18.315Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:08:36.792Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "a8741cac39628c0f60ab2b9d18d38aaea33148d2050d1b02830bfa96e039b38c",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.9,
+    "idleInReach": 0.159,
+    "still": 0.01,
+    "casts": 12.75
+  },
+  "card": "This fighter tries to hover at a fixed range — 13 out normally, retreating to 18 once it drops below 45% health — sidestepping rhythmically when it's already at the right distance instead of just standing still. It watches for the enemy's telegraphed windups and reacts specifically: it backs straight away from k1/k3 charges and dodges sideways against k2, otherwise it just closes in, retreats, or strafes based on range, then throws k2 at long range, k1 up close, or k3 in the middle band whenever off cooldown and line-of-sight is clear, leading targets slightly by their velocity."
+}

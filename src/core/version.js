@@ -78,9 +78,38 @@
 import { createHash } from 'node:crypto';
 
 import {
-  ARENA_HALF, BUILD_AXES, BUILD_BUDGET, MATCH_SECONDS, OBSTACLES, SKILLS,
-  SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT,
+  AIRBORNE_DODGE_MIN, ARENA_HALF, BUILD_AXES, BUILD_BUDGET, MATCH_SECONDS, OBSTACLES, SKILLS,
+  SUDDEN_DEATH_AT, SUDDEN_DEATH_RAMP, THINK_HZ, TICK_HZ, WALL_HEIGHT, ZONE_PERIOD, ZONE_TOTAL_SHARE,
 } from './config.js';
+import { CHANNELS, DELIVERIES, EFFECTS } from '../skills/registry.js';
+
+/**
+ * THE GRAMMAR'S DISCLOSED NUMBERS ARE IN THE VERSION (07.09).
+ *
+ * The docstring above argued them out: a mind reads its kit live (F10), so a
+ * changed price cannot misinform it. That holds for PRICES. It does not hold
+ * for cooldowns, magnitudes, durations, ranges and speeds — the prompt prints
+ * them on the kit cards and a generated mind types them into its source
+ * (measured: 61 of 77 kitted brains compare `dist` with a copied number).
+ * The 07.09 overhaul moved every one of them, and a recorded match replayed
+ * under the new rules is a different fight from the one the ladder scored.
+ * So the disclosed half of the grammar — everything but `cost`, `ru`, `doc`,
+ * `vfx`, `silhouette` — is hashed, and a replay of a match from the old world
+ * is refused as `stale_constants` rather than re-simulated into fiction.
+ */
+function grammarDisclosed() {
+  const strip = (t) => Object.fromEntries(Object.entries(t).map(([k, v]) => {
+    const { cost, ru, doc, vfx, silhouette, palette, read, forms, unreleased, ...rest } = v;
+    return [k, rest];
+  }));
+  return {
+    deliveries: strip(DELIVERIES),
+    effects: strip(EFFECTS),
+    channels: Object.keys(CHANNELS),
+    zone: { period: ZONE_PERIOD, share: ZONE_TOTAL_SHARE },
+    airborneDodgeMin: AIRBORNE_DODGE_MIN,
+  };
+}
 
 /** Раскрываемая часть: то, что уезжает в промпт, плюс правила, породившие его числа. */
 export function disclosed() {
@@ -91,6 +120,7 @@ export function disclosed() {
      */
     build: { axes: BUILD_AXES, budget: BUILD_BUDGET },
     skills: SKILLS,
+    grammar: grammarDisclosed(),
     arena: { half: ARENA_HALF, wallHeight: WALL_HEIGHT, obstacles: OBSTACLES },
     tickHz: TICK_HZ,
     thinkHz: THINK_HZ,

@@ -1,0 +1,188 @@
+{
+  "id": "c_83089e56-e2f",
+  "name": "SALT BULL",
+  "rating": 1200,
+  "fights": 9194,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1192,
+    "tacticsCard": "This fighter is a close-range brawler: it wants to sit in a narrow band around three to four meters, orbiting sideways, backing off if it gets closer than about 2.8, and charging straight in whenever the gap exceeds four. It leads with its defensive buff when the enemy telegraphs a cast within twelve meters or simply gets within six, fires its cone whenever the target is under 4.4 meters, visible and grounded, and dashes to close from mid range between roughly 4.5 and 10.5.",
+    "sourceSha": "379b7819c7f579bd6acad05938f5f7faadd5d27721c826d5608378577f64179a",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_83089e56-e2f.before.379b7819.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1563,
+    "tacticsCard": "This fighter opens with trash talk, then plays reactively: the instant it spots a telegraphed windup, it dodges by fleeing 6 units from the enemy's current position and closes back in with a stun-cone at close range or a dash-strike at mid range, filling idle time with a self-buff. The bad part is the dodge logic itself — it computes the retreat direction from where the enemy actually is right now, but the comment reveals it was written assuming the aim was locked to its *old* position, so the \"dodge\" is really just generic backpedaling that offers no real guarantee of dodging a tracked…",
+    "rating": 1200,
+    "fights": 9243,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "stun"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "armor",
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 40,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 28.3,
+      "faults": 0,
+      "thinks": 425,
+      "orders": 560,
+      "uses": 25,
+      "hits": 12,
+      "damageDealt": 247.9725,
+      "stubDamageDealt": 192.975,
+      "aliveTicks": 848,
+      "idleInReachTicks": 125,
+      "stillTicks": 95,
+      "fuelSpent": 793,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 25.6,
+      "faults": 0,
+      "thinks": 384,
+      "orders": 576,
+      "uses": 23,
+      "hits": 14,
+      "damageDealt": 243.29999999999995,
+      "stubDamageDealt": 229.10999999999999,
+      "aliveTicks": 767,
+      "idleInReachTicks": 89,
+      "stillTicks": 84,
+      "fuelSpent": 561,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 29.33,
+      "faults": 0,
+      "thinks": 440,
+      "orders": 625,
+      "uses": 27,
+      "hits": 13,
+      "damageDealt": 234.97499999999997,
+      "stubDamageDealt": 243.29999999999995,
+      "aliveTicks": 879,
+      "idleInReachTicks": 130,
+      "stillTicks": 64,
+      "fuelSpent": 723,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 26.4,
+      "faults": 0,
+      "thinks": 396,
+      "orders": 468,
+      "uses": 23,
+      "hits": 14,
+      "damageDealt": 249.63749999999996,
+      "stubDamageDealt": 178.31249999999997,
+      "aliveTicks": 791,
+      "idleInReachTicks": 95,
+      "stillTicks": 54,
+      "fuelSpent": 735,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 118658,
+  "forgeMs": 112160,
+  "admitMs": 546,
+  "cardMs": 5946,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 112160,
+      "chars": 1563
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8817,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.15641300000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1563,
+  "promptHash": "9e7f04689cb7826251878017017d9ec02bc134288d77e6c5c7e0a339afe82e5d",
+  "generatedAt": "2026-09-07T10:54:15.703Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:06:42.810Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:02:46.437Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "8f6d8e497c19ef1059133d4567c8f1344afcb454a109efc219da44911ab784d7",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.157,
+    "idleInReach": 0.134,
+    "still": 0.09,
+    "casts": 24.5
+  },
+  "card": "This fighter opens with trash talk, then plays reactively: the instant it spots a telegraphed windup, it dodges by fleeing 6 units from the enemy's current position and closes back in with a stun-cone at close range or a dash-strike at mid range, filling idle time with a self-buff. The bad part is the dodge logic itself — it computes the retreat direction from where the enemy actually is right now, but the comment reveals it was written assuming the aim was locked to its *old* position, so the \"dodge\" is really just generic backpedaling that offers no real guarantee of dodging a tracked…"
+}

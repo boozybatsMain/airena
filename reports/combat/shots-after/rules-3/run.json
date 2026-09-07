@@ -1,0 +1,45 @@
+{
+  "at": "2026-09-07T06:11:46.686Z",
+  "base": "http://localhost:8787",
+  "out": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after/rules-3",
+  "db": {
+    "path": "/Users/boozybats/Public/Repos/work/Airena/data/airena.db",
+    "exists": true,
+    "bytes": 1840644096,
+    "modified": "2026-09-07T06:10:42.691Z"
+  },
+  "commit": "8699fb678a9f3be2e741b146938b25fbca5d90ca",
+  "branch": "main",
+  "dirtyFiles": 53,
+  "node": "v24.18.0",
+  "finishedAt": "2026-09-07T06:13:22.781Z",
+  "seconds": 96,
+  "only": [
+    "live-fighting"
+  ],
+  "partial": true,
+  "claim": {
+    "ok": true,
+    "creature": "c_18e20e72-6bb",
+    "account": "g_05cd74f2-db4"
+  },
+  "replay": "m_237a62f0-84e",
+  "captures": 2,
+  "failures": 0,
+  "states": [
+    {
+      "id": "live-fighting",
+      "errors": 0,
+      "overlaps": 0,
+      "covered": 0,
+      "flaw": null
+    },
+    {
+      "id": "live-fighting-w",
+      "errors": 0,
+      "overlaps": 0,
+      "covered": 0,
+      "flaw": null
+    }
+  ]
+}

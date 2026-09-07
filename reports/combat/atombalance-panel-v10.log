@@ -1,0 +1,12 @@
+atombalance · seed 55 · 480 kits × 24 games · pilots stub,rusher,kiter,controller · cooldown registry · ridge 1 · boot 200
+  sampled 480 distinct legal kits (25 coverage-forced; target ≥ 24 kits per effect and per delivery)
+  league: 11520 matches on 8 workers
+  league: 25/11520 · 2 s elapsed · ~961 s left   
+  прогон убит сигналом SIGSEGV (баг worker_threads, не логика замера) — попытка 1 из 4
+
+  повтор на 4 воркер(ах) — медленнее, зато без падения
+
+atombalance · seed 55 · 480 kits × 24 games · pilots stub,rusher,kiter,controller · cooldown registry · ridge 1 · boot 200
+  sampled 480 distinct legal kits (25 coverage-forced; target ≥ 24 kits per effect and per delivery)
+  league: 11520 matches on 4 workers
+  league: 25/11520 · 2 s elapsed · ~1068 s left     league: 50/11520 · 4 s elapsed · ~934 s left     league: 75/11520 · 5 s elapsed · ~823 s left     league: 100/11520 · 7 s elapsed · ~779 s left     league: 125/11520 · 8 s elapsed · ~765 s left     league: 150/11520 · 10 s elapsed · ~765 s left     league: 175/11520 · 12 s elapsed · ~766 s left     league: 200/11520 · 13 s elapsed · ~757 s left     league: 225/11520 · 15 s elapsed · ~755 s left     league: 250/11520 · 18 s elapsed · ~813 s left     league: 275/11520 · 22 s elapsed · ~900 s left     league: 300/11520 · 26 s elapsed · ~976 s left     league: 325/11520 · 30 s elapsed · ~1041 s left   

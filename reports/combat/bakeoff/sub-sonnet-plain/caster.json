@@ -1,0 +1,131 @@
+{
+  "model": "sub:sonnet:plain",
+  "modelId": "sub:sonnet",
+  "mode": "plain",
+  "channel": "sub",
+  "label": "Claude Sonnet",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "low",
+  "creature": {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      {
+        "delivery": "lob",
+        "effects": [
+          "damage",
+          "blind"
+        ],
+        "element": "radiation"
+      },
+      {
+        "delivery": "zone",
+        "effects": [
+          "burn",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 156,
+      "maxSpeed": 6.36,
+      "accel": 24,
+      "turnRate": 8.5,
+      "radius": 1.44,
+      "jumpHeight": 1.28
+    }
+  },
+  "generatedAt": "2026-09-06T23:59:28.081Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 13.73,
+      "faults": 0,
+      "thinks": 206,
+      "orders": 419,
+      "uses": 11,
+      "hits": 2,
+      "damageDealt": 55.199999999999896,
+      "fuelSpent": 481,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 12.53,
+      "faults": 0,
+      "thinks": 188,
+      "orders": 383,
+      "uses": 11,
+      "hits": 2,
+      "damageDealt": 54.8499999999999,
+      "fuelSpent": 453,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 12.6,
+      "faults": 0,
+      "thinks": 189,
+      "orders": 385,
+      "uses": 11,
+      "hits": 2,
+      "damageDealt": 55.54999999999989,
+      "fuelSpent": 464,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 11.2,
+      "faults": 0,
+      "thinks": 168,
+      "orders": 338,
+      "uses": 8,
+      "hits": 1,
+      "damageDealt": 26.90000000000005,
+      "fuelSpent": 281,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.073087,
+  "elapsedMs": 13670,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 13670,
+      "chars": 2795
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 1287,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-sonnet-5",
+  "provider": "claude-cli",
+  "sourceChars": 2777,
+  "promptHash": "c10afa154e2741ca1f82e685e1b176b8149dbeb43e8293e0c8b570cbd93a298f",
+  "promptChars": 34956
+}

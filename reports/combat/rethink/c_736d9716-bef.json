@@ -1,0 +1,172 @@
+{
+  "id": "c_736d9716-bef",
+  "name": "GRAIN-50",
+  "rating": 1250,
+  "fights": 9683,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 8151,
+    "tacticsCard": null,
+    "sourceSha": "84f686c2791902c39ca1b3553f1a41855783e89dbf1416f0ddfb60c332b37319"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2578,
+    "tacticsCard": "This fighter reads the enemy's telegraphs closely, bailing away from a charging cone attack and side-stepping out of a dash lane before it even thinks about its own offense. Once free to act, it presses in to melee range for its close attack, falls back on a ranged shot with lead-aiming if that's on cooldown, and throws up its shield reflexively whenever it has literally nothing else to do — including as a default filler between cooldowns rather than a deliberate defensive read.",
+    "rating": 1250,
+    "fights": 9699,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 38,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 18.63,
+      "faults": 0,
+      "thinks": 280,
+      "orders": 433,
+      "uses": 17,
+      "hits": 9,
+      "damageDealt": 217.2,
+      "stubDamageDealt": 248.4,
+      "aliveTicks": 558,
+      "idleInReachTicks": 54,
+      "stillTicks": 7,
+      "fuelSpent": 1375,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 24.8,
+      "faults": 0,
+      "thinks": 372,
+      "orders": 580,
+      "uses": 22,
+      "hits": 11,
+      "damageDealt": 250.32,
+      "stubDamageDealt": 179.28,
+      "aliveTicks": 743,
+      "idleInReachTicks": 62,
+      "stillTicks": 23,
+      "fuelSpent": 1816,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 22.3,
+      "faults": 0,
+      "thinks": 334,
+      "orders": 507,
+      "uses": 20,
+      "hits": 11,
+      "damageDealt": 249.35999999999999,
+      "stubDamageDealt": 120.48000000000002,
+      "aliveTicks": 668,
+      "idleInReachTicks": 57,
+      "stillTicks": 17,
+      "fuelSpent": 1616,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 21.13,
+      "faults": 0,
+      "thinks": 317,
+      "orders": 503,
+      "uses": 20,
+      "hits": 12,
+      "damageDealt": 264.96,
+      "stubDamageDealt": 119.52000000000001,
+      "aliveTicks": 633,
+      "idleInReachTicks": 37,
+      "stillTicks": 46,
+      "fuelSpent": 1548,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 75515,
+  "forgeMs": 68738,
+  "admitMs": 591,
+  "cardMs": 6169,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 68736,
+      "chars": 2578
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 5792,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.125035,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2578,
+  "promptHash": "a06bf78e045ed0b95f84c6ce6730579c43be7e89c514bd370d4bcb52aca127a9",
+  "generatedAt": "2026-09-07T10:39:43.408Z",
+  "previous": [],
+  "candidateSha": "ea9d18ac31ec66b6ecf487c391757cdb0129ada81cebbdcf1f554283e05e0914",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.471,
+    "idleInReach": 0.081,
+    "still": 0.036,
+    "casts": 19.75
+  },
+  "card": "This fighter reads the enemy's telegraphs closely, bailing away from a charging cone attack and side-stepping out of a dash lane before it even thinks about its own offense. Once free to act, it presses in to melee range for its close attack, falls back on a ranged shot with lead-aiming if that's on cooldown, and throws up its shield reflexively whenever it has literally nothing else to do — including as a default filler between cooldowns rather than a deliberate defensive read."
+}

@@ -1,0 +1,186 @@
+{
+  "id": "c_a0ccc3c9-76e",
+  "name": "SPIRE-08",
+  "rating": 917,
+  "fights": 4937,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1826,
+    "tacticsCard": "This is an aggressive close-range brawler: it puts up its shield whenever the enemy is within about twelve meters or it's burning, then charges straight in to melee range and fires its cone attack the moment the target is inside reach and grounded. At mid range it uses the dash as a gap-closer with a slight lead on the enemy's movement, and while waiting for the cone to come off cooldown it circles the opponent instead of backing off.",
+    "sourceSha": "1ccf377171cceefe896d1a892c2b09cc881d3faaa409f63cdfe79ef0610da15b",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_a0ccc3c9-76e.before.1ccf3771.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1392,
+    "tacticsCard": "This fighter always turns to face the enemy, then closes in and swings its melee attack the instant it's within striking range, only bothering to dash from mid-range when it's not already point-blank. It puts up a shield preemptively when its health drops below 55% or it senses an incoming telegraphed spell, so it does take defense somewhat seriously — but if that shield skill isn't ready, it just keeps walking forward anyway, risk be damned.",
+    "rating": 917,
+    "fights": 5006,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 38,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 22.13,
+      "faults": 0,
+      "thinks": 332,
+      "orders": 448,
+      "uses": 19,
+      "hits": 6,
+      "damageDealt": 133.44,
+      "stubDamageDealt": 261.36,
+      "aliveTicks": 663,
+      "idleInReachTicks": 306,
+      "stillTicks": 41,
+      "fuelSpent": 458,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 22.67,
+      "faults": 0,
+      "thinks": 340,
+      "orders": 405,
+      "uses": 20,
+      "hits": 8,
+      "damageDealt": 167.52,
+      "stubDamageDealt": 252,
+      "aliveTicks": 679,
+      "idleInReachTicks": 275,
+      "stillTicks": 17,
+      "fuelSpent": 497,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 18.47,
+      "faults": 0,
+      "thinks": 277,
+      "orders": 335,
+      "uses": 16,
+      "hits": 7,
+      "damageDealt": 162.96,
+      "stubDamageDealt": 261.36,
+      "aliveTicks": 553,
+      "idleInReachTicks": 205,
+      "stillTicks": 24,
+      "fuelSpent": 402,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 22.07,
+      "faults": 0,
+      "thinks": 331,
+      "orders": 405,
+      "uses": 20,
+      "hits": 8,
+      "damageDealt": 189.6,
+      "stubDamageDealt": 264,
+      "aliveTicks": 661,
+      "idleInReachTicks": 209,
+      "stillTicks": 7,
+      "fuelSpent": 479,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 49051,
+  "forgeMs": 42715,
+  "admitMs": 483,
+  "cardMs": 5814,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 42715,
+      "chars": 1392
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 3279,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.0469672,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1392,
+  "promptHash": "a06bf78e045ed0b95f84c6ce6730579c43be7e89c514bd370d4bcb52aca127a9",
+  "generatedAt": "2026-09-07T11:15:18.942Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T06:56:31.647Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:07:34.815Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "7356d0d0dcca36c209950805a2c2ebac5aaed9ca19f476e80be992a0940611ad",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.629,
+    "idleInReach": 0.389,
+    "still": 0.035,
+    "casts": 18.75
+  },
+  "card": "This fighter always turns to face the enemy, then closes in and swings its melee attack the instant it's within striking range, only bothering to dash from mid-range when it's not already point-blank. It puts up a shield preemptively when its health drops below 55% or it senses an incoming telegraphed spell, so it does take defense somewhat seriously — but if that shield skill isn't ready, it just keeps walking forward anyway, risk be damned."
+}

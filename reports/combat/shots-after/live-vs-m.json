@@ -1,0 +1,89 @@
+{
+  "state": "live-vs",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=vs",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "vs",
+    "opacity": 1,
+    "classes": "screen under-vs has-card",
+    "mounted": 1,
+    "nodes": 55,
+    "waiting": 0,
+    "fps": {
+      "last": 5,
+      "min": 5,
+      "ticks": 19,
+      "since": 11305
+    },
+    "drawn": {
+      "n": 28,
+      "firstAt": 9759,
+      "firstMs": 28,
+      "lastMs": 13,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      },
+      "beat": {
+        "sid": "orange",
+        "tall": 0.672,
+        "want": 0.498,
+        "lapped": false,
+        "dist": 11,
+        "box": [
+          -0.86,
+          0.86,
+          0.02,
+          0.69
+        ],
+        "card": [
+          -0.92,
+          0.92,
+          -0.03,
+          -0.77
+        ],
+        "pair": true,
+        "stand": 1
+      }
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 20.633333333664474,
+    "marks": {
+      "t0": 666.5999999940395,
+      "rendererRequested": 667,
+      "shellReady": 1210,
+      "screenReady": 1226,
+      "viewerStart": 2180,
+      "rendererUp": 2217,
+      "envBuilt": 2269,
+      "postBuilt": 2288,
+      "precompiled": 6676,
+      "postWarm": 9751,
+      "rendererReady": 9752,
+      "firstDraw": 9787,
+      "firstMatch": 9856,
+      "firstFrame": 9858
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 25,
+      "ok": true,
+      "ms": 1908,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

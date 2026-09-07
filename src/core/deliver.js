@@ -15,7 +15,8 @@
  * а не по вкусу.
  */
 
-import { AIRBORNE_DODGE_MIN, ARENA_HALF, ZONE_PERIOD, ZONE_TOTAL_SHARE } from './config.js';
+import { AIRBORNE_DODGE_MIN, ARENA_HALF, BEAM_MUZZLE, BEAM_RADIUS, BLINK_VELOCITY_KEEP, PROJECTILE_MUZZLE, PROJECTILE_TOUCH, ZONE_PERIOD, ZONE_TOTAL_SHARE } from './config.js';
+import { applyAtoms } from './effects.js';
 import { GROUND_DELIVERIES } from '../skills/registry.js';
 
 /**
@@ -51,6 +52,14 @@ function dodgedInAir(def, you) {
  *
  * @returns {number} максимальное t ≥ 0, при котором точка ещё в квадрате
  */
+/** Unit direction from a body to an aim point; the facing when they coincide. */
+function aimDir(me, at, fallback) {
+  const dx = at.x - me.x, dz = at.z - me.z;
+  const l = Math.hypot(dx, dz);
+  if (l < 1e-6) return fallback;
+  return [dx / l, dz / l];
+}
+
 function rayLimit(x, z, ux, uz, lim) {
   let t = Infinity;
   for (const [p, u] of [[x, ux], [z, uz]]) {
@@ -85,11 +94,31 @@ function rayLimit(x, z, ux, uz, lim) {
  * границы, — боец, прижатый к стене и бросающий В стену: навес падает себе
  * под ноги. Это законный исход и он читается, а лужа за стеной — нет.
  */
+/*
+ * ── A MORTAR AIMED AT A POINT LANDS ON THE POINT ────────────────────────────
+ *
+ * The direction has always been read at the STRIKE (`aimDir` above, from the
+ * caster's position at that instant). The DISTANCE was read at the ORDER —
+ * `sim.js` stored `hypot` on the act half a second earlier — so the two halves
+ * of one aim came from two different moments and the shot missed by exactly
+ * how far the caster walked. Measured, point 10 m ahead, caster closing at
+ * 0.6 × 5.8 m/s through the 0.5 s wind-up: the mortar landed 1.70 m PAST the
+ * point, 1.70 m short when kiting, 0.48 m off when strafing. Splash is 1.8 m,
+ * so a correctly led shot became a miss precisely when the caster was moving —
+ * which is every moment a mind bothers to lead.
+ *
+ * Both halves are now read here, at the strike, exactly as the field does
+ * (`case 'zone'`). The single-number form (`api.use(name, metres)`) is
+ * unchanged: it names a distance and not a place, so there is nothing to
+ * re-read.
+ */
 function lobLanding(me, you, def, act, reach, ux, uz, deps) {
   const { dist2 } = deps;
-  const want = (act && act.reach !== null && act.reach !== undefined)
-    ? act.reach
-    : dist2(me.x, me.z, you.x, you.z);
+  const want = (act && act.at)
+    ? dist2(me.x, me.z, act.at.x, act.at.z)
+    : ((act && act.reach !== null && act.reach !== undefined)
+      ? act.reach
+      : dist2(me.x, me.z, you.x, you.z));
   const near = me.def.radius + def.splash;
   let d = Math.min(reach, Math.max(near, want));
   d = Math.min(d, rayLimit(me.x, me.z, ux, uz, ARENA_HALF - def.splash));
@@ -97,11 +126,36 @@ function lobLanding(me, you, def, act, reach, ux, uz, deps) {
 }
 
 /**
+ * The solids a caster's OWN beam and bolt see: everything except the wall it
+ * built itself.
+ *
+ * ── WHY A WALL IS COVER YOU CAN SHOOT FROM ──────────────────────────────────
+ *
+ * A wall grows 3.2 m ahead of the caster, along its facing — that is, directly
+ * between the caster and whatever it was pointing at. So the piece a mind buys
+ * to protect itself blocked its own beam and swallowed its own bolt, and the
+ * only way to use it was to build it and then walk around it. The panel
+ * measured what that is worth: −4.2 win-rate points at a cost of 1, the price
+ * floor, in four passes running. A piece that cannot be priced any lower and is
+ * still a loss is re-SCALED, not re-priced (`docs/COMBAT.md` §5), and the scale
+ * a wall has is who it stops.
+ *
+ * It stops the ENEMY's shots exactly as before, and it is solid to BOTH bodies
+ * and to both navigators — a wall you can walk through is not cover, it is a
+ * decal. Only the two shapes that trace a line from the caster's own muzzle
+ * ignore it, and only their owner's.
+ */
+function shotSolids(world, id) {
+  if (!world.obstacles.some((o) => o.temporary && o.by === id)) return world.solids;
+  return world.solids.filter((o) => !(o.temporary && o.by === id));
+}
+
+/**
  * @param deps  примитивы симуляции, переданные явно: файл не импортирует
  *              sim.js, потому что sim.js импортирует его.
  */
 export function resolveDelivery(world, id, def, act, deps) {
-  const { other, dirOf, segBoxes, segCircle, dist2, clamp, hasLos, round3, applyEffect, blinkDestination, channelMul } = deps;
+  const { other, dirOf, segBoxes, segCircle, dist2, clamp, hasLos, round3, blinkDestination, channelMul } = deps;
   const me = world.fighters[id];
   const youId = other(id);
   const you = world.fighters[youId];
@@ -109,11 +163,11 @@ export function resolveDelivery(world, id, def, act, deps) {
 
   /** Разложить все атомы умения по цели. */
   const land = (hit) => {
-    for (const atom of def.effects) {
-      /* WORLD-атом (стена) не требует попадания: он про арену, а не про
-         бойца. Остальные — только при попадании. */
-      if (atom.klass === 'world' || hit) applyEffect(world, id, youId, atom, def, deps);
-    }
+    /* WORLD-атом (стена) не требует попадания: он про арену, а не про бойца.
+       Остальные — только при попадании. `applyAtoms` заодно объявляет кастеру
+       попадание, которое не несёт урона (см. effects.js). */
+    applyAtoms(world, id, youId, def.effects, def, deps,
+      hit ? {} : { skip: (a) => a.klass !== 'world' });
     /*
      * ПОПАДАНИЕ ВИДНО. Раньше — нет.
      *
@@ -159,12 +213,16 @@ export function resolveDelivery(world, id, def, act, deps) {
     // ── луч: цилиндр от кастера, останавливается о препятствие ───────────
     case 'beam': {
       const [ux, uz] = dirOf(me.heading);
-      const ox = me.x + ux * (me.def.radius + 0.2), oz = me.z + uz * (me.def.radius + 0.2);
+      /* Named, not typed: `BEAM_MUZZLE` and `BEAM_RADIUS` live in config.js and
+         the prompt quotes them from there. Two literals here and two numbers in
+         the prompt is how the grammar beam and the fixture laser drift apart. */
+      const ox = me.x + ux * (me.def.radius + BEAM_MUZZLE), oz = me.z + uz * (me.def.radius + BEAM_MUZZLE);
       const range = def.range * channelMul(me, 'range', world.t);
       const ex = ox + ux * range, ez = oz + uz * range;
-      const solid = segBoxes(ox, oz, ex, ez, world.solids);
+      /* Its own wall is not in the way of its own beam — see `shotSolids`. */
+      const solid = segBoxes(ox, oz, ex, ez, shotSolids(world, id));
       const tSolid = solid ? solid.t : 1;
-      const tHit = you.alive ? segCircle(ox, oz, ex, ez, you.x, you.z, you.def.radius + 0.4) : -1;
+      const tHit = you.alive ? segCircle(ox, oz, ex, ez, you.x, you.z, you.def.radius + BEAM_RADIUS) : -1;
       const connected = tHit >= 0 && tHit < tSolid;
       const tCentre = clamp(((you.x - ox) * ux + (you.z - oz) * uz) / range, 0, 1);
       const tEnd = connected ? (tHit > 0 ? tHit : tCentre) : tSolid;
@@ -222,13 +280,21 @@ export function resolveDelivery(world, id, def, act, deps) {
       /* Снаряд не разрешается мгновенно: он кладётся в мир и живёт тиками.
          Именно это делает его обходимым — а обходимость и есть разница
          между болтом и лучом, за которую с них берут одинаково. */
-      const [ux, uz] = dirOf(me.heading);
+      /*
+       * A mortar ordered AT A POINT flies toward the point, whatever the body
+       * is facing at the strike: the mind named a place, and a place is not an
+       * angle the turn rate has to catch up with. A bolt keeps the facing —
+       * it is a shot, and the turn IS the aim.
+       */
+      const [ux, uz] = (def.kind === 'lob' && act && act.at)
+        ? aimDir(me, act.at, dirOf(me.heading))
+        : dirOf(me.heading);
       world.projectiles = world.projectiles || [];
       const arc = def.kind === 'lob';
       /* Предел умения с учётом канала «дальность» — потолок обоим. */
       const reach = def.range * channelMul(me, 'range', world.t);
       /* Точка вылета: снаряд рождается ПЕРЕД телом, а не в его центре. */
-      const muzzle = me.def.radius + 0.3;
+      const muzzle = me.def.radius + PROJECTILE_MUZZLE;
       /*
        * ТОЧКА ПРИЗЕМЛЕНИЯ НАВЕСА СЧИТАЕТСЯ ЗДЕСЬ И ОДИН РАЗ.
        *
@@ -292,16 +358,37 @@ export function resolveDelivery(world, id, def, act, deps) {
 
     // ── зона: диск, который работает несколько секунд ────────────────────
     case 'zone': {
-      const [ux, uz] = dirOf(me.heading);
-      const reach = Math.min(def.range * channelMul(me, 'range', world.t), dist2(me.x, me.z, you.x, you.z));
+      /*
+       * A field ordered AT A POINT lands on the point, clamped to its range;
+       * without one it lands along the facing at the enemy's distance, as it
+       * always did. The point is what makes a field a placed trap rather than
+       * a shot: a mind can put it where the enemy is GOING, or across the gap
+       * it wants to close, and neither of those is "along my facing".
+       */
+      const aimed = act && act.at;
+      const limit = def.range * channelMul(me, 'range', world.t);
+      const [ux, uz] = aimed ? aimDir(me, act.at, dirOf(me.heading)) : dirOf(me.heading);
+      const reach = Math.min(limit, aimed
+        ? dist2(me.x, me.z, act.at.x, act.at.z)
+        : dist2(me.x, me.z, you.x, you.z));
       const at = { x: me.x + ux * reach, z: me.z + uz * reach };
       world.zones = world.zones || [];
+      /*
+       * ONE FIELD PER ABILITY PER CASTER. At a three-second cooldown a field
+       * that lasts as long as its cooldown would never leave the floor, and
+       * two of them would tile the arena; the new cast replaces the old one,
+       * so a field is a thing the mind PLACES and re-places, not a thing it
+       * accumulates. The viewer's copy of the old disc fades on its own clock.
+       */
+      world.zones = world.zones.filter((z) => !(z.who === id && z.skill === def.id));
       world.zones.push({
         who: id, skill: def.id, def,
         /* Поделённые атомы считаются один раз при постановке, а не на каждом
            тике: тик обязан быть дешёвым, их шесть на зону и зон бывает две. */
         x: round3(at.x), z: round3(at.z), r: def.radius,
         until: world.t + def.duration, nextTick: world.t,
+        /* Whose controls this CAST has already spent — see `tickZones`. */
+        controlled: null,
       });
       /* `h` — курс кастера в момент постановки зоны. Симу он не нужен (зона
          круглая), но без него вьювер не может ориентировать НИЧЕГО внутри неё,
@@ -322,52 +409,36 @@ export function resolveDelivery(world, id, def, act, deps) {
         x: round3(at.x), z: round3(at.z), r: def.radius, duration: def.duration, h: round3(me.heading),
         effects: def.effects.map((a) => a.id) });
       /* WORLD-атомы (стена) срабатывают сразу; остальные — по тикам зоны. */
-      for (const atom of def.effects) if (atom.klass === 'world') applyEffect(world, id, youId, atom, def, deps);
+      applyAtoms(world, id, youId, def.effects, def, deps, { skip: (a) => a.klass !== 'world' });
       return;
     }
 
     // ── рывок: кастер едет вперёд и бьёт всех по пути ────────────────────
-    case 'dash': {
-      const [ux, uz] = dirOf(me.heading);
-      const from = { x: me.x, z: me.z };
-      const want = def.distance;
-      const solid = segBoxes(me.x, me.z, me.x + ux * want, me.z + uz * want, world.solids);
-      const travel = solid ? Math.max(0, want * solid.t - me.def.radius) : want;
-      const path = segCircle(me.x, me.z, me.x + ux * travel, me.z + uz * travel, you.x, you.z, you.def.radius + me.def.radius);
-      /*
-       * АТОМЫ СНАЧАЛА, ПЕРЕМЕЩЕНИЕ ПОТОМ. Порядок здесь — механика, а не стиль.
-       *
-       * Раньше кастер сперва оказывался в конце рывка, и только потом
-       * применялись эффекты. Отброс считает направление как «от кастера к
-       * цели»; после рывка СКВОЗЬ цель кастер стоит за ней, и это направление
-       * разворачивается — «рывок с отбросом» ТЯНУЛ цель назад мимо кастера
-       * вместо того, чтобы её снести. Умение делало противоположное тому, что
-       * написано на его собственной карточке.
-       *
-       * Пока кастер в начале пути, «от кастера к цели» — это и есть
-       * направление рывка, то есть «тебя снесло тем, что в тебя въехало».
-       */
-      /* D160: рывок едет по полу — тот, кто в воздухе, пропускает его над
-         собой. Кастер всё равно перемещается: рывок состоялся, он просто
-         никого не задел. Причина «в воздухе» — только если иначе попал бы. */
-      const overhead = dodgedInAir(def, you);
-      const wouldHit = path >= 0 && you.alive;
-      const hit = wouldHit && !overhead;
-      const why = hit ? null : (wouldHit ? 'airborne' : (solid ? 'cover' : 'aim'));
-      if (hit) land(true); else { miss(why); land(false); }
-      me.x += ux * travel; me.z += uz * travel;
-      world.fx.push({ kind: 'dash', who: id, t, skill: def.id, element: def.element,
-        x0: from.x, z0: from.z, x1: me.x, z1: me.z, hit, miss: why });
+    /*
+     * THE LUNGE IS TRAVEL NOW, and it does not resolve here. Its phases are
+     * wind-up → dash → recover (`phasesOfDef` in sim.js): the heading locks at
+     * the end of the wind-up, `dashStepGeneric` moves the body `dashSpeed`
+     * metres a second and tests contact every tick, a solid stops it, a body
+     * in the air is passed under, and the atoms land on contact or the WORLD
+     * ones at the end. The old branch moved the body 8 m on one tick — a hit
+     * nothing could dodge and nobody could see. Kept as a case so an unknown
+     * caller still gets a defined answer: nothing happens.
+     */
+    case 'dash':
       return;
-    }
 
     // ── мигание: перемещение с неуязвимостью ─────────────────────────────
     case 'blink': {
       const from = { x: me.x, z: me.z };
-      const dest = blinkDestination(world, me, act.dx, act.dz, def.distance);
+      /* A blink ordered at a point goes toward it and stops there when the
+         point is nearer than the full distance — a step, not a lunge past. */
+      const want = (act && act.at)
+        ? Math.min(def.distance, dist2(me.x, me.z, act.at.x, act.at.z))
+        : def.distance;
+      const dest = blinkDestination(world, me, act.dx, act.dz, want);
       me.x = dest.x; me.z = dest.z;
       me.iframes = Math.max(me.iframes, def.iframes);
-      me.vx *= 0.3; me.vz *= 0.3;
+      me.vx *= BLINK_VELOCITY_KEEP; me.vz *= BLINK_VELOCITY_KEEP;
       world.fx.push({ kind: 'blink', who: id, t, skill: def.id, element: def.element,
         x0: from.x, z0: from.z, x1: me.x, z1: me.z });
       deps.emit(world, id, { type: 'blinked', from, to: { x: round3(me.x), z: round3(me.z) }, moved: round3(dist2(from.x, from.z, me.x, me.z)) });
@@ -381,8 +452,10 @@ export function resolveDelivery(world, id, def, act, deps) {
       /*
        * СПИСОК АТОМОВ ЕДЕТ С ЗАПИСЬЮ — как у зоны и у удара. Без него
        * оболочка щита и вспышка лечения приходят во вьювер ОДИНАКОВЫМИ
-       * записями, хотя живут разное: щит по реестру держится 5 с
-       * (`registry.js:332`), очищение — событие на полсекунды. Проверяется
+       * записями, хотя живут разное: щит по реестру держится 2.5 с (`EFFECTS
+       * .shield.duration`; в комментарии стояло 5 с — число из мира до 07.09,
+       * где щит переживал собственный кулдаун), очищение — событие на
+       * полсекунды. Проверяется
        * это просто: «ice.js:1593» уже читает `e.effects` у `self`, чтобы
        * отличить свою оболочку от чужой, и до сих пор эта ветка не
        * срабатывала НИ РАЗУ в настоящем бою — поля в записи не было.
@@ -421,7 +494,19 @@ export function resolveDelivery(world, id, def, act, deps) {
 export function tickProjectiles(world, dt, deps) {
   const list = world.projectiles;
   if (!list || !list.length) return;
-  const { segBoxes, dist2, round3, applyEffect, other } = deps;
+  const { segBoxes, dist2, round3, other } = deps;
+  /*
+   * A WALL IS BUILT WHETHER OR NOT THE SHOT CONNECTED.
+   *
+   * The prompt says so in one sentence for the whole grammar — "it is built
+   * even when the delivery carrying it misses" — and it was true of the beam,
+   * the fan, the lunge and the field and false of the two shapes that fly. A
+   * bolt stopped by cover, a bolt that ran out of range and a mortar that
+   * landed on empty floor all applied NOTHING, so `bolt:damage+wall` was a
+   * wall the mind only got when it did not need one. WORLD atoms are about the
+   * arena, not about the body, and every miss branch below now says so.
+   */
+  const worldOnly = { skip: (a) => a.klass !== 'world' };
   const keep = [];
   for (const p of list) {
     const nx = p.x + p.vx * dt, nz = p.z + p.vz * dt;
@@ -463,7 +548,7 @@ export function tickProjectiles(world, dt, deps) {
       const at = p.spot;
       if (you.alive && dist2(at.x, at.z, you.x, you.z) <= p.splash + you.def.radius) {
         pushImpact(world, p.who, p.def, p.skill, at, me, round3);
-        for (const atom of p.def.effects) applyEffect(world, p.who, youId, atom, p.def, deps);
+        applyAtoms(world, p.who, youId, p.def.effects, p.def, deps);
       } else {
         /* Промах остаётся промахом, со всей статистикой: пустая точка — это
            ошибка ПРИЦЕЛА, `aim`, ровно как и раньше на исходе жизни. */
@@ -480,12 +565,15 @@ export function tickProjectiles(world, dt, deps) {
          * жмёт ту же кнопку до конца боя.
          */
         deps.emit(world, p.who, { type: 'missed', skill: p.skill, reason: 'aim' });
+        /* An empty circle is still a cast: the wall it carried rises. */
+        applyAtoms(world, p.who, youId, p.def.effects, p.def, deps, worldOnly);
       }
       continue;
     }
 
-    const blocked = segBoxes(p.x, p.z, nx, nz, world.solids);
-    const hit = you.alive && dist2(nx, nz, you.x, you.z) <= you.def.radius + 0.35;
+    /* A bolt passes through the wall its own caster built (`shotSolids`). */
+    const blocked = segBoxes(p.x, p.z, nx, nz, shotSolids(world, p.who));
+    const hit = you.alive && dist2(nx, nz, you.x, you.z) <= you.def.radius + PROJECTILE_TOUCH;
 
     if (hit) {
       /*
@@ -498,7 +586,7 @@ export function tickProjectiles(world, dt, deps) {
        * противник, — то есть ровно обратное происходящему.
        */
       pushImpact(world, p.who, p.def, p.skill, { x: nx, z: nz }, world.fighters[p.who], round3);
-      for (const atom of p.def.effects) applyEffect(world, p.who, youId, atom, p.def, deps);
+      applyAtoms(world, p.who, youId, p.def.effects, p.def, deps);
       continue;
     }
     if (blocked) {
@@ -508,6 +596,7 @@ export function tickProjectiles(world, dt, deps) {
       world.log.push({ t: round3(world.t), type: 'miss', who: p.who, skill: p.skill, reason: 'cover' });
       world.fx.push({ kind: 'impact', who: p.who, t: round3(world.t), skill: p.skill,
         element: p.def.element, x: nx, z: nz, blocked: true, effects: atomIds(p.def) });
+      applyAtoms(world, p.who, youId, p.def.effects, p.def, deps, worldOnly);
       continue;
     }
     p.x = nx; p.z = nz;
@@ -517,6 +606,7 @@ export function tickProjectiles(world, dt, deps) {
       const me = world.fighters[p.who];
       me.stats.misses[p.skill] = (me.stats.misses[p.skill] || 0) + 1;
       world.log.push({ t: round3(world.t), type: 'miss', who: p.who, skill: p.skill, reason: 'aim' });
+      applyAtoms(world, p.who, youId, p.def.effects, p.def, deps, worldOnly);
     }
   }
   world.projectiles = keep;
@@ -572,10 +662,40 @@ function atomIds(def) {
  * место — одно правило.
  */
 
+/*
+ * ── A FIELD'S CONTROL LANDS ONCE PER CAST, PER BODY ─────────────────────────
+ *
+ * A disc ticks five times. Applying its control on every one of them was, in
+ * practice, applying it on the FIRST and then being refused four times by the
+ * immunity that first tick had armed — each refusal writing an `immune` line
+ * and sending the caster a `missed` event. Measured: one `zone:stun` cast on a
+ * standing body produced four refusals; across the bake-off 17.4 of the 19.7
+ * refusals a game were a disc refusing itself, so the league's headline
+ * "immune per game" number was 88% an artefact of this loop, and a mind reading
+ * its events was told its field was failing while the field was working.
+ *
+ * The rule is now what it always read like on the card: the control lands the
+ * first time a body touches the disc, at the registry's WHOLE duration
+ * (compile.js no longer divides control durations by the tick share), and the
+ * later ticks of that same cast do not try again. They do not log, they do not
+ * emit, and they do not push an fx: nothing was refused, because nothing was
+ * attempted. Damage and burn keep ticking every half-second — that is what
+ * their per-tick share is priced on — so a body standing in a field of
+ * `damage + root` is rooted once and burned five times, which is the sentence
+ * the ability was sold with.
+ *
+ * A DIFFERENT cast is a different decision and stays loud: re-placing the
+ * field inside the window still writes `immune`, because that IS a mind
+ * pressing a button that cannot work yet.
+ *
+ * `z.controlled` is the set of bodies this cast has already controlled. Per
+ * ZONE, not per caster: replacing a field creates a new object (one field per
+ * ability per caster), so a re-cast legitimately tries again.
+ */
 export function tickZones(world, deps) {
   const list = world.zones;
   if (!list || !list.length) return;
-  const { dist2, applyEffect, other, round3 } = deps;
+  const { dist2, other, round3 } = deps;
   const keep = [];
   for (const z of list) {
     if (z.until <= world.t) continue;
@@ -587,9 +707,13 @@ export function tickZones(world, deps) {
          пропускается — но зона не гаснет и достанет его на приземлении. */
       if (you.alive && !dodgedInAir(z.def, you)
           && dist2(z.x, z.z, you.x, you.z) <= z.r + you.def.radius) {
-        for (const atom of z.def.effects) {
-          if (atom.klass === 'world') continue;
-          applyEffect(world, z.who, youId, atom, z.def, deps);
+        const spent = z.controlled && z.controlled.has(youId);
+        applyAtoms(world, z.who, youId, z.def.effects, z.def, deps, {
+          skip: (a) => a.klass === 'world' || (spent && !!a.immune),
+        });
+        if (!spent && z.def.effects.some((a) => a.immune)) {
+          if (!z.controlled) z.controlled = new Set();
+          z.controlled.add(youId);
         }
         pushImpact(world, z.who, z.def, z.skill, { x: you.x, z: you.z }, world.fighters[z.who], round3);
       }

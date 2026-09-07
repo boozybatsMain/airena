@@ -1,0 +1,62 @@
+{
+  "state": "worker-denied",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/worker?ui=worker-denied",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "worker",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 45,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 32,
+      "since": 19498
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 1942.5999999940395,
+      "rendererRequested": 1943,
+      "shellReady": 8003,
+      "screenReady": 8035,
+      "viewerStart": 14360,
+      "rendererUp": 14379,
+      "envBuilt": 14460,
+      "postBuilt": 14471,
+      "precompiled": 18809,
+      "postWarm": 19497,
+      "rendererReady": 19498,
+      "firstDraw": 19499,
+      "firstMatch": 19511,
+      "firstFrame": 19513
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

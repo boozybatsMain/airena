@@ -1,0 +1,131 @@
+{
+  "model": "sub:opus:plain",
+  "modelId": "sub:opus",
+  "mode": "plain",
+  "channel": "sub",
+  "label": "Claude Opus",
+  "thinkBudget": 0,
+  "maxTokens": 64000,
+  "effort": "low",
+  "creature": {
+    "id": "brawler",
+    "prompt": "A thick-shouldered, heavy-footed brute that wants to be in your face. It lunges across the floor with a kinetic charge that pins its target in place, swings a searing ember fan that stuns at point blank, and shrugs off hits behind a frost shell that also knits its wounds. Relentless, close, loud.",
+    "kit": [
+      {
+        "delivery": "dash",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "kinetic"
+      },
+      {
+        "delivery": "cone",
+        "effects": [
+          "damage",
+          "stun"
+        ],
+        "element": "ember"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 225.018,
+      "maxSpeed": 6.812,
+      "accel": 26.002,
+      "turnRate": 5.417,
+      "radius": 1.683,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:45:18.724Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 11,
+      "faults": 0,
+      "thinks": 165,
+      "orders": 249,
+      "uses": 7,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 1927,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 9.8,
+      "faults": 0,
+      "thinks": 147,
+      "orders": 214,
+      "uses": 7,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 1728,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 9.8,
+      "faults": 0,
+      "thinks": 147,
+      "orders": 214,
+      "uses": 7,
+      "hits": 4,
+      "damageDealt": 64.2,
+      "fuelSpent": 1728,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 12.6,
+      "faults": 0,
+      "thinks": 189,
+      "orders": 258,
+      "uses": 8,
+      "hits": 5,
+      "damageDealt": 81,
+      "fuelSpent": 2207,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": 0.150745,
+  "elapsedMs": 12949,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 12948,
+      "chars": 1956
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 966,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": "claude-opus-5",
+  "provider": "claude-cli",
+  "sourceChars": 1956,
+  "promptHash": "1539f6be5b294ef9b562d29314f174cfb23bd8da1b666b914a119e4e7149ac16",
+  "promptChars": 32834
+}

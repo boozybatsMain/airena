@@ -20,7 +20,7 @@
 
 import { CURTAIN } from './arena-loop.js';
 import { runIsolated } from './sandbox/index.js';
-import { kitOf } from './arena-loop.js';
+import { kitOf, refTagOf } from './arena-loop.js';
 import { abilitiesOf } from '../skills/describe.js';
 import { iconUrls } from './forge/icons.js';
 
@@ -357,6 +357,17 @@ export class Live {
            * было бы хуже.
            */
           kits: matchRow.kits || { [matchRow.aSlot]: kitOf(a), [matchRow.bSlot]: kitOf(b) },
+          /*
+           * ЭТАЛОННЫЙ НАБОР БОЙЦА БЕЗ КИТА — ПО ТОМУ ЖЕ ПРАВИЛУ, ЧТО НАБОРЫ.
+           *
+           * Он тоже вход матча: без него зрелищный прогон выдал бы бойцу без
+           * кита фикстуру по ЦВЕТУ (`referenceTagOf(side)`), а зачётный —
+           * по его мозгу, и зритель смотрел бы другой бой под тем же id.
+           * Свежий матч приносит тег с собой (`playMatch`), повтор старой
+           * строки считает его по существу — так же, как считает наборы.
+           */
+          referenceTag: matchRow.referenceTag
+            || { [matchRow.aSlot]: refTagOf(a), [matchRow.bSlot]: refTagOf(b) },
           /*
            * РАЗМЕРЫ БОЯ — ПО ТОМУ ЖЕ ПРАВИЛУ, ЧТО И НАБОРЫ.
            *

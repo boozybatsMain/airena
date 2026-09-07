@@ -1,0 +1,48 @@
+{
+  "state": "ladder",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 597,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 4238
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 100.80000001192093,
+      "rendererRequested": 101,
+      "shellReady": 1694,
+      "screenReady": 1857,
+      "viewerStart": 3737,
+      "rendererUp": 3796,
+      "envBuilt": 3859,
+      "postBuilt": 3881
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": [
+    "“#6” under div.rail at left+centre+right",
+    "“ASH” under div.rail at left+centre+right",
+    "“Airena Reference” under div.rail at left+centre+right",
+    "“1,609” under div.rail at left+centre+right"
+  ]
+}

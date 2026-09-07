@@ -58,10 +58,17 @@ const CANDIDATE_SIDE = 'blue';
  * лежат на диске под своими старыми именами, и переименовывать их значило бы
  * сдвинуть замер, а не код. Пары перекрёстные: кандидат на голубой стороне
  * дерётся против эталона, написанного для оранжевой.
+ *
+ * `brains/kit-stub/`, А НЕ `brains/stub/` (D191 §1). Допуск теперь сажает
+ * спарринг на ТОТ ЖЕ кит, что и кандидата (`admit()`, `sandbox/index.js`), а
+ * `brains/stub/gorilla.js` и `.../octopus.js` зовут умения по именам своей
+ * фикстуры (`smash`, `charge`, `laser`, `blink`) и на чужом ките просто не
+ * применяют ничего. `brains/kit-stub/` — те же по духу эталоны, но читающие
+ * набор из перцепции (F10): им безразлично, чей это кит.
  */
 const SPARRING = {
-  blue: readFileSync(new URL('../../../brains/stub/gorilla.js', import.meta.url), 'utf8'),
-  orange: readFileSync(new URL('../../../brains/stub/octopus.js', import.meta.url), 'utf8'),
+  blue: readFileSync(new URL('../../../brains/kit-stub/gorilla.js', import.meta.url), 'utf8'),
+  orange: readFileSync(new URL('../../../brains/kit-stub/octopus.js', import.meta.url), 'utf8'),
 };
 /*
  * Спарринг-партнёр ОДИН, а не по виду.
@@ -152,14 +159,14 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
          ближнему набору не хватает.
          Отброс из конуса убран: он ОТТАЛКИВАЕТ то, что набор весь бой
          догоняет, — то есть работал против собственного замысла. */
-      { delivery: 'cone', effects: ['damage', 'root'], element: 'kinetic' },
-      { delivery: 'dash', effects: ['damage'], element: 'kinetic' },
+      { delivery: 'cone', effects: ['damage', 'knock'], element: 'kinetic' },
+      { delivery: 'dash', effects: ['damage', 'stun'], element: 'kinetic' },
       /* Щит, а не ускорение. Ускорение выглядело точнее по смыслу — ближнему
          набору нужна возможность дойти, а не живучесть, — и было замерено:
          с ним breaker упал с 28% до 6.3%. Дойти он и так успевает (горилла
          быстрее), а вот пережить дорогу без щита не успевает. Замер тут
          оказался умнее рассуждения, и остаётся щит. */
-      { delivery: 'self', effects: ['shield'], element: 'frost' },
+      { delivery: 'self', effects: ['shield', 'heal'], element: 'frost' },
     ],
   },
   saboteur: {
@@ -191,8 +198,8 @@ export const KIT_PRESETS = Object.assign(Object.create(null), {
          эталонного мозга, который решений почти не принимает, порча чувств
          меряется нулём. Навесом с уроном оно и бьёт, и слепит, и стоит
          честных семнадцать очков. */
-      { delivery: 'lob', effects: ['damage', 'blind'], element: 'arc' },
-      { delivery: 'bolt', effects: ['silence'], element: 'arc' },
+      { delivery: 'lob', effects: ['blind'], element: 'arc' },
+      { delivery: 'cone', effects: ['silence'], element: 'arc' },
     ],
   },
 });

@@ -1,0 +1,2 @@
+interrupt|blue|k1::0:13STONE GOLEM · kinetic fan cut short
+interrupt|blue|k3::0:09STONE GOLEM · kinetic aura cut short x2

@@ -1,0 +1,187 @@
+{
+  "id": "c_7c8ffee4-b3b",
+  "name": "BLACK KITE",
+  "rating": 1093,
+  "fights": 10233,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1287,
+    "tacticsCard": "This fighter plays a mid-range strafing game: it circles sideways at roughly five to nine meters, backs off when the enemy closes inside five, and pushes in with a slight sidestep when the gap grows past nine. Its priority is a lobbed shot with slight lead prediction at medium range, then a ground-targeted second ability up close against grounded, visible targets, and it falls back on the basic ability at long range or whenever it's losing on health.",
+    "sourceSha": "b1f9d923f0fe8a2d33675032ee5a4be0a5df57063d1ed2b5d72b5131bb99dc59",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_7c8ffee4-b3b.before.b1f9d923.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2177,
+    "tacticsCard": "This fighter circles at a steady 8-unit range, weaving side to side while always facing the enemy, and pokes with its stun-lob whenever it has line of sight — that's its bread and butter. It watches for the enemy's lunge telegraph and hops away defensively, then punishes hard with a guaranteed burst if it ever catches the enemy stunned, and otherwise dashes in when the poke is on cooldown and the target isn't invulnerable.",
+    "rating": 1162,
+    "fights": 10304,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "jump",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "kinetic"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "damage",
+        "stun"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 39,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 20.87,
+      "faults": 0,
+      "thinks": 313,
+      "orders": 470,
+      "uses": 17,
+      "hits": 8,
+      "damageDealt": 256.8,
+      "stubDamageDealt": 201.6,
+      "aliveTicks": 625,
+      "idleInReachTicks": 85,
+      "stillTicks": 54,
+      "fuelSpent": 503,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 21.17,
+      "faults": 0,
+      "thinks": 317,
+      "orders": 485,
+      "uses": 18,
+      "hits": 7,
+      "damageDealt": 223.2,
+      "stubDamageDealt": 256.8,
+      "aliveTicks": 634,
+      "idleInReachTicks": 99,
+      "stillTicks": 67,
+      "fuelSpent": 505,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 20.77,
+      "faults": 0,
+      "thinks": 311,
+      "orders": 479,
+      "uses": 18,
+      "hits": 8,
+      "damageDealt": 256.8,
+      "stubDamageDealt": 223.2,
+      "aliveTicks": 622,
+      "idleInReachTicks": 81,
+      "stillTicks": 73,
+      "fuelSpent": 493,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 20.03,
+      "faults": 0,
+      "thinks": 300,
+      "orders": 444,
+      "uses": 17,
+      "hits": 5,
+      "damageDealt": 150,
+      "stubDamageDealt": 272.4,
+      "aliveTicks": 600,
+      "idleInReachTicks": 46,
+      "stillTicks": 52,
+      "fuelSpent": 493,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 80245,
+  "forgeMs": 74390,
+  "admitMs": 340,
+  "cardMs": 5509,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 74390,
+      "chars": 2177
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 5896,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.129547,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2177,
+  "promptHash": "71f8a1c01936fcf0085d2e6d2a809568e3d07c78420a044cfd5acaf166c18f6a",
+  "generatedAt": "2026-09-07T11:04:25.498Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:08:21.879Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:06:52.613Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "78201f9f7548ae51df5804f331e0106266aa15a5ce2cc1c01c9568c7adf01f6d",
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 0.93,
+    "idleInReach": 0.125,
+    "still": 0.099,
+    "casts": 17.5
+  },
+  "card": "This fighter circles at a steady 8-unit range, weaving side to side while always facing the enemy, and pokes with its stun-lob whenever it has line of sight — that's its bread and butter. It watches for the enemy's lunge telegraph and hops away defensively, then punishes hard with a guaranteed burst if it ever catches the enemy stunned, and otherwise dashes in when the poke is on cooldown and the target isn't invulnerable."
+}

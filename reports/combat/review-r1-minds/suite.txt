@@ -1,0 +1,196 @@
+
+## sub-opus-high/caster
+  vs pilot:kiter: W-D-L 4-0-2 | len 40.5s | sudden death 6/6 | mean dist 14.6 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.5 cdUtil 78% hit 45% (65/144) dmg/game 13.8 still 5% noAct 49% idle+ready 29% idle+inReach 11% allCd 54%
+          uses k1 79, k2 67, k3 61 | dead slots 0/18 | miss k1:aim 74 | refused —
+          immune root 107 (on damage-carrying casts 107, on pure controls 0; already immune when ordered 67) | dodges 0 | interrupts made 0 taken 0 | say 32 | faults 0
+          telegraph resp 69% (160/232) | lead usage 54% (38/71) mean off-bearing 7.8° | mortar: 77 thrown, 8 on target (10%), vs moving target 8/71, mean landing error 4.7 m (no-lead would be 2.7 m)
+    PILOT casts/10s 9.6 hit 40% dmg/game 25.6 still 6% idle+inReach 4% immune root 72 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 1-0-5 | len 29.1s | sudden death 3/6 | mean dist 7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.5 cdUtil 76% hit 69% (68/99) dmg/game 117.1 still 6% noAct 50% idle+ready 29% idle+inReach 22% allCd 51%
+          uses k1 60, k2 40, k3 48 | dead slots 0/18 | miss k1:aim 28 | refused —
+          immune root 71, blind 13 (on damage-carrying casts 84, on pure controls 0; already immune when ordered 32) | dodges 0 | interrupts made 0 taken 0 | say 25 | faults 0
+          telegraph resp 68% (114/168) | lead usage 69% (38/55) mean off-bearing 17.4° | mortar: 59 thrown, 28 on target (47%), vs moving target 27/55, mean landing error 3.4 m (no-lead would be 1.7 m)
+    PILOT casts/10s 9.7 hit 77% dmg/game 169.3 still 8% idle+inReach 2% immune root 95, blind 15 dodges 0 interrupts made 0
+
+## sub-opus-plain/caster
+  vs pilot:kiter: W-D-L 0-0-6 | len 30.2s | sudden death 3/6 | mean dist 12.9 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.6 cdUtil 88% hit 45% (52/115) dmg/game 16.4 still 8% noAct 42% idle+ready 10% idle+inReach 3% allCd 76%
+          uses k1 62, k2 57, k3 55 | dead slots 0/18 | miss k1:aim 54 | refused —
+          immune root 97, blind 1 (on damage-carrying casts 98, on pure controls 0; already immune when ordered 45) | dodges 0 | interrupts made 0 taken 0 | say 55 | faults 0
+          telegraph resp 79% (143/181) | lead usage 76% (42/55) mean off-bearing 11.4° | mortar: 62 thrown, 5 on target (8%), vs moving target 2/55, mean landing error 4.9 m (no-lead would be 2.6 m)
+    PILOT casts/10s 10 hit 77% dmg/game 187.6 still 7% idle+inReach 2% immune root 98, blind 18 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 0-0-6 | len 20.5s | sudden death 0/6 | mean dist 8.7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.8 cdUtil 87% hit 60% (49/82) dmg/game 65 still 7% noAct 42% idle+ready 11% idle+inReach 3% allCd 75%
+          uses k1 43, k2 39, k3 38 | dead slots 0/18 | miss k1:aim 27 | refused —
+          immune root 79, blind 2 (on damage-carrying casts 81, on pure controls 0; already immune when ordered 47) | dodges 0 | interrupts made 0 taken 0 | say 39 | faults 0
+          telegraph resp 87% (104/120) | lead usage 57% (20/35) mean off-bearing 15° | mortar: 43 thrown, 16 on target (37%), vs moving target 9/35, mean landing error 4 m (no-lead would be 2.1 m)
+    PILOT casts/10s 9.8 hit 93% dmg/game 173.9 still 8% idle+inReach 2% immune root 78, blind 20 dodges 0 interrupts made 0
+
+## sub-opus-plain/brawler
+  vs pilot:kiter: W-D-L 0-0-6 | len 17.5s | sudden death 0/6 | mean dist 6.3 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.6 cdUtil 70% hit 92% (55/60) dmg/game 187.9 still 18% noAct 56% idle+ready 38% idle+inReach 26% allCd 36%
+          uses k1 24, k3 31, k2 36 | dead slots 0/18 | miss k2:range 2, k1:cover 3 | refused —
+          immune stun 30, root 5 (on damage-carrying casts 35, on pure controls 0; already immune when ordered 21) | dodges 0 | interrupts made 2 taken 2 | say 24 | faults 0
+          telegraph resp 42% (48/114) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.9 hit 99% dmg/game 284.4 still 14% idle+inReach 7% immune stun 25, root 26 dodges 0 interrupts made 2
+  vs pilot:rusher: W-D-L 0-0-6 | len 17.5s | sudden death 0/6 | mean dist 5.5 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 7.4 cdUtil 62% hit 96% (43/45) dmg/game 160.5 still 17% noAct 64% idle+ready 55% idle+inReach 45% allCd 12%
+          uses k1 7, k3 30, k2 41 | dead slots 0/18 | miss k1:cover 1, k2:aim 1 | refused —
+          immune stun 23 (on damage-carrying casts 23, on pure controls 0; already immune when ordered 17) | dodges 0 | interrupts made 2 taken 3 | say 7 | faults 0
+          telegraph resp 53% (57/108) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.3 hit 100% dmg/game 289.7 still 9% idle+inReach 6% immune stun 29, root 25 dodges 0 interrupts made 3
+
+## sub-sonnet-high/kiter
+  vs pilot:kiter: W-D-L 0-0-6 | len 23.2s | sudden death 0/6 | mean dist 17.7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 6.4 cdUtil 53% hit 39% (21/54) dmg/game 45.9 still 8% noAct 69% idle+ready 61% idle+inReach 37% allCd 16%
+          uses k3 40, k2 21, k1 26 | dead slots 0/18 | miss k1:cover 10, k3:cover 9, k1:aim 14 | refused —
+          immune silence 6 (on damage-carrying casts 6, on pure controls 0; already immune when ordered 6) | dodges 0 | interrupts made 11 taken 9 | say 87 | faults 0
+          telegraph resp 67% (48/72) | lead usage 13% (3/23) mean off-bearing 3.4° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 8.8 hit 79% dmg/game 136 still 1% idle+inReach 37% immune root 11, silence 5 dodges 0 interrupts made 9
+  vs pilot:rusher: W-D-L 4-0-2 | len 15.5s | sudden death 0/6 | mean dist 7.3 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.5 cdUtil 69% hit 95% (55/58) dmg/game 132.6 still 56% noAct 58% idle+ready 33% idle+inReach 15% allCd 36%
+          uses k3 32, k2 19, k1 28 | dead slots 0/18 | miss k1:aim 3 | refused —
+          immune silence 14, root 8 (on damage-carrying casts 22, on pure controls 0; already immune when ordered 22) | dodges 0 | interrupts made 17 taken 2 | say 79 | faults 0
+          telegraph resp 38% (24/63) | lead usage 20% (3/15) mean off-bearing 1.8° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.2 hit 96% dmg/game 115.6 still 38% idle+inReach 26% immune root 11, silence 1 dodges 0 interrupts made 2
+
+## sub-sonnet-plain/brawler
+  vs pilot:kiter: W-D-L 1-0-5 | len 20.5s | sudden death 0/6 | mean dist 6.2 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.5 cdUtil 68% hit 85% (63/74) dmg/game 216.6 still 43% noAct 61% idle+ready 46% idle+inReach 15% allCd 31%
+          uses k1 37, k2 49, k3 19 | dead slots 0/18 | miss k2:range 6, k1:cover 5 | refused —
+          immune stun 17, root 23 (on damage-carrying casts 40, on pure controls 0; already immune when ordered 25) | dodges 0 | interrupts made 6 taken 9 | say 167 | faults 0
+          telegraph resp 59% (73/124) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.4 hit 87% dmg/game 281.5 still 15% idle+inReach 12% immune stun 22, root 24 dodges 0 interrupts made 9
+  vs pilot:rusher: W-D-L 6-0-0 | len 15.8s | sudden death 0/6 | mean dist 5.8 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.5 cdUtil 76% hit 97% (74/76) dmg/game 282.5 still 71% noAct 54% idle+ready 36% idle+inReach 3% allCd 39%
+          uses k1 32, k2 44, k3 14 | dead slots 0/18 | miss k1:cover 2 | refused —
+          immune stun 26, root 24 (on damage-carrying casts 50, on pure controls 0; already immune when ordered 38) | dodges 0 | interrupts made 12 taken 0 | say 158 | faults 0
+          telegraph resp 47% (44/94) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.9 hit 100% dmg/game 211.8 still 10% idle+inReach 9% immune stun 20, root 14 dodges 0 interrupts made 0
+
+## sub-fable-high/kiter
+  vs pilot:kiter: W-D-L 6-0-0 | len 31.8s | sudden death 5/6 | mean dist 15.4 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 7.2 cdUtil 61% hit 58% (53/92) dmg/game 122.4 still 8% noAct 67% idle+ready 54% idle+inReach 38% allCd 24%
+          uses k2 42, k3 47, k1 47 | dead slots 0/18 | miss k1:cover 21, k1:aim 11, k3:cover 7 | refused —
+          immune silence 14, root 3 (on damage-carrying casts 17, on pure controls 0; already immune when ordered 16) | dodges 0 | interrupts made 2 taken 1 | say 31 | faults 0
+          telegraph resp 88% (103/117) | lead usage 7% (2/28) mean off-bearing 2.3° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.4 hit 31% dmg/game 49.3 still 5% idle+inReach 25% immune root 4 dodges 0 interrupts made 1
+  vs pilot:rusher: W-D-L 6-0-0 | len 15.9s | sudden death 0/6 | mean dist 7.9 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9 cdUtil 75% hit 93% (56/60) dmg/game 136 still 13% noAct 58% idle+ready 26% idle+inReach 14% allCd 49%
+          uses k2 26, k3 30, k1 30 | dead slots 0/18 | miss k3:cover 3, k1:cover 1 | refused —
+          immune silence 11, root 12 (on damage-carrying casts 23, on pure controls 0; already immune when ordered 23) | dodges 0 | interrupts made 2 taken 0 | say 18 | faults 0
+          telegraph resp 86% (56/65) | lead usage 43% (13/30) mean off-bearing 5.5° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.1 hit 59% dmg/game 34 still 11% idle+inReach 10% immune root 7 dodges 0 interrupts made 0
+
+## sub-fable-high/caster
+  vs pilot:kiter: W-D-L 5-0-1 | len 40.5s | sudden death 6/6 | mean dist 14.4 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.2 cdUtil 77% hit 44% (55/125) dmg/game 33.4 still 6% noAct 51% idle+ready 37% idle+inReach 21% allCd 41%
+          uses k3 72, k1 80, k2 48 | dead slots 0/18 | miss k1:aim 69 | refused —
+          immune root 97, blind 1 (on damage-carrying casts 98, on pure controls 0; already immune when ordered 34) | dodges 0 | interrupts made 0 taken 0 | say 31 | faults 0
+          telegraph resp 70% (167/239) | lead usage 68% (53/78) mean off-bearing 9° | mortar: 79 thrown, 14 on target (18%), vs moving target 14/78, mean landing error 4.6 m (no-lead would be 2.2 m)
+    PILOT casts/10s 9.8 hit 42% dmg/game 0 still 5% idle+inReach 4% immune root 102 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 6-0-0 | len 30.4s | sudden death 3/6 | mean dist 8.1 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.4 cdUtil 86% hit 80% (91/114) dmg/game 176.4 still 6% noAct 44% idle+ready 17% idle+inReach 11% allCd 69%
+          uses k1 62, k2 53, k3 56 | dead slots 0/18 | miss k1:aim 20 | refused —
+          immune root 112, blind 17 (on damage-carrying casts 129, on pure controls 0; already immune when ordered 79) | dodges 0 | interrupts made 0 taken 0 | say 45 | faults 0
+          telegraph resp 63% (113/180) | lead usage 53% (29/55) mean off-bearing 10.1° | mortar: 61 thrown, 39 on target (64%), vs moving target 35/55, mean landing error 2.9 m (no-lead would be 1.8 m)
+    PILOT casts/10s 9.8 hit 63% dmg/game 89 still 7% idle+inReach 2% immune root 119, blind 7 dodges 0 interrupts made 0
+
+## sub-fable-plain/brawler
+  vs pilot:kiter: W-D-L 0-0-6 | len 19.9s | sudden death 0/6 | mean dist 5.6 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 6.2 cdUtil 50% hit 91% (39/43) dmg/game 139.7 still 13% noAct 69% idle+ready 61% idle+inReach 49% allCd 14%
+          uses k2 29, k1 17, k3 28 | dead slots 0/18 | miss k1:cover 3, k2:range 1 | refused —
+          immune root 11, stun 4 (on damage-carrying casts 15, on pure controls 0; already immune when ordered 10) | dodges 0 | interrupts made 14 taken 3 | say 6 | faults 0
+          telegraph resp 19% (23/120) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.7 hit 96% dmg/game 284.4 still 2% idle+inReach 5% immune stun 24, root 26 dodges 0 interrupts made 3
+  vs pilot:rusher: W-D-L 0-0-6 | len 18s | sudden death 0/6 | mean dist 5.4 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 6.4 cdUtil 51% hit 90% (35/39) dmg/game 125 still 16% noAct 68% idle+ready 61% idle+inReach 51% allCd 13%
+          uses k1 8, k2 32, k3 29 | dead slots 0/18 | miss k2:aim 3, k1:cover 1 | refused —
+          immune stun 14 (on damage-carrying casts 14, on pure controls 0; already immune when ordered 7) | dodges 0 | interrupts made 0 taken 0 | say 6 | faults 0
+          telegraph resp 41% (44/107) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.9 hit 99% dmg/game 290 still 9% idle+inReach 9% immune stun 33, root 21 dodges 0 interrupts made 0
+
+## z-ai-glm-5.3-flash-plain/kiter
+  vs pilot:kiter: W-D-L 0-0-6 | len 13.6s | sudden death 0/6 | mean dist 14 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 7.1 cdUtil 58% hit 43% (15/35) dmg/game 35.7 still 10% noAct 69% idle+ready 56% idle+inReach 41% allCd 24%
+          uses k1 26, k2 13, k3 19 | dead slots 0/18 | miss k1:cover 10, k1:aim 9, k3:cover 1 | refused —
+          immune silence 1, root 3 (on damage-carrying casts 4, on pure controls 0; already immune when ordered 3) | dodges 0 | interrupts made 2 taken 9 | say 32 | faults 0
+          telegraph resp 65% (36/55) | lead usage 88% (21/24) mean off-bearing 11.9° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.4 hit 85% dmg/game 134.3 still 3% idle+inReach 12% immune silence 8, root 10 dodges 0 interrupts made 9
+  vs pilot:rusher: W-D-L 0-0-6 | len 12.3s | sudden death 0/6 | mean dist 6.7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.1 cdUtil 74% hit 57% (20/35) dmg/game 45.9 still 13% noAct 60% idle+ready 38% idle+inReach 24% allCd 41%
+          uses k3 26, k1 26, k2 15 | dead slots 0/18 | miss k1:cover 4, k3:cover 5, k3:aim 1, k1:aim 5 | refused —
+          immune root 5, silence 1 (on damage-carrying casts 6, on pure controls 0; already immune when ordered 6) | dodges 0 | interrupts made 2 taken 14 | say 41 | faults 0
+          telegraph resp 80% (44/55) | lead usage 89% (17/19) mean off-bearing 34.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.8 hit 89% dmg/game 134.3 still 9% idle+inReach 12% immune root 11, silence 8 dodges 0 interrupts made 14
+
+## z-ai-glm-5.3-flash-plain/caster
+  vs pilot:kiter: W-D-L 0-0-6 | len 21.7s | sudden death 0/6 | mean dist 14.1 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 5.8 cdUtil 52% hit 41% (15/37) dmg/game 0 still 14% noAct 69% idle+ready 60% idle+inReach 52% allCd 21%
+          uses k3 38, k2 20, k1 18 | dead slots 1/18 | miss k1:aim 17 | refused —
+          immune root 28 (on damage-carrying casts 28, on pure controls 0; already immune when ordered 9) | dodges 0 | interrupts made 0 taken 0 | say 0 | faults 0
+          telegraph resp 71% (93/131) | lead usage 82% (14/17) mean off-bearing 15.1° | mortar: 18 thrown, 0 on target (0%), vs moving target 0/17, mean landing error 6.2 m (no-lead would be 2.7 m)
+    PILOT casts/10s 10.1 hit 80% dmg/game 116.4 still 4% idle+inReach 2% immune root 154, blind 11 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 0-0-6 | len 13.7s | sudden death 0/6 | mean dist 7.7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.1 cdUtil 69% hit 79% (33/42) dmg/game 59.3 still 16% noAct 52% idle+ready 29% idle+inReach 18% allCd 53%
+          uses k3 24, k2 20, k1 22 | dead slots 0/18 | miss k1:aim 7 | refused —
+          immune root 51, blind 5 (on damage-carrying casts 56, on pure controls 0; already immune when ordered 37) | dodges 0 | interrupts made 0 taken 0 | say 0 | faults 0
+          telegraph resp 71% (54/76) | lead usage 92% (11/12) mean off-bearing 24.4° | mortar: 22 thrown, 14 on target (64%), vs moving target 5/12, mean landing error 2.6 m (no-lead would be 1.1 m)
+    PILOT casts/10s 9.3 hit 100% dmg/game 135.5 still 5% idle+inReach 2% immune root 90, blind 18 dodges 0 interrupts made 0
+
+## deepseek-deepseek-v4-flash-think/caster
+  vs pilot:kiter: W-D-L 0-0-6 | len 38s | sudden death 6/6 | mean dist 15.2 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.2 cdUtil 76% hit 34% (36/106) dmg/game 6.4 still 4% noAct 53% idle+ready 38% idle+inReach 29% allCd 35%
+          uses k3 77, k1 72, k2 37 | dead slots 0/18 | miss k1:aim 67 | refused —
+          immune root 53 (on damage-carrying casts 53, on pure controls 0; already immune when ordered 14) | dodges 0 | interrupts made 0 taken 0 | say 0 | faults 0
+          telegraph resp 72% (160/223) | lead usage 72% (49/68) mean off-bearing 11.9° | mortar: 69 thrown, 6 on target (9%), vs moving target 5/68, mean landing error 5.4 m (no-lead would be 2.1 m)
+    PILOT casts/10s 9.8 hit 49% dmg/game 146.5 still 5% idle+inReach 6% immune root 49, blind 11 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 0-0-6 | len 22.8s | sudden death 0/6 | mean dist 9.4 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 9.8 cdUtil 90% hit 78% (65/83) dmg/game 124.9 still 8% noAct 42% idle+ready 13% idle+inReach 6% allCd 73%
+          uses k3 47, k1 47, k2 40 | dead slots 0/18 | miss k1:aim 15 | refused —
+          immune root 60, blind 13 (on damage-carrying casts 73, on pure controls 0; already immune when ordered 38) | dodges 0 | interrupts made 0 taken 0 | say 0 | faults 0
+          telegraph resp 61% (84/138) | lead usage 63% (25/40) mean off-bearing 10.2° | mortar: 44 thrown, 25 on target (57%), vs moving target 21/40, mean landing error 2.8 m (no-lead would be 2 m)
+    PILOT casts/10s 10.1 hit 88% dmg/game 159.6 still 5% idle+inReach 2% immune root 95, blind 19 dodges 0 interrupts made 0
+
+## nvidia-nemotron-3-super-120b-a12b-free-plain/kiter
+  vs pilot:kiter: W-D-L 0-0-6 | len 22.7s | sudden death 1/6 | mean dist 22 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 5.1 cdUtil 43% hit 8% (3/36) dmg/game 5.1 still 32% noAct 75% idle+ready 69% idle+inReach 35% allCd 12%
+          uses k3 36, k2 12, k1 20 | dead slots 0/18 | miss k3:aim 9, k1:aim 12, k1:cover 2, k3:cover 10 | refused —
+          immune — (on damage-carrying casts 0, on pure controls 0; already immune when ordered 0) | dodges 0 | interrupts made 2 taken 10 | say 16 | faults 0
+          telegraph resp 65% (42/65) | lead usage 71% (10/14) mean off-bearing 7.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 8.2 hit 75% dmg/game 134.3 still 0% idle+inReach 24% immune silence 6, root 6 dodges 0 interrupts made 10
+  vs pilot:rusher: W-D-L 0-0-6 | len 20.1s | sudden death 1/6 | mean dist 7.2 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 4.8 cdUtil 40% hit 39% (9/23) dmg/game 18.7 still 24% noAct 83% idle+ready 77% idle+inReach 73% allCd 7%
+          uses k3 20, k1 8, k2 31 | dead slots 0/18 | miss k1:aim 2, k3:aim 7, k3:cover 5 | refused —
+          immune — (on damage-carrying casts 0, on pure controls 0; already immune when ordered 0) | dodges 0 | interrupts made 3 taken 1 | say 14 | faults 0
+          telegraph resp 64% (54/84) | lead usage 100% (8/8) mean off-bearing 10.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.3 hit 83% dmg/game 134.3 still 8% idle+inReach 4% immune root 19, silence 8 dodges 0 interrupts made 1
+
+## nvidia-nemotron-3-ultra-550b-a55b-free-plain/caster
+  vs pilot:kiter: W-D-L 0-0-6 | len 22.1s | sudden death 1/6 | mean dist 12.7 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 2.7 cdUtil 24% hit 32% (6/19) dmg/game 3.1 still 7% noAct 85% idle+ready 84% idle+inReach 74% allCd 1%
+          uses k1 11, k2 8, k3 18 | dead slots 1/18 | miss k1:aim 10 | refused —
+          immune root 8 (on damage-carrying casts 8, on pure controls 0; already immune when ordered 0) | dodges 0 | interrupts made 0 taken 0 | say 37 | faults 0
+          telegraph resp 46% (60/131) | lead usage 45% (5/11) mean off-bearing 10.6° | mortar: 11 thrown, 1 on target (9%), vs moving target 1/11, mean landing error 4.8 m (no-lead would be 2.3 m)
+    PILOT casts/10s 10 hit 76% dmg/game 115 still 2% idle+inReach 6% immune root 94, blind 9 dodges 0 interrupts made 0
+  vs pilot:rusher: W-D-L 0-0-6 | len 21.9s | sudden death 1/6 | mean dist 6.4 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 3.6 cdUtil 32% hit 88% (22/25) dmg/game 37.9 still 6% noAct 79% idle+ready 79% idle+inReach 68% allCd 3%
+          uses k2 12, k1 13, k3 22 | dead slots 0/18 | miss k1:aim 3 | refused —
+          immune root 22, blind 3 (on damage-carrying casts 25, on pure controls 0; already immune when ordered 10) | dodges 0 | interrupts made 0 taken 0 | say 47 | faults 0
+          telegraph resp 71% (89/126) | lead usage 92% (11/12) mean off-bearing 21.5° | mortar: 13 thrown, 10 on target (77%), vs moving target 9/12, mean landing error 2.3 m (no-lead would be 1.2 m)
+    PILOT casts/10s 9.6 hit 81% dmg/game 134.6 still 3% idle+inReach 2% immune root 96, blind 10 dodges 0 interrupts made 0
+
+## minimax-minimax-m3-free-plain/kiter
+  vs pilot:kiter: W-D-L 1-0-5 | len 26.5s | sudden death 2/6 | mean dist 20.1 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 5.9 cdUtil 50% hit 25% (15/61) dmg/game 34 still 18% noAct 72% idle+ready 68% idle+inReach 39% allCd 10%
+          uses k2 30, k3 40, k1 25 | dead slots 0/18 | miss k3:aim 3, k3:cover 19, k1:aim 19, k1:cover 5 | refused —
+          immune silence 4 (on damage-carrying casts 4, on pure controls 0; already immune when ordered 4) | dodges 0 | interrupts made 6 taken 2 | say 0 | faults 0
+          telegraph resp 88% (78/89) | lead usage 9% (2/23) mean off-bearing 3.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 9.1 hit 51% dmg/game 108.8 still 1% idle+inReach 28% immune root 10 dodges 0 interrupts made 2
+  vs pilot:rusher: W-D-L 2-1-3 | len 20.9s | sudden death 0/6 | mean dist 7.2 m | reasons kill,kill,kill,kill,double-ko,kill
+    MIND  casts/10s 7.8 cdUtil 65% hit 78% (52/67) dmg/game 117.3 still 16% noAct 63% idle+ready 49% idle+inReach 34% allCd 26%
+          uses k2 31, k3 37, k1 30 | dead slots 0/18 | miss k1:aim 7, k1:cover 3, k3:cover 4, k3:aim 1 | refused —
+          immune silence 12, root 2 (on damage-carrying casts 14, on pure controls 0; already immune when ordered 14) | dodges 0 | interrupts made 8 taken 0 | say 0 | faults 0
+          telegraph resp 78% (66/85) | lead usage 50% (14/28) mean off-bearing 17.1° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 10.1 hit 70% dmg/game 122.4 still 12% idle+inReach 17% immune root 14, silence 6 dodges 0 interrupts made 0

@@ -1,0 +1,187 @@
+{
+  "id": "c_bee0fcba-180",
+  "name": "TOWER",
+  "rating": 1210,
+  "fights": 8995,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2140,
+    "tacticsCard": "This fighter parks at roughly mid range, constantly facing the enemy while strafing sideways in a direction it randomly flips every 1.6 seconds, closing in only when it drifts past about 14 units and backing off under 9. It waits for a clear line of sight, then leads its shots: bolt first if the target is in range, beam as the fallback, and it paths around obstacles when vision is blocked instead of firing blindly.",
+    "sourceSha": "727f9c9313c1cfe856eade6998aefba479607a1b8896a31507ca167565cfd715",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_bee0fcba-180.before.727f9c93.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1795,
+    "tacticsCard": "This fighter hangs at near max range for its first skill, closing or backing off to sit right at that edge, and fires the strongest ready attack in priority order — melee-ish k1 first, then the lead-aimed k3 projectile, then the utility k2 as filler — the instant it's off cooldown and the enemy is visible. Its only real risk-taking is a sidestep dodge (alternating left/right) when it spots the enemy visibly winding up k1 or k3 within 22 range, otherwise it just stands and trades with no regard for its own cooldown gaps.",
+    "rating": 1210,
+    "fights": 9036,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "range",
+      "element": "arc"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 37,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 20.77,
+      "faults": 0,
+      "thinks": 312,
+      "orders": 646,
+      "uses": 20,
+      "hits": 11,
+      "damageDealt": 242.40000000000003,
+      "stubDamageDealt": 222.00000000000003,
+      "aliveTicks": 622,
+      "idleInReachTicks": 48,
+      "stillTicks": 145,
+      "fuelSpent": 1248,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 23,
+      "faults": 0,
+      "thinks": 345,
+      "orders": 713,
+      "uses": 21,
+      "hits": 8,
+      "damageDealt": 177.60000000000002,
+      "stubDamageDealt": 242.40000000000003,
+      "aliveTicks": 689,
+      "idleInReachTicks": 164,
+      "stillTicks": 71,
+      "fuelSpent": 1380,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 23.2,
+      "faults": 0,
+      "thinks": 348,
+      "orders": 719,
+      "uses": 21,
+      "hits": 10,
+      "damageDealt": 222.00000000000003,
+      "stubDamageDealt": 242.40000000000003,
+      "aliveTicks": 695,
+      "idleInReachTicks": 164,
+      "stillTicks": 120,
+      "fuelSpent": 1392,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 23.67,
+      "faults": 0,
+      "thinks": 355,
+      "orders": 733,
+      "uses": 23,
+      "hits": 10,
+      "damageDealt": 218.4,
+      "stubDamageDealt": 246.00000000000003,
+      "aliveTicks": 709,
+      "idleInReachTicks": 116,
+      "stillTicks": 108,
+      "fuelSpent": 1420,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 118486,
+  "forgeMs": 106547,
+  "admitMs": 896,
+  "cardMs": 11037,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 106546,
+      "chars": 1795
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9534,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.16295300000000001,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1795,
+  "promptHash": "bb6740935760e7ad9db252772a813d7869ffc6f209c4dfe45ff2ed21525bc990",
+  "generatedAt": "2026-09-07T10:50:24.910Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:06:17.143Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:01:42.992Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "1f6df6c2d6566c44a65611d738ff31d337cc1c4037780eb78aa894d29e6ca641",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.903,
+    "idleInReach": 0.181,
+    "still": 0.164,
+    "casts": 21.25
+  },
+  "card": "This fighter hangs at near max range for its first skill, closing or backing off to sit right at that edge, and fires the strongest ready attack in priority order — melee-ish k1 first, then the lead-aimed k3 projectile, then the utility k2 as filler — the instant it's off cooldown and the enemy is visible. Its only real risk-taking is a sidestep dodge (alternating left/right) when it spots the enemy visibly winding up k1 or k3 within 22 range, otherwise it just stands and trades with no regard for its own cooldown gaps."
+}

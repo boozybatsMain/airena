@@ -1,0 +1,48 @@
+{
+  "state": "ladder-rank-up",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder?ui=rank-up",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 597,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 9625
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 3677.199999988079,
+      "rendererRequested": 3678,
+      "shellReady": 5988,
+      "screenReady": 6316,
+      "viewerStart": 8975,
+      "rendererUp": 9048,
+      "envBuilt": 9129,
+      "postBuilt": 9155
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": [
+    "“#6” under div.rail at left+centre+right",
+    "“COLDSNAP” under div.rail at left+centre+right",
+    "“Claude Sonnet” under div.rail at left+centre+right",
+    "“1,612” under div.rail at left+centre+right"
+  ]
+}

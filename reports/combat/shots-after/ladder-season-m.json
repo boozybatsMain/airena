@@ -1,0 +1,61 @@
+{
+  "state": "ladder-season",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/ladder/season?ui=season",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "ladder",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 466,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 8294
+    },
+    "drawn": {
+      "n": 0,
+      "firstAt": 0,
+      "firstMs": 0,
+      "lastMs": 0,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 58.400000005960464,
+      "rendererRequested": 59,
+      "shellReady": 592,
+      "screenReady": 1094,
+      "viewerStart": 1157,
+      "rendererUp": 1165,
+      "envBuilt": 1242,
+      "postBuilt": 1251,
+      "precompiled": 5369,
+      "postWarm": 8293,
+      "rendererReady": 8294,
+      "firstDraw": 8295
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": [
+    "“3,842 – 2,504” under div.rail at left+centre+right",
+    "“record” under div.rail at left+centre+right",
+    "“1,676” under div.rail at left+centre+right",
+    "“rating” under div.rail at left+centre+right",
+    "“ASH AND ICE” under div.rail at left+centre+right"
+  ]
+}

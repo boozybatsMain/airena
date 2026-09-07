@@ -50,6 +50,13 @@ let pool = null;
 let restarts = 0;
 const MAX_RESTARTS = 40;
 
+/**
+ * Every task's `done` receives the worker's WHOLE reply (see the shape in
+ * `runJobsFull`), and a bout the pool itself had to give up on gets a reply of
+ * the same shape — so the two entry points differ only in what they keep.
+ */
+const errorResult = (why) => ({ winner: 'error', seconds: null, reason: 'pool', error: why, blue: null, orange: null });
+
 /** Воркер умер: его бой — ошибка, сам он выбывает, на замену встаёт новый. */
 function lost(w, why) {
   if (w.__dead) return;
@@ -62,13 +69,13 @@ function lost(w, why) {
   if (process.env.POOL_DEBUG) console.error(`\n  воркер выбыл (${why}), занят: ${w.__label || 'нет'}`);
   if (done) {
     console.error(`\n  воркер умер (${why}) на бою ${w.__label || '?'} — бой засчитан ошибкой`);
-    done('error');
+    done(errorResult(`worker lost: ${why}`));
   }
   const want = pool.want;
   if (restarts < MAX_RESTARTS && pool.queue.length) { restarts++; ensurePool(want); }
   else if (!pool.workers.length && pool.queue.length) {
     console.error('  все воркеры мертвы, добить очередь нечем');
-    for (const t of pool.queue.splice(0)) t.done('error');
+    for (const t of pool.queue.splice(0)) t.done(errorResult('no workers left'));
   }
   pump();
 }
@@ -82,7 +89,7 @@ function ensurePool(want) {
     w.on('message', (m) => {
       const done = w.__job;
       w.__job = null;
-      if (done) done(m.winner);
+      if (done) done(m);
       pool.idle.push(w);
       pump();
     });
@@ -167,7 +174,34 @@ export function superviseSelf(envFlag = 'AIRENA_POOL_CHILD') {
   return false;
 }
 
-export function runJobs(jobs, onProgress) {
+/**
+ * Run every job and resolve to the workers' full replies, in job order.
+ *
+ * A job is `{ a, b, seed }` plus any of:
+ *   sym      one pilot on both sides (the stub twin) instead of octopus/gorilla
+ *   real     the product path: the legal kit size is enforced (cooldowns come
+ *            from the registry with or without it)
+ *   cooldown number → fixed cooldown (seconds) for every ability of BOTH kits;
+ *            null (or absent) → the registry's own cooldown, i.e. the schedule
+ *            the game is actually played on
+ *   pilots   { blue: name, orange: name } — 'stub' or a file under brains/pilots/
+ *   builds   { blue, orange } body numbers (see tools/sizebalance.mjs)
+ *
+ * A reply is
+ *   { winner: 'blue'|'orange'|null|'error', seconds, reason,
+ *     pace: { decided: 'hit'|'fire'|'arena'|<sim reason>, dodges, deadSlots, slots },
+ *     blue: { uses, hits, misses, damageDealt, faults }, orange: {…},
+ *     pilots?: { blue, orange } (the pilots actually used),
+ *     pilot_missing?: string[], problems?: [{ code, name, error? }], error?: string }
+ *
+ * `runJobs` (below) is the older contract and keeps only `winner`; the tools
+ * built on it are untouched. New instruments read the whole reply here.
+ *
+ * @param {Array<object>} jobs
+ * @param {(done: number, total: number) => void} [onProgress]
+ * @returns {Promise<Array<object>>}
+ */
+export function runJobsFull(jobs, onProgress) {
   if (!jobs.length) return Promise.resolve([]);
   ensurePool(Math.min(POOL_SIZE, jobs.length));
   const out = new Array(jobs.length);
@@ -177,8 +211,8 @@ export function runJobs(jobs, onProgress) {
       pool.queue.push({
         job,
         label: `сид ${job.seed}`,
-        done: (winner) => {
-          out[i] = winner;
+        done: (result) => {
+          out[i] = result;
           done++;
           if (onProgress && done % 25 === 0) onProgress(done, jobs.length);
           if (done === jobs.length) res(out);
@@ -187,6 +221,15 @@ export function runJobs(jobs, onProgress) {
     });
     pump();
   });
+}
+
+/**
+ * @param {Array<{a: object[], b: object[], seed: number, sym?: boolean}>} jobs
+ * @param {(done: number, total: number) => void} [onProgress]
+ * @returns {Promise<Array<'blue'|'orange'|null|'error'>>}
+ */
+export function runJobs(jobs, onProgress) {
+  return runJobsFull(jobs, onProgress).then((rs) => rs.map((r) => (r && 'winner' in r ? r.winner : 'error')));
 }
 
 /** Закрыть пул. Нужен только тому, кто хочет завершиться немедленно. */

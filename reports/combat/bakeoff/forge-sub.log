@@ -1,0 +1,152 @@
+  ! brawler: body over 25 points, squeezed by 0.71
+
+  bakeoff forge
+  no OpenRouter bundle asked for; request ceiling 3.2 USD per call; run budget 6 USD (OpenRouter only)
+  out: /Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff
+
+  creatures
+    caster     kit 52/52  body 23.57/25  Mortar: Damage + Blind · Radiation | Field: Burn + Root · Frost | Aura: Shield + Heal · Frost
+    brawler    kit 52/52  body 23.55/25  Lunge: Damage + Root · Kinetic | Fan: Damage + Stun · Ember | Aura: Shield + Heal · Frost
+    kiter      kit 52/52  body 22.86/25  Bolt: Damage + Root · Frost | Blink: Cleanse + Shield · Void | Beam: Damage + Silence · Laser
+
+  models
+    sub:opus:plain                       Claude Opus                  effort low                     subscription, $0
+    sub:opus:high                        Claude Opus                  effort high                    subscription, $0
+    sub:sonnet:plain                     Claude Sonnet                effort low                     subscription, $0
+    sub:sonnet:high                      Claude Sonnet                effort high                    subscription, $0
+    sub:fable:plain                      Claude Fable                 effort low                     subscription, $0
+    sub:fable:high                       Claude Fable                 effort high                    subscription, $0
+
+  plan: 6 models × 3 creatures = 18 pairs, 18 to forge (0 already on disk)
+  estimated OpenRouter spend ≈ $0.0000; the run stops opening OpenRouter pairs past $6.0000
+  note: one call is capped at 3.2 USD by its token ceiling and a pair may take two attempts, so a single pair can overshoot the estimate
+    forge  sub:opus:plain                       caster     $0
+    forge  sub:opus:plain                       brawler    $0
+    forge  sub:opus:plain                       kiter      $0
+    forge  sub:opus:high                        caster     $0
+    forge  sub:opus:high                        brawler    $0
+    forge  sub:opus:high                        kiter      $0
+    forge  sub:sonnet:plain                     caster     $0
+    forge  sub:sonnet:plain                     brawler    $0
+    forge  sub:sonnet:plain                     kiter      $0
+    forge  sub:sonnet:high                      caster     $0
+    forge  sub:sonnet:high                      brawler    $0
+    forge  sub:sonnet:high                      kiter      $0
+    forge  sub:fable:plain                      caster     $0
+    forge  sub:fable:plain                      brawler    $0
+    forge  sub:fable:plain                      kiter      $0
+    forge  sub:fable:high                       caster     $0
+    forge  sub:fable:high                       brawler    $0
+    forge  sub:fable:high                       kiter      $0
+
+
+  sub:opus:plain  ×  caster
+    attempt 1: accepted, 3341 chars, $0.0000, 20 s, think 0
+    source 3341 chars in 20 s, $0.0000 (reference $0.1779) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 15, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:opus:plain  ×  brawler
+    attempt 1: accepted, 1956 chars, $0.0000, 13 s, think 0
+    source 1956 chars in 13 s, $0.0000 (reference $0.1507) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 17, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:opus:plain  ×  kiter
+    attempt 1: accepted, 2606 chars, $0.0000, 16 s, think 0
+    source 2606 chars in 16 s, $0.0000 (reference $0.1633) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 34, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:opus:high  ×  caster
+    attempt 1: accepted, 10439 chars, $0.0000, 179 s, think 0
+    source 10421 chars in 179 s, $0.0000 (reference $0.4744) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 14, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:opus:high  ×  brawler
+    attempt 1: accepted, 12523 chars, $0.0000, 367 s, think 0
+    source 12523 chars in 367 s, $0.0000 (reference $0.8264) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 16, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:opus:high  ×  kiter
+    attempt 1: accepted, 13081 chars, $0.0000, 273 s, think 0
+    source 13063 chars in 273 s, $0.0000 (reference $0.6714) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 32, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:plain  ×  caster
+    attempt 1: accepted, 2795 chars, $0.0000, 14 s, think 0
+    source 2777 chars in 14 s, $0.0000 (reference $0.0731) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 7, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:plain  ×  brawler
+    attempt 1: accepted, 2079 chars, $0.0000, 13 s, think 0
+    source 2079 chars in 13 s, $0.0000 (reference $0.0672) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 28, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:plain  ×  kiter
+    attempt 1: accepted, 1943 chars, $0.0000, 12 s, think 0
+    source 1943 chars in 12 s, $0.0000 (reference $0.0679) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 25, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:high  ×  caster
+    attempt 1: accepted, 2354 chars, $0.0000, 110 s, think 0
+    source 2354 chars in 110 s, $0.0000 (reference $0.1534) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 9, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:high  ×  brawler
+    attempt 1: accepted, 2461 chars, $0.0000, 40 s, think 0
+    source 2461 chars in 40 s, $0.0000 (reference $0.0923) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 24, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:sonnet:high  ×  kiter
+    attempt 1: accepted, 2582 chars, $0.0000, 93 s, think 0
+    source 2582 chars in 93 s, $0.0000 (reference $0.1370) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 30, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:plain  ×  caster
+    attempt 1: accepted, 4711 chars, $0.0000, 42 s, think 0
+    source 4711 chars in 42 s, $0.0000 (reference $0.4263) — admitting…
+    ADMITTED — 4 trial fights, won 1, hits 10, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:plain  ×  brawler
+    attempt 1: accepted, 2648 chars, $0.0000, 31 s, think 0
+    source 2648 chars in 31 s, $0.0000 (reference $0.3603) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 8, faults 100
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:plain  ×  kiter
+    attempt 1: accepted, 4601 chars, $0.0000, 83 s, think 0
+    source 4601 chars in 83 s, $0.0000 (reference $0.5592) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 22, faults 100
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:high  ×  caster
+    attempt 1: accepted, 10095 chars, $0.0000, 253 s, think 0
+    source 10095 chars in 253 s, $0.0000 (reference $1.2859) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 9, faults 0
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:high  ×  brawler
+    attempt 1: accepted, 9475 chars, $0.0000, 240 s, think 0
+    source 9475 chars in 240 s, $0.0000 (reference $1.1651) — admitting…
+    ADMITTED — 4 trial fights, won 0, hits 15, faults 100
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  sub:fable:high  ×  kiter
+    attempt 1: accepted, 8356 chars, $0.0000, 243 s, think 0
+    source 8356 chars in 243 s, $0.0000 (reference $1.1706) — admitting…
+    REJECTED at probe: faults: мозг падает на 100% мыслей
+    OpenRouter spend this run: $0.0000 of $6.0000
+
+  done in 34.1 min; OpenRouter spend $0.0000. Next: node tools/bakeoff.mjs league --out=/Users/boozybats/Public/Repos/work/Airena/reports/combat/bakeoff
+

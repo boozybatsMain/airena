@@ -1,0 +1,197 @@
+{
+  "id": "c_35e1741f-274",
+  "name": "BARROW WARDEN",
+  "rating": 1636,
+  "fights": 6184,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1953,
+    "tacticsCard": "This fighter is a mid-range kiter: it tries to sit at about nine units away, backing off when the enemy closes and strafing sideways (flipping direction every 2.5 seconds) when the distance is right, while stepping out of any enemy zone it's standing in. It leads its main ranged attack against the target's movement inside roughly 17 units, falls back to a short-range strike under 13.5, and pops its defensive ability whenever the enemy is within nine units, is telegraphing a cast, or its own health drops below 55 percent — so it takes almost no deliberate risks and never commits to pressure.",
+    "sourceSha": "37e862802347a53dddcdb43d21c2b3568dda0559cb03d0efa1fd4347d2bac033",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_35e1741f-274.before.37e86280.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2665,
+    "tacticsCard": "This fighter tries to hold a steady band between 9 and 13 range, backing off when crowded, closing in when too far, and strafing side to side otherwise while always facing the enemy. Its main trick is using its pull as an interrupt on the enemy's two dangerous telegraphed skills, falling back on its shield if the pull isn't ready, and otherwise leaning on its ranged attack (with lead-prediction) as the primary damage source, secondary skill as backup, and shield-cycling as filler when nothing else is available.",
+    "rating": 1657,
+    "fights": 6192,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "pull"
+      ],
+      "element": "gravity"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "damage",
+        "weaken"
+      ],
+      "channel": "speed",
+      "element": "gravity"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield",
+        "boost"
+      ],
+      "channel": "armor",
+      "element": "gravity"
+    }
+  ],
+  "kitCost": 51,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 20.5,
+      "faults": 0,
+      "thinks": 308,
+      "orders": 635,
+      "uses": 19,
+      "hits": 12,
+      "damageDealt": 37.49006622516556,
+      "stubDamageDealt": 244.5325033112582,
+      "aliveTicks": 614,
+      "idleInReachTicks": 74,
+      "stillTicks": 1,
+      "fuelSpent": 447,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 31.47,
+      "faults": 0,
+      "thinks": 472,
+      "orders": 974,
+      "uses": 30,
+      "hits": 28,
+      "damageDealt": 206.2291390728477,
+      "stubDamageDealt": 249.3123178807946,
+      "aliveTicks": 943,
+      "idleInReachTicks": 98,
+      "stillTicks": 1,
+      "fuelSpent": 733,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 31.93,
+      "faults": 0,
+      "thinks": 479,
+      "orders": 990,
+      "uses": 32,
+      "hits": 48,
+      "damageDealt": 246.01589403973514,
+      "stubDamageDealt": 27.627814569536422,
+      "aliveTicks": 957,
+      "idleInReachTicks": 20,
+      "stillTicks": 2,
+      "fuelSpent": 798,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 29.3,
+      "faults": 0,
+      "thinks": 439,
+      "orders": 907,
+      "uses": 29,
+      "hits": 48,
+      "damageDealt": 241.0847682119206,
+      "stubDamageDealt": 18.91390728476821,
+      "aliveTicks": 878,
+      "idleInReachTicks": 27,
+      "stillTicks": 2,
+      "fuelSpent": 728,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 202223,
+  "forgeMs": 57144,
+  "admitMs": 137613,
+  "cardMs": 7460,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 57144,
+      "chars": 1880
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 4968,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.122153,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2665,
+  "promptHash": "7b231910064c947ccf9c5091b1776c31ab82c35052996b8e33110705cf7c7a04",
+  "generatedAt": "2026-09-07T10:23:55.898Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T03:59:18.574Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:56:46.270Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "028497b4bf7f8ace9e22fc4a2f81fd80c979b654d6807b2611e203ae35a65ad1",
+  "repair": {
+    "attempted": true,
+    "message": "Your mind just ran 4 trial fights against a scripted opponent holding your exact same kit. Measured: it won 0 of 4 of those fights and dealt 17% of the opponent's damage;",
+    "costUsd": 0,
+    "admitted": true,
+    "problems": []
+  },
+  "behaviour": {
+    "wins": 2,
+    "damageShare": 1.352,
+    "idleInReach": 0.065,
+    "still": 0.002,
+    "casts": 27.5
+  },
+  "card": "This fighter tries to hold a steady band between 9 and 13 range, backing off when crowded, closing in when too far, and strafing side to side otherwise while always facing the enemy. Its main trick is using its pull as an interrupt on the enemy's two dangerous telegraphed skills, falling back on its shield if the pull isn't ready, and otherwise leaning on its ranged attack (with lead-prediction) as the primary damage source, secondary skill as backup, and shield-cycling as filler when nothing else is available."
+}

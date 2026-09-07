@@ -1,0 +1,171 @@
+{
+  "id": "c_2f990392-e68",
+  "name": "HAMMERBACK-00",
+  "rating": 850,
+  "fights": 5356,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "haiku",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 865,
+    "tacticsCard": null,
+    "sourceSha": "48bcfa84fffa049167eb5eb714f119babcf7180a145643ae115e35334e70df69"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 3206,
+    "tacticsCard": "This fighter tries to hover around range 13, sidestepping in an oscillating pattern when at that distance, closing in when too far and backing off when too close — but the moment it spots the enemy winding up k1, it drops all that and dashes sideways to dodge, picking the dodge direction randomly rather than based on the actual telegraph geometry.",
+    "rating": 850,
+    "fights": 5390,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "beam",
+      "effects": [
+        "damage"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "cleanse"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn"
+      ],
+      "element": "ember"
+    }
+  ],
+  "kitCost": 36,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 21.23,
+      "faults": 0,
+      "thinks": 319,
+      "orders": 547,
+      "uses": 15,
+      "hits": 6,
+      "damageDealt": 219.41333333333364,
+      "stubDamageDealt": 259.36000000000047,
+      "aliveTicks": 636,
+      "idleInReachTicks": 194,
+      "stillTicks": 0,
+      "fuelSpent": 1362,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": null,
+      "seconds": 22.73,
+      "faults": 0,
+      "thinks": 341,
+      "orders": 583,
+      "uses": 17,
+      "hits": 7,
+      "damageDealt": 256.106666666667,
+      "stubDamageDealt": 257.60000000000025,
+      "aliveTicks": 681,
+      "idleInReachTicks": 163,
+      "stillTicks": 27,
+      "fuelSpent": 1451,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 20.27,
+      "faults": 0,
+      "thinks": 304,
+      "orders": 526,
+      "uses": 15,
+      "hits": 5,
+      "damageDealt": 177.49333333333357,
+      "stubDamageDealt": 262.0800000000004,
+      "aliveTicks": 607,
+      "idleInReachTicks": 190,
+      "stillTicks": 41,
+      "fuelSpent": 1298,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 23.3,
+      "faults": 0,
+      "thinks": 349,
+      "orders": 605,
+      "uses": 16,
+      "hits": 6,
+      "damageDealt": 216.05333333333363,
+      "stubDamageDealt": 240.05333333333363,
+      "aliveTicks": 698,
+      "idleInReachTicks": 249,
+      "stillTicks": 5,
+      "fuelSpent": 1489,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 126644,
+  "forgeMs": 119711,
+  "admitMs": 567,
+  "cardMs": 6362,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 119710,
+      "chars": 3206
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 10394,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.11856980000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 3206,
+  "promptHash": "c9f5177cbf81373d5f578aa1a794e258d4bc99406c9476f3b4f09e1297cd0ba8",
+  "generatedAt": "2026-09-07T10:50:44.252Z",
+  "previous": [],
+  "candidateSha": "8115020197daf6120a95b4d324227e1cecc3c55c0b2a4efebb58e3347783d711",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.853,
+    "idleInReach": 0.304,
+    "still": 0.028,
+    "casts": 15.75
+  },
+  "card": "This fighter tries to hover around range 13, sidestepping in an oscillating pattern when at that distance, closing in when too far and backing off when too close — but the moment it spots the enemy winding up k1, it drops all that and dashes sideways to dodge, picking the dodge direction randomly rather than based on the actual telegraph geometry."
+}

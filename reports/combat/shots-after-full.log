@@ -1,0 +1,330 @@
+
+  SCREEN STATES
+
+  base   http://localhost:8787
+  out    /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+  sizes  1440×900  1280×720  390×844
+  tree   8699fb678a on main[2m + 59 uncommitted files[0m
+  db     /Users/boozybats/Public/Repos/work/Airena/data/airena.db  1928.7 MB, modified 2026-09-07 09:14
+
+  claim  STONE GOLEM (c_18e20e72-6bb) → g_0671aa57-8e0
+  replay m_78486094-2db on constants c-abd0b479
+
+
+  THE FIRST HOUR
+    live-visitor         0 err    0 overlap    0 covered
+    live-visitor-w       0 err    0 overlap    0 covered
+    live-visitor-m       0 err    0 overlap    0 covered
+    create-visitor       0 err    0 overlap    0 covered
+    create-visitor-w     0 err    0 overlap    0 covered
+    create-visitor-m     0 err    0 overlap    0 covered
+    birth-failed         0 err    0 overlap    0 covered
+    birth-failed-w       0 err    0 overlap    0 covered
+    birth-failed-m       0 err    0 overlap    0 covered
+    birth-failed-charged 0 err    0 overlap    0 covered
+    birth-failed-charged-w 0 err    0 overlap    0 covered
+    birth-failed-charged-m 0 err    0 overlap    0 covered
+[31m    live-searching-first 1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+    live-searching-first-w 0 err    3 overlap    0 covered
+[31m    live-searching-first-m 1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-first    1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+    live-result-first-w  0 err    0 overlap    0 covered
+[31m    live-result-first-m  1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+    creature-empty       0 err    0 overlap    0 covered
+    creature-empty-w     0 err    0 overlap    0 covered
+    creature-empty-m     0 err    0 overlap    0 covered
+    history-empty        0 err    0 overlap    0 covered
+    history-empty-w      0 err    0 overlap    0 covered
+    history-empty-m      0 err    0 overlap    0 covered
+
+  MAKING ONE
+    create               0 err    0 overlap    0 covered
+    create-w             0 err    0 overlap    0 covered
+    create-m             0 err    0 overlap    0 covered
+    create-picker        0 err    0 overlap    0 covered
+    create-picker-w      0 err    0 overlap    0 covered
+    create-picker-m      0 err    0 overlap    0 covered
+    birth-wait           0 err    0 overlap    0 covered
+    birth-wait-w         0 err    0 overlap    0 covered
+    birth-wait-m         0 err    0 overlap    0 covered
+    birth-peek           0 err    0 overlap    0 covered
+    birth-peek-w         0 err    0 overlap    0 covered
+    birth-peek-m         0 err    0 overlap    0 covered
+    birth-wait-long      0 err    0 overlap    0 covered
+    birth-wait-long-w    0 err    0 overlap    0 covered
+    birth-wait-long-m    0 err    0 overlap    0 covered
+    birth-reveal         0 err    0 overlap    0 covered
+    birth-reveal-w       0 err    0 overlap    0 covered
+    birth-reveal-m       0 err    0 overlap    0 covered
+
+  THE FIGHT
+[31m    live-searching       1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-searching-w     1 err    0 overlap    0 covered   loop: ticked 12 of 24 frames in 6019 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-searching-m     1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-vs              1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-vs-w            1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 6423 ms (page hidden) — the arena did not draw for the capture[0m
+[31m    live-vs-m            1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+    live-hud             0 err    0 overlap    0 covered
+    live-hud-w           0 err    0 overlap    0 covered
+[31m    live-hud-m           1 err    0 overlap    0 covered   loop: ticked 4 of 24 frames in 6322 ms (page visible) — the arena did not draw for the capture[0m
+    live-fighting        0 err    0 overlap    0 covered
+    live-fighting-w      0 err    0 overlap    0 covered
+    live-fighting-m      0 err    0 overlap    0 covered
+[31m    live-result-win      1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-win-w    1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-win-m    1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss     1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss-w   1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss-m   1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-away            1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 6772 ms (page hidden) — the arena did not draw for the capture[0m
+[31m    live-away-w          1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-away-m          1 err    0 overlap    0 covered   loop: ticked 20 of 24 frames in 6054 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-replay          1 err    0 overlap    0 covered   loop: ticked 0 of 24 frames in 6507 ms (page hidden) — the arena did not draw for the capture[0m
+    live-replay-w        0 err    2 overlap    0 covered
+    live-replay-m        0 err    0 overlap    0 covered
+
+  THE RECORD
+    creature             0 err    0 overlap    0 covered
+    creature-w           0 err    0 overlap    0 covered
+    creature-m           0 err    0 overlap    0 covered
+    creature-tooltip     0 err    0 overlap    0 covered
+    creature-tooltip-w   0 err    0 overlap    0 covered
+    creature-tooltip-m   0 err    0 overlap    0 covered
+    history              0 err    0 overlap    0 covered
+    history-w            0 err    0 overlap    0 covered
+    history-m            0 err    0 overlap    3 covered
+    history-detail       0 err    0 overlap    0 covered
+    history-detail-w     0 err    0 overlap    0 covered
+    history-detail-m     0 err    0 overlap    0 covered
+    ladder               0 err    0 overlap    0 covered
+    ladder-w             0 err    7 overlap    6 covered
+    ladder-m             0 err    14 overlap   11 covered
+    ladder-rank-up       0 err    0 overlap    0 covered
+    ladder-rank-up-w     0 err    7 overlap    6 covered
+    ladder-rank-up-m     0 err    14 overlap   11 covered
+    ladder-minds         0 err    0 overlap    1 covered
+    ladder-minds-w       0 err    1 overlap    6 covered
+    ladder-minds-m       0 err    10 overlap   12 covered
+    ladder-season        0 err    8 overlap    6 covered
+    ladder-season-w      0 err    0 overlap    0 covered
+    ladder-season-m      0 err    6 overlap    13 covered
+
+  THE EDGES
+    worker               0 err    0 overlap    0 covered
+    worker-w             0 err    0 overlap    0 covered
+    worker-m             0 err    0 overlap    0 covered
+    worker-code          0 err    0 overlap    0 covered
+    worker-code-w        0 err    0 overlap    0 covered
+    worker-code-m        0 err    0 overlap    0 covered
+    worker-denied        0 err    0 overlap    0 covered
+    worker-denied-w      0 err    0 overlap    0 covered
+    worker-denied-m      0 err    0 overlap    0 covered
+    fatal-offline        0 err    0 overlap    0 covered
+    fatal-offline-w      0 err    0 overlap    0 covered
+    fatal-offline-m      0 err    0 overlap    0 covered
+    fatal-norender       0 err    0 overlap    0 covered
+    fatal-norender-w     0 err    0 overlap    0 covered
+    fatal-norender-m     0 err    0 overlap    0 covered
+
+  STATE                  ERRORS   OVERLAPS  COVERED
+  ────────────────────── ──────── ───────── ────────
+  THE FIRST HOUR
+  live-visitor           0        0         0
+  live-visitor-w         0        0         0
+  live-visitor-m         0        0         0
+  create-visitor         0        0         0
+  create-visitor-w       0        0         0
+  create-visitor-m       0        0         0
+  birth-failed           0        0         0
+  birth-failed-w         0        0         0
+  birth-failed-m         0        0         0
+  birth-failed-charged   0        0         0
+  birth-failed-charged-w 0        0         0
+  birth-failed-charged-m 0        0         0
+[31m  live-searching-first   1        0         0   loop[0m
+  live-searching-first-w 0        3         0
+[31m  live-searching-first-m 1        0         0   loop[0m
+[31m  live-result-first      1        0         0   loop[0m
+  live-result-first-w    0        0         0
+[31m  live-result-first-m    1        0         0   loop[0m
+  creature-empty         0        0         0
+  creature-empty-w       0        0         0
+  creature-empty-m       0        0         0
+  history-empty          0        0         0
+  history-empty-w        0        0         0
+  history-empty-m        0        0         0
+  MAKING ONE
+  create                 0        0         0
+  create-w               0        0         0
+  create-m               0        0         0
+  create-picker          0        0         0
+  create-picker-w        0        0         0
+  create-picker-m        0        0         0
+  birth-wait             0        0         0
+  birth-wait-w           0        0         0
+  birth-wait-m           0        0         0
+  birth-peek             0        0         0
+  birth-peek-w           0        0         0
+  birth-peek-m           0        0         0
+  birth-wait-long        0        0         0
+  birth-wait-long-w      0        0         0
+  birth-wait-long-m      0        0         0
+  birth-reveal           0        0         0
+  birth-reveal-w         0        0         0
+  birth-reveal-m         0        0         0
+  THE FIGHT
+[31m  live-searching         1        0         0   loop[0m
+[31m  live-searching-w       1        0         0   loop[0m
+[31m  live-searching-m       1        0         0   loop[0m
+[31m  live-vs                1        0         0   loop[0m
+[31m  live-vs-w              1        0         0   loop[0m
+[31m  live-vs-m              1        0         0   loop[0m
+  live-hud               0        0         0
+  live-hud-w             0        0         0
+[31m  live-hud-m             1        0         0   loop[0m
+  live-fighting          0        0         0
+  live-fighting-w        0        0         0
+  live-fighting-m        0        0         0
+[31m  live-result-win        1        0         0   loop[0m
+[31m  live-result-win-w      1        0         0   loop[0m
+[31m  live-result-win-m      1        0         0   loop[0m
+[31m  live-result-loss       1        0         0   loop[0m
+[31m  live-result-loss-w     1        0         0   loop[0m
+[31m  live-result-loss-m     1        0         0   loop[0m
+[31m  live-away              1        0         0   loop[0m
+[31m  live-away-w            1        0         0   loop[0m
+[31m  live-away-m            1        0         0   loop[0m
+[31m  live-replay            1        0         0   loop[0m
+  live-replay-w          0        2         0
+  live-replay-m          0        0         0
+  THE RECORD
+  creature               0        0         0
+  creature-w             0        0         0
+  creature-m             0        0         0
+  creature-tooltip       0        0         0
+  creature-tooltip-w     0        0         0
+  creature-tooltip-m     0        0         0
+  history                0        0         0
+  history-w              0        0         0
+  history-m              0        0         3
+  history-detail         0        0         0
+  history-detail-w       0        0         0
+  history-detail-m       0        0         0
+  ladder                 0        0         0
+  ladder-w               0        7         6
+  ladder-m               0        14        11
+  ladder-rank-up         0        0         0
+  ladder-rank-up-w       0        7         6
+  ladder-rank-up-m       0        14        11
+  ladder-minds           0        0         1
+  ladder-minds-w         0        1         6
+  ladder-minds-m         0        10        12
+  ladder-season          0        8         6
+  ladder-season-w        0        0         0
+  ladder-season-m        0        6         13
+  THE EDGES
+  worker                 0        0         0
+  worker-w               0        0         0
+  worker-m               0        0         0
+  worker-code            0        0         0
+  worker-code-w          0        0         0
+  worker-code-m          0        0         0
+  worker-denied          0        0         0
+  worker-denied-w        0        0         0
+  worker-denied-m        0        0         0
+  fatal-offline          0        0         0
+  fatal-offline-w        0        0         0
+  fatal-offline-m        0        0         0
+  fatal-norender         0        0         0
+  fatal-norender-w       0        0         0
+  fatal-norender-m       0        0         0
+[31m
+  stamped, and not evidence of anything but themselves:[0m
+[31m    live-searching-first   loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-searching-first-m loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-first      loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-first-m    loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-searching         loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-searching-w       loop: ticked 12 of 24 frames in 6019 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-searching-m       loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-vs                loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-vs-w              loop: ticked 0 of 24 frames in 6423 ms (page hidden) — the arena did not draw for the capture[0m
+[31m    live-vs-m              loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-hud-m             loop: ticked 4 of 24 frames in 6322 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-result-win        loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-win-w      loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-win-m      loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss       loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss-w     loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-result-loss-m     loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-away              loop: ticked 0 of 24 frames in 6772 ms (page hidden) — the arena did not draw for the capture[0m
+[31m    live-away-w            loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture[0m
+[31m    live-away-m            loop: ticked 20 of 24 frames in 6054 ms (page visible) — the arena did not draw for the capture[0m
+[31m    live-replay            loop: ticked 0 of 24 frames in 6507 ms (page hidden) — the arena did not draw for the capture[0m
+[31m
+  overlapping text:[0m
+[31m    live-searching-first-w: Live feed × Your first fight: 35×4[0m
+[31m    live-searching-first-w: Last fight × Your first fight: 35×19[0m
+[31m    live-searching-first-w: drives a kinetic × Your first fight: 35×7[0m
+[31m    live-replay-w: Fight log × Watching replay: 5×16[0m
+[31m    live-replay-w: drives a kinetic × Watching replay: 5×20[0m
+[31m    ladder-w: #4 × Top 34%: 40×2[0m
+[31m    ladder-w: STORM × #23: 56×8[0m
+[31m    ladder-w: 1,559 × STONE GOLEM: 45×6[0m
+[31m    ladder-m: #5 × 1,234: 18×18[0m
+[31m    ladder-m: MINE HEDGEHOG × #23: 25×19[0m
+[31m    ladder-m: MINE HEDGEHOG × arena rank: 18×7[0m
+[31m    ladder-rank-up-w: #4 × 37: 17×2[0m
+[31m    ladder-rank-up-w: STORM × up since last vi: 56×3[0m
+[31m    ladder-rank-up-w: 1,552 × STONE GOLEM: 45×6[0m
+[31m    ladder-rank-up-m: #5 × 1,221: 18×18[0m
+[31m    ladder-rank-up-m: MINE HEDGEHOG × #25: 25×19[0m
+[31m    ladder-rank-up-m: MINE HEDGEHOG × arena rank: 18×7[0m
+[31m    ladder-minds-w: 1,105 × View: 26×5[0m
+[31m    ladder-minds-m: Gemini 3.7 Flash × #23: 47×17[0m
+[31m    ladder-minds-m: Gemini 3.7 Flash × STONE GOLEM: 107×13[0m
+[31m    ladder-minds-m: quick × #23: 68×7[0m
+[31m    ladder-season: #6 × Top 34%: 28×3[0m
+[31m    ladder-season: ASH × #23: 33×4[0m
+[31m    ladder-season: ASH × arena rank: 25×4[0m
+[31m    ladder-season-m: #2 × #24: 18×4[0m
+[31m    ladder-season-m: 3,370 – 2,721 × #24: 25×8[0m
+[31m    ladder-season-m: 3,370 – 2,721 × STONE GOLEM: 92×3[0m
+[31m
+  text under a panel:[0m
+[31m    history-m: “Claude Opus” under div.rail at left+centre+right[0m
+[31m    history-m: “14:42” under div.rail at left+centre+right[0m
+[31m    history-m: “1,213” under div.rail at left+centre+right[0m
+[31m    ladder-w: “#4” under div.lad-foot at left+centre+right[0m
+[31m    ladder-w: “STORM” under div.lad-foot at left+centre+right[0m
+[31m    ladder-w: “Airena Reference” under div.lad-foot at left+centre+right[0m
+[31m    ladder-m: “#5” under div.lad-foot at left+centre+right[0m
+[31m    ladder-m: “MINE HEDGEHOG” under div.lad-foot at left+centre+right[0m
+[31m    ladder-m: “Claude Opus” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-w: “#4” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-w: “STORM” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-w: “Airena Reference” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-m: “#5” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-m: “MINE HEDGEHOG” under div.lad-foot at left+centre+right[0m
+[31m    ladder-rank-up-m: “Claude Opus” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds: “Rating is the average ” under div.lad-foot at centre+right[0m
+[31m    ladder-minds-w: “GLM 5.3” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds-w: “deep” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds-w: “1” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds-m: “Gemini 3.7 Flash” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds-m: “quick” under div.lad-foot at left+centre+right[0m
+[31m    ladder-minds-m: “2 creatures ·” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season: “#6” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season: “ASH” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season: “Airena Reference” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season-m: “#2” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season-m: “3,370 – 2,721” under div.lad-foot at left+centre+right[0m
+[31m    ladder-season-m: “record” under div.lad-foot at left+centre+right[0m
+
+  105 captures in /Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after
+[31m
+  FAILED: 21 of 105 photographed the wrong session or a screen still arriving[0m
+[31m  FAILED: 12 of 105 have text on text or text under a panel (§12)[0m
+
+[2m  repeat:  node tools/shots.mjs --base=http://localhost:8787 --out=/Users/boozybats/Public/Repos/work/Airena/reports/combat/shots-after --only=live-searching-first,live-result-first,live-searching,live-vs,live-hud,live-result-win,live-result-loss,live-away,live-replay,ladder,ladder-rank-up,ladder-minds,ladder-season,history
+[0m

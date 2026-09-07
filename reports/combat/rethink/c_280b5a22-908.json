@@ -1,0 +1,189 @@
+{
+  "id": "c_280b5a22-908",
+  "name": "KILLER WASP",
+  "rating": 1390,
+  "fights": 8952,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 3041,
+    "tacticsCard": "This is a kiting marksman that tries to sit at about nine metres, circling sideways with a slow oscillating strafe, and its main answer to everything is the bolt — it leads your movement and fires the instant it has line of sight and cooldown. It watches incoming non-arcing projectiles and sidesteps perpendicular to them, often burning its blink in the dodge direction, and it blinks away if you get inside four metres or blinks toward you if you're beyond fourteen.",
+    "sourceSha": "bbbc13705eb20c74e472791e51e3cf285f437e703c541bf55011468a68a82b97",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_280b5a22-908.before.bbbc1370.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 3141,
+    "tacticsCard": "This fighter watches for a telegraphed dash first and sidesteps it perpendicular to the attack line, using its dash-skill to escape if available. Otherwise it stays aggressive at close-to-mid range: firing its melee hit inside 9 units, a lead-aimed projectile out to 16, and weaving side-to-side between 7 and 15 range while it waits for cooldowns rather than committing to one line.",
+    "rating": 1421,
+    "fights": 8976,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "burn"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "blink",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "arc"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "weaken"
+      ],
+      "channel": "speed",
+      "element": "void"
+    }
+  ],
+  "kitCost": 50,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 22.37,
+      "faults": 0,
+      "thinks": 336,
+      "orders": 605,
+      "uses": 19,
+      "hits": 8,
+      "damageDealt": 240.15333333333638,
+      "stubDamageDealt": 221.38533333333453,
+      "aliveTicks": 670,
+      "idleInReachTicks": 134,
+      "stillTicks": 2,
+      "fuelSpent": 2067,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 24.4,
+      "faults": 0,
+      "thinks": 366,
+      "orders": 654,
+      "uses": 22,
+      "hits": 9,
+      "damageDealt": 236.11866666666774,
+      "stubDamageDealt": 256.51866666666774,
+      "aliveTicks": 731,
+      "idleInReachTicks": 107,
+      "stillTicks": 1,
+      "fuelSpent": 2324,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 23.97,
+      "faults": 0,
+      "thinks": 359,
+      "orders": 650,
+      "uses": 21,
+      "hits": 11,
+      "damageDealt": 250.65933333333325,
+      "stubDamageDealt": 230.25933333333325,
+      "aliveTicks": 718,
+      "idleInReachTicks": 159,
+      "stillTicks": 2,
+      "fuelSpent": 2303,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 29.7,
+      "faults": 0,
+      "thinks": 445,
+      "orders": 775,
+      "uses": 28,
+      "hits": 8,
+      "damageDealt": 251.0333333333353,
+      "stubDamageDealt": 102,
+      "aliveTicks": 890,
+      "idleInReachTicks": 131,
+      "stillTicks": 3,
+      "fuelSpent": 2787,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 80486,
+  "forgeMs": 73274,
+  "admitMs": 806,
+  "cardMs": 6402,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 73272,
+      "chars": 3141
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6961,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.13786700000000002,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 3141,
+  "promptHash": "993196a1853bd9d505499a0bf51076a3cc7c66cf1691123b296ca577dbf12fec",
+  "generatedAt": "2026-09-07T10:36:39.106Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T03:59:44.847Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:58:46.950Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "c26ae76ac450a906ef6129811062988db6ea595267843e45369e05a440fc802f",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.207,
+    "idleInReach": 0.176,
+    "still": 0.003,
+    "casts": 22.5
+  },
+  "card": "This fighter watches for a telegraphed dash first and sidesteps it perpendicular to the attack line, using its dash-skill to escape if available. Otherwise it stays aggressive at close-to-mid range: firing its melee hit inside 9 units, a lead-aimed projectile out to 16, and weaving side-to-side between 7 and 15 range while it waits for cooldowns rather than committing to one line."
+}

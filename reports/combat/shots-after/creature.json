@@ -1,0 +1,43 @@
+{
+  "state": "creature",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/creature",
+  "size": "1440x900",
+  "session": null,
+  "signals": {
+    "screen": "creature",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 85,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 6402
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 315.19999998807907,
+      "rendererRequested": 315,
+      "shellReady": 4356,
+      "screenReady": 5426,
+      "viewerStart": 5904,
+      "rendererUp": 5914,
+      "envBuilt": 5983,
+      "postBuilt": 6007
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

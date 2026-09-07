@@ -385,6 +385,34 @@ const MIGRATIONS = [
        PRIMARY KEY (creature_id, slot)
      )`,
   ],
+
+  /*
+   * ── WHICH REFERENCE SET A KITLESS MIND WAS WRITTEN AGAINST ──────────────
+   *
+   * A creature with `kit_active = 0` has no grammar kit, so the sim hands it
+   * the §1 fixture: `laser/blink/jump` or `smash/charge/jump`. Which of the
+   * two it got was decided by the ARENA COLOUR (`referenceTagOf(side)` in
+   * `src/core/config.js`), and the colour is the parity of the match seed —
+   * that is, a coin flip. Its mind, meanwhile, was written against exactly one
+   * of the two sets and calls those names by hand.
+   *
+   * So on half its fights a kitless creature perceived skills it had never
+   * heard of, `api.ready('laser')` answered false forever, and it walked for
+   * the whole match. Measured on 1200 live ladder rows: 335 of 2400 sides
+   * never cast for this reason, and every zero-event double-KO on the ladder
+   * is two such sides meeting each other.
+   *
+   * The tag is a property of the MIND, so it belongs on the creature's row.
+   * Nullable on purpose: a creature with a grammar kit does not have one and
+   * must not be given a fake, and a row whose tag was never inferred falls
+   * back to reading its own `brain_source` at match time (`refTagOf` in
+   * `arena-loop.js`) rather than to the colour.
+   *
+   * It travels with the fixture: when the hardcoded skills go, this goes.
+   */
+  [
+    `ALTER TABLE creature ADD COLUMN reference_tag TEXT`,
+  ],
 ];
 
 export function openDb(file = 'data/airena.db') {
@@ -506,6 +534,7 @@ export function openDb(file = 'data/airena.db') {
      */
     dropColumn('creature', 'archetype'),
     ensure('match', 'kits_json', 'TEXT'),
+    ensure('creature', 'reference_tag', 'TEXT'),
     ensure('job', 'stage_code', 'TEXT'),
     ensureTable('icon', `CREATE TABLE IF NOT EXISTS icon (
        creature_id   TEXT NOT NULL REFERENCES creature(id) ON DELETE CASCADE,

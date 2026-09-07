@@ -41,7 +41,7 @@ function think(p, api) {
   if (me.silenced) {
     const away = V.away({ x: me.x, z: me.z }, { x: en.x, z: en.z });
     api.moveTo(me.x + away.x * 5, me.z + away.z * 5);
-    say('нечем ответить', 6);
+    say('nothing to answer with', 6);
     return;
   }
 
@@ -67,7 +67,7 @@ function think(p, api) {
     if (V.dist({ x: me.x, z: me.z }, { x: z.x, z: z.z }) > z.r + me.radius) continue;
     const out = V.away({ x: me.x, z: me.z }, { x: z.x, z: z.z });
     goal = { x: z.x + out.x * (z.r + 3.5), z: z.z + out.z * (z.r + 3.5) };
-    say('горячо', 9);
+    say('too hot', 9);
     break;
   }
 
@@ -75,7 +75,7 @@ function think(p, api) {
   if (!goal && me.blinded) {
     const away = V.away({ x: me.x, z: me.z }, { x: en.x, z: en.z });
     goal = { x: me.x + away.x * 6, z: me.z + away.z * 6 };
-    say('вижу вчерашний день', 8);
+    say('seeing yesterday', 8);
   }
 
   api.faceAt(en.x, en.z);
@@ -183,7 +183,7 @@ function think(p, api) {
   }
 
   if (best) {
-    say('держи', 7);
+    say('take this', 7);
     api.use(best.name, en.x - me.x, en.z - me.z);
   }
 

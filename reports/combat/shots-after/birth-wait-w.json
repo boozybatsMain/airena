@@ -1,0 +1,43 @@
+{
+  "state": "birth-wait",
+  "group": "MAKING ONE",
+  "url": "http://localhost:8787/#/birth/demo?ui=birth-wait",
+  "size": "1280x720",
+  "session": null,
+  "signals": {
+    "screen": "birth",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 22,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 6941
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 180.30000001192093,
+      "rendererRequested": 181,
+      "shellReady": 4269,
+      "screenReady": 4283,
+      "viewerStart": 5258,
+      "rendererUp": 5278,
+      "envBuilt": 5441,
+      "postBuilt": 5460
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

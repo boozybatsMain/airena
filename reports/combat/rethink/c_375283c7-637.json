@@ -1,0 +1,183 @@
+{
+  "id": "c_375283c7-637",
+  "name": "WEDGE-40",
+  "rating": 1170,
+  "fights": 12192,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "opus",
+    "constantsVersion": "c-8646029e",
+    "sourceChars": 7599,
+    "tacticsCard": null,
+    "sourceSha": "717cff33c43390b2ef9586eb673000a6f45d01f8b0e967a5339dfd7fa38534f4"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1975,
+    "tacticsCard": "This fighter always turns to face you and keeps chasing to close distance, but it never actually retreats or holds a preferred range — it just walks straight at you every single time it acts, even while lobbing spells. It watches for your telegraphed wind-ups and punishes them with a silence bolt at 3.7–18.7 range, then leans on a ranged poke, a mid-range lob, and a melee burst if you're on the ground up close and it has line of sight.",
+    "rating": 1170,
+    "fights": 12194,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "bolt",
+      "effects": [
+        "blind"
+      ],
+      "element": "void"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "silence"
+      ],
+      "element": "arc"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 23,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 25.7,
+      "faults": 0,
+      "thinks": 386,
+      "orders": 726,
+      "uses": 20,
+      "hits": 5,
+      "damageDealt": 168,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 770,
+      "idleInReachTicks": 277,
+      "stillTicks": 109,
+      "fuelSpent": 434,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 33.13,
+      "faults": 0,
+      "thinks": 497,
+      "orders": 995,
+      "uses": 26,
+      "hits": 6,
+      "damageDealt": 201.6,
+      "stubDamageDealt": 235.2,
+      "aliveTicks": 993,
+      "idleInReachTicks": 404,
+      "stillTicks": 253,
+      "fuelSpent": 557,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 30.47,
+      "faults": 0,
+      "thinks": 457,
+      "orders": 839,
+      "uses": 25,
+      "hits": 5,
+      "damageDealt": 168,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 913,
+      "idleInReachTicks": 343,
+      "stillTicks": 137,
+      "fuelSpent": 516,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 30.47,
+      "faults": 0,
+      "thinks": 457,
+      "orders": 839,
+      "uses": 25,
+      "hits": 7,
+      "damageDealt": 235.2,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 913,
+      "idleInReachTicks": 354,
+      "stillTicks": 60,
+      "fuelSpent": 512,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 67813,
+  "forgeMs": 61783,
+  "admitMs": 435,
+  "cardMs": 5585,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 61778,
+      "chars": 1975
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 5301,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.068022,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1975,
+  "promptHash": "9ffa0098d27b2faaa1f7184a2c23b1beaf06ca317de797f092e7b701bbca48ef",
+  "generatedAt": "2026-09-07T10:55:51.370Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T10:46:01.252Z",
+      "admitted": false,
+      "stage": "probe",
+      "problems": [
+        {
+          "code": "behaviour",
+          "message": "мозг простоял с готовым умением в досягаемости врага 56% живого времени"
+        }
+      ]
+    }
+  ],
+  "candidateSha": "5f2ca7adc70afd083bfb24bc461a6f9086f5c24845ee305bdeeb67faca86b9ea",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.742,
+    "idleInReach": 0.384,
+    "still": 0.156,
+    "casts": 24
+  },
+  "card": "This fighter always turns to face you and keeps chasing to close distance, but it never actually retreats or holds a preferred range — it just walks straight at you every single time it acts, even while lobbing spells. It watches for your telegraphed wind-ups and punishes them with a silence bolt at 3.7–18.7 range, then leans on a ranged poke, a mid-range lob, and a melee burst if you're on the ground up close and it has line of sight."
+}

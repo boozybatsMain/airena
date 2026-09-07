@@ -1,0 +1,55 @@
+{
+  "state": "fatal-offline",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/live?ui=fatal-offline",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 11,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 18217
+    },
+    "drawn": {
+      "n": 1,
+      "firstAt": 18219,
+      "firstMs": 16,
+      "lastMs": 16,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low"
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 189.40000000596046,
+      "rendererRequested": 190,
+      "shellReady": 5896,
+      "screenReady": 5907,
+      "viewerStart": 13335,
+      "rendererUp": 13350,
+      "envBuilt": 13424,
+      "postBuilt": 13432,
+      "precompiled": 17557,
+      "postWarm": 18214,
+      "rendererReady": 18217,
+      "firstDraw": 18235
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

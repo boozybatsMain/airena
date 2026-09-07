@@ -1,0 +1,62 @@
+{
+  "state": "fatal-norender",
+  "group": "THE EDGES",
+  "url": "http://localhost:8787/#/live?ui=fatal-norender",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 11,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 10,
+      "since": 11510
+    },
+    "drawn": {
+      "n": 11,
+      "firstAt": 11512,
+      "firstMs": 17,
+      "lastMs": 5,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "low",
+      "sides": {
+        "blue": "own",
+        "orange": "foe",
+        "mine": "blue"
+      }
+    },
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 178.59999999403954,
+      "rendererRequested": 179,
+      "shellReady": 5013,
+      "screenReady": 5020,
+      "viewerStart": 6278,
+      "rendererUp": 6299,
+      "envBuilt": 6378,
+      "postBuilt": 6388,
+      "precompiled": 10802,
+      "postWarm": 11509,
+      "rendererReady": 11510,
+      "firstDraw": 11529,
+      "firstMatch": 11573,
+      "firstFrame": 11577
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

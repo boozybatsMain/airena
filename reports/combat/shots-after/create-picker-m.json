@@ -1,0 +1,43 @@
+{
+  "state": "create-picker",
+  "group": "MAKING ONE",
+  "url": "http://localhost:8787/#/create?ui=picker",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "create",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 97,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 9408
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 241.5,
+      "rendererRequested": 242,
+      "shellReady": 5067,
+      "screenReady": 5097,
+      "viewerStart": 8873,
+      "rendererUp": 8897,
+      "envBuilt": 9002,
+      "postBuilt": 9018
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

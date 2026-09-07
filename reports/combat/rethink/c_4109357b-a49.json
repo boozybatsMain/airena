@@ -1,0 +1,190 @@
+{
+  "id": "c_4109357b-a49",
+  "name": "BARROW SHADE",
+  "rating": 1254,
+  "fights": 6588,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2679,
+    "tacticsCard": "This fighter is a mid-range artillery type: it tries to sit around seven and a half meters away, constantly strafing sideways and flipping its strafe direction every couple of seconds, closing in when too far and backing off when too close. It fires its lobbed shot at a predicted position slightly ahead of the enemy's movement, and only reaches for its other abilities when the main shot is on cooldown — so a large part of its kit sits idle whenever the primary is available, which is plainly wasteful.",
+    "sourceSha": "60a57830626d5c356478b59671499b8bd837b99679d0d4a31dffb29f64b37f94",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_4109357b-a49.before.60a57830.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2815,
+    "tacticsCard": "This fighter tries to sit at a comfortable range of about 9 units, closing in when the enemy retreats and backpedaling when the enemy gets too close, while sidestepping in a slow rhythmic pattern that flips direction every second or so. When it sees a telegraphed heavy strike within danger range, it dodges perpendicular to the enemy using that same strafe direction — a reasonable reflex — and otherwise throws its strongest ready skill first, correctly leading its shots based on the enemy's velocity.",
+    "rating": 1402,
+    "fights": 6621,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "damage",
+        "pull"
+      ],
+      "element": "gravity"
+    },
+    {
+      "delivery": "zone",
+      "effects": [
+        "weaken",
+        "pull"
+      ],
+      "channel": "speed",
+      "element": "gravity"
+    },
+    {
+      "delivery": "lob",
+      "effects": [
+        "damage",
+        "weaken"
+      ],
+      "channel": "speed",
+      "element": "gravity"
+    }
+  ],
+  "kitCost": 42,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 33.77,
+      "faults": 0,
+      "thinks": 507,
+      "orders": 1057,
+      "uses": 34,
+      "hits": 34,
+      "damageDealt": 217.05599999999987,
+      "stubDamageDealt": 57.12,
+      "aliveTicks": 1012,
+      "idleInReachTicks": 22,
+      "stillTicks": 4,
+      "fuelSpent": 507,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 36.43,
+      "faults": 0,
+      "thinks": 546,
+      "orders": 1138,
+      "uses": 37,
+      "hits": 29,
+      "damageDealt": 165.64799999999997,
+      "stubDamageDealt": 57.12,
+      "aliveTicks": 1092,
+      "idleInReachTicks": 25,
+      "stillTicks": 12,
+      "fuelSpent": 546,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 36.33,
+      "faults": 0,
+      "thinks": 545,
+      "orders": 1136,
+      "uses": 37,
+      "hits": 30,
+      "damageDealt": 171.35999999999996,
+      "stubDamageDealt": 85.67999999999999,
+      "aliveTicks": 1089,
+      "idleInReachTicks": 24,
+      "stillTicks": 6,
+      "fuelSpent": 545,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 16.13,
+      "faults": 0,
+      "thinks": 242,
+      "orders": 504,
+      "uses": 16,
+      "hits": 5,
+      "damageDealt": 51.408,
+      "stubDamageDealt": 245.61599999999993,
+      "aliveTicks": 483,
+      "idleInReachTicks": 10,
+      "stillTicks": 4,
+      "fuelSpent": 242,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 100809,
+  "forgeMs": 92710,
+  "admitMs": 1011,
+  "cardMs": 7083,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 92709,
+      "chars": 2815
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 8753,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.164571,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2815,
+  "promptHash": "11f0be8b106eed53bc43d73cff8ac36a1757509cd813acdb45a6e83b72e6ead1",
+  "generatedAt": "2026-09-07T10:41:34.890Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:01:38.628Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:00:36.854Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "4bed737426583ad0c9727e2c993664a31a76161c4c69c469bc0532539de35238",
+  "behaviour": {
+    "wins": 3,
+    "damageShare": 1.359,
+    "idleInReach": 0.022,
+    "still": 0.007,
+    "casts": 31
+  },
+  "card": "This fighter tries to sit at a comfortable range of about 9 units, closing in when the enemy retreats and backpedaling when the enemy gets too close, while sidestepping in a slow rhythmic pattern that flips direction every second or so. When it sees a telegraphed heavy strike within danger range, it dodges perpendicular to the enemy using that same strafe direction — a reasonable reflex — and otherwise throws its strongest ready skill first, correctly leading its shots based on the enemy's velocity."
+}

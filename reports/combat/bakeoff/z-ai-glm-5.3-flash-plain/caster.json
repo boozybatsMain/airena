@@ -1,0 +1,131 @@
+{
+  "model": "z-ai/glm-5.3-flash:plain",
+  "modelId": "z-ai/glm-5.3-flash",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Z.ai: GLM 5.3 Flash",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      {
+        "delivery": "lob",
+        "effects": [
+          "damage",
+          "blind"
+        ],
+        "element": "radiation"
+      },
+      {
+        "delivery": "zone",
+        "effects": [
+          "burn",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 156,
+      "maxSpeed": 6.36,
+      "accel": 24,
+      "turnRate": 8.5,
+      "radius": 1.44,
+      "jumpHeight": 1.28
+    }
+  },
+  "generatedAt": "2026-09-06T23:47:14.782Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 9.53,
+      "faults": 0,
+      "thinks": 143,
+      "orders": 255,
+      "uses": 8,
+      "hits": 2,
+      "damageDealt": 53.27499999999992,
+      "fuelSpent": 630,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 14.53,
+      "faults": 0,
+      "thinks": 218,
+      "orders": 355,
+      "uses": 9,
+      "hits": 3,
+      "damageDealt": 67.74999999999991,
+      "fuelSpent": 950,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 11.27,
+      "faults": 0,
+      "thinks": 169,
+      "orders": 296,
+      "uses": 8,
+      "hits": 2,
+      "damageDealt": 68.8499999999997,
+      "fuelSpent": 770,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 12.47,
+      "faults": 0,
+      "thinks": 187,
+      "orders": 358,
+      "uses": 11,
+      "hits": 2,
+      "damageDealt": 48.549999999999976,
+      "fuelSpent": 805,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0.001,
+  "referenceUsd": null,
+  "elapsedMs": 15573,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0.00100145925,
+      "elapsedMs": 15517,
+      "chars": 3349
+    }
+  ],
+  "usage": {
+    "in": 8591,
+    "out": 1469,
+    "reasoning": 240,
+    "reasoningShare": 0.16337644656228728
+  },
+  "resolvedModel": null,
+  "provider": "Z.AI",
+  "sourceChars": 3349,
+  "promptHash": "c10afa154e2741ca1f82e685e1b176b8149dbeb43e8293e0c8b570cbd93a298f",
+  "promptChars": 34956
+}

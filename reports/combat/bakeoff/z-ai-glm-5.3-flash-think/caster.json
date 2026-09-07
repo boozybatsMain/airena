@@ -1,0 +1,82 @@
+{
+  "model": "z-ai/glm-5.3-flash:think",
+  "modelId": "z-ai/glm-5.3-flash",
+  "mode": "think",
+  "channel": "openrouter",
+  "label": "Z.ai: GLM 5.3 Flash",
+  "thinkBudget": 8000,
+  "maxTokens": 131072,
+  "effort": null,
+  "creature": {
+    "id": "caster",
+    "prompt": "A hunched, slow-breathing artillery beast that keeps to the middle distance. It lobs glowing radioactive mortars that blind whoever they land on, seeds the floor with a frost field that burns cold and roots anything caught in it, and wraps itself in an icy shell when pressed. Patient, methodical, never rushes in.",
+    "kit": [
+      {
+        "delivery": "lob",
+        "effects": [
+          "damage",
+          "blind"
+        ],
+        "element": "radiation"
+      },
+      {
+        "delivery": "zone",
+        "effects": [
+          "burn",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "self",
+        "effects": [
+          "shield",
+          "heal"
+        ],
+        "element": "frost"
+      }
+    ],
+    "build": {
+      "hp": 156,
+      "maxSpeed": 6.36,
+      "accel": 24,
+      "turnRate": 8.5,
+      "radius": 1.44,
+      "jumpHeight": 1.28
+    }
+  },
+  "generatedAt": "2026-09-06T23:44:58.918Z",
+  "admitted": false,
+  "stage": "forge",
+  "costUsd": 0,
+  "elapsedMs": 308,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 8000,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    },
+    {
+      "attempt": 1,
+      "thinkBudget": 2000,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    }
+  ],
+  "usage": null,
+  "problems": [
+    {
+      "code": "rejected",
+      "message": "the mind returned nothing usable"
+    }
+  ],
+  "promptHash": "c10afa154e2741ca1f82e685e1b176b8149dbeb43e8293e0c8b570cbd93a298f",
+  "promptChars": 34956
+}

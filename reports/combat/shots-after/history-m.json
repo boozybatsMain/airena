@@ -1,0 +1,47 @@
+{
+  "state": "history",
+  "group": "THE RECORD",
+  "url": "http://localhost:8787/#/history",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "history",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen history",
+    "mounted": 1,
+    "nodes": 504,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 7876
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "low",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 138.69999998807907,
+      "rendererRequested": 139,
+      "shellReady": 1553,
+      "screenReady": 1943,
+      "viewerStart": 7417,
+      "rendererUp": 7428,
+      "envBuilt": 7523,
+      "postBuilt": 7531
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": [
+    "“Claude Sonnet” under div.rail at left+centre+right",
+    "“16:17” under div.rail at left+centre+right",
+    "“1,523” under div.rail at left+centre+right"
+  ]
+}

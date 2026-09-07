@@ -1,0 +1,50 @@
+{
+  "state": "live-away",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=away",
+  "size": "1280x720",
+  "session": "loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture",
+  "signals": {
+    "screen": "live",
+    "phase": "searching",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 8,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 7672
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 198.2999999821186,
+      "rendererRequested": 199,
+      "shellReady": 4829,
+      "screenReady": 4844,
+      "viewerStart": 5912,
+      "rendererUp": 5959,
+      "envBuilt": 6131,
+      "postBuilt": 6150
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 0,
+      "ok": false,
+      "ms": 0
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture"
+  ],
+  "overlaps": [],
+  "covered": []
+}

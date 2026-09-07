@@ -2274,6 +2274,1728 @@
    "text": "The return value says only that the ORDER was",
    "model": "claude-sonnet-5",
    "rubric": "a9a7dccdf1316489"
+  },
+  "70e8173e3c885f77a5625165": {
+   "c": 3,
+   "text": "cooldown            1.8 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8c02b0478b55a6f612a63eb6": {
+   "c": 3,
+   "text": "cooldown            2.6 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "005ae77094bc0179dc4a7aa4": {
+   "c": 3,
+   "text": "cooldown            3.033 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0e15aea6d3b152b1a02c442d": {
+   "c": 3,
+   "text": "cooldown            2.4 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "14eaf7732c10fd376599d825": {
+   "c": 3,
+   "text": "cooldown            3.9 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "828d719b42f5955b790c06a4": {
+   "c": 3,
+   "text": "cooldown            4 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bed29c3297501726a5a97599": {
+   "c": 3,
+   "text": "impact              6 m/s of knockback (decaying at 9 m/s^2) and 0.4 s of stun, and it cancels whatever the target was casting",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "98c9fff5c9e72d2b8d0a0cd7": {
+   "c": 3,
+   "text": "cast                0.3 s of wind-up, then it lands, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "97285e466a0f74123c1af755": {
+   "c": 3,
+   "text": "cast                0.5 s of wind-up, then it lands, then 0.2 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2adb5e8c2ecf8d29703d6c9c": {
+   "c": 3,
+   "text": "cooldown            3 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "398635d32fab706b2b94cea8": {
+   "c": 3,
+   "text": "cast                0.667 s of wind-up, then it lands, then 0.1 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f0580a24196999350e2ce6f8": {
+   "c": 3,
+   "text": "cast                0.467 s of wind-up, then it lands, then 0.233 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78aa45f95222906b82187edf": {
+   "c": 3,
+   "text": "cast                0.367 s of wind-up, then it lands, then 0.133 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9cb906d6320a281722ba5497": {
+   "c": 3,
+   "text": "cast                0.3 s of wind-up, then it lands, then 0.2 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bc6bc0d28c5ff50e0fff65d1": {
+   "c": 3,
+   "text": "cooldown            2 s, counted from the step the order is applied; the wind-up and the recovery run inside it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "821900ae0a6a996ead3a1453": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.776 and your turn rate by 0.832; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c5b6e18d5dcfd312d89f0ead": {
+   "c": 3,
+   "text": "aim                 your facing at the strike: api.use(name, {x, z}) turns you toward the point during the wind-up, at your turn rate",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "661ca562ff6322a58f52373f": {
+   "c": 3,
+   "text": "delivery            cone — a wedge from your centre, 55 degrees either side of your facing at the strike, measured to the other body's CENTRE, reaching 3.4 m to its surface. It needs a clear centre-to-centre line, and it sweeps the FLOOR: a body above 0.35 m when it lands takes nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "96271d2e87e275b3f74666fe": {
+   "c": 3,
+   "text": "effect damage       takes 16.8 hp off what it hits",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2401c963cf0f8f53641b6808": {
+   "c": 3,
+   "text": "effect knock        an impulse of 4.5 m/s on what it hits, away from you, decaying at 9 m/s² — about 1.13 m of travel whatever the body weighs or wants; a cancellable wind-up it lands on is cancelled",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "092c87edcbbc80a8eb81ce33": {
+   "c": 3,
+   "text": "cooldown            2.6 s, counted from the step the order is applied; the wind-up and the recovery run inside it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5a5c3dc1f13c95bda39dc8ee": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.6 and your turn rate by 0.7; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bb4a9a2dc46e23396f38dc04": {
+   "c": 3,
+   "text": "aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e8afa080b72b0b3e88da107c": {
+   "c": 3,
+   "text": "delivery            lob — a projectile released at the strike from 1.8 m ahead of your centre, at 12 m/s, toward a landing spot fixed at the strike; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. The spot is clamped at the strike: never nearer than 3.3 m, never past 15 m, never nearer the arena's edge than 1.8 m. On landing a circle of 1.8 m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5734e4dad283fb2f437e59b2": {
+   "c": 3,
+   "text": "effect burn         sets what it hits on fire at 6.25 hp per second for 3 s; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire replaces the first with the longer time and the stronger rate, it never adds",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1eb912dc40a4f012c2d9e60b": {
+   "c": 3,
+   "text": "cooldown            3 s, counted from the step the order is applied; the wind-up and the recovery run inside it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2075ef15c161ff84265d76de": {
+   "c": 3,
+   "text": "delivery            blink — your body is moved up to 6.5 m on the step you order it — toward the point you pass in api.use(name, {x, z}), stopping at it; or along the direction pair you pass; or along your facing — never ending inside a block. You are invulnerable for 0.267 s from the landing; your velocity is cut to 0.3 of what it was. No wind-up, so nothing telegraphs it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8ddac34af5716ace436cdc0d": {
+   "c": 3,
+   "text": "distance            6.5 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "727789658fbbe21ff5190694": {
+   "c": 3,
+   "text": "effect cleanse      removes fire, root, blindness, silence, stun and every weaken from you; not a shield, not a boost, not an immunity",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7c278daebb9d7b8aebc149df": {
+   "c": 5,
+   "text": "HOW THE PIECES INTERACT",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "337528b1b2726a8f96d5e858": {
+   "c": 3,
+   "text": "One cast, in order. When your thought returns, the order is applied on that same step, and the ability's cooldown starts on that step — the wind-up and the recovery both run inside it. During the wind-up your body keeps moving at the card's share of its top speed and keeps turning at the card's share of its turn rate. The strike happens on the first step at or past the wind-up, and everything about where it goes is read at THAT instant — your facing, your aim point, the enemy's position for a disc or a mortar with no aim point — never at the instant you ordered it. The recovery follows: nothing can be started until it ends.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a53db3232cb386cc5e4aa634": {
+   "c": 3,
+   "text": "The wind-up is visible to your opponent: their p.enemy.casting.telegraph is true from their next thought until the strike, their casting.skill names the ability, and their p.enemy.kit[skill] holds its numbers. Yours shows you the same about them. casting.remaining counts down to the end of the RECOVERY; the strike lands when casting.elapsed reaches the ability's wind-up.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9a7856baf6f156d6d449dd01": {
+   "c": 3,
+   "text": "What either of you does is seen by the other no earlier than the other's next thought: perception is built for both sides before either side's orders are applied, and one thought is 2 steps.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78f67b7ec846bb00911fc480": {
+   "c": 3,
+   "text": "Aiming. api.use(name, { x, z }) names a point on the ground. Your body turns toward it at your turn rate, exactly as api.faceAt would. A beam, a bolt, a fan or a lunge goes where the body points at the strike. A mortar and a disc land ON the point, clamped to their range. A blink goes toward the point and stops there when it is nearer than the blink's distance. With no point, everything uses your facing at the strike, and a mortar or a disc lands at the enemy's distance as it stands then. The facing you have at the strike is the one you had at the order plus whatever turning the wind-up allowed.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a6b7c980bf4e2a2525ea2c55": {
+   "c": 3,
+   "text": "Things in flight and on the floor. A bolt in p.arena.projectiles continues along its vx, vz for 'left' seconds and connects with a body whose centre comes within 1.85 m of it. A mortar (arc: true) comes down at x + vx·left, z + vz·left, and its splash circle catches a body whose centre is within the splash plus that body's radius. A disc in p.arena.zones does not say which ability made it; the disc-shaped ability in that side's kit is the one, and a side keeps at most one disc per ability on the floor. A raised wall is in p.arena.obstacles with 'until' (seconds left) and 'by' (the side that raised it), and api.los, api.ray and api.pathTo know it like any block.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e242eb53b645c6892577ea26": {
+   "c": 3,
+   "text": "What a hit does, in order. Damage passes through the attacker's damage channel, then the defender's armor channel (a divisor), then the defender's shield, then hp. A body inside its invulnerability window takes nothing and the attacker is told 'missed' with reason 'invulnerable'. A hit the shield ate whole is still a hit: both sides get their event with amount 0 and the 'absorbed' figure. Fire takes hp every step at its rate, through the shield's absorption and past both channels, and announces itself as { type:'burning', skill:'burn', hp } once every 10 hp, never as 'damaged'. The arena's burn from 30 s ignores shields and channels and takes a fraction of MAXIMUM hp: a heal changes how long it takes, a shield does not.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6e93381d3a274b8fd18e8fed": {
+   "c": 3,
+   "text": "Statuses. Stunned: no movement, no turning, no new ability, and a cancellable wind-up that is running is cancelled with its cooldown spent. Rooted: no movement; turning, abilities and impulses all work. Silenced: no new ability, refused with reason 'silenced', except an aura, blink or leap of yours that carries a cleanse; a cancellable wind-up is cancelled. Blinded: your p.enemy block — position, velocity, dist, visible, casting — is the one from 1 s ago, and p.self.blinded is true. None of these touches a projectile already in flight, a disc already on the floor, or a wall.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "262b4182adb140a694705125": {
+   "c": 3,
+   "text": "Nothing stacks. A second application of the same status replaces or extends the first: the longer time stands, the stronger fire stands, the larger shield stands. When a control ends it leaves an immunity behind: 'act' (no stun, no silence) and 'move' (no stun, no root) after a stun, 'move' after a root, 'act' after a silence, 'sense' (no blind) after a blind — for the seconds on the card. p.self.immune and p.enemy.immune list the classes in force; a control refused this way is a 'missed' with reason 'immune' and the effect's name.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "435d9db1ff75a8e45f30838e": {
+   "c": 3,
+   "text": "A wind-up longer than 0.2 s is cancellable; a stun, a silence, a knock or a pull that lands during it cancels it, and you get { type:'interrupted', skill, by } — or { type:'interruptedEnemy', skill } when it was theirs.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2bf3926daa3dab84e16b949a": {
+   "c": 3,
+   "text": "Impulses. A knock or a pull is a velocity on a slot of its own that decays at 9 m/s² whatever the body is doing; it moves the body by about the impulse squared over twice that. A body pushed into a wall or a block stops there.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1f44ce2093cbbd61242a77c5": {
+   "c": 3,
+   "text": "Leaving the ground. A leap is a crouch, an airborne phase and a landing. Its own effects apply at take-off. From the crouch to the end of the landing no ability can be started (refused with reason 'airborne') and the horizontal velocity is the one you had at take-off. Above 0.35 m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath; a beam, a bolt and a mortar hit exactly as on the ground. { type:'landed' } arrives on the step you touch down. A blink has no wind-up, so nothing telegraphs it; it is invulnerable for its card's seconds from the landing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "eef3dd8c1d587298c02c4449": {
+   "c": 3,
+   "text": "What is announced and what is not. p.events keeps at most 32 entries between two thoughts, oldest first. A bolt that hits a block or flies out of range announces nothing; a disc that catches nobody announces nothing; a mortar that lands on nobody announces 'missed' with reason 'aim'. No event marks a status landing on you: read p.self.stunned, rooted, silenced, blinded, burning, shield, invulnerable, immune — and p.enemy.stunned, rooted, burning, shield, invulnerable, immune.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "87d42f846fc04293ff8fd88a": {
+   "c": 1,
+   "text": "recover, cooldown, aim, magnitudes } and whichever of range,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5fc57272f7ec5b346f744b13": {
+   "c": 1,
+   "text": "radius, splash, distance, halfAngle, speed, damage, ticks,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c5b09b6c177881d700a666da": {
+   "c": 1,
+   "text": "airborne, duration, dashSpeed, iframes its delivery has. aim is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e633319472363b841f61408b": {
+   "c": 1,
+   "text": "'point' | 'facing' | 'none' — how api.use(name, {x, z}) is read.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bfc4be981a61034b864f1b06": {
+   "c": 1,
+   "text": "magnitudes is { effectId: { mag, duration, immune, channel } }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4cf3396bfef571c1e4658f55": {
+   "c": 3,
+   "text": "as compiled on this ability. It is rebuilt for every thought",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "02feb47d93f7c931e038f75f": {
+   "c": 3,
+   "text": "from the set you are actually holding, which is not necessarily",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7bbab061ac51c61c943cbfae": {
+   "c": 3,
+   "text": "the set the tables above were printed from",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "74977f2bcbaa658b7e86b9b8": {
+   "c": 1,
+   "text": ".blinded .silenced .rooted .burning",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9bbef7dedb956bbf9d1c8599": {
+   "c": 3,
+   "text": "true while the status holds",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f029100cec1f1de172f9e083": {
+   "c": 1,
+   "text": ".shield       hp of absorption left on you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cad27be0143524c3b678e511": {
+   "c": 1,
+   "text": ".immune       the control classes that cannot land on you right now:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "30058809e0d31723428d3101": {
+   "c": 3,
+   "text": "'act' | 'move' | 'sense'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b35c7268d52fb3264c0c6258": {
+   "c": 1,
+   "text": ".shield .rooted .burning .immune",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6e0fdfa26f3c29bdb35ad9ab": {
+   "c": 5,
+   "text": "the same meanings, for them",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "888060c96377cd32d9607d06": {
+   "c": 1,
+   "text": ".obstacles    [{ x, z, hx, hz }] — the blocks, as half-extents; a raised wall",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4688c0e41c82ca835c9de3a0": {
+   "c": 3,
+   "text": "carries until (seconds left) and by (the side that raised it)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fafe892377258fe0feb38f3a": {
+   "c": 1,
+   "text": "p.events        what happened to you since your last thought, oldest first,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "04fe4d3d10e12a49f5da729a": {
+   "c": 3,
+   "text": "at most 32 of them. Each is { type, ... }:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b652a613dd2d58bdfe8bf40e": {
+   "c": 1,
+   "text": "{ type:'damaged', skill, amount, hp, from:{x,z}, absorbed? }   you were hit; amount is what",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b7f592f0972adc04f80c698a": {
+   "c": 3,
+   "text": "reached hp, absorbed what a shield took",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "81e11ca179b95df1d27867e2": {
+   "c": 1,
+   "text": "{ type:'dealt', skill, amount, enemyHp, absorbed? }      you hit them, same figures",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "df6a8dd437ed089bba448e9b": {
+   "c": 1,
+   "text": "{ type:'missed', skill, reason, effect? }                your ability landed on nothing, or a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fca58a0dc7007924e22f6358": {
+   "c": 3,
+   "text": "control of yours was refused.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "be4c5d3b4ee4763ec3552c7c": {
+   "c": 3,
+   "text": "reason: 'aim' | 'cover' | 'range' | 'airborne' | 'invulnerable' | 'immune'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "504061a9a2d10c05a4fb9fef": {
+   "c": 1,
+   "text": "{ type:'landed' }                                        your leap finished",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7d5aa9f2d817730a3c3beacd": {
+   "c": 1,
+   "text": "{ type:'knockback', by }                                 an impulse landed on you",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "40faec5fff30bfae92e608d0": {
+   "c": 1,
+   "text": "{ type:'interrupted', skill, by }                        your wind-up was cancelled",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bc44793e70b3a1965acfe1f7": {
+   "c": 1,
+   "text": "{ type:'burning', skill:'burn', hp }                     an enemy's fire is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "857d36e8d7873af01a841904": {
+   "c": 3,
+   "text": "reason: 'cooldown' | 'busy' | 'stunned' | 'silenced' | 'airborne' | 'dead' | 'unknown'",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ebdb305fff5a1e0ebd39b6eb": {
+   "c": 1,
+   "text": "{ type:'enemyStarted', skill, windup }                   they began something; windup as declared",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "350b8cd94f332a5081c9cca2": {
+   "c": 1,
+   "text": "{ type:'enemyCommitted', skill }                         their lunge direction is now locked",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d5be3a350e8909dfecc0f6e9": {
+   "c": 1,
+   "text": "api.stop()              Drop the movement order. api.face(dx, dz)        Turn toward a direction. Stands until replaced. api.faceAt(x, z)        Turn toward a point, measured when you call it. api.use(name)           Order an ability along your facing at the strike. api.use(name, {x, z})   Order it AT a point on the ground: you turn toward the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8fad6b55c6ee5f4c3aa03a6e": {
+   "c": 3,
+   "text": "point at your turn rate, as api.faceAt would; a mortar",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "80edd0cc0724efe7a388c15e": {
+   "c": 3,
+   "text": "and a disc land ON it, clamped to range; a blink goes",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "629a92f2d045e0cb00cb5fd7": {
+   "c": 3,
+   "text": "toward it and stops there; a beam, fan, bolt or lunge",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "30fc7476af9c98d381be4a95": {
+   "c": 3,
+   "text": "goes where you point at the strike (aim in p.self.kit",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1204a806c5864839a624ef05": {
+   "c": 3,
+   "text": "says which of the three an ability is).",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6b4cb29c33f2a44db59b3691": {
+   "c": 1,
+   "text": "api.use(name, metres)   Mortar only: the landing distance along your facing. api.use(name, dx, dz)   Blink only: a direction. For every other delivery a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "209609503485ae1f3ed7ea4e": {
+   "c": 3,
+   "text": "pair is ignored and the ability goes along your facing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "48da321011c3d4e8dea3917b": {
+   "c": 3,
+   "text": "The return value of every form says only that the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aaa7e68f1cc7095b46e67bd8": {
+   "c": 3,
+   "text": "ORDER was accepted, not that the ability started:",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7e5b4f28f9fe98e8ea34c38d": {
+   "c": 3,
+   "text": "orders are applied after your thought finishes, and one",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "944e4694d44a6d8772ec0c68": {
+   "c": 3,
+   "text": "can still be refused there — on cooldown, already busy,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b22a170d36073f7bf285b962": {
+   "c": 3,
+   "text": "stunned, silenced, off the ground. A refusal arrives as",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "52e78347bf7bccca26b6c55a": {
+   "c": 1,
+   "text": "a 'refused' event on your next thought. api.ready(name)",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9fc1593d708202cf7eed91fb": {
+   "c": 3,
+   "text": "tells you in advance.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6e68fe5d79c5de94c5ee1322": {
+   "c": 1,
+   "text": "api.ready(name)         true when api.use(name) would start: cooldown over,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "71c49694e06e6b183334d4bc": {
+   "c": 3,
+   "text": "nothing of yours running, not stunned, not silenced",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7736e93971f97b29014d3e39": {
+   "c": 3,
+   "text": "(a cleanse-carrying aura, blink or leap excepted), on",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5b1f7546140edb5beb646f1e": {
+   "c": 3,
+   "text": "the ground, alive.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "652c0e0de48eb5ee80704508": {
+   "c": 1,
+   "text": "api.cooldown(name)      seconds left, 0 when ready. api.los(x, z)           true when nothing solid sits between your centre and",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4f9b4f75feb1a9c2dd61e31f": {
+   "c": 1,
+   "text": "when something released from shooter now and",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "298f20a74414a2a2dadf8cc6": {
+   "c": 1,
+   "text": "travelling at \"speed\" reaches it. Returns the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f5c159e628808bb99425f28a": {
+   "c": 1,
+   "text": "target's own position when speed is 0. A bolt and",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "443cbdbedad592adc808efb8": {
+   "c": 1,
+   "text": "a mortar have a speed (p.self.kit[name].speed) and",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "848ae842c5fab717f66f5cb5": {
+   "c": 1,
+   "text": "are released at the strike, wind-up seconds after",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "162244de78cafd8ecbeab678": {
+   "c": 1,
+   "text": "the order, from 0.3 m ahead of your centre; a beam",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a16ab77d2b2481711873c993": {
+   "c": 1,
+   "text": "has none.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1d0d5e9454bcb298a92aaebe": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.48 and your turn rate by 0.61; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cfcf2ea719aad002221b667d": {
+   "c": 3,
+   "text": "delivery            beam — a straight line from your muzzle along your facing at the strike. It stops at the first block, wall or body it meets, and a body is hit when its surface enters the beam's margin. Height is not consulted: a body in the air is hit like one on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5ba103c84aaa45c13a05a87a": {
+   "c": 3,
+   "text": "effect damage       takes 16 hp off what it hits",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5a4ee0dfa9bb47c513f37e0c": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.64 and your turn rate by 0.73; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6a803085d5bcda32cbd7c08d": {
+   "c": 3,
+   "text": "delivery            zone — a disc of 3 m placed at the strike — on the point you pass in api.use(name, {x, z}), clamped to 12 m, or with no point along your facing at the enemy's distance or 12 m, whichever is shorter. It works for 2.4 s: on the step it lands and every 0.5 s after, 5 ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above 0.35 m. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cf69bd89fee878c6d8f5fad9": {
+   "c": 3,
+   "text": "lasts               2.4 s on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5acd1f306f36a3291f0bbfa4": {
+   "c": 3,
+   "text": "effect weaken       multiplies the target's top movement speed (shown live in p.self.maxSpeed) by 0.93 for 0.672 s; a new weaken on the same channel replaces it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5300da60d973d5eeb4ad44d5": {
+   "c": 3,
+   "text": "cooldown            2.4 s, counted from the step the order is applied; the wind-up and the recovery run inside it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "298e5d57579bd2724dccc085": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 1 and your turn rate by 1; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "054debc50251d925975f61d4": {
+   "c": 3,
+   "text": "aim                 none",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ddb8c9c122eb8524866d2e51": {
+   "c": 3,
+   "text": "delivery            jump — a crouch, 0.567 s in the air, a landing. Its effects apply at take-off. Nothing can be ordered from the crouch to the end of the landing (refused with reason 'airborne'), and your horizontal velocity is frozen at take-off. Above 0.35 m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath you; a beam, a bolt and a mortar hit exactly as on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e33f45d376a903763b09c886": {
+   "c": 3,
+   "text": "effect shield       12 hp of absorption before hp, for 2.5 s, against ability damage and fire, not against the arena's burn; a second shield keeps the larger figure and the later time; visible as p.self.shield and p.enemy.shield",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8f8cb3d2d242f384863b3439": {
+   "c": 3,
+   "text": "cast                0.2 s of wind-up, then 0.4 s of travel, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "48244ffdb0400fe65885e7ef": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.856 and your turn rate by 0.892; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bf43452faf9102b88adf5ed2": {
+   "c": 3,
+   "text": "delivery            dash — at the end of the wind-up your heading locks and your body travels 8 m along it at 20 m/s — 0.4 s of travel — and stops the moment it reaches a body, a block or a wall. A body whose centre is within 3 m of your path is hit on contact, unless it is above 0.35 m, in which case you pass underneath. You cannot turn or steer during the travel",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ef72d457f6c724e71d4a4b5c": {
+   "c": 3,
+   "text": "effect stun         for 0.8 s the target cannot move, turn or start an ability, and a cancellable wind-up it lands on is cancelled with its cooldown spent; a stun during a stun does not add; 3 s of immunity to every 'act' and 'move' control follow it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5c4fd7f4aadc5ce82713c257": {
+   "c": 3,
+   "text": "cooldown            2.2 s, counted from the step the order is applied; the wind-up and the recovery run inside it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4fca544bc9ce77a02de5ef9e": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.728 and your turn rate by 0.796; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "61157e937f72d838e8a11cf9": {
+   "c": 3,
+   "text": "delivery            bolt — a projectile released at the strike from 1.8 m ahead of your centre, along your facing at the strike, at 22 m/s. It connects with a body whose centre comes within 1.85 m of it; a block or a wall ends it, and that ending announces nothing. It is visible to both sides in p.arena.projectiles",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ac922e4d9f1a760ef298b67c": {
+   "c": 3,
+   "text": "effect blind        for 1.8 s the target's p.enemy block — position, velocity, dist, visible, casting — is the one from 1 s ago, and its p.self.blinded is true; 3 s of immunity to every 'sense' control follow it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "13e3e2bb40733337f1d39fd2": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.76 and your turn rate by 0.82; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "72f283d1179ea7d05ac0f018": {
+   "c": 3,
+   "text": "delivery            self — at the strike its effects happen to you, where you stand",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "73d227630a2bec57f5aa48c5": {
+   "c": 3,
+   "text": "effect heal         puts back 15% of the hp you are missing, never less than 5 and never more than 20, never above maximum",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5fde5cb86160b20dfbc580e9": {
+   "c": 3,
+   "text": "reach               16.5 m between the two centres, at the very most: the disc lands on your aim point clamped to your range, or with no point along your facing at their distance or your range, whichever is SHORTER, and it works on a body whose centre is within 3 m of the disc plus their own 1.5 m of radius",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a237c07887493bd7c527516e": {
+   "c": 3,
+   "text": "effect damage       takes 28.56 hp off what it hits",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5451c6fff168c2a71dc541d6": {
+   "c": 3,
+   "text": "effect knock        an impulse of 5.1 m/s on what it hits, away from you, decaying at 9 m/s² — about 1.44 m of travel whatever the body weighs or wants; a cancellable wind-up it lands on is cancelled",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d112d2651ed418e804b6f915": {
+   "c": 3,
+   "text": "effect burn         sets what it hits on fire at 9.8 hp per second for 3 s; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire replaces the first with the longer time and the stronger rate, it never adds",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d1f160f63183c43a195abb81": {
+   "c": 1,
+   "text": ".kit          the same shape, for their three, keyed by the names in their",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1fd96da8a75cbc5e80f1b264": {
+   "c": 3,
+   "text": ".skills. A creature of the arena's reference stock holds",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4175656bb154c17b3fbb8318": {
+   "c": 3,
+   "text": "laser, blink and jump or smash, charge and jump instead of",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3a09753397d6c812b33f4f93": {
+   "c": 3,
+   "text": "k1..k3; those are presented in this same shape (laser as a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6db15f05d7a78c012a10078f": {
+   "c": 3,
+   "text": "beam, smash as a fan, charge as a lunge), so .kit is never null",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4fa4937412ec60e157595ae9": {
+   "c": 3,
+   "text": "effect damage       takes 24 hp off what it hits",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d4ab7e10f06496e1a268b2a0": {
+   "c": 3,
+   "text": "effect weaken       multiplies the target's top movement speed (shown live in p.self.maxSpeed) by 0.902 for 0.784 s; a new weaken on the same channel replaces it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "eaf895a52f28db3b93d62f5f": {
+   "c": 3,
+   "text": "effect stun         for 1 s the target cannot move, turn or start an ability, and a cancellable wind-up it lands on is cancelled with its cooldown spent; a stun during a stun does not add; 3 s of immunity to every 'act' and 'move' control follow it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5e3a0afb78257ebb66909d95": {
+   "c": 3,
+   "text": "effect blind        for 2.2 s the target's p.enemy block — position, velocity, dist, visible, casting — is the one from 1 s ago, and its p.self.blinded is true; 3 s of immunity to every 'sense' control follow it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "430e0319ed4791767409ee80": {
+   "c": 3,
+   "text": "effect heal         puts back 12% of the hp you are missing, never less than 4 and never more than 16, never above maximum",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "87a29909cae77349f46fc638": {
+   "c": 3,
+   "text": "damage              24",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "159c2a616beb57ee197ca696": {
+   "c": 3,
+   "text": "cooldown            2 s, counted from the moment it starts",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b0b766c3f019531bb9a716c0": {
+   "c": 3,
+   "text": "damage              33.6",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6fe3bddd864e5a747f1216d4": {
+   "c": 3,
+   "text": "to think, so the first value you ever see is 2",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7d33e010c298bb3dad88c712": {
+   "c": 3,
+   "text": "or one less — the match seed decides which — and never zero",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6267cc53ec7a3bd14d30d084": {
+   "c": 1,
+   "text": "skills              k1, k2, k3, hop",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2d1ba6a33b883ab5851183cf": {
+   "c": 3,
+   "text": "effect burn         sets what it hits on fire at 9.8 hp per second for 3 s; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire on a burning body adds its length to the time still burning, up to twice its own length, and keeps the stronger rate; a disc's ticks keep its fire alive rather than lengthening it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "fab6e354c63bcb476230ccd8": {
+   "c": 5,
+   "text": "hop",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dfe577d4cdb1ec7700d1666f": {
+   "c": 1,
+   "text": ".kit          your skills as LIVE numbers, under the same names api.use",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c0366821ba13c460b7683368": {
+   "c": 1,
+   "text": "takes: the three your creature holds, and hop, the verb every",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e7e541ae682d4a422646c296": {
+   "c": 1,
+   "text": "fighter has for free. An entry carries { kind, element,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e11da21744912d8c2c1e80f4": {
+   "c": 1,
+   "text": "effects, channel, windup, recover, cooldown, aim, magnitudes,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0bbb0828c213ed8be38dcc41": {
+   "c": 1,
+   "text": "universal, cost } — the last two only on hop, where universal",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7b7e369734b8a33c0a5d7fea": {
+   "c": 1,
+   "text": "is true and cost is 0, so the three you own carry neither",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5323eb34489876b91c36fb9e": {
+   "c": 1,
+   "text": "field — and whichever of range,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5ac4eac49b4734adda50b811": {
+   "c": 3,
+   "text": "effect heal         puts back 9% of the hp you are missing, never less than 4 and never more than 12, never above maximum",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "655d05f5d17d05e8934f8f89": {
+   "c": 1,
+   "text": ".y            height above the ground; > 0 only while you are off the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8ef2b412aa1fb0d1c0fbe198": {
+   "c": 1,
+   "text": ".busy         true while any skill of yours is running, the crouch and the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "421613d88e4a41739db11086": {
+   "c": 1,
+   "text": "landing of a hop or a leap included",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "854e678998b550eedc95ee48": {
+   "c": 1,
+   "text": "api.rand()              a number in [0,1). Seeded per match. api.remember(key, value) Store anything JSON can hold. 48 keys, and a key",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "75c9ed35ac9fbbf3b7d4f371": {
+   "c": 3,
+   "text": "longer than 32 characters is cut to its first 32",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6a7e9ebbf5085d07aeacbd2e": {
+   "c": 3,
+   "text": "— two long keys with the same opening are one key. A",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "79d22ba185df42e3f0084bdf": {
+   "c": 3,
+   "text": "value whose JSON runs past 4096 characters, or that",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1ff083389b4ff91272459b85": {
+   "c": 3,
+   "text": "JSON cannot hold, is dropped in silence, and so is a",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "eba58cfa744b0168fc523631": {
+   "c": 3,
+   "text": "new key once the 48 are full.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "48f43a7866eb059a9133dc77": {
+   "c": 1,
+   "text": "api.recall(key, fallback) api.forget(key) api.say(text)           Up to 90 characters, shown above your body to whoever is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2ea85ca85207a1a9e2b90325": {
+   "c": 3,
+   "text": "watching, and accepted at most once every 4 s: a line",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0e52b4c8b47fcbc0233604a3": {
+   "c": 3,
+   "text": "inside that window is dropped in silence — no fault, no",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "cfaf95c04d284e4303d27640": {
+   "c": 3,
+   "text": "event, no order spent. It has no effect on the fight.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5c256f126bc5a810af245874": {
+   "c": 3,
+   "text": "move, face, use and say are QUEUED and applied together once your thought returns, so calling one of them twice in one thought keeps the LAST call and the earlier one never happens: no half of a thought can watch the other half act. move, moveTo and stop share the one movement slot, and face and faceAt share the one facing slot. remember and forget are the exception to the queue — they write through the instant you call them, so one thought can store several keys and read them back immediately — but they are not an exception to the count: each one spends an order like any other. 64 orders are honoured per thought; the rest are dropped. recall spends a perception call, not an order. The perception verbs — ready, cooldown, los, ray, pathTo, rand, recall — have their own separate allowance of 400, so probing the world can never eat into the orders you meant to give.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "8cbf293873eeace311dec9a8": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.776 and your turn rate by 0.832; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2927e5452bb322f5948843a6": {
+   "c": 3,
+   "text": "aim                 your facing at the strike: api.use(name, {x, z}) turns you toward the point at your turn rate, and the point holds for the whole wind-up: a later api.face or api.faceAt does not replace it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "18b92abf7fa4c867dcaa82d7": {
+   "c": 3,
+   "text": "effect knock        an impulse of 5.1 m/s on what it hits, away from you, added to whatever impulse it already carries and decaying at 9 m/s² — a shade under 1.44 m of travel whatever the body weighs or wants — the impulse is dropped to zero the moment it decays below 0.4 m/s, and the world moves the body in whole steps; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1103ba82994320d82cb8fb1b": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.6 and your turn rate by 0.7; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "797dd5629bf13231f15193da": {
+   "c": 3,
+   "text": "aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point, and the point holds for the whole wind-up: a later api.face or api.faceAt does not replace it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4e04cbec4bd84924f26a1de5": {
+   "c": 3,
+   "text": "delivery            lob — a projectile released at the strike from 1.8 m ahead of your centre, at 12 m/s, toward a landing spot read at the strike; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. A named point is where it comes down whatever you did during the wind-up — both the direction and the distance are measured at the strike, from where you stand then. The spot is clamped at the strike: never nearer than 3.3 m, never past 15 m, never nearer the arena's edge than 1.8 m. On landing a circle of 1.8 m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b4d000f6f56cfd04264b7c3b": {
+   "c": 3,
+   "text": "slot                universal — every fighter carries this verb, no budget pays for it and no set can decline it. In perception its entry is the only one with universal: true and cost 0",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4574e865f6eb7a54c91c7aba": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 1 and your turn rate by 1; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "57cab91ad6e09c48f705f36b": {
+   "c": 3,
+   "text": "aim                 none — a point handed to it turns you not at all and changes nothing",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "51a6ad51a92a4447f908b114": {
+   "c": 3,
+   "text": "delivery            jump — a crouch, 0.567 s in the air, a landing. Its effects apply at take-off. Nothing can be ordered from the crouch to the end of the landing, and your horizontal velocity is frozen at take-off. Above 0.35 m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath you; a beam, a bolt and a mortar hit exactly as on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a96c5ddfd023d20fb70ded38": {
+   "c": 3,
+   "text": "refusals            an ability ordered while you are in the air is refused with reason 'airborne'; one ordered during the crouch or the landing is refused with reason 'busy', because you are on the ground for both",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c3c66ceea310542ecafcb58f": {
+   "c": 3,
+   "text": "The cards above are the verbs you are holding as this is written: the three your creature bought, plus hop. The three can be exchanged for three others between one match and the next, and you are NOT rewritten when they are: the same program you are writing now runs with the new set. So a range copied out of the table above and typed into your source as a number describes a skill you may no longer have, and nothing will tell you it has stopped being true.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e6f53666f8717e47d031c25a": {
+   "c": 3,
+   "text": "The live figures are in perception, under p.self.kit, keyed by the same names api.use takes; the opponent's are under p.enemy.kit. They are rebuilt for every thought, from the set actually equipped. Their windup, recover and cooldown are the DECLARED figures — the ones the ability was compiled with — while the cards above print the SERVED ones, which is what the world runs: a phase ends on the first step at or past its length, and a countdown is subtracted one step at a time until it crosses zero. The two never differ by a whole step of the world's clock, and the served figure is the one a fighter experiences.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aabed35ba289e21ed088d94b": {
+   "c": 3,
+   "text": "One cast, in order. When your thought returns, the order is applied on that same step, and the ability's cooldown starts on that step — the wind-up and the recovery both run inside it. From the order to the end of the recovery your body moves at the card's share of its top speed and turns at the card's share of its turn rate: the recovery is slowed exactly as much as the wind-up. The strike happens on the first step at or past the wind-up, and everything about where it goes is read at THAT instant — your facing, your aim point, the enemy's position for a disc or a mortar with no aim point — never at the instant you ordered it. The recovery follows: nothing can be started until it ends. No ability in this world, bought or free, has a cooldown longer than 3 s.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0ac40f13100e19fc60668d5c": {
+   "c": 3,
+   "text": "Aiming. api.use(name, { x, z }) names a point on the ground. An aim point is a LOCK for the whole wind-up: your body re-derives its heading from the point on every step of the wind-up, and api.face or api.faceAt called on a later thought is ignored until the strike. To aim somewhere else, order the ability again. The lock ends at the strike. A beam, a bolt, a fan or a lunge goes where the body points at the strike. A mortar and a disc land ON the point, clamped to their range — the point is read at the strike, from where you stand then, so walking through the wind-up does not move it. A blink goes toward the point and stops there when it is nearer than the blink's distance. An ability whose aim is 'none' — an aura, a leap, hop — turns you not at all when a point is handed to it. With no point, everything uses your facing at the strike, and a mortar or a disc lands at the enemy's distance as it stands then.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2c4c688bd12f6b07fe74187d": {
+   "c": 3,
+   "text": "Things in flight and on the floor. A bolt in p.arena.projectiles continues along its vx, vz for 'left' seconds and connects with a body whose centre comes within 0.35 m of it plus that body's radius. A mortar (arc: true) comes down at x + vx·left, z + vz·left, and its splash circle catches a body whose centre is within the splash plus that body's radius. A disc in p.arena.zones does not say which ability made it; the disc-shaped ability in that side's kit is the one, and a side keeps at most one disc per ability on the floor. A raised wall is in p.arena.obstacles with 'until' (seconds left) and 'by' (the side that raised it), and api.los, api.ray and api.pathTo know it like any block.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e35687aec8a5d5102aece9e2": {
+   "c": 3,
+   "text": "What a hit does, in order. Damage passes through the attacker's damage channel, then the defender's armor channel (a divisor), then the defender's shield, then hp. A body inside its invulnerability window takes nothing: it is told { type:'evaded', skill, by } once for that ability on that step — once, not once per effect — and the attacker is told 'missed' with reason 'invulnerable', also once. A bolt is spent on such a body rather than passing through it. A hit the shield ate whole is still a hit: both sides get their event with amount 0 and the 'absorbed' figure, and a hit the shield ate PART of carries 'absorbed' too. Fire takes hp every step at its rate, through the shield's absorption and past both channels, and announces itself as { type:'burning', skill:'burn', hp } once every 10 hp, never as 'damaged'. The arena's burn from 30 s ignores shields and channels and takes a fraction of MAXIMUM hp: a heal changes how long it takes, a shield does not.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "371992585f7bf2c9065a9f69": {
+   "c": 3,
+   "text": "An ability whose effects carry neither damage nor fire still tells you it connected: { type:'dealt', skill, amount: 0, landed, enemyHp } arrives once per body per step, and 'landed' lists the ids of the effects that actually took. A control refused by an armed immunity is NOT in that list, so the event tells \"the root took\" from \"the root was refused\" on its own. A damaging ability does not send this one — its 'dealt' carries the real amount and no 'landed'.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1d2f8f3979b58061f0eb3a71": {
+   "c": 3,
+   "text": "Statuses. Stunned: no movement, no turning, no new ability, a cancellable wind-up that is running is cancelled with its cooldown spent, and a lunge that is travelling stops where it stands. Rooted: no movement; turning, abilities and impulses all work. Silenced: no new ability, refused with reason 'silenced', except an aura, blink or leap of yours that carries a cleanse; a cancellable wind-up is cancelled. Blinded: your p.enemy block — position, velocity, dist, visible, casting — is the one from 1 s ago, and p.self.blinded is true. None of these touches a projectile already in flight, a disc already on the floor, or a wall.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "22aad78b8fd7c80f5ffc068a": {
+   "c": 3,
+   "text": "Nothing stacks, and controls do not even queue. A second fire on a burning body adds its own length to the time still burning, up to twice that length, and the higher rate wins — except a disc's own ticks, which renew their fire rather than lengthening it. A second shield keeps the larger figure and the later time. A boost or a weaken on a channel replaces the one that was there.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "695cf83d920a8340e16260af": {
+   "c": 3,
+   "text": "The four controls — stun, root, silence, blind — are different. A control arms an immunity the moment it LANDS, not when it ends: from that instant until its duration plus the card's immune seconds have passed, no control of those classes lands on that body at all. That includes a second copy of the same control, and it includes a control from any other ability of either side. A stun arms 'act' and 'move'; a root arms 'move'; a silence arms 'act'; a blind arms 'sense'. p.self.immune and p.enemy.immune list the classes in force for the WHOLE window, so a body that is stunned right now already lists 'act' and 'move' and will keep listing them after the stun has worn off. A control refused this way is a 'missed' with reason 'immune' and the effect's name, and it is always a different cast: a disc applies the control it carries once per cast per body, on the first step that body is inside it, and its later ticks do not try again. The rest of the ability is unaffected — damage, fire, an impulse, a wall and every self effect on that same cast still land.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1aff72fdcceb4fe744cd7808": {
+   "c": 3,
+   "text": "Impulses. A knock or a pull is a velocity on a slot of its own that decays at 9 m/s² whatever the body is doing, and is dropped to zero the moment it falls below 0.4 m/s — so the travel is a shade under the impulse squared over twice that drag. A body pushed into a wall or a block stops there. An impulse that lands on a body in the middle of a lunge ends the lunge, and then moves the body normally.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "12c8fb56fcab9e8e9a4f4e42": {
+   "c": 3,
+   "text": "Leaving the ground. A hop and a leap are the same shape: a crouch, an airborne phase, a landing. Their own effects apply at take-off. From the crouch to the end of the landing no ability can be started — refused with reason 'airborne' while you are actually in the air, and with reason 'busy' during the crouch and the landing, because on both of those you are still on the ground — and the horizontal velocity is the one you had at take-off. Above 0.35 m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath; a beam, a bolt and a mortar hit exactly as on the ground. { type:'landed' } arrives on the step you touch down. A blink has no wind-up, so nothing telegraphs it; it is invulnerable for its card's seconds from the landing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0e608bf145cf0b2112d7fb42": {
+   "c": 3,
+   "text": "What is announced and what is not. p.events keeps at most 32 entries between two thoughts, oldest first. A bolt that hits a block or flies out of range announces nothing; a disc that catches nobody announces nothing; a mortar that lands on nobody announces 'missed' with reason 'aim'. No event marks a status landing on you: read p.self.stunned, rooted, silenced, blinded, burning, shield, invulnerable, immune — and p.enemy.stunned, rooted, burning, shield, invulnerable, immune. api.say is accepted at most once every 4 s: a line inside that window is dropped in silence, costs no order and raises no event.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f697ad92cd719208d882cfd0": {
+   "c": 3,
+   "text": "as compiled on this ability. windup, recover and cooldown are",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "04a047d3657fca9f66b34a50": {
+   "c": 3,
+   "text": "the DECLARED figures, not the served ones the cards print. It is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "72e616aa4b54a39aea95b44d": {
+   "c": 3,
+   "text": "rebuilt for every thought from the set you are actually holding,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d0e7786e93f18469549fa2e4": {
+   "c": 3,
+   "text": "which is not necessarily the set the tables above were printed",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0daf3086daea5f6cd3105071": {
+   "c": 5,
+   "text": "from",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "789d5b9d1f0b761f76e2ce4a": {
+   "c": 3,
+   "text": "'act' | 'move' | 'sense'. A class appears the moment the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7f7e20676602e0dc847f7cb6": {
+   "c": 3,
+   "text": "control lands and stays for the control's duration plus its",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6439605391b1206197997d5a": {
+   "c": 3,
+   "text": "immune seconds, so it is listed while the control is still",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a4da32232e7165e9d5e72675": {
+   "c": 5,
+   "text": "running",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "133fa5dfdf6993a54bd203ee": {
+   "c": 3,
+   "text": ".kit          the same shape, for their three and their hop, keyed by the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "231c60f52a98a88ccc399ed1": {
+   "c": 3,
+   "text": "names in their .skills. A creature of the arena's reference stock holds",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "92674fa650355feae775f806": {
+   "c": 3,
+   "text": "they have ready is not given to you. There is no p.enemy.turnRate either: their maxSpeed is live and carries whatever boost or weaken is on their speed channel, but their turn rate reaches you only as the static figure in their body block above, so a weaken on their turn channel never shows in perception. Every use of a skill by either side is",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f5eaf680d2c91097eaf5cb86": {
+   "c": 3,
+   "text": "{ type:'dealt', skill, amount:0, landed, enemyHp }       an ability of yours carrying neither",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "06d42e5bc22460af5ef1e2e1": {
+   "c": 3,
+   "text": "damage nor fire connected; landed lists",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "bc687b7e5a647ae273d62c3a": {
+   "c": 3,
+   "text": "the effects that took, a refused control",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "14d48aa09b3660c3a5f154ee": {
+   "c": 3,
+   "text": "is absent from it. Once per body per step",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "25ea5c7d815615354fbe8777": {
+   "c": 3,
+   "text": "{ type:'evaded', skill, by }                             an ability of theirs reached you inside",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5e0cab7321fd7fbf21809491": {
+   "c": 3,
+   "text": "your invulnerability window and did",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1962c616f93ba414cabd7bec": {
+   "c": 3,
+   "text": "nothing. Once per ability per step, not",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b9896e89ceb5c1085594e23f": {
+   "c": 3,
+   "text": "once per effect; by is the side that cast",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "86b4c25b61a9d653c0f921d0": {
+   "c": 3,
+   "text": "{ type:'landed' }                                        your hop or leap touched down",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "96216f4ef8faae4cfb9e0575": {
+   "c": 3,
+   "text": "point at your turn rate, and the point holds for the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b8bc07797fbe0569953cfb4f": {
+   "c": 3,
+   "text": "whole wind-up — a later api.face or api.faceAt does not",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b3d95279c3e9d27c81f44063": {
+   "c": 3,
+   "text": "replace it. A mortar and a disc land ON it, clamped to",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5f6e3d93a42dae5fa44d56fb": {
+   "c": 3,
+   "text": "range; a blink goes toward it and stops there; a beam,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a946d85ebdb58c5e3316c519": {
+   "c": 3,
+   "text": "fan, bolt or lunge goes where you point at the strike",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1b2f74f552da18fddbdedfa5": {
+   "c": 3,
+   "text": "(aim in p.self.kit says which of the three an ability",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "270af984143d81b8d658c341": {
+   "c": 3,
+   "text": "is, and 'none' means the point does nothing at all).",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "f82ad57263f874ce6301eb97": {
+   "c": 3,
+   "text": "the order, from 1.8 m ahead of your centre — your own",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c69bbd9c726b4cc26066d7d5": {
+   "c": 3,
+   "text": "radius plus the muzzle offset, the same figure the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ca4186407f00dddc6a598c3a": {
+   "c": 3,
+   "text": "cards print; a beam has none.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5354f91460ffd02af8248af0": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.48 and your turn rate by 0.61; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "74aeb696f9c685da90af20fa": {
+   "c": 3,
+   "text": "delivery            beam — a straight line from your muzzle — 1.7 m ahead of your centre — along your facing at the strike. It stops at the first block, wall or body it meets, and a body is hit when its surface enters the 0.4 m of margin the line carries. A wall YOU raised does not stop it; a wall they raised does. Height is not consulted: a body in the air is hit like one on the ground",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b3735270e0588a61c8d34982": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.64 and your turn rate by 0.73; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "16e65aea7c52fa49e115e5ce": {
+   "c": 3,
+   "text": "delivery            zone — a disc of 3 m placed at the strike — on the point you pass in api.use(name, {x, z}), clamped to 12 m, or with no point along your facing at the enemy's distance or 12 m, whichever is shorter. A named point is where it lands whatever you did during the wind-up: the direction and the distance are both measured at the strike. It works for 2.4 s: on the step it lands and every 0.5 s after, 5 ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above 0.35 m. Damage and fire tick; a control the disc carries is applied ONCE per cast per body, on the first tick that body is inside it, for the whole duration on this card — the later ticks do not attempt it and announce nothing. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "33a80b48d804a865cd5434b1": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.856 and your turn rate by 0.892; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9007271cacf347fb7d639ede": {
+   "c": 3,
+   "text": "delivery            dash — at the end of the wind-up your heading locks and your body travels 8 m along it at 20 m/s — 0.4 s of travel — and stops the moment it reaches a body, a block or a wall. A body whose centre is within 3 m of your path is hit on contact, unless it is above 0.35 m, in which case you pass underneath. You cannot turn or steer during the travel. A stun landing on you, or an impulse arriving on top of what you carried into the travel, ends the travel where you stand — and the impulse then moves you normally",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7cd9b62323f3afd6e3d7f69a": {
+   "c": 3,
+   "text": "effect stun         for 1 s the target cannot move, turn or start an ability, a cancellable wind-up it lands on is cancelled with its cooldown spent, and a lunge it lands on stops travelling; it arms 'act' and 'move' immunity from the moment it lands until 4 s later — that is the 1 s plus 3 s — so a second stun inside it is refused, not added",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ce9c45ace329aa3a57db7555": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.728 and your turn rate by 0.796; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "86b3ea60e0b36b9ed01fcaa3": {
+   "c": 3,
+   "text": "delivery            bolt — a projectile released at the strike from 1.8 m ahead of your centre, along your facing at the strike, at 22 m/s. It connects with a body whose centre comes within 1.85 m of it, and a body inside its invulnerability window consumes the shot rather than letting it through. A block, an arena wall or a wall THEY raised ends it, and that ending announces nothing; a wall you raised yourself does not stop it. It is visible to both sides in p.arena.projectiles",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6fa773de2d7425aa368658e7": {
+   "c": 3,
+   "text": "effect blind        for 2.2 s the target's p.enemy block — position, velocity, dist, visible, casting — is the one from 1 s ago, and its p.self.blinded is true; it arms 'sense' immunity from the moment it lands until 5.2 s later — the 2.2 s plus 3 s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e7377a512b1a665a6b13c5db": {
+   "c": 3,
+   "text": "while casting       from the order to the end of the recovery your top speed is multiplied by 0.76 and your turn rate by 0.82; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "51104ee6cdd860d8bdfe2da2": {
+   "c": 1,
+   "text": "aim                 your facing at the strike: api.use(name, {x, z}) turns you toward the point at your turn rate, and it holds for the whole wind-up",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b4a0066befb0451ec4701001": {
+   "c": 1,
+   "text": "aim                 a point: api.use(name, {x, z}) — it lands on or goes toward the point, and it holds for the whole wind-up",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a4d066094c411ac1909a753d": {
+   "c": 3,
+   "text": "delivery            lob — a projectile released at the strike from 1.8 m ahead of your centre, at 12 m/s, toward a landing spot whose direction AND distance are both read at the strike, from where you stand then, whatever the wind-up took you through; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. The spot is clamped at the strike: never nearer than 3.3 m, never past 15 m, never nearer the arena's edge than 1.8 m. On landing a circle of 1.8 m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5fe1fd4dc3aa91eb8fc58d25": {
+   "c": 3,
+   "text": "Things in flight and on the floor. A bolt in p.arena.projectiles continues along its vx, vz for 'left' seconds and connects with a body whose centre comes within 1.85 m of it — their radius plus the touch margin, the same figure a bolt's card prints. A mortar (arc: true) comes down at x + vx·left, z + vz·left, and its splash circle catches a body whose centre is within the splash plus that body's radius. A disc in p.arena.zones does not say which ability made it; the disc-shaped ability in that side's kit is the one, and a side keeps at most one disc per ability on the floor. A raised wall is in p.arena.obstacles with 'until' (seconds left) and 'by' (the side that raised it), and api.los, api.ray and api.pathTo know it like any block.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1aeda6fb784550d4b5de249a": {
+   "c": 3,
+   "text": "delivery            zone — a disc of 3 m placed where the strike reads it, from where you stand then and not where you ordered it — on the point you pass in api.use(name, {x, z}), clamped to 12 m, or with no point along your facing at the enemy's distance or 12 m, whichever is shorter. It works for 2.4 s: on the step it lands and every 0.5 s after, 5 ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above 0.35 m. Damage and fire tick; a control the disc carries is applied ONCE per cast per body, on the first tick that body is inside it, for the whole duration on this card — the later ticks do not attempt it and announce nothing. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "401499c00630c062a0637ae4": {
+   "c": 3,
+   "text": "A flat square arena. The ground is the X/Z plane; +Y is up and nothing but a hop or a leap ever leaves the ground. The arena runs from -20 to +20 on both X and Z, walled on all four sides. Nothing can leave it.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a4410203874f593d53ec8353": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.776 and your turn rate by 0.832 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4f47a8f644cbf1eb0e8f5b66": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.6 and your turn rate by 0.7 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "b7425e6189c7774d1a597213": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 1 and your turn rate by 1 through the crouch and through the landing; in the air your velocity is the one you took off with; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "575a5c9dc6b8288eb12083ec": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.48 and your turn rate by 0.61 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6200a38760c08de64c5f6fd6": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.64 and your turn rate by 0.73 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "ea3692d6a92c0214fa7a293c": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.856 and your turn rate by 0.892 through the wind-up and through the recovery; during the travel you neither steer nor turn; a stun, a silence or an impulse that lands during the wind-up does not cancel it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e82cb92b827c928e2b63d374": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.728 and your turn rate by 0.796 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "41a1ad586ab1c0807c798510": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.76 and your turn rate by 0.82 for the whole act — the recovery is slowed as much as the wind-up; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "96505bc3612d412bca3dcc1c": {
+   "c": 3,
+   "text": "landing of a jump included",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "0811fe6188eb74a737fb77ee": {
+   "c": 3,
+   "text": "The cards above are the verbs you are holding as this is written: the three your creature bought, and there is no fourth. The three can be exchanged for three others between one match and the next, and you are NOT rewritten when they are: the same program you are writing now runs with the new set. So a range copied out of the table above and typed into your source as a number describes a skill you may no longer have, and nothing will tell you it has stopped being true.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6c79d34041a45e7272f9d617": {
+   "c": 3,
+   "text": "Aiming. api.use(name, { x, z }) names a point on the ground. An aim point is a LOCK for the whole wind-up: your body re-derives its heading from the point on every step of the wind-up, and api.face or api.faceAt called on a later thought is ignored until the strike. To aim somewhere else, order the ability again. The lock ends at the strike. A beam, a bolt, a fan or a lunge goes where the body points at the strike. A mortar and a disc land ON the point, clamped to their range — the point is read at the strike, from where you stand then, so walking through the wind-up does not move it. A blink goes toward the point and stops there when it is nearer than the blink's distance. An ability whose aim is 'none' — an aura, a leap — turns you not at all when a point is handed to it. With no point, everything uses your facing at the strike, and a mortar or a disc lands at the enemy's distance as it stands then.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a9f6e5cd8cdc6cd3d51b6018": {
+   "c": 3,
+   "text": "Leaving the ground. A leap is one shape in three parts: a crouch, an airborne phase, a landing. Its own effects apply at take-off. From the crouch to the end of the landing no ability can be started — refused with reason 'airborne' while you are actually in the air, and with reason 'busy' during the crouch and the landing, because on both of those you are still on the ground — and the horizontal velocity is the one you had at take-off. Above 0.35 m — most of the airborne phase — a fan, a disc's tick and a lunge pass underneath; a beam, a bolt and a mortar hit exactly as on the ground. { type:'landed' } arrives on the step you touch down. A blink has no wind-up, so nothing telegraphs it; it is invulnerable for its card's seconds from the landing.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "78805fa0173efd80e223f3a5": {
+   "c": 1,
+   "text": "takes: the three your creature holds, and there is no fourth.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "dd22586db6b88d20caea73d4": {
+   "c": 1,
+   "text": "An entry carries { kind, element,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4ca2b88209d6940e543a6819": {
+   "c": 1,
+   "text": "effects, channel, windup, recover, cooldown, aim, magnitudes }",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "d55a44ffbec9283dd4d6004b": {
+   "c": 1,
+   "text": "and whichever of range,",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "9431ba96a35a98ef11a9bd39": {
+   "c": 1,
+   "text": ".kit          the same shape, for their three, keyed by the",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "c33ee44b0ea48c391d4cd88a": {
+   "c": 3,
+   "text": "{ type:'landed' }                                        your leap touched down",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "810e8a80fd5ae54286306bce": {
+   "c": 3,
+   "text": "effect knock        an impulse of 6.8 m/s on what it hits, away from you, added to whatever impulse it already carries and decaying at 9 m/s² — a shade under 2.57 m of travel whatever the body weighs or wants — the impulse is dropped to zero the moment it decays below 0.4 m/s, and the world moves the body in whole steps; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "a8360864db7a9974ff4c96e7": {
+   "c": 3,
+   "text": "delivery            lob — a projectile released at the strike from 1.8 m ahead of your centre, at 18 m/s, toward a landing spot whose direction AND distance are both read at the strike, from where you stand then, whatever the wind-up took you through; it touches nothing on the way — bodies, blocks, walls. WHERE it lands is yours to name: the point you pass in api.use(name, {x, z}), or a lone number api.use(name, metres) as a distance along your facing, or, with neither, the enemy's distance along your facing at the strike. The spot is clamped at the strike: never nearer than 3.7 m, never past 15 m, never nearer the arena's edge than 2.2 m. On landing a circle of 2.2 m catches a body whose centre is within that plus its own radius; an empty circle is a 'missed' with reason 'aim'. A PAIR of numbers is a direction, not a distance",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "40b0fb0c21c39c73aca43860": {
+   "c": 3,
+   "text": "speed               18 m/s",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "3b1e75641101f8349d9e86c5": {
+   "c": 3,
+   "text": "splash              2.2 m around the point it lands on",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5ce8e58087051ebd40e2e68d": {
+   "c": 3,
+   "text": "reach               18.7 m between the two centres at the very most — your range 15 m plus the 2.2 m of splash plus their 1.5 m of radius — and it will not land nearer to you than 3.7 m, your own radius plus that splash, whatever distance you ask for",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "79fe7f049b26366754ca244d": {
+   "c": 3,
+   "text": "delivery            zone — a disc of 2.6 m placed where the strike reads it, from where you stand then and not where you ordered it — on the point you pass in api.use(name, {x, z}), clamped to 12 m, or with no point along your facing at the enemy's distance or 12 m, whichever is shorter. It works for 2.4 s: on the step it lands and every 0.5 s after, 5 ticks in all, each applying the per-tick figures on this card to a body whose centre is within the disc plus its own radius and which is not above 0.35 m. Damage and fire tick; a control the disc carries is applied ONCE per cast per body, on the first tick that body is inside it, for the whole duration on this card — the later ticks do not attempt it and announce nothing. A new cast of this ability removes your previous disc from it; a side has at most one disc per ability on the floor",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2d700eb4273bb1abef4567db": {
+   "c": 3,
+   "text": "radius              2.6 m",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "692c9c5183036e7b137c3d0c": {
+   "c": 3,
+   "text": "reach               16.1 m between the two centres, at the very most: the disc lands on your aim point clamped to your range, or with no point along your facing at their distance or your range, whichever is SHORTER, and it works on a body whose centre is within 2.6 m of the disc plus their own 1.5 m of radius",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "e47ca59d53459fb7b3b88186": {
+   "c": 3,
+   "text": "effect weaken       multiplies the target's top movement speed (shown live in p.self.maxSpeed) by 0.86 for 0.784 s; a new weaken on the same channel replaces it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2d3679aebd3b4b531776ec5c": {
+   "c": 3,
+   "text": "cast                0.3 s of wind-up, then 0.4 s of travel, then 0.267 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "34919ab612eb9a04924ebf3a": {
+   "c": 3,
+   "text": "while casting       your top speed is multiplied by 0.76 and your turn rate by 0.82 through the wind-up and through the recovery; during the travel you neither steer nor turn; a stun, a silence or an impulse that lands during the wind-up cancels it, and the cooldown is already spent",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "51c4fa9ba911fee660c8b839": {
+   "c": 3,
+   "text": "cast                0.5 s of wind-up, then it lands, then 0.1 s of recovery",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "aeb4e20ba56f31fde233b978": {
+   "c": 3,
+   "text": "centre and theirs, tested this instant. A beam or a bolt tests",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "210ca20d5e4d68d083e29c18": {
+   "c": 3,
+   "text": "a DIFFERENT line, at the strike: from radius + muzzle ahead of",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5298c7c29c5dbec21597392d": {
+   "c": 3,
+   "text": "the caster along its facing, not centre to centre and not now.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "2005562111106fa39e1a0f05": {
+   "c": 1,
+   "text": "api.ray tests a facing from your centre, api.los a point from",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "54109f647965991cb10dc624": {
+   "c": 1,
+   "text": "your centre — those are the closest tests you can run yourself",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "741c89a69eab35e2050b59f2": {
+   "c": 3,
+   "text": "stands until the point is reached or replaced; on",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "5a1fd85a4f3e6810ca07848f": {
+   "c": 3,
+   "text": "arrival you brake to a stop and stand there until your",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "415ab8e56378705a6e5b0a40": {
+   "c": 5,
+   "text": "next order.",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "357e0ba8b1d9ec4925278948": {
+   "c": 1,
+   "text": ".immuneLeft   { act, move, sense } — seconds left of that same window per",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "4dd84c69d397c6276a4c885e": {
+   "c": 1,
+   "text": "class, 0 for a class not currently armed. A class still in",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "6fda311fb70f0b93ca8d0da4": {
+   "c": 1,
+   "text": ".immune with a small number here is about to drop out of it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "7b55ee2e51a9a1dea0e2696b": {
+   "c": 1,
+   "text": ".shield .rooted .burning .immune .immuneLeft",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "65ea94dd5d6ebbf540e64e86": {
+   "c": 1,
+   "text": "delivery            bolt — a projectile released at the strike from 1.8 m ahead of your centre, along your facing at the strike, at 22 m/s. It connects with a body whose centre comes within 1.85 m of it, and a body inside its invulnerability window consumes the shot rather than letting it through. A block, an arena wall or a wall THEY raised ends it, and that ending announces nothing; a wall you raised yourself does not stop it. From the moment it is released it is listed in p.arena.projectiles, for both sides",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "413797fede26f597d0cb660d": {
+   "c": 3,
+   "text": "hp                  240",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "460e21108f5f564f30d9f609": {
+   "c": 3,
+   "text": "effect knock        an impulse of 8.5 m/s on what it hits, away from you, added to whatever impulse it already carries and decaying at 9 m/s² — a shade under 4.01 m of travel whatever the body weighs or wants — the impulse is dropped to zero the moment it decays below 0.4 m/s, and the world moves the body in whole steps; a cancellable wind-up it lands on is cancelled, and a lunge it lands on stops travelling",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "80a468e132a96a6bea4013fe": {
+   "c": 3,
+   "text": "effect burn         sets what it hits on fire at 11.2 hp per second for 3 s; fire goes through a shield's absorption last of all and ignores both damage channels; a second fire on a burning body adds its length to the time still burning, up to twice its own length, and keeps the stronger rate; a disc's ticks keep its fire alive rather than lengthening it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
+  },
+  "1bc73c5515dd8221ab72e03c": {
+   "c": 3,
+   "text": "effect weaken       multiplies the target's top movement speed (shown live in p.self.maxSpeed) by 0.832 for 0.784 s; a new weaken on the same channel replaces it",
+   "model": "claude-sonnet-5",
+   "rubric": "a9a7dccdf1316489"
   }
  }
 }

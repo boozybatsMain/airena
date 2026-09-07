@@ -1,0 +1,18 @@
+import { run, spammer, summarise } from './harness.mjs';
+const K = (delivery, effects, channel, element = 'kinetic') => ({ delivery, effects, ...(channel ? { channel } : {}), element });
+const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+const league = (label, A, B, opts = {}) => { const rs = SEEDS.map((seed) => run({ kits: { blue: A, orange: B }, brains: { blue: spammer(opts.a || {}), orange: spammer(opts.b || {}) }, seed, cd: ('cd' in opts ? opts.cd : 3), builds: opts.builds || null })); console.log(summarise(rs, label)); return rs; };
+const DMG3 = [K('beam', ['damage']), K('bolt', ['damage']), K('cone', ['damage'])];
+console.log('=== RERUN against current working tree (in-flight edits) ===');
+league('derived CD (d.cooldown ?? cost)', DMG3, DMG3, { cd: null, a: { hold: 9 }, b: { hold: 9 } });
+league('silence lock [bolt:sil, lob:sil, beam:dmg]', [K('bolt', ['silence']), K('lob', ['silence']), K('beam', ['damage'])], [K('beam', ['damage']), K('bolt', ['damage']), K('self', ['cleanse'])], { a: { hold: 9, prio: ['k1', 'k2', 'k3'] }, b: { hold: 9, prio: ['k3', 'k1', 'k2'] } });
+league('stun lock [beam:stun, bolt:stun, lob:stun]', [K('beam', ['stun']), K('bolt', ['stun']), K('lob', ['stun'])], DMG3, { a: { hold: 9 }, b: { hold: 9 } });
+league('stun+dmg [beam:stun+dmg, bolt:stun+dmg, cone:dmg]', [K('beam', ['stun', 'damage']), K('bolt', ['stun', 'damage']), K('cone', ['damage'])], DMG3, { a: { hold: 9 }, b: { hold: 9 } });
+league('zones [zone:dmg, zone:burn, zone:root]', [K('zone', ['damage']), K('zone', ['burn']), K('zone', ['root'])], DMG3, { a: { hold: 8 }, b: { hold: 9 } });
+league('walls [self:wall, beam:wall+dmg, bolt:wall]', [K('self', ['wall']), K('beam', ['wall', 'damage']), K('bolt', ['wall'])], DMG3, { a: { hold: 9 }, b: { hold: 9 } });
+league('knock interrupt: [cone:knock+dmg x, bolt:knock, beam:dmg] vs [beam:dmg, lob:dmg, self:heal]', [K('bolt', ['knock']), K('beam', ['damage']), K('cone', ['damage', 'knock'])], [K('beam', ['damage']), K('lob', ['damage']), K('self', ['heal'])], { a: { hold: 9 }, b: { hold: 9 } });
+const rs = SEEDS.map((seed) => run({ kits: { blue: [K('bolt', ['stun']), K('beam', ['damage']), K('self', ['heal'])], orange: [K('beam', ['damage']), K('lob', ['damage']), K('self', ['heal'])] }, brains: { blue: spammer({ hold: 9 }), orange: spammer({ hold: 9, prio: ['k1', 'k2', 'k3'] }) }, seed, cd: 3 }));
+const interrupts = rs.reduce((a, r) => a + r.world.log.filter((e) => e.type === 'interrupt').length, 0);
+const immune = rs.reduce((a, r) => a + r.world.log.filter((e) => e.type === 'immune').length, 0);
+const stuns = rs.reduce((a, r) => a + (r.blue.hitsBy.k1 || 0) + (r.blue.usesBy.k1 || 0), 0);
+console.log(`bolt:stun vs beam caster: interrupt log lines ${interrupts}, immune log lines ${immune}, stun bolt uses ${rs.reduce((a, r) => a + (r.blue.usesBy.k1 || 0), 0)} over 8 matches`);

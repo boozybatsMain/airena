@@ -1,0 +1,50 @@
+{
+  "state": "live-result-win",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=result-win",
+  "size": "1280x720",
+  "session": "loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture",
+  "signals": {
+    "screen": "live",
+    "phase": "result",
+    "opacity": 1,
+    "classes": "screen has-card",
+    "mounted": 1,
+    "nodes": 57,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 11361
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 285.5,
+      "rendererRequested": 286,
+      "shellReady": 5825,
+      "screenReady": 5859,
+      "viewerStart": 10914,
+      "rendererUp": 10919,
+      "envBuilt": 10982,
+      "postBuilt": 11004
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": {
+      "want": 24,
+      "ticked": 0,
+      "ok": false,
+      "ms": 0
+    },
+    "dpr": 1
+  },
+  "errors": [
+    "loop: ticked 0 of 24 frames in 0 ms (page undefined) — the arena did not draw for the capture"
+  ],
+  "overlaps": [],
+  "covered": []
+}

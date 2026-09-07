@@ -1,0 +1,188 @@
+{
+  "id": "c_e4653a50-181",
+  "name": "FOUNDRY FIST",
+  "rating": 1260,
+  "fights": 9158,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1269,
+    "tacticsCard": "This is a straightforward aggressive brawler: it closes to melee range and lives there, using its speed boost at mid distance to enter the fight, the cone strike the moment the enemy is inside its reach and grounded, and the dash to jump the gap when the target sits just outside cone range. It leads the dash slightly ahead of the enemy's movement, which is a nice touch, and when it's already glued to the opponent it circles sideways while its cone recharges instead of just standing there.",
+    "sourceSha": "52547691a6ba28e39fd4401bf26bc6bc643ceab583dd748ca92741a9b65b1c3a",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_e4653a50-181.before.52547691.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 1913,
+    "tacticsCard": "This fighter reacts to telegraphs first: it retreats and pokes with k1 if the enemy winds up the close-range stun, and sidesteps off the line if the enemy dashes in. Otherwise it keeps its buff topped up on the fly, then unloads k2 at close range or k1 at mid range whenever a shot is ready, always closing distance and taunting occasionally when nothing else is happening.",
+    "rating": 1260,
+    "fights": 9183,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "dash",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "stun"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "boost"
+      ],
+      "channel": "damage",
+      "element": "ember"
+    }
+  ],
+  "kitCost": 41,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 11.9,
+      "faults": 0,
+      "thinks": 179,
+      "orders": 297,
+      "uses": 10,
+      "hits": 5,
+      "damageDealt": 252.57600000000002,
+      "stubDamageDealt": 162.432,
+      "aliveTicks": 356,
+      "idleInReachTicks": 38,
+      "stillTicks": 21,
+      "fuelSpent": 266,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "blue",
+      "seconds": 11.6,
+      "faults": 0,
+      "thinks": 174,
+      "orders": 289,
+      "uses": 9,
+      "hits": 5,
+      "damageDealt": 252.57600000000002,
+      "stubDamageDealt": 220.128,
+      "aliveTicks": 347,
+      "idleInReachTicks": 73,
+      "stillTicks": 40,
+      "fuelSpent": 258,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "blue",
+      "seconds": 11.4,
+      "faults": 0,
+      "thinks": 171,
+      "orders": 281,
+      "uses": 9,
+      "hits": 6,
+      "damageDealt": 290.112,
+      "stubDamageDealt": 182.592,
+      "aliveTicks": 341,
+      "idleInReachTicks": 56,
+      "stillTicks": 16,
+      "fuelSpent": 259,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "blue",
+      "seconds": 12.13,
+      "faults": 0,
+      "thinks": 182,
+      "orders": 292,
+      "uses": 10,
+      "hits": 6,
+      "damageDealt": 290.112,
+      "stubDamageDealt": 166.368,
+      "aliveTicks": 363,
+      "idleInReachTicks": 40,
+      "stillTicks": 12,
+      "fuelSpent": 274,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 44517,
+  "forgeMs": 38406,
+  "admitMs": 354,
+  "cardMs": 5751,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 38405,
+      "chars": 1913
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 3475,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.102835,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 1913,
+  "promptHash": "19efc1a332573da7e5e375db7482dce33fc94f0f2275dc08cbb8c0208234adaf",
+  "generatedAt": "2026-09-07T10:40:50.372Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:04:30.411Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:00:18.882Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "41d521f9c204127c0d5f50a8da14412e5bd5007297ff03faefd51b9db3e7ac38",
+  "behaviour": {
+    "wins": 4,
+    "damageShare": 1.484,
+    "idleInReach": 0.147,
+    "still": 0.063,
+    "casts": 9.5
+  },
+  "card": "This fighter reacts to telegraphs first: it retreats and pokes with k1 if the enemy winds up the close-range stun, and sidesteps off the line if the enemy dashes in. Otherwise it keeps its buff topped up on the fly, then unloads k2 at close range or k1 at mid range whenever a shot is ready, always closing distance and taunting occasionally when nothing else is happening."
+}

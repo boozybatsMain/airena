@@ -458,8 +458,14 @@ function actions(c, data) {
       ? h('p.t-small.next-why', 'Learn from its fights, then describe a sharper one.')
       : null,
     h('div.creature-actions',
-      c.isMine ? h('a.btn.ghost', { href: '#/live' },
-        data.fightingNow ? h('span.livedot') : null, 'Watch live', icon('arrow-right')) : null,
+      /* Anyone can watch any creature: live while it is the broadcast fight,
+         otherwise its last recorded fight replays under `#/watch/:id`
+         (the creature endpoint sends `history` for every creature). */
+      data.fightingNow
+        ? h('a.btn.ghost', { href: '#/live' }, h('span.livedot'), 'Watch live', icon('arrow-right'))
+        : (data.history?.[0]?.id
+          ? h('a.btn.ghost', { href: `#/watch/${data.history[0].id}` }, 'Watch last fight', icon('arrow-right'))
+          : (c.isMine ? h('a.btn.ghost', { href: '#/live' }, 'Watch live', icon('arrow-right')) : null)),
       c.isMine
         ? h('a.btn.ghost', { href: '#/history' }, 'History', icon('arrow-right'))
         : h('a.btn.ghost', { href: '#/ladder' }, 'Ladder', icon('arrow-right')),

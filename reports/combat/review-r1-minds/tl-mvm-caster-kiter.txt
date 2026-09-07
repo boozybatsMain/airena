@@ -1,0 +1,98 @@
+
+===== TIMELINE sub-fable-high/caster vs mind:sub-fable-high/kiter seed 1 mind=blue =====
+  0.03  -- t=0 dist 31 | MIND (-3.7,15) v0 hp 156 act - cd k1:0 k2:0 k3:0 | pilot (3.7,-15) v0 hp 132 act -
+  0.07  MIND says "Keep your distance. I will rain on you."
+  0.07  pilot says "Fast feet, sharp eyes. Let's dance."
+  0.13  MIND says "Keep your distance. I will rain on you."
+  1.67  MIND casts k1 (lob)
+  1.73  pilot casts k3 (beam)
+  2.00  -- t=2 dist 14.5 | MIND (-4,6) v3.7 hp 156 act k1/windup cd k1:2.3 k2:0 k3:0 | pilot (5,-5.4) v3.6 hp 132 act k3/windup
+  2.13    MIND mortar released → lands (3.6,-3) in 0.94s; enemy then at (0.2,-6.5) moving 3.6 m/s → error 4.9 m miss; aim off bearing -3.3°
+  2.37  pilot k3 hits for 20.4 → MIND hp 135.6
+  2.53  pilot casts k1 (bolt)
+  2.87    pilot bolt released heading 0 — 9.1° off the direct bearing, enemy moving 6.4 m/s
+  2.90  MIND k1 MISSED: aim
+  3.13  pilot k1 hits for 20.4 → MIND hp 115.2
+  4.00  -- t=4 dist 10.5 | MIND (0.6,3.6) v0 hp 115.2 act - cd k1:0.3 k2:0 k3:0 | pilot (1.6,-6.8) v1.2 hp 132 act -
+  4.20  MIND casts k3 (self)
+  4.73  MIND casts k2 (zone)
+  4.73  pilot casts k1 (bolt)
+  5.07    pilot bolt released heading 0.2 — -6.4° off the direct bearing, enemy moving 4.1 m/s
+  5.27  pilot casts k3 (beam)
+  5.33  pilot k1 hits for 10.2 → MIND hp 109.9
+  5.33  pilot k1: root shrugged off (immune)
+  5.40  MIND says "Tch. Not again."
+  5.47  MIND casts k1 (lob)
+  5.67  MIND k2: root shrugged off (immune)
+  5.90  pilot k3 hits for 20.4 → MIND hp 89.5
+  5.90  pilot k3: silence shrugged off (immune)
+  5.93    MIND mortar released → lands (-2.8,-6.6) in 0.85s; enemy then at (-3.8,-7.1) moving 3.6 m/s → error 1.1 m HIT; aim off bearing 6.5°
+  6.00  -- t=6 dist 10 | MIND (-2.9,3.4) v3.8 hp 89.5 act k1/recover cd k1:2.1 k2:1.7 k3:1.2 | pilot (-1.3,-6.4) v4.5 hp 125.1 act -
+  6.17  MIND k2: root shrugged off (immune)
+  6.63  MIND k1 hits for 28.6 → pilot hp 91.2
+  6.67  MIND k2: root shrugged off (immune)
+  6.93  pilot casts k1 (bolt)
+  7.17  MIND k2: root shrugged off (immune)
+  7.20  MIND casts k3 (self)
+  7.27    pilot bolt released heading -0.3 — 5.4° off the direct bearing, enemy moving 4.8 m/s
+  7.53  pilot k1 hits for 10.2 → MIND hp 87.3
+  7.53  pilot k1: root shrugged off (immune)
+  7.73  MIND casts k2 (zone)
+  8.00  -- t=8 dist 9 | MIND (-4.7,2.9) v4 hp 87.3 act k2/windup cd k1:0.1 k2:2.7 k3:2.2 | pilot (0.5,-4.4) v6.6 hp 79.8 act -
+  8.17  MIND k2: root shrugged off (immune)
+  8.27  pilot casts k3 (beam)
+  8.47  MIND casts k1 (lob)
+  8.90  pilot k3 MISSED: cover
+  8.93    MIND mortar released → lands (-0.2,1.7) in 0.44s; enemy then at (-1.3,-1.5) moving 0 m/s → error 3.4 m miss; aim off bearing -12°
+  9.13  pilot casts k1 (bolt)
+  9.17  MIND k2: root shrugged off (immune)
+  9.20  MIND k1 hits for 28.6 → pilot hp 41.3
+  9.20  MIND k1: blind shrugged off (immune)
+  9.27  MIND says "That one stuck."
+  9.47    pilot bolt released heading 0.3 — 8.2° off the direct bearing, enemy moving 6.3 m/s
+  9.70  pilot k1 hits for 20.4 → MIND hp 66.9
+ 10.00  -- t=10 dist 9.4 | MIND (0.4,7.3) v0 hp 66.9 act - cd k1:1.1 k2:0.7 k3:0.2 | pilot (-4.1,-1) v1.3 hp 34.6 act -
+ 10.20  MIND casts k3 (self)
+ 10.73  MIND casts k2 (zone)
+ 11.17  MIND k2: root shrugged off (immune)
+ 11.27  pilot casts k3 (beam)
+ 11.47  MIND casts k1 (lob)
+ 11.67  MIND k2: root shrugged off (immune)
+ 11.90  pilot k3 hits for 10.2 → MIND hp 67.4
+ 11.90  pilot INTERRUPTS MIND's k1
+ 12.00  -- t=12 dist 9.2 | MIND (2.8,5.1) v6.4 hp 67.4 act - cd k1:2.1 k2:1.7 k3:1.2 | pilot (-2.4,-2.5) v4.6 hp 26.6 act -
+ 12.07  pilot casts k1 (bolt)
+ 12.40    pilot bolt released heading 0.9 — 9.9° off the direct bearing, enemy moving 6.4 m/s
+ 12.57  pilot k1 hits for 20.4 → MIND hp 47
+ 12.57  pilot k1: root shrugged off (immune)
+ 12.67  MIND k2: root shrugged off (immune)
+ 13.17  MIND k2: root shrugged off (immune)
+ 13.73  MIND casts k3 (self)
+ 14.00  -- t=14 dist 7.9 | MIND (0.9,6.8) v4.8 hp 60.1 act k3/recover cd k1:0.1 k2:0 k3:2.7 | pilot (-6.2,3.4) v7.3 hp 9.9 act -
+ 14.27  MIND casts k1 (lob)
+ 14.27  pilot casts k3 (beam)
+ 14.73    MIND mortar released → lands (-10.6,1.8) in 1s; enemy then at (-6.7,8.4) moving 3.6 m/s → error 7.7 m miss; aim off bearing -0.7°
+ 14.90  pilot k3 hits for 10.2 → MIND hp 49.9
+ 14.90  pilot k3: silence shrugged off (immune)
+ 14.93  MIND says "Tch. Not again."
+ 15.00  MIND casts k2 (zone)
+ 15.07  pilot casts k1 (bolt)
+ 15.40    pilot bolt released heading 1.9 — 4.9° off the direct bearing, enemy moving 4 m/s
+ 15.43  MIND k2: root shrugged off (immune)
+ 15.57  MIND k1 MISSED: aim
+ 15.63  pilot k1 hits for 20.4 → MIND hp 29.5
+ 16.00  -- t=16 dist 9.2 | MIND (0.9,3.3) v0 hp 29.5 act - cd k1:0.9 k2:2 k3:0.7 | pilot (-6.1,9.3) v0.7 hp 4.1 act -
+ 16.43  MIND k2: root shrugged off (immune)
+ 16.50  pilot dies
+ 16.50  END {"winner":"blue","reason":"kill"}
+
+
+## sub-fable-high/caster
+  vs mind:sub-fable-high/kiter: W-D-L 3-0-3 | len 21.7s | sudden death 0/6 | mean dist 10.9 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 8.1 cdUtil 71% hit 53% (36/68) dmg/game 38.1 still 20% noAct 53% idle+ready 30% idle+inReach 22% allCd 47%
+          uses k1 40, k3 35, k2 30 | dead slots 0/18 | miss k1:aim 30 | refused —
+          immune root 79, blind 1 (on damage-carrying casts 80, on pure controls 0; already immune when ordered 49) | dodges 0 | interrupts made 0 taken 3 | say 33 | faults 0
+          bolt lead: of 0 shots that needed >3° of lead, 0 (—) were aimed nearer the intercept than the target; mean error from the intercept —°
+          telegraph resp 65% (57/88) | lead usage 78% (28/36) mean off-bearing 16.1° | mortar: 39 thrown, 10 on target (26%), vs moving target 9/36, mean landing error 5.3 m (no-lead would be 3 m)
+          mortar on a rooted/stunned target: 8 of 39 landed while the enemy was pinned (21%), 2 of those on target (25%); free target 8/31 (26%)
+    PILOT casts/10s 6.8 hit 87% dmg/game 195.5 still 6% idle+inReach 9% immune root 16, silence 19 dodges 0 interrupts made 3

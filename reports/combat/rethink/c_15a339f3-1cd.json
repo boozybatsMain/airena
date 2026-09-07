@@ -1,0 +1,189 @@
+{
+  "id": "c_15a339f3-1cd",
+  "name": "ASH AND ICE",
+  "rating": 1672,
+  "fights": 7725,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1686,
+    "tacticsCard": "This fighter is a melee brawler that pushes into cone range, orbiting sideways at about three to four meters and switching strafe direction every two seconds, backing off with a wider circle if it gets closer than three meters. It leads with the close cone whenever the enemy is in reach, grounded and visible, otherwise it throws the ranged shot with proper target leading and a line-of-sight check, and it saves the third ability as a cleanse the moment it's rooted, burning, silenced, blinded or stunned.",
+    "sourceSha": "fbb6266e6970eb52568f88478a79e3204e17ea4c195c556403857e4c50a0f541",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_15a339f3-1cd.before.fbb6266e.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2475,
+    "tacticsCard": "This fighter closes to melee range and prefers its cone strike whenever it's within 4.7 range, falling back to a lead-aimed bolt out to 17.5 range, and it burns its third skill both as an emergency cleanse for debuffs and, oddly, as a generic speed boost whenever nothing else is ready — that dual-purpose use means it can waste the cleanse's cooldown on gap-closing right before it actually needs to shake off a stun or burn.",
+    "rating": 1671,
+    "fights": 7728,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "burn",
+        "damage"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "bolt",
+      "effects": [
+        "damage",
+        "root"
+      ],
+      "element": "frost"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "cleanse",
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "ember"
+    }
+  ],
+  "kitCost": 53,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 11.63,
+      "faults": 0,
+      "thinks": 175,
+      "orders": 188,
+      "uses": 13,
+      "hits": 8,
+      "damageDealt": 240.06933333333296,
+      "stubDamageDealt": 217.97333333333285,
+      "aliveTicks": 348,
+      "idleInReachTicks": 50,
+      "stillTicks": 34,
+      "fuelSpent": 238,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 10.8,
+      "faults": 0,
+      "thinks": 162,
+      "orders": 174,
+      "uses": 12,
+      "hits": 8,
+      "damageDealt": 239.95199999999997,
+      "stubDamageDealt": 254.54933333333264,
+      "aliveTicks": 323,
+      "idleInReachTicks": 18,
+      "stillTicks": 66,
+      "fuelSpent": 223,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": null,
+      "seconds": 10.8,
+      "faults": 0,
+      "thinks": 162,
+      "orders": 174,
+      "uses": 12,
+      "hits": 8,
+      "damageDealt": 243.75999999999965,
+      "stubDamageDealt": 243.75999999999965,
+      "aliveTicks": 323,
+      "idleInReachTicks": 19,
+      "stillTicks": 73,
+      "fuelSpent": 223,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 10.6,
+      "faults": 0,
+      "thinks": 159,
+      "orders": 171,
+      "uses": 12,
+      "hits": 7,
+      "damageDealt": 222.93333333333285,
+      "stubDamageDealt": 254.03199999999947,
+      "aliveTicks": 317,
+      "idleInReachTicks": 46,
+      "stillTicks": 29,
+      "fuelSpent": 218,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 66019,
+  "forgeMs": 57622,
+  "admitMs": 360,
+  "cardMs": 8030,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 57620,
+      "chars": 2475
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 5213,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.12010199999999999,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2475,
+  "promptHash": "2bc16c1dacc10fcd95b84b5da02820bfbcabcb76bf50664960aaa627660cf016",
+  "generatedAt": "2026-09-07T10:22:49.878Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:00:10.811Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:56:25.261Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "8d09c0e19ed9e0dd9b9136b19f7844bbda7972112458a3ffaf1f72f437358705",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 0.976,
+    "idleInReach": 0.101,
+    "still": 0.154,
+    "casts": 12.25
+  },
+  "card": "This fighter closes to melee range and prefers its cone strike whenever it's within 4.7 range, falling back to a lead-aimed bolt out to 17.5 range, and it burns its third skill both as an emergency cleanse for debuffs and, oddly, as a generic speed boost whenever nothing else is ready — that dual-purpose use means it can waste the cleanse's cooldown on gap-closing right before it actually needs to shake off a stun or burn."
+}

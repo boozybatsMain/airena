@@ -1,0 +1,131 @@
+{
+  "model": "nvidia/nemotron-3-super-120b-a12b:free:plain",
+  "modelId": "nvidia/nemotron-3-super-120b-a12b:free",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "NVIDIA: Nemotron 3 Super (free)",
+  "thinkBudget": 0,
+  "maxTokens": 40000,
+  "effort": null,
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:53:11.654Z",
+  "admitted": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 31.23,
+      "faults": 0,
+      "thinks": 468,
+      "orders": 853,
+      "uses": 8,
+      "hits": 3,
+      "damageDealt": 36,
+      "fuelSpent": 2272,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 15.47,
+      "faults": 0,
+      "thinks": 232,
+      "orders": 413,
+      "uses": 7,
+      "hits": 1,
+      "damageDealt": 12,
+      "fuelSpent": 1084,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 11.73,
+      "faults": 0,
+      "thinks": 176,
+      "orders": 305,
+      "uses": 5,
+      "hits": 1,
+      "damageDealt": 12,
+      "fuelSpent": 860,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 13.2,
+      "faults": 0,
+      "thinks": 198,
+      "orders": 356,
+      "uses": 5,
+      "hits": 2,
+      "damageDealt": 24,
+      "fuelSpent": 970,
+      "fuelExhausted": false
+    }
+  ],
+  "costUsd": 0,
+  "referenceUsd": null,
+  "elapsedMs": 11514,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 11514,
+      "chars": 2957
+    }
+  ],
+  "usage": {
+    "in": 8473,
+    "out": 978,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "resolvedModel": null,
+  "provider": "Nvidia",
+  "sourceChars": 2957,
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}

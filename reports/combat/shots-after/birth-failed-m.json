@@ -1,0 +1,43 @@
+{
+  "state": "birth-failed",
+  "group": "THE FIRST HOUR",
+  "url": "http://localhost:8787/#/birth/demo?ui=birth-failed",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "birth",
+    "phase": "connecting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 12,
+    "waiting": 0,
+    "fps": {
+      "last": 0,
+      "min": 0,
+      "ticks": 0,
+      "since": 9598
+    },
+    "drawn": null,
+    "backend": "webgpu",
+    "quality": "medium",
+    "msPerFrame": null,
+    "marks": {
+      "t0": 175.80000001192093,
+      "rendererRequested": 176,
+      "shellReady": 5264,
+      "screenReady": 5286,
+      "viewerStart": 8883,
+      "rendererUp": 8902,
+      "envBuilt": 9033,
+      "postBuilt": 9076
+    },
+    "forced": 0,
+    "ready": null,
+    "loop": null,
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

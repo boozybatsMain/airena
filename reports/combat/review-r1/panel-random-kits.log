@@ -1,0 +1,81 @@
+40 kits, 320 matches (2 opponents × 4 pilots × 1 seed)
+wall 105.5 s
+
+[ALL PILOTS] 320 matches
+  length: min 11.2 p25 27.7 median 35.5 p75 38.5 max 41.6 mean 32.9
+  burn clock reached (>30 s): 71% | in 20–35 s band: 37% | under 20 s: 8%
+  decided by: hit 94 (29%), arena 172 (54%), fire 47 (15%), double 7 (2%)
+  casts/fighter/10 s mean 7.64 | noAct 58% | waitingCd 14% | bothAllCd 15%
+  immune/match 6.35 | miss/match 11.27 | dodges/match 0.45 | dead slots 120/1920 (6%)
+
+[stub] 80 matches
+  length: min 14.1 p25 29.7 median 35.2 p75 38.4 max 41.5 mean 33.3
+  burn clock reached (>30 s): 74% | in 20–35 s band: 43% | under 20 s: 6%
+  decided by: hit 22 (28%), arena 40 (50%), fire 15 (19%), double 3 (4%)
+  casts/fighter/10 s mean 7.49 | noAct 58% | waitingCd 13% | bothAllCd 11%
+  immune/match 6.88 | miss/match 11.59 | dodges/match 0.24 | dead slots 31/480 (6%)
+
+[rusher] 80 matches
+  length: min 11.2 p25 21.6 median 27.5 p75 35.6 max 41.1 mean 27.7
+  burn clock reached (>30 s): 44% | in 20–35 s band: 54% | under 20 s: 20%
+  decided by: hit 40 (50%), fire 16 (20%), arena 24 (30%)
+  casts/fighter/10 s mean 8.99 | noAct 52% | waitingCd 21% | bothAllCd 28%
+  immune/match 8.53 | miss/match 6.35 | dodges/match 1.01 | dead slots 9/480 (2%)
+
+[kiter] 80 matches
+  length: min 22.2 p25 36.7 median 38.6 p75 40.4 max 41.6 mean 37.8
+  burn clock reached (>30 s): 94% | in 20–35 s band: 14% | under 20 s: 0%
+  decided by: arena 62 (78%), hit 9 (11%), fire 5 (6%), double 4 (5%)
+  casts/fighter/10 s mean 6.28 | noAct 65% | waitingCd 8% | bothAllCd 6%
+  immune/match 3.65 | miss/match 15.63 | dodges/match 0.16 | dead slots 62/480 (13%)
+
+[controller] 80 matches
+  length: min 14.6 p25 29.5 median 35.3 p75 37.7 max 40.9 mean 32.9
+  burn clock reached (>30 s): 73% | in 20–35 s band: 39% | under 20 s: 5%
+  decided by: arena 46 (58%), hit 23 (29%), fire 11 (14%)
+  casts/fighter/10 s mean 7.80 | noAct 57% | waitingCd 15% | bothAllCd 14%
+  immune/match 6.36 | miss/match 11.51 | dodges/match 0.39 | dead slots 18/480 (4%)
+
+max cooldown value ever seen in a snapshot: 3.000 s; longest continuous cd>0 stretch: 39.00 s (kiter kit15/34 orange k1 jump:boost)
+
+kits:
+   0 lob:cleanse+burn | cone:root+blind | dash:root+damage
+   1 beam:burn | zone:blind+shield+cleanse | lob:damage+cleanse
+   2 self:boost+heal+cleanse/speed | cone:damage | dash:burn+silence
+   3 lob:damage+root | blink:heal+cleanse+wall | jump:cleanse
+   4 dash:root | cone:burn | lob:burn+root
+   5 beam:burn+stun | beam:knock+blind | lob:knock+weaken/turn
+   6 jump:shield | beam:blind+root+damage | self:boost+heal/range
+   7 zone:knock | lob:burn | lob:blind+pull
+   8 bolt:shield | cone:burn | cone:stun+burn
+   9 zone:burn | zone:pull | cone:cleanse+damage
+  10 jump:heal | cone:burn+blind | self:shield+wall
+  11 self:wall+boost/damage | bolt:pull | cone:damage
+  12 dash:damage+blind | jump:boost/range | bolt:weaken/vision
+  13 dash:damage | jump:wall | bolt:stun+blind
+  14 zone:burn | lob:weaken+boost+burn/vision | jump:wall
+  15 cone:root+burn+stun | cone:silence | cone:pull+stun
+  16 dash:shield+burn | bolt:blind+shield+heal | jump:wall+cleanse
+  17 bolt:silence+boost/speed | bolt:pull+damage | beam:pull
+  18 zone:cleanse | bolt:blind+burn | blink:wall
+  19 blink:boost+heal/armor | blink:wall | dash:blind+damage
+  20 cone:damage | beam:cleanse | dash:cleanse
+  21 beam:cleanse+boost/turn | jump:cleanse | zone:stun+burn
+  22 beam:cleanse | dash:damage+pull | blink:shield+boost/armor
+  23 cone:knock+stun+damage | lob:weaken+heal/cooldown | beam:blind
+  24 bolt:cleanse | cone:burn | blink:wall
+  25 blink:heal+cleanse | jump:boost/damage | zone:damage
+  26 dash:damage+pull | blink:heal | jump:wall+cleanse
+  27 dash:damage+silence | zone:heal+burn | bolt:knock+blind+weaken/damage
+  28 bolt:damage | bolt:heal+silence | self:shield
+  29 beam:damage+burn | zone:cleanse | cone:wall+blind
+  30 cone:root | lob:burn+cleanse | dash:pull
+  31 bolt:knock | zone:damage | cone:cleanse
+  32 lob:burn+pull+weaken/armor | cone:cleanse | self:wall
+  33 bolt:burn | beam:root | lob:root+silence
+  34 jump:boost/armor | zone:wall | bolt:burn
+  35 lob:cleanse | bolt:shield+wall | zone:weaken+burn/vision
+  36 beam:stun+cleanse+burn | blink:shield | dash:root+damage+cleanse
+  37 dash:heal | zone:shield | dash:burn+blind
+  38 bolt:damage | blink:cleanse | dash:pull+burn
+  39 jump:cleanse+boost+wall/turn | zone:root+cleanse | dash:burn

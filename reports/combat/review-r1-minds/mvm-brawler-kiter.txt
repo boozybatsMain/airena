@@ -1,0 +1,9 @@
+
+## sub-sonnet-high/brawler
+  vs mind:sub-opus-high/kiter: W-D-L 5-0-1 | len 22.3s | sudden death 0/6 | mean dist 8.3 m | reasons kill,kill,kill,kill,kill,kill
+    MIND  casts/10s 6.7 cdUtil 54% hit 63% (35/56) dmg/game 143.7 still 18% noAct 64% idle+ready 56% idle+inReach 21% allCd 17%
+          uses k3 32, k1 32, k2 26 | dead slots 0/18 | miss k1:cover 4, k1:aim 11, k2:range 5, k2:aim 1 | refused —
+          immune stun 7, root 9 (on damage-carrying casts 16, on pure controls 0; already immune when ordered 11) | dodges 0 | interrupts made 4 taken 2 | say 354 | faults 0
+          bolt lead: of 0 shots that needed >3° of lead, 0 (—) were aimed nearer the intercept than the target; mean error from the intercept —°
+          telegraph resp 73% (69/94) | lead usage — (0/0) mean off-bearing —° | mortar: 0 thrown, 0 on target (—), vs moving target 0/0, mean landing error — m (no-lead would be — m)
+    PILOT casts/10s 8 hit 80% dmg/game 195.5 still 1% idle+inReach 9% immune root 20, silence 12 dodges 0 interrupts made 2

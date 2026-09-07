@@ -1,0 +1,188 @@
+{
+  "id": "c_8bb73425-8cd",
+  "name": "MINE HEDGEHOG",
+  "rating": 1449,
+  "fights": 9938,
+  "isLibrary": false,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 2221,
+    "tacticsCard": "This is a rhythm kiter: it dances in and out around the cone's cooldown, closing to roughly two and a half meters when the close-range cone is up to land the burst and knockback, then backing off to six or seven meters while it recharges, spamming the disc at anything within thirteen meters with a slight lead on the target's movement. It holds the shield/cleanse for burns, for a telegraphed incoming cast inside seven meters, or when someone gets within five meters while it's unshielded, and it walks straight out of enemy zones before anything else.",
+    "sourceSha": "847d14db82039ba9421f10a18c76fc1bb46bad43e991339c8f8e2708f060b9f3",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_8bb73425-8cd.before.847d14db.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 2855,
+    "tacticsCard": "This fighter closes to melee range and leans on its close-in strike whenever it's available, only bothering with a ranged attack if melee is on cooldown and it can find a safe casting distance with line of sight. It throws up its self-buff either reactively when controlled (if it cleanses) or defensively when low on health, burning, or sensing an incoming telegraphed attack — so it plays it fairly safe rather than aggressively popping cooldowns.",
+    "rating": 1473,
+    "fights": 9955,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "zone",
+      "effects": [
+        "burn",
+        "damage"
+      ],
+      "element": "ember"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "knock"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "self",
+      "effects": [
+        "shield",
+        "cleanse"
+      ],
+      "element": "frost"
+    }
+  ],
+  "kitCost": 56,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "orange",
+      "seconds": 25.13,
+      "faults": 0,
+      "thinks": 377,
+      "orders": 602,
+      "uses": 22,
+      "hits": 16,
+      "damageDealt": 122.58400000000024,
+      "stubDamageDealt": 242.5359999999986,
+      "aliveTicks": 753,
+      "idleInReachTicks": 30,
+      "stillTicks": 53,
+      "fuelSpent": 3448,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 15.73,
+      "faults": 0,
+      "thinks": 236,
+      "orders": 386,
+      "uses": 15,
+      "hits": 15,
+      "damageDealt": 165.88266666666684,
+      "stubDamageDealt": 252.33866666666543,
+      "aliveTicks": 471,
+      "idleInReachTicks": 19,
+      "stillTicks": 46,
+      "fuelSpent": 2166,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 24.27,
+      "faults": 0,
+      "thinks": 364,
+      "orders": 564,
+      "uses": 23,
+      "hits": 21,
+      "damageDealt": 193.34933333333245,
+      "stubDamageDealt": 241.20799999999852,
+      "aliveTicks": 727,
+      "idleInReachTicks": 20,
+      "stillTicks": 58,
+      "fuelSpent": 3320,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": "orange",
+      "seconds": 33.9,
+      "faults": 0,
+      "thinks": 508,
+      "orders": 807,
+      "uses": 29,
+      "hits": 26,
+      "damageDealt": 187.81333333333237,
+      "stubDamageDealt": 212.56533333333238,
+      "aliveTicks": 1016,
+      "idleInReachTicks": 25,
+      "stillTicks": 53,
+      "fuelSpent": 4627,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 108187,
+  "forgeMs": 97672,
+  "admitMs": 696,
+  "cardMs": 9814,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 97671,
+      "chars": 2855
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 9115,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.162363,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 2855,
+  "promptHash": "ae981f6f9d2f48dd20880ee15cc6ac70636cc11bdb27b8508150931ef8c1d97b",
+  "generatedAt": "2026-09-07T10:30:13.707Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:00:32.881Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T09:57:09.982Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "5159c18adf0b0c62142b814930d2f5b43f9c78b0a676b7012ddee09daa727dd3",
+  "behaviour": {
+    "wins": 0,
+    "damageShare": 0.706,
+    "idleInReach": 0.032,
+    "still": 0.071,
+    "casts": 22.25
+  },
+  "card": "This fighter closes to melee range and leans on its close-in strike whenever it's available, only bothering with a ranged attack if melee is on cooldown and it can find a safe casting distance with line of sight. It throws up its self-buff either reactively when controlled (if it cleanses) or defensively when low on health, burning, or sensing an incoming telegraphed attack — so it plays it fairly safe rather than aggressively popping cooldowns."
+}

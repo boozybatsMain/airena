@@ -1,0 +1,61 @@
+{
+  "state": "live-hud",
+  "group": "THE FIGHT",
+  "url": "http://localhost:8787/#/live?ui=fighting",
+  "size": "390x844",
+  "session": null,
+  "signals": {
+    "screen": "live",
+    "phase": "fighting",
+    "opacity": 1,
+    "classes": "screen",
+    "mounted": 1,
+    "nodes": 55,
+    "waiting": 0,
+    "fps": {
+      "last": 59,
+      "min": 59,
+      "ticks": 37,
+      "since": 11212
+    },
+    "drawn": {
+      "n": 98,
+      "firstAt": 10204,
+      "firstMs": 29,
+      "lastMs": 13,
+      "direct": 0,
+      "blank": 0,
+      "postTier": "high"
+    },
+    "backend": "webgpu",
+    "quality": "high",
+    "msPerFrame": 16.639772727408186,
+    "marks": {
+      "t0": 1441.9000000059605,
+      "rendererRequested": 1442,
+      "shellReady": 1972,
+      "screenReady": 1988,
+      "viewerStart": 2608,
+      "rendererUp": 2623,
+      "envBuilt": 2697,
+      "postBuilt": 2712,
+      "precompiled": 7130,
+      "postWarm": 10202,
+      "rendererReady": 10202,
+      "firstDraw": 10233
+    },
+    "forced": 0,
+    "ready": true,
+    "loop": {
+      "want": 24,
+      "ticked": 24,
+      "ok": true,
+      "ms": 403,
+      "vis": "visible"
+    },
+    "dpr": 1
+  },
+  "errors": [],
+  "overlaps": [],
+  "covered": []
+}

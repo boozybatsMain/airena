@@ -1,0 +1,187 @@
+{
+  "id": "c_c764acde-f2f",
+  "name": "MANTIS REAPER",
+  "rating": 1240,
+  "fights": 10572,
+  "isLibrary": true,
+  "bundle": "sub:sonnet:high",
+  "modelId": "sub:sonnet",
+  "effort": "high",
+  "before": {
+    "model": "sub:opus:plain",
+    "constantsVersion": "c-0c03af0b",
+    "sourceChars": 1362,
+    "tacticsCard": "This is an aggressive melee brawler: it closes distance permanently, sticks right on top of the enemy, and at contact range it first tries to root the target (only if the target isn't already rooted or immune to movement effects), then follows with its basic strike. Once the enemy is rooted it hugs them to keep them in kill range, and it uses its dash purely as a chase tool at long range; it only retreats — briefly — when the enemy is winding up a telegraphed attack and both of its own abilities are on cooldown, which means it has no defensive answer at all when its skills are up.",
+    "sourceSha": "49ff40b90dd7e449aaf01453d75a3ab103d03e86d575c4a5fdcc7ef481c991dc",
+    "file": "/Users/boozybats/Public/Repos/work/Airena/reports/combat/rethink/c_c764acde-f2f.before.49ff40b9.js"
+  },
+  "after": {
+    "model": "sub:sonnet:high",
+    "constantsVersion": "c-bcf117df",
+    "sourceChars": 961,
+    "tacticsCard": "This fighter opens with a taunt, then just charges straight in and tries to stay glued to the enemy, throwing k2 (backup k1) as soon as it's in the 4.9-range window. Its only defensive instinct is dodging telegraphed cone attacks (k1/k2) within 5.5 range by backpedaling or popping k3 if available — otherwise it has zero regard for danger, blindly closing distance even into other threats.",
+    "rating": 1240,
+    "fights": 10608,
+    "kitUntouched": true,
+    "buildUntouched": true,
+    "nameUntouched": true
+  },
+  "kit": [
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "cone",
+      "effects": [
+        "damage",
+        "root"
+      ],
+      "element": "kinetic"
+    },
+    {
+      "delivery": "jump",
+      "effects": [
+        "boost"
+      ],
+      "channel": "speed",
+      "element": "kinetic"
+    }
+  ],
+  "kitCost": 39,
+  "build": {
+    "hp": 240,
+    "maxSpeed": 5.8,
+    "accel": 24,
+    "turnRate": 7.5,
+    "radius": 1.5,
+    "jumpHeight": 2
+  },
+  "buildCost": 19.83,
+  "admitted": true,
+  "applied": true,
+  "stage": "probe",
+  "problems": [],
+  "probe": [
+    {
+      "seed": 11,
+      "winner": "blue",
+      "seconds": 12.3,
+      "faults": 0,
+      "thinks": 185,
+      "orders": 183,
+      "uses": 12,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 201.6,
+      "aliveTicks": 368,
+      "idleInReachTicks": 10,
+      "stillTicks": 24,
+      "fuelSpent": 185,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 22,
+      "winner": "orange",
+      "seconds": 9.6,
+      "faults": 0,
+      "thinks": 144,
+      "orders": 159,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 235.2,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 287,
+      "idleInReachTicks": 7,
+      "stillTicks": 31,
+      "fuelSpent": 144,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 33,
+      "winner": "orange",
+      "seconds": 9.6,
+      "faults": 0,
+      "thinks": 144,
+      "orders": 159,
+      "uses": 9,
+      "hits": 7,
+      "damageDealt": 235.2,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 287,
+      "idleInReachTicks": 7,
+      "stillTicks": 31,
+      "fuelSpent": 144,
+      "fuelExhausted": false
+    },
+    {
+      "seed": 44,
+      "winner": null,
+      "seconds": 9.93,
+      "faults": 0,
+      "thinks": 149,
+      "orders": 169,
+      "uses": 9,
+      "hits": 8,
+      "damageDealt": 268.8,
+      "stubDamageDealt": 268.8,
+      "aliveTicks": 297,
+      "idleInReachTicks": 7,
+      "stillTicks": 31,
+      "fuelSpent": 149,
+      "fuelExhausted": false
+    }
+  ],
+  "elapsedMs": 85604,
+  "forgeMs": 79287,
+  "admitMs": 368,
+  "cardMs": 5944,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": true,
+      "error": null,
+      "costUsd": 0,
+      "elapsedMs": 79287,
+      "chars": 961
+    }
+  ],
+  "usage": {
+    "in": 2,
+    "out": 6802,
+    "reasoning": 0,
+    "reasoningShare": 0
+  },
+  "referenceUsd": 0.13533699999999999,
+  "resolvedModel": "claude-sonnet-5",
+  "sourceChars": 961,
+  "promptHash": "3c699e6847b1e73972f3d8bdec6a5c30de94e740dd10316dd2dd01def49fe06b",
+  "generatedAt": "2026-09-07T10:45:13.221Z",
+  "previous": [
+    {
+      "generatedAt": "2026-09-07T04:04:48.433Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    },
+    {
+      "generatedAt": "2026-09-07T10:01:00.171Z",
+      "admitted": true,
+      "stage": "probe",
+      "problems": []
+    }
+  ],
+  "candidateSha": "99e6aeafc3a95cb5363e88c9941f6ef42d0a072fe224cbc0f2aaf21e70794a68",
+  "behaviour": {
+    "wins": 1,
+    "damageShare": 1,
+    "idleInReach": 0.025,
+    "still": 0.094,
+    "casts": 9.75
+  },
+  "card": "This fighter opens with a taunt, then just charges straight in and tries to stay glued to the enemy, throwing k2 (backup k1) as soon as it's in the 4.9-range window. Its only defensive instinct is dodging telegraphed cone attacks (k1/k2) within 5.5 range by backpedaling or popping k3 if available — otherwise it has zero regard for danger, blindly closing distance even into other threats."
+}

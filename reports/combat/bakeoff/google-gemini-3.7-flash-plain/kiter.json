@@ -1,0 +1,82 @@
+{
+  "model": "google/gemini-3.7-flash:plain",
+  "modelId": "google/gemini-3.7-flash",
+  "mode": "plain",
+  "channel": "openrouter",
+  "label": "Google: Gemini 3.7 Flash",
+  "thinkBudget": 0,
+  "maxTokens": 65536,
+  "effort": null,
+  "creature": {
+    "id": "kiter",
+    "prompt": "A thin, twitchy, long-legged skirmisher that never lets anyone close. It snaps off frost bolts that freeze feet to the floor, blinks away through the void with a shield already up and its ailments shed, and finishes with a red laser beam that strikes the voice out of its target. Nervous, precise, always moving.",
+    "kit": [
+      {
+        "delivery": "bolt",
+        "effects": [
+          "damage",
+          "root"
+        ],
+        "element": "frost"
+      },
+      {
+        "delivery": "blink",
+        "effects": [
+          "cleanse",
+          "shield"
+        ],
+        "element": "void"
+      },
+      {
+        "delivery": "beam",
+        "effects": [
+          "damage",
+          "silence"
+        ],
+        "element": "laser"
+      }
+    ],
+    "build": {
+      "hp": 132,
+      "maxSpeed": 7.48,
+      "accel": 28.8,
+      "turnRate": 9.5,
+      "radius": 1.59,
+      "jumpHeight": 0.8
+    }
+  },
+  "generatedAt": "2026-09-06T23:45:00.035Z",
+  "admitted": false,
+  "stage": "forge",
+  "costUsd": 0,
+  "elapsedMs": 63,
+  "tries": [
+    {
+      "attempt": 0,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    },
+    {
+      "attempt": 1,
+      "thinkBudget": 0,
+      "ok": false,
+      "error": "http",
+      "costUsd": 0,
+      "elapsedMs": 0,
+      "chars": 0
+    }
+  ],
+  "usage": null,
+  "problems": [
+    {
+      "code": "rejected",
+      "message": "the mind returned nothing usable"
+    }
+  ],
+  "promptHash": "69b214324d2f35df59ccf04085a20db203b714935735dba3f87c35f2588b2a84",
+  "promptChars": 33406
+}
