@@ -1197,23 +1197,24 @@
  */
 @media (max-width: 900px) {
   #screen > .screen[data-screen="ladder"] {
-    bottom: calc(130px + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar-h) + 80px + env(safe-area-inset-bottom));
   }
   /*
    * THE DOCK DOES NOT LOSE ITS OWN FLOOR TO THE ROWS' MARGIN.
    *
-   * The scroller above just gave up 80 px more than the tab bar needs, purely
-   * so a tall wrapped row is clipped rather than shown half under it — and a
-   * sticky child cannot pin past the box that clips it, so the dock would
-   * float 80 px above the bar with bare ground showing under it if it stayed
-   * inside that box. It is fixed to the viewport instead, at the same
-   * position it always answered from, with the document's own content column
-   * (`ui/base.css` `.doc`'s padding, mirrored here since a fixed element
-   * keeps none of it) rather than the shortened scroller.
+   * The scroller above just gave up 80 px more than the tab bar's own floor
+   * (`--tabbar-h`, `ui/chrome.css`) needs, purely so a tall wrapped row is
+   * clipped rather than shown half under it — and a sticky child cannot pin
+   * past the box that clips it, so the dock would float 80 px above the bar
+   * with bare ground showing under it if it stayed inside that box. It is
+   * fixed to the viewport instead, at the same position it always answered
+   * from, with the document's own content column (`ui/base.css` `.doc`'s
+   * padding, mirrored here since a fixed element keeps none of it) rather
+   * than the shortened scroller.
    */
   .lad-dock {
     position: fixed; left: var(--chrome-pad); right: var(--chrome-pad);
-    bottom: calc(50px + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
     z-index: var(--z-screen);
   }
 }

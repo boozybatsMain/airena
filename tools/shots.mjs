@@ -1049,6 +1049,22 @@ const COVER = `(() => {
     const p = t.slice(i + 1, j).split(',').map((x) => parseFloat(x));
     return p.length > 3 && Number.isFinite(p[3]) ? p[3] : 1;
   };
+  /* A word scrolled past the bottom of its own scroller is clipped, not
+     covered: the tab bar sits over ground the reader cannot see. Same rule
+     as PROBE's \`clipped\` (checklayout.mjs): less than half the word's box
+     inside any ancestor that clips means the word is off screen. */
+  const clipped = (e, r) => {
+    for (let x = e.parentElement; x && x !== document.body; x = x.parentElement) {
+      const cs = getComputedStyle(x);
+      if (!/auto|scroll|hidden|clip/.test(cs.overflowY + cs.overflowX)) continue;
+      const b = x.getBoundingClientRect();
+      const top = Math.max(r.top, b.top); const bottom = Math.min(r.bottom, b.bottom);
+      const left = Math.max(r.left, b.left); const right = Math.min(r.right, b.right);
+      const seen = Math.max(0, bottom - top) * Math.max(0, right - left);
+      if (seen < 0.5 * r.width * r.height) return true;
+    }
+    return false;
+  };
   const carried = (el) => {
     let o = 1;
     for (let x = el; x && x.nodeType === 1; x = x.parentElement) o *= Number(getComputedStyle(x).opacity);
@@ -1091,7 +1107,7 @@ const COVER = `(() => {
         const st = getComputedStyle(e);
         if (r.width > 4 && r.height > 4 && e.offsetParent !== null && st.visibility !== 'hidden'
           && parseFloat(st.fontSize) >= 4 && alpha(st.color) > 0.05 && carried(e) > 0.05
-          && e.closest('[hidden], #devsockets') === null) out.push({ s: c.textContent.trim().slice(0, 22), r, e });
+          && e.closest('[hidden], #devsockets') === null && !clipped(e, r)) out.push({ s: c.textContent.trim().slice(0, 22), r, e });
       } else if (c.nodeType === 1) walk(c, out);
     }
     return out;

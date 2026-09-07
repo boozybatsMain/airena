@@ -879,14 +879,14 @@
  * clipped by the ordinary edge of the list, never painted on and hidden
  * behind chrome it has not reached yet.
  *
- * The margin is the bar's 50px plus half a row: `.hrow`'s own name and mind
- * both truncate rather than wrap, so a row here holds a steady height, and
- * `tools/checklayout.mjs` already treats a row less than half inside its own
- * scroller as not shown — so anything the probe still counts has cleared the
- * bar underneath it.
+ * The margin is the bar's own floor (`--tabbar-h`, `ui/chrome.css`) plus half
+ * a row: `.hrow`'s own name and mind both truncate rather than wrap, so a
+ * row here holds a steady height, and `tools/checklayout.mjs` already treats
+ * a row less than half inside its own scroller as not shown — so anything
+ * the probe still counts has cleared the bar underneath it.
  */
 @media (max-width: 900px) {
   #screen > .screen[data-screen="history"] {
-    bottom: calc(90px + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar-h) + 40px + env(safe-area-inset-bottom));
   }
 }

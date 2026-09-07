@@ -598,6 +598,17 @@ body[data-screen="live"] #chrome .rail a:hover { color: var(--ink-2); }
 
 /* mobile */
 @media (max-width: 900px) {
+  /*
+   * THE BAR'S OWN FLOOR, NAMED ONCE.
+   *
+   * `2px` top padding + `46px` anchor `min-height` + `2px` bottom padding
+   * (`#chrome .rail`, below) is the tab bar's real height before the notch
+   * inset. Every document screen that has to clear it — the ladder's own
+   * scroller, History's — used to restate that arithmetic as a bare number,
+   * and a bare number drifts the moment this bar's own padding does. One
+   * token, read here and by them.
+   */
+  :root { --tabbar-h: 50px; }
   #chrome .wordmark .mark { letter-spacing: .3em; font-size: 14px; }
   /* The worn mark is a 18 px effect. At 14 px over a running arena the ghosted
      "I" stops reading as a design and starts reading as a glyph that failed to
