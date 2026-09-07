@@ -413,6 +413,21 @@ const MIGRATIONS = [
   [
     `ALTER TABLE creature ADD COLUMN reference_tag TEXT`,
   ],
+  /*
+   * 07.09, measured on a dev ladder of 296 000 matches (1.9 GB): every
+   * `/api/session` counted today's matches with a full scan of `match`
+   * (280 ms), and a creature's history ran the OR of two indexes into a
+   * temporary sort (780 ms). SQLite is synchronous on the main thread, so
+   * each of those held the 30 Hz broadcast pump for as long as it ran —
+   * "the server lags". `ended_at` gets its own index for the day count and
+   * the since-summary; the per-side indexes on `ended_at` serve the
+   * history's ORDER BY without a temp b-tree.
+   */
+  [
+    `CREATE INDEX match_ended ON match(ended_at)`,
+    `CREATE INDEX match_a_ended ON match(a_id, ended_at DESC)`,
+    `CREATE INDEX match_b_ended ON match(b_id, ended_at DESC)`,
+  ],
 ];
 
 export function openDb(file = 'data/airena.db') {

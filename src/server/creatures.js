@@ -455,14 +455,22 @@ export function refactor(db, id, { brainSource, brainModel, constantsVersion, ta
 
 /** История лестницы: последние бои существа, уже развёрнутые для экрана. */
 export function history(db, id, limit = 20) {
+  /* Two indexed walks (match_a / match_b, both ordered by started_at DESC)
+     merged by a LIMIT, instead of an OR that made SQLite collect every fight
+     of the creature and sort them in a temporary b-tree — 780 ms on a
+     creature with thousands of fights, on the main thread, 07.09. */
   const rows = db.prepare(`
     SELECT m.*, ca.name AS a_name, cb.name AS b_name
-    FROM match m
+    FROM (
+      SELECT * FROM (SELECT * FROM match WHERE a_id = ? AND ended_at IS NOT NULL ORDER BY started_at DESC LIMIT ?)
+      UNION ALL
+      SELECT * FROM (SELECT * FROM match WHERE b_id = ? AND ended_at IS NOT NULL ORDER BY started_at DESC LIMIT ?)
+      ORDER BY started_at DESC LIMIT ?
+    ) m
     JOIN creature ca ON ca.id = m.a_id
     JOIN creature cb ON cb.id = m.b_id
-    WHERE (m.a_id = ? OR m.b_id = ?) AND m.ended_at IS NOT NULL
-    ORDER BY m.started_at DESC LIMIT ?
-  `).all(id, id, limit);
+    ORDER BY m.started_at DESC
+  `).all(id, limit, id, limit, limit);
   return rows.map((m) => {
     const mine = m.a_id === id;
     return {

@@ -246,6 +246,22 @@ not rushing in and idling on cooldowns. Therefore:
   until it is topped up those minds answer "the provider refused". The
   one-free-creature-per-account rule is unchanged.
 
+- **D208. The lag was the database, not the fight.** The founder saw both
+  the local and the published game lag (07.09). Measured: a headless match
+  simulates in 80–180 ms; the public broadcast streams 28 frames a second
+  with 0.6 KB frames; but the local dev ladder had grown to 296 000 matches
+  (1.9 GB) and two queries on every session request scanned it — today's
+  match count without an index on `ended_at` (280 ms) and a creature's
+  history through an OR of two indexes into a temporary sort (780 ms). SQLite
+  runs on the main thread, so each held the 30 Hz pump: the local stream fell
+  to 0.5 frames a second and `/api/session` took 12–73 s. Migration 14 adds
+  `match(ended_at)` and per-side `(a_id|b_id, ended_at DESC)` indexes; the
+  history is two indexed walks merged by a LIMIT. After: history 2.6 ms, the
+  day count 0.5 ms, the session 2 ms. The public backend gets the same
+  migration; its table is small today and grows ~12 MB an hour of logs at
+  the local cadence, so a retention rule is the next thing that file needs
+  (`docs/DEPLOY.md` §4 already says so).
+
 ## Build plan & status — combat & balance overhaul
 
 Now: **milestone 7 — the draft is out; the spectacle review and the mobile rail
