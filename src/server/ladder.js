@@ -80,9 +80,17 @@ export const WINDOWS = [60, 140, 300, 700, Infinity];
  * значило бы, что упавший процесс оставляет половину лестницы вечно занятой.
  */
 export function pickOpponent(db, creature, { now = Date.now(), rng = Math.random, busy = null } = {}) {
+  /* Two indexed walks (match_a / match_b in started_at order) merged by a
+     LIMIT: an OR over the two sides let the planner collect the creature's
+     whole history into a temporary sort — 7.7 s per pairing on a ladder of
+     296 000 fights (07.09), on the main thread. */
   const recent = db.prepare(`
-    SELECT CASE WHEN a_id = ? THEN b_id ELSE a_id END AS other
-    FROM match WHERE (a_id = ? OR b_id = ?) ORDER BY started_at DESC LIMIT 6
+    SELECT CASE WHEN a_id = ? THEN b_id ELSE a_id END AS other FROM (
+      SELECT * FROM (SELECT a_id, b_id, started_at FROM match WHERE a_id = ? ORDER BY started_at DESC LIMIT 6)
+      UNION ALL
+      SELECT * FROM (SELECT a_id, b_id, started_at FROM match WHERE b_id = ? ORDER BY started_at DESC LIMIT 6)
+      ORDER BY started_at DESC LIMIT 6
+    )
   `).all(creature.id, creature.id, creature.id).map((r) => r.other);
 
   /*

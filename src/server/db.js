@@ -428,6 +428,20 @@ const MIGRATIONS = [
     `CREATE INDEX match_a_ended ON match(a_id, ended_at DESC)`,
     `CREATE INDEX match_b_ended ON match(b_id, ended_at DESC)`,
   ],
+  /*
+   * An hour later, measured: the two per-side `ended_at` indexes made the
+   * planner pick them for every `(a_id = ? OR b_id = ?) … ORDER BY
+   * started_at DESC LIMIT n` query — the ladder's pairing window among them —
+   * and then sort the creature's whole history in a temporary b-tree: 7.7 s
+   * per call on the dev ladder, on the main thread, on every pairing tick;
+   * localhost stopped answering. `match_a` / `match_b` (side, started_at
+   * DESC) walk those queries in index order. The two indexes go; the plain
+   * `match_ended` stays for the day count.
+   */
+  [
+    `DROP INDEX IF EXISTS match_a_ended`,
+    `DROP INDEX IF EXISTS match_b_ended`,
+  ],
 ];
 
 export function openDb(file = 'data/airena.db') {

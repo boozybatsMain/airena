@@ -508,7 +508,7 @@ export function sinceSummary(db, id, sinceMs) {
       sum(CASE WHEN winner IS NOT NULL AND winner != ? THEN 1 ELSE 0 END) AS l,
       sum(CASE WHEN winner IS NULL THEN 1 ELSE 0 END) AS d,
       sum(CASE WHEN a_id = ? THEN a_delta ELSE b_delta END) AS drift
-    FROM match WHERE (a_id = ? OR b_id = ?) AND ended_at >= ?
+    FROM match WHERE (a_id = ? OR b_id = ?) AND started_at >= ?
   `).get(id, id, id, id, id, sinceMs);
 
   const adapts = db.prepare(
@@ -521,7 +521,7 @@ export function sinceSummary(db, id, sinceMs) {
      broken, a first win against someone far above. */
   const highlight = db.prepare(`
     SELECT id, seed, started_at FROM match
-    WHERE (a_id = ? OR b_id = ?) AND ended_at >= ?
+    WHERE (a_id = ? OR b_id = ?) AND started_at >= ?
     ORDER BY abs(CASE WHEN a_id = ? THEN a_delta ELSE b_delta END) DESC LIMIT 1
   `).get(id, id, sinceMs, id);
 
