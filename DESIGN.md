@@ -254,9 +254,14 @@ not rushing in and idling on cooldowns. Therefore:
   match count without an index on `ended_at` (280 ms) and a creature's
   history through an OR of two indexes into a temporary sort (780 ms). SQLite
   runs on the main thread, so each held the 30 Hz pump: the local stream fell
-  to 0.5 frames a second and `/api/session` took 12–73 s. Migration 14 adds
-  `match(ended_at)` and per-side `(a_id|b_id, ended_at DESC)` indexes; the
-  history is two indexed walks merged by a LIMIT. After: history 2.6 ms, the
+  to 0.5 frames a second and `/api/session` took 12–73 s. Migration 14 added `match(ended_at)` and per-side `(a_id|b_id,
+  ended_at DESC)` indexes; an hour later the two per-side indexes proved a
+  trap — the planner picked them for every OR-over-sides query ordered by
+  `started_at` (the ladder's pairing window among them) and sorted a
+  creature's whole history per call, 7.7 s, and localhost stopped answering —
+  so migration 15 drops them again. The history, the pairing window and the
+  since-summary are now two indexed walks each (`match_a` / `match_b`,
+  started_at order) merged by a LIMIT. After: history 2.6 ms, the
   day count 0.5 ms, the session 2 ms. The public backend gets the same
   migration; its table is small today and grows ~12 MB an hour of logs at
   the local cadence, so a retention rule is the next thing that file needs
