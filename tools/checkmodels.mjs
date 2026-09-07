@@ -25,7 +25,7 @@
  *   node tools/checkmodels.mjs
  */
 
-import { ALLOWED, BANNED, buildCatalog } from '../src/server/forge/models.js';
+import { ALLOWED, BANNED, FREE_FOR_NOW, buildCatalog } from '../src/server/forge/models.js';
 
 let bad = 0;
 const ok = (what, cond, note = '') => {
@@ -43,6 +43,8 @@ const PRICES = {
   'z-ai/glm-5.3-flash': cheap,
   'z-ai/glm-5.3': dear,
   'anthropic/claude-opus-5': dear,
+  'anthropic/claude-fable-5.1': dear,
+  'openai/gpt-6-astra': dear,
   'anthropic/claude-sonnet-5': dear,
   'anthropic/claude-haiku-4.5': cheap,
   'moonshotai/kimi-k3': dear,
@@ -55,11 +57,19 @@ const ids = [...new Set(cat.bundles.map((b) => b.modelId))].sort();
 ok('в каталоге только разрешённые семьи',
   ids.every((id) => ALLOWED.some((re) => re.test(id))),
   ids.join(', ') || 'пусто');
-ok('обе разрешённые семьи в каталоге есть', ids.length === ALLOWED.length,
+ok('все разрешённые семьи в каталоге есть', ids.length === ALLOWED.length,
   `${ids.length} из ${ALLOWED.length}`);
-ok('дорогие семьи отвергнуты с причиной',
-  cat.rejected.some((r) => /claude-opus/.test(r.bundle) && /allow list|разрешённых/.test(r.why)),
-  cat.rejected.find((r) => /claude-opus/.test(r.bundle))?.why || 'нет записи об отказе');
+ok('дорогие семьи вне списка отвергнуты с причиной',
+  cat.rejected.some((r) => /claude-sonnet|qwen/.test(r.bundle) && /allow list|разрешённых/.test(r.why)),
+  cat.rejected.find((r) => /claude-sonnet|qwen/.test(r.bundle))?.why || 'нет записи об отказе');
+/* 07.09: the founder opened six authors as free while payments are shut. A
+   dear author on that list is tier `free` (and says `freeForNow`); a dear
+   author off it is still `paid`. */
+const freeNow = cat.bundles.filter((b) => FREE_FOR_NOW.has(b.modelId));
+ok('связки «бесплатно пока» идут бесплатными', freeNow.length > 0 && freeNow.every((b) => b.tier === 'free'),
+  `${freeNow.length} связок, авторов ${new Set(freeNow.map((b) => b.modelId)).size} из ${FREE_FOR_NOW.size}`);
+ok('дорогой автор из списка помечен freeForNow', freeNow.some((b) => b.freeForNow === true),
+  freeNow.filter((b) => b.freeForNow).map((b) => b.modelId).join(', ') || 'никто');
 /*
  * Haiku в каталоге нет — но проверять надо ФАКТ, а не путь.
  *

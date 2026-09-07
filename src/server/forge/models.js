@@ -68,7 +68,32 @@ export const BANNED = [/claude-haiku/i, /claude-3/i];
  * сам, и чёрный список пропустил бы каждую новую дорогую по умолчанию.
  * Добавить семью — одна строка и решение основателя.
  */
-export const ALLOWED = [/^google\/gemini-3\.7-flash$/, /^z-ai\/glm-5\.3-flash$/];
+export const ALLOWED = [
+  /^google\/gemini-3\.7-flash$/, /^z-ai\/glm-5\.3-flash$/,
+  /* 07.09, the founder's words: «add models as free for now to game from
+     openRouter: glm, glm flash, kimi, opus, fable 5.1, astra». Six more
+     authors, each the current flagship of its family on the live price list
+     (`curl https://openrouter.ai/api/v1/models`): GLM 5.3, Kimi K3, Claude
+     Opus 5, Claude Fable 5.1, GPT-6 Astra. They are FREE FOR NOW — see
+     `FREE_FOR_NOW` below — which means the founder's OpenRouter key pays for
+     every creature made on them (a Fable 5.1 creature is ≈ $1.4, Opus 5 and
+     Astra ≈ $0.7–1.4, Kimi K3 ≈ $0.4, GLM 5.3 ≈ $0.13 at the 07.09 prices),
+     so the key needs credit (D192) or the forge answers 402. */
+  /^z-ai\/glm-5\.3$/, /^moonshotai\/kimi-k3$/, /^anthropic\/claude-opus-5$/,
+  /^anthropic\/claude-fable-5\.1$/, /^openai\/gpt-6-astra$/,
+];
+
+/**
+ * Minds the founder opened for free while payments are shut (07.09). A bundle
+ * on one of these authors is tier `free` whatever its price — the price still
+ * travels in `creatureUsd` so the founder's own dashboard can read what a
+ * creature cost. Take an author out of this set and it becomes `paid` again
+ * on the next catalogue build; nothing else changes.
+ */
+export const FREE_FOR_NOW = new Set([
+  'z-ai/glm-5.3', 'z-ai/glm-5.3-flash', 'moonshotai/kimi-k3',
+  'anthropic/claude-opus-5', 'anthropic/claude-fable-5.1', 'openai/gpt-6-astra',
+]);
 
 /**
  * Маршрутные варианты одной и той же модели, а не отдельные авторы.
@@ -268,7 +293,8 @@ export async function buildCatalog({
       brainUsd: m ? m.brain : null,
       secs,
       measured: Boolean(m) && !m.estimated,
-      tier: creatureUsd <= freeThreshold ? 'free' : 'paid',
+      tier: creatureUsd <= freeThreshold || FREE_FOR_NOW.has(modelId) ? 'free' : 'paid',
+      freeForNow: FREE_FOR_NOW.has(modelId) && creatureUsd > freeThreshold,
       brak: brak ?? null,
     });
   }

@@ -234,14 +234,26 @@ not rushing in and idling on cooldowns. Therefore:
   creature is the broadcast fight (`fightingNow` is sent for every creature)
   and "Watch last fight" otherwise.
 
+- **D207. Six more minds, free for now.** The founder (07.09): «add models as
+  free for now to game from openRouter: glm, glm flash, kimi, opus, fable 5.1,
+  astra». The catalogue's allow-list (30.08: Gemini and GLM Flash only) now
+  carries GLM 5.3, Kimi K3, Claude Opus 5, Claude Fable 5.1 and GPT-6 Astra as
+  well, and `FREE_FOR_NOW` in `src/server/forge/models.js` makes every bundle
+  on those six authors tier `free` whatever its price while payments are
+  shut. The founder's OpenRouter key pays: at the 07.09 list prices a
+  creature is ≈ $0.01 (GLM Flash), $0.13 (GLM 5.3), $0.4 (Kimi K3), $0.7
+  (Opus 5), $1.4 (Fable 5.1, Astra) — and the key had no credit (D192), so
+  until it is topped up those minds answer "the provider refused". The
+  one-free-creature-per-account rule is unchanged.
+
 ## Build plan & status — combat & balance overhaul
 
-Now: **milestone 6 — round 2 of the reviewer loop.** Round 1 scored balance 55,
-pace 62, minds 52, prompt 64, spectacle 58, code 68 (`reports/combat/review-r1-*.md`).
-The fix round is landed (`reports/combat/fix-r1/*.md`: mechanics, instruments,
-pilots, ladder fixtures, prompt, admission gates, viewer; prices v6–v9, D195–D202)
-and the ladder minds are being rewritten under the new admission rules; round 2
-reviews on four lenses follow, then the gate wall, the preview and the report.
+Now: **milestone 7 — the draft is out; the spectacle review and the mobile rail
+fix follow.** Commit `3677a17` is on the public backend (`c-bcf117df`) and the
+draft carries the new client: https://genex.games/draft/airena (previewed 07.09).
+Round-2 scores so far: prompt 90, code 76, balance 73, pace 70, minds 58;
+spectacle pending. Every local ladder mind was rewritten on Sonnet high
+(35 of 36; `reports/combat/rethink/REPORT.md`).
 
 1. ✅ Research and audit (parallel): `reports/combat/{research-balancing,mechanics-audit,
    brain-corpus-audit,prompt-audit,gates-checklist,spectator-baseline*}.md`.
@@ -260,7 +272,10 @@ reviews on four lenses follow, then the gate wall, the preview and the report.
    from what the minds got wrong (F1–F13, `reports/combat/fix-r1/prompt-handoff.md`).
 6. ⏳ Reviewer loop: 0–100 on balance, ability use, mind intelligence,
    spectacle, prompt, code; fix and re-review until ≥ 80 on every metric.
-7. ⏳ Preview push (`genex preview`) and the player's draft link.
+   Round 1: 55/62/52/58/64/68. Round 2: balance 73, pace 70, minds 58,
+   prompt 90, code 76 (spectacle pending). Reviews under `reports/combat/`.
+7. ✅ Preview push (`genex preview`, 07.09): https://genex.games/draft/airena —
+   the public version is one word away (`genex promote`); asked once.
 
 Modules and parallelism (D182 still binds: agents never start servers or
 browsers; leagues run one at a time on the worker pool):
@@ -383,6 +398,16 @@ browsers; leagues run one at a time on the worker pool):
   next feature.
 
 ## Open commitments
+
+- **After the 07.09 publish:** the mobile ladder/history screens still hide
+  their last rows under the bottom rail at 390 px (desktop and laptop are
+  clean) — next fix; the replay screen's badge overlaps the feed title at
+  1280 px. The public backend's 23 creatures keep the minds they had (the
+  rewrite needs the subscription CLI, which runs only on this machine); SEAM-85
+  there casts once a fight on one colour. A Fable-high mind pass is one flag
+  away (`AIRENA_SUB_MODELS=1 node --env-file-if-exists=.env tools/rethink.mjs
+  --bundle=sub:fable:high --force`) and was held back to spare the daily limit.
+  The pricing loop stopped at v11 (D205).
 
 - **Founder actions after the combat overhaul (07.09):** the OpenRouter key has
   no credit (D192) — top it up or rotate it before the next cheap-model bake-off;

@@ -80,6 +80,8 @@ export function mindInfo(modelId) {
     const ver = m && m[1] ? ` ${m[1].toUpperCase()}` : '';
     return named(`Kimi${ver}`, 'Moonshot AI', 'moonshot');
   }
+  /* OpenAI's flagship joined the catalogue 07.09 (`openai/gpt-6-astra`). */
+  if (/astra|gpt-?6/i.test(s)) return named('GPT-6 Astra', 'OpenAI', 'openai');
   if (/opus/i.test(s)) return named('Claude Opus', 'Anthropic', 'anthropic');
   if (/fable/i.test(s)) return named('Claude Fable', 'Anthropic', 'anthropic');
   if (/sonnet/i.test(s)) return named('Claude Sonnet', 'Anthropic', 'anthropic');
@@ -94,7 +96,7 @@ export function mindInfo(modelId) {
 }
 
 /*
- * SEVEN MARKS, SEVEN SILHOUETTES.
+ * EIGHT MARKS, EIGHT SILHOUETTES.
  *
  * They are read at 20 px, in a line of text, next to each other on the Create
  * screen — so the thing that has to differ first is the OUTLINE, before any
@@ -116,6 +118,8 @@ const MARK = {
   /* A square Q: the tail leaves through the corner it is drawn over. */
   qwen: '<rect x="5.6" y="5.6" width="12.8" height="12.8" rx="3.4"/><path d="M13.6 13.6l4.4 4.4"/>',
   moonshot: '<path d="M15.6 4.4a7.7 7.7 0 1 0 4.2 6.9 6.1 6.1 0 0 1-4.2-6.9z"/>',
+  /* A knot: a ring with a bar through it, the interface's line weight. */
+  openai: '<circle cx="12" cy="12" r="7.4"/><path d="M7.2 15.2l9.6-6.4M7.2 8.8l9.6 6.4"/>',
   /* The product's own orbit: a closed ring around a solid centre. */
   airena: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>',
   other: '<path d="M12 3.6l7.3 4.2v8.4L12 20.4l-7.3-4.2V7.8z"/><path d="M9 12h6"/>',
