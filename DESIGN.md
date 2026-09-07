@@ -269,12 +269,13 @@ not rushing in and idling on cooldowns. Therefore:
 
 ## Build plan & status — combat & balance overhaul
 
-Now: **milestone 7 — the draft is out; the spectacle review and the mobile rail
-fix follow.** Commit `3677a17` is on the public backend (`c-bcf117df`) and the
-draft carries the new client: https://genex.games/draft/airena (previewed 07.09).
-Round-2 scores so far: prompt 90, code 76, balance 73, pace 70, minds 58;
-spectacle pending. Every local ladder mind was rewritten on Sonnet high
-(35 of 36; `reports/combat/rethink/REPORT.md`).
+Now: **milestone 7 — the draft is out and being reviewed by the founder.**
+Commits `3677a17`…`e2e95a7` are on the public backend and the draft:
+https://genex.games/draft/airena. Round-2 scores: prompt 90, code 76 (its three
+items fixed since), balance 73, pace 70, minds 58 (rewritten on Sonnet high
+since); the spectacle review was stopped to free the founder's machine. The
+next review round runs on the founder's word — the daily limit is the
+constraint they named.
 
 1. ✅ Research and audit (parallel): `reports/combat/{research-balancing,mechanics-audit,
    brain-corpus-audit,prompt-audit,gates-checklist,spectator-baseline*}.md`.
@@ -420,15 +421,17 @@ browsers; leagues run one at a time on the worker pool):
 
 ## Open commitments
 
-- **After the 07.09 publish:** the mobile ladder/history screens still hide
-  their last rows under the bottom rail at 390 px (desktop and laptop are
-  clean) — next fix; the replay screen's badge overlaps the feed title at
-  1280 px. The public backend's 23 creatures keep the minds they had (the
+- **After the 07.09 publish:** the mobile ladder/history screens are clean at
+  all three widths (`e2e95a7`); the replay screen's capture still reports
+  "the arena did not draw" within the capture window — a capture timing
+  flake, the screen itself draws. The public backend's 23 creatures keep the minds they had (the
   rewrite needs the subscription CLI, which runs only on this machine); SEAM-85
   there casts once a fight on one colour. A Fable-high mind pass is one flag
   away (`AIRENA_SUB_MODELS=1 node --env-file-if-exists=.env tools/rethink.mjs
   --bundle=sub:fable:high --force`) and was held back to spare the daily limit.
-  The pricing loop stopped at v11 (D205).
+  The pricing loop stopped at v11 (D205). A retention rule for old match logs
+  is due (the table grows ~12 MB an hour at the dev cadence; D208). The six
+  free-for-now minds need credit on the OpenRouter key (D207).
 
 - **Founder actions after the combat overhaul (07.09):** the OpenRouter key has
   no credit (D192) — top it up or rotate it before the next cheap-model bake-off;
